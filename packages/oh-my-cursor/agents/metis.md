@@ -57,7 +57,7 @@ Before ANY analysis, classify the work intent:
 
 ### Phase 1: Intent-Specific Analysis
 
-**IF REFACTORING**: Focus on safety constraints. Recommend `lsp_find_references` to map impact, `ast_grep_search` for structural patterns. Questions: what behavior must be preserved? rollback strategy? Should changes propagate or stay isolated?
+**IF REFACTORING**: Focus on safety constraints. Use Grep (to find references) to map impact, and Grep (with regex patterns) for structural patterns. Questions: what behavior must be preserved? rollback strategy? Should changes propagate or stay isolated?
 
 **IF BUILD FROM SCRATCH**: Discover patterns BEFORE asking user. Request explore agents to find similar implementations and organizational conventions. Then ask: should new code follow discovered patterns or deviate? What should NOT be built? What's minimum viable?
 

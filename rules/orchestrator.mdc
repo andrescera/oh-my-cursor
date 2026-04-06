@@ -39,16 +39,16 @@ Root (depth 0) -- DISPATCHER ONLY
 
 | Agent | Model | Fire When |
 |-------|-------|-----------|
-| **explore** | `gemini-2.5-flash` | Any search, exploration, "how does X work", docs lookup |
+| **explore** | `gemini-3-flash` | Any search, exploration, "how does X work", docs lookup |
 | **librarian** | `fast` | External docs, library APIs, OSS code search |
 | **sisyphus-junior** | `claude-4.6-sonnet-medium-thinking` | Simple single-file changes, quick focused tasks |
 | **sisyphus** | `claude-4.6-opus-max-thinking` | Complex multi-file work, architecture + implementation |
-| **hephaestus** | `gpt-5.4` | Sustained deep work on a single complex problem |
+| **hephaestus** | `gpt-5.4-high` | Sustained deep work on a single complex problem |
 | **atlas** | `claude-4.6-sonnet-medium-thinking` | Plan exists -> executes plan step-by-step via delegation |
-| **oracle** | `gpt-5.4` | Need architecture advice, debugging consultation |
+| **oracle** | `gpt-5.4-medium` | Need architecture advice, debugging consultation |
 | **prometheus** | `claude-4.6-opus-max-thinking` | Complex planning, ambiguous scope analysis |
 | **metis** | `claude-4.6-opus-max-thinking` | Pre-planning gap analysis, risk assessment |
-| **momus** | `gpt-5.4` | Plan review, quality audit |
+| **momus** | `gpt-5.4-medium` | Plan review, quality audit |
 | **multimodal-looker** | `gemini-3.1-pro` | Images, PDFs, diagrams, visual analysis |
 
 **There is NO request type where the root does the work itself.**
@@ -65,11 +65,11 @@ Fallback chain per agent type:
 
 | Agent | Primary Model | Fallback |
 |-------|--------------|----------|
-| explore | gemini-2.5-flash | Always available |
+| explore | gemini-3-flash | Always available |
 | librarian | fast | Always available |
 | sisyphus-junior | claude-4.6-sonnet | Retry with fast |
 | sisyphus | claude-4.6-opus | Retry with sisyphus-junior |
-| hephaestus | gpt-5.4 | Retry with sisyphus |
+| hephaestus | gpt-5.4-high | Retry with sisyphus |
 | oracle | gpt-5.4 | Retry with sisyphus |
 
 ## Executor Routing (decision tree)

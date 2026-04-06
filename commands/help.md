@@ -7,13 +7,13 @@ oh-my-cursor uses a **dispatcher root**: the main chat thread only delegates wor
 | Agent | Model | Description |
 |-------|-------|-------------|
 | atlas | claude-4.6-sonnet-medium-thinking | Executes an existing plan step-by-step via delegation; does not implement directly. |
-| explore | gemini-2.5-flash | Codebase search and structure questions; read-only, often background. |
-| hephaestus | gpt-5.4 | Sustained deep work on one complex problem until end-to-end completion. |
+| explore | gemini-3-flash | Codebase search and structure questions; read-only, often background. |
+| hephaestus | gpt-5.4-high | Sustained deep work on one complex problem until end-to-end completion. |
 | librarian | fast (latest Composer) | External docs, APIs, OSS examples; read-only. |
 | metis | claude-4.6-opus-max-thinking | Pre-planning gap analysis and risks; read-only. |
-| momus | gpt-5.4 | Reviews plans for executability and completeness; read-only. |
+| momus | gpt-5.4-medium | Reviews plans for executability and completeness; read-only. |
 | multimodal-looker | gemini-3.1-pro | PDFs, images, diagrams when plain-text read is not enough. |
-| oracle | gpt-5.4 | Architecture and debugging consultation; read-only. |
+| oracle | gpt-5.4-medium | Architecture and debugging consultation; read-only. |
 | prometheus | claude-4.6-opus-max-thinking | Detailed planning only; never implements. |
 | sisyphus-junior | claude-4.6-sonnet-medium-thinking | Small bounded tasks; leaf worker; no sub-delegation. |
 | sisyphus | claude-4.6-opus-max-thinking | Main coordinator for complex multi-file work and execution. |

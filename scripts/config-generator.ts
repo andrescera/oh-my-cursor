@@ -52,9 +52,11 @@ const MODEL_MAP: Record<string, string> = {
   "claude-opus-4-6": "claude-4.6-opus-max-thinking",
   "claude-sonnet-4-6": "claude-4.6-sonnet-medium-thinking",
   "claude-haiku-4-5": "fast",
-  "gpt-5.4": "gpt-5.4",
+  "gpt-5.4": "gpt-5.4-medium",
   "gpt-5-nano": "fast",
   "gemini-3.1-pro": "gemini-3.1-pro",
+  "gemini-2.5-flash": "gemini-3-flash",
+  "gemini-3-flash": "gemini-3-flash",
   "kimi-k2.5": "fast",
 }
 

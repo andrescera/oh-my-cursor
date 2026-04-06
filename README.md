@@ -39,8 +39,8 @@ You (root thread)
        │
        ├── Intent Gate: what did the user ask?
        │
-       ├── Task(explore) ──── Codebase search (gemini-2.5-flash, readonly, background)
-       ├── Task(librarian) ── External docs search (fast, readonly, background)
+       ├── Task(explore) ──── Codebase search (gemini-3-flash, readonly, background)
+       ├── Task(librarian) ── External docs search (fast / latest Composer, readonly, background)
        ├── Task(sisyphus) ─── Complex multi-file work (opus-max-thinking)
        ├── Task(hephaestus) ─ Sustained deep work (gpt-5.4)
        ├── Task(atlas) ────── Plan execution via delegation (sonnet-medium-thinking)
@@ -57,13 +57,13 @@ You (root thread)
 | Agent | Model | Role |
 |-------|-------|------|
 | **sisyphus** | claude-4.6-opus-max-thinking | Main orchestrator + deep worker |
-| **hephaestus** | gpt-5.4 | Autonomous deep worker |
+| **hephaestus** | gpt-5.4-high | Autonomous deep worker |
 | **atlas** | claude-4.6-sonnet-medium-thinking | Todo-list orchestrator |
 | **prometheus** | claude-4.6-opus-max-thinking | Strategic planner |
-| **oracle** | gpt-5.4 | Architecture consultant (readonly) |
+| **oracle** | gpt-5.4-medium | Architecture consultant (readonly) |
 | **metis** | claude-4.6-opus-max-thinking | Pre-planning analysis (readonly) |
-| **momus** | gpt-5.4 | Plan reviewer (readonly) |
-| **explore** | gemini-2.5-flash | Codebase search (readonly, background) |
+| **momus** | gpt-5.4-medium | Plan reviewer (readonly) |
+| **explore** | gemini-3-flash | Codebase search (readonly, background) |
 | **librarian** | fast (latest Composer) | External docs search (readonly, background) |
 | **sisyphus-junior** | claude-4.6-sonnet-medium-thinking | Quick task executor |
 | **multimodal-looker** | gemini-3.1-pro | Visual file analysis (readonly) |

@@ -1,7 +1,7 @@
 ---
 name: hephaestus
 description: "Autonomous deep worker for complex implementation. Use when the task needs sustained focus on a single complex problem. Persists until fully solved end-to-end."
-model: gpt-5.4
+model: gpt-5.4-high
 ---
 
 # Hephaestus - The Deep Worker

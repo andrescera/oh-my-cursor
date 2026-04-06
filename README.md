@@ -77,7 +77,7 @@ oh-my-cursor ships with 3 remote MCP servers and 1 local sidecar, configured in 
 | websearch | Web search via Exa/Tavily |
 | context7 | Library documentation lookup |
 | grep_app | Code search across repositories |
-| oh-my-cursor | Local sidecar (look_at, interactive_bash, skill_mcp) |
+| oh-my-cursor | Local sidecar with 8 tools (see [MCP Sidecar](#mcp-sidecar)) |
 
 Agents also discover and use any MCP servers you have configured in Cursor (e.g., Linear, Notion, GitKraken) via `CallMcpTool`.
 
@@ -127,11 +127,29 @@ All hooks run through a persistent Bun HTTP server (clooks pattern) for zero sub
 
 ## MCP Sidecar
 
-3 tools not available in Cursor's built-in tool set:
+8 tools not available in Cursor's built-in tool set, served via a local MCP server on `localhost:47848`:
 
-- **look_at** -- Visual file analysis (images, PDFs, diagrams)
-- **interactive_bash** -- Persistent tmux session management
-- **skill_mcp** -- Skill-embedded MCP server management
+| Tool | Description | Key Parameters |
+|------|-------------|----------------|
+| `look_at` | Visual file analysis for images, PDFs, and diagrams that can't be read as plain text | `file_path`, `goal` |
+| `interactive_bash` | Persistent tmux session for long-running or interactive commands with state across calls | `command`, `session_name` |
+| `skill_mcp` | Manage skill-embedded MCP servers (start, stop, list, status) | `action`, `skill_name` |
+| `get_dispatch_stats` | Current session dispatch statistics -- explore/worker counts, tool calls, active agents | -- |
+| `session_transcripts` | List recent agent transcripts or search within them for specific content | `action` (list/search), `query`, `limit` |
+| `daemon_logs` | View recent oh-my-cursor daemon log output for debugging hook behavior | `lines` |
+| `session_log` | Query the session event log -- recent events, summaries, filtered search, or export path | `action` (recent/summary/search/export), `event_filter`, `action_filter` |
+| `oh_my_cursor_status` | Interactive status dashboard (MCP App) showing daemon health, hooks, background tasks, and event log | -- |
+
+### Status Dashboard
+
+The sidecar includes an interactive HTML dashboard rendered inline in the Cursor conversation via the MCP Apps spec (`ui://oh-my-cursor/status`). It has 4 tabs:
+
+- **Status** -- Session ID, daemon connectivity, uptime, tool call counts, explore/worker dispatch counters, Ralph loop status, and recent errors.
+- **Hooks** -- Lists all enabled and disabled hook handlers with live configuration from the daemon.
+- **Background** -- Active background tasks with model, name, and status.
+- **Event Log** -- Filterable real-time event stream (all / tools / dispatches / errors / denies) with expandable JSON detail per event, JSONL export, and clipboard copy.
+
+The dashboard auto-refreshes every 5 seconds and pulls data from the daemon's `/health`, `/config`, `/backgroundTasks`, and `/session-log` endpoints.
 
 **Start:** `bun run hooks/mcp-sidecar.ts`
 

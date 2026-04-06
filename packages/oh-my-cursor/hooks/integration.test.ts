@@ -175,6 +175,30 @@ describe("daemon integration lifecycle", () => {
     })
   })
 
+  describe("#given the sessionHistory endpoint", () => {
+    describe("#when POST /sessionHistory is called", () => {
+      test("#then it returns session list", async () => {
+        await post("/sessionStart", { session_id: "history-test", cwd: "/tmp" })
+        const { status, data } = await post("/sessionHistory")
+
+        expect(status).toBe(200)
+        expect(data.sessions).toBeDefined()
+      })
+    })
+  })
+
+  describe("#given the backgroundTasks endpoint", () => {
+    describe("#when POST /backgroundTasks is called", () => {
+      test("#then it returns active tasks list", async () => {
+        const { status, data } = await post("/backgroundTasks")
+
+        expect(status).toBe(200)
+        expect(data.tasks).toBeDefined()
+        expect(data.count).toBe(0)
+      })
+    })
+  })
+
   describe("#given a subagent dispatch", () => {
     describe("#when POST /subagentStart with explore type is called", () => {
       test("#then it allows and returns empty", async () => {
@@ -228,17 +252,6 @@ describe("daemon integration lifecycle", () => {
         expect(data.enabled.length).toBeGreaterThan(0)
         expect(data.enabled).toContain("/health")
         expect(data.enabled).toContain("/sessionStart")
-      })
-    })
-  })
-
-  describe("#given the backgroundTasks endpoint", () => {
-    describe("#when GET /backgroundTasks is called", () => {
-      test("#then it returns 404 (not a registered handler)", async () => {
-        const { status, data } = await get("/backgroundTasks")
-
-        expect(status).toBe(404)
-        expect(data.error).toBe("unknown hook event")
       })
     })
   })

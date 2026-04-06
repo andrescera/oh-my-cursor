@@ -14,6 +14,7 @@ const ALL_HOOKS = [
   "/beforeMCPExecution", "/afterMCPExecution",
   "/afterAgentResponse", "/afterAgentThought",
   "/subagentStart", "/subagentStop",
+  "/sessionHistory", "/backgroundTasks",
 ]
 
 let cachedDisabled: Set<string> | null = null

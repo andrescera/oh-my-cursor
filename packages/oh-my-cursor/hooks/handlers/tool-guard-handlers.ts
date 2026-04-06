@@ -1,9 +1,12 @@
 import { readFileSync, existsSync } from "node:fs"
 import type { SessionState, HandlerMap } from "../types"
 import { getOrCreateSession, globalReadPaths } from "../shared"
+import { loadConfig } from "../config"
+import { createContextWindowMonitor } from "./context-window-monitor"
+import { createCommentChecker } from "./comment-checker"
+import { createToolOutputTruncator } from "./tool-output-truncator"
+import { createDelegateTaskRetry } from "./delegate-task-retry"
 
-const EXPLORE_LIMIT = 6
-const WORKER_LIMIT = 8
 const WORKER_TYPES = new Set([
   "general-purpose", "generalpurpose",
   "sisyphus", "sisyphus-junior", "hephaestus",
@@ -13,6 +16,14 @@ const WORKER_TYPES = new Set([
 export function createToolGuardHandlers(
   _sessions: Map<string, SessionState>,
 ): HandlerMap {
+  const sessionTokens = new Map<string, number>()
+  const failureCounts = new Map<string, number>()
+  const config = loadConfig()
+  const contextWindowMonitor = createContextWindowMonitor(sessionTokens)
+  const commentChecker = createCommentChecker()
+  const toolOutputTruncator = createToolOutputTruncator()
+  const delegateTaskRetry = createDelegateTaskRetry(failureCounts)
+
   return {
     "/preToolUse": (input) => {
       const toolName = (input.tool_name as string) || ""
@@ -56,7 +67,12 @@ export function createToolGuardHandlers(
           console.log(`[oh-my-cursor] Dispatch tracked via preToolUse: ${agentKey} (${session.dispatchCounts[agentKey]})`)
 
           const count = session.dispatchCounts[agentKey]
-          const limit = normalized === "explore" ? EXPLORE_LIMIT : WORKER_TYPES.has(normalized) ? WORKER_LIMIT : 0
+          const limit =
+            normalized === "explore"
+              ? config.subagent_limits.explore
+              : WORKER_TYPES.has(normalized)
+                ? config.subagent_limits.worker
+                : 0
           if (limit > 0 && count > limit) {
             const label = normalized === "explore" ? "Explore" : "Worker"
             const reason = `[dispatch-limit] ${label} dispatch limit reached (${count}/${limit}). Consider consolidating ${normalized === "explore" ? "searches" : "tasks"}.`
@@ -106,23 +122,11 @@ export function createToolGuardHandlers(
         }
       }
 
-      if (["task", "Task"].includes(toolName)) {
-        if (/error|failed|timeout|rejected|could not complete/i.test(output)) {
-          additionalContext += (additionalContext ? "\n\n" : "") +
-            "[delegate-task-retry] Task delegation failed. Consider: (1) simplify the prompt, (2) provide more context/file paths, (3) use a different agent type, (4) break into smaller subtasks."
-        }
-      }
-
       if (!["bash", "shell", "read", "Read", "Shell"].includes(toolName)) {
         if (/unexpected token|json.*parse|invalid json|syntaxerror.*json/i.test(output)) {
           additionalContext += (additionalContext ? "\n\n" : "") +
             "[json-error-recovery] JSON parse error detected. Check for: trailing commas, unescaped quotes, missing brackets, or invalid escape sequences."
         }
-      }
-
-      if (output.length > 50000) {
-        additionalContext += (additionalContext ? "\n\n" : "") +
-          "[tool-output-truncator] Output was truncated from " + output.length + " to 30000 chars."
       }
 
       const readFilePath = (toolInput.file_path as string) || (toolInput.path as string) || (input.file_path as string) || (input.path as string)
@@ -155,12 +159,43 @@ export function createToolGuardHandlers(
         globalReadPaths.add(readFilePath)
       }
 
-      return additionalContext
-        ? {
-            additional_context: additionalContext,
-            hookSpecificOutput: { hookEventName: "PostToolUse", additionalContext },
-          }
-        : {}
+      const cw = contextWindowMonitor({ sessionId: convId, content: output })
+      if (cw.additional_context) {
+        additionalContext += (additionalContext ? "\n\n" : "") + cw.additional_context
+      }
+
+      const cc = commentChecker({ tool_name: toolName, output })
+      const ccCtx = cc.additional_context as string | undefined
+      if (ccCtx) {
+        additionalContext += (additionalContext ? "\n\n" : "") + ccCtx
+      }
+
+      const trunc = toolOutputTruncator({ output })
+      let modifiedOutput: string | undefined
+      const truncMod = trunc.modified_output as string | undefined
+      if (truncMod !== undefined) {
+        modifiedOutput = truncMod
+      }
+
+      if (["task", "Task"].includes(toolName)) {
+        const dr = delegateTaskRetry({
+          tool_input: toolInput as { subagent_type?: string; description?: string },
+          output,
+        })
+        if (dr.additional_context) {
+          additionalContext += (additionalContext ? "\n\n" : "") + dr.additional_context
+        }
+      }
+
+      const out: Record<string, unknown> = {}
+      if (additionalContext) {
+        out.additional_context = additionalContext
+        out.hookSpecificOutput = { hookEventName: "PostToolUse", additionalContext }
+      }
+      if (modifiedOutput !== undefined) {
+        out.modified_output = modifiedOutput
+      }
+      return Object.keys(out).length > 0 ? out : {}
     },
 
     "/postToolUseFailure": (input) => {

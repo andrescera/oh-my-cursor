@@ -1,12 +1,22 @@
 import type { SessionState, HandlerMap } from "../types"
+import type { BackgroundTracker } from "./background-tracker"
 import { getOrCreateSession } from "../shared"
 import { writeContextRule } from "../scripts/context-injector"
+import { createEmptyTaskDetector } from "./empty-task-detector"
 
 export function createSubagentHandlers(
   _sessions: Map<string, SessionState>,
+  tracker: BackgroundTracker,
 ): HandlerMap {
+  const emptyTaskDetector = createEmptyTaskDetector()
+
   return {
     "/subagentStart": (input) => {
+      const agentType = (input.agent_type as string) || (input.subagent_type as string) || "unknown"
+      const agentId = (input.agent_id as string) || agentType + "-" + Date.now()
+      const description = (input.description as string) || ""
+      tracker.track(agentId, agentType, description)
+
       const convId = (input.conversation_id as string) || (input.session_id as string) || "unknown"
       const session = getOrCreateSession(convId)
 
@@ -23,6 +33,11 @@ export function createSubagentHandlers(
     },
 
     "/subagentStop": (input) => {
+      const agentId = (input.agent_id as string) || ""
+      if (agentId) {
+        tracker.complete(agentId)
+      }
+
       const subagentType = (input.agent_type as string) || (input.subagent_type as string) || ""
       const status = (input.status as string) || ""
       const stopHookActive = Boolean(input.stop_hook_active)
@@ -39,7 +54,10 @@ export function createSubagentHandlers(
         console.log(`[oh-my-cursor] Subagent ${subagentType} stopped after ${loopCount} loops (status: ${status})`)
       }
 
-      return {}
+      return emptyTaskDetector({
+        output: (input.output as string) || "",
+        status: (input.status as string) || "",
+      })
     },
   }
 }

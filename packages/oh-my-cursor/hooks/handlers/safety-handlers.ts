@@ -1,6 +1,8 @@
 import type { HandlerMap } from "../types"
+import { createThinkingBlockValidator } from "./thinking-block-validator"
 
 export function createSafetyHandlers(): HandlerMap {
+  const thinkingBlockValidator = createThinkingBlockValidator()
   return {
     "/beforeShellExecution": (input) => {
       const toolInput = (input.tool_input as Record<string, unknown>) || {}
@@ -71,6 +73,10 @@ export function createSafetyHandlers(): HandlerMap {
       const durationMs = input.duration_ms as number
       if (durationMs && durationMs > 30000) {
         console.log(`[oh-my-cursor] Long thinking block: ${Math.round(durationMs / 1000)}s`)
+      }
+      const validatorResult = thinkingBlockValidator(input)
+      if (validatorResult.additional_context) {
+        return validatorResult
       }
       return {}
     },

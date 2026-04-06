@@ -9,11 +9,24 @@ import { createToolGuardHandlers } from "./handlers/tool-guard-handlers"
 import { createContinuationHandlers } from "./handlers/continuation-handlers"
 import { createSafetyHandlers } from "./handlers/safety-handlers"
 import { createSubagentHandlers } from "./handlers/subagent-handlers"
+import { createSessionHistoryHandler } from "./handlers/session-history"
+import { BackgroundTracker, createBackgroundTasksHandler } from "./handlers/background-tracker"
+import { StatePersistence } from "./state-persistence"
 import { createHeartbeatHandler, startHeartbeatWriter, HEARTBEAT_FILE } from "./handlers/heartbeat"
 import { loadConfig } from "./config"
 import type { HandlerMap } from "./types"
 
 const config = loadConfig()
+const tracker = new BackgroundTracker()
+const persistence = new StatePersistence(config.state_persistence.path)
+
+const restored = persistence.load()
+if (restored) {
+  for (const [id, state] of restored) {
+    sessions.set(id, state)
+  }
+}
+
 const ENV_PORT = process.env.OH_MY_CURSOR_PORT
 const DEFAULT_PORT = config.daemon.port
 const PID_FILE = "/tmp/oh-my-cursor-daemon.pid"
@@ -106,6 +119,7 @@ function isPortInUseError(err: unknown): boolean {
 let server: Server | null = null
 let isShuttingDown = false
 let heartbeatInterval: ReturnType<typeof setInterval> | null = null
+let persistenceInterval: ReturnType<typeof setInterval> | null = null
 
 function gracefulShutdown(reason: string): void {
   if (isShuttingDown) return
@@ -117,6 +131,13 @@ function gracefulShutdown(reason: string): void {
     clearInterval(heartbeatInterval)
     heartbeatInterval = null
   }
+
+  if (persistenceInterval) {
+    clearInterval(persistenceInterval)
+    persistenceInterval = null
+  }
+
+  persistence.forceFlush(sessions)
 
   removePidFile()
   removePortFile()
@@ -138,7 +159,9 @@ const handlers: HandlerMap = {
   ...createToolGuardHandlers(sessions),
   ...createContinuationHandlers(sessions),
   ...createSafetyHandlers(),
-  ...createSubagentHandlers(sessions),
+  ...createSubagentHandlers(sessions, tracker),
+  "/sessionHistory": createSessionHistoryHandler(sessions),
+  "/backgroundTasks": createBackgroundTasksHandler(tracker),
   "/heartbeat": createHeartbeatHandler(startTime),
   "/shutdown": () => {
     setTimeout(() => gracefulShutdown("shutdown endpoint"), 100)
@@ -289,6 +312,9 @@ if (ENV_PORT) {
 writePidFile()
 writePortFile(actualPort)
 heartbeatInterval = startHeartbeatWriter()
+persistenceInterval = setInterval(() => {
+  persistence.save(sessions)
+}, 30_000)
 
 process.on("SIGTERM", () => gracefulShutdown("SIGTERM"))
 process.on("SIGINT", () => gracefulShutdown("SIGINT"))

@@ -373,9 +373,10 @@ export const STATUS_HTML = `<!DOCTYPE html>
     async function refreshBackground() {
       try {
         const res = await fetch('http://localhost:${DAEMON_PORT}/backgroundTasks');
-        const tasks = await res.json();
+        const data = await res.json();
+        const tasks = data.tasks || [];
         const container = document.getElementById('bg-tasks');
-        if (!tasks || !tasks.length) {
+        if (!tasks.length) {
           container.innerHTML = '<div class="bg-empty">No active background tasks</div>';
           return;
         }

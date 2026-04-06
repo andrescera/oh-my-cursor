@@ -8,6 +8,9 @@ export type OhMyCursorConfig = {
   subagent_limits: { explore: number; worker: number }
   state_persistence: { enabled: boolean; path: string }
   daemon: { port: number; mcp_port: number }
+  context_collector: { enabled: boolean; max_context_chars: number }
+  compaction: { prompt_enabled: boolean }
+  mdc_writer: { debounce_ms: number; enabled: boolean }
 }
 
 export const DEFAULT_CONFIG: OhMyCursorConfig = {
@@ -16,6 +19,9 @@ export const DEFAULT_CONFIG: OhMyCursorConfig = {
   subagent_limits: { explore: 6, worker: 8 },
   state_persistence: { enabled: true, path: "/tmp/oh-my-cursor-state.json" },
   daemon: { port: 47847, mcp_port: 47848 },
+  context_collector: { enabled: true, max_context_chars: 50000 },
+  compaction: { prompt_enabled: true },
+  mdc_writer: { debounce_ms: 5000, enabled: true },
 }
 
 export function stripJsoncComments(text: string): string {
@@ -95,6 +101,9 @@ export function loadConfig(): OhMyCursorConfig {
   if (!config.subagent_limits) config.subagent_limits = { ...DEFAULT_CONFIG.subagent_limits }
   if (!config.state_persistence) config.state_persistence = { ...DEFAULT_CONFIG.state_persistence }
   if (!config.daemon) config.daemon = { ...DEFAULT_CONFIG.daemon }
+  if (!config.context_collector) config.context_collector = { ...DEFAULT_CONFIG.context_collector }
+  if (!config.compaction) config.compaction = { ...DEFAULT_CONFIG.compaction }
+  if (!config.mdc_writer) config.mdc_writer = { ...DEFAULT_CONFIG.mdc_writer }
 
   cachedConfig = config
   configLoadTime = now

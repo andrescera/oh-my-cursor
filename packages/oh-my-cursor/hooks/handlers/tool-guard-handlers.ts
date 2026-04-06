@@ -14,6 +14,14 @@ const WORKER_TYPES = new Set([
   "atlas", "oracle", "prometheus", "metis", "momus",
 ])
 
+function clipAdditionalContext(text: string, maxChars: number): string {
+  if (text.length <= maxChars) return text
+  return (
+    text.slice(0, maxChars) +
+    "\n\n[oh-my-cursor: additional context truncated to max_context_chars]"
+  )
+}
+
 export function createToolGuardHandlers(
   _sessions: Map<string, SessionState>,
 ): HandlerMap {
@@ -227,11 +235,21 @@ export function createToolGuardHandlers(
         }
       }
 
+      if (!config.context_collector.enabled) {
+        contextCollector.clear(convId)
+        const out: Record<string, unknown> = {}
+        if (modifiedOutput !== undefined) {
+          out.modified_output = modifiedOutput
+        }
+        return Object.keys(out).length > 0 ? out : {}
+      }
+
       const pending = contextCollector.consume(convId)
+      const merged = clipAdditionalContext(pending.merged, config.context_collector.max_context_chars)
       const out: Record<string, unknown> = {}
       if (pending.hasContent) {
-        out.additional_context = pending.merged
-        out.hookSpecificOutput = { hookEventName: "PostToolUse", additionalContext: pending.merged }
+        out.additional_context = merged
+        out.hookSpecificOutput = { hookEventName: "PostToolUse", additionalContext: merged }
       }
       if (modifiedOutput !== undefined) {
         out.modified_output = modifiedOutput
@@ -247,6 +265,11 @@ export function createToolGuardHandlers(
 
       session.errorCount++
       console.error("[oh-my-cursor] Tool failure:", toolName, errorMessage)
+
+      if (!config.context_collector.enabled) {
+        contextCollector.clear(convId)
+        return {}
+      }
 
       let guidance = ""
       if (/rate.?limit|429|too many requests/i.test(errorMessage)) {
@@ -268,10 +291,14 @@ export function createToolGuardHandlers(
         })
       }
       const failurePending = contextCollector.consume(convId)
+      const failureMerged = clipAdditionalContext(
+        failurePending.merged,
+        config.context_collector.max_context_chars,
+      )
       return failurePending.hasContent
         ? {
-            additional_context: failurePending.merged,
-            hookSpecificOutput: { hookEventName: "PostToolUseFailure", additionalContext: failurePending.merged },
+            additional_context: failureMerged,
+            hookSpecificOutput: { hookEventName: "PostToolUseFailure", additionalContext: failureMerged },
           }
         : {}
     },

@@ -256,6 +256,19 @@ describe("daemon integration lifecycle", () => {
     })
   })
 
+  describe("#given the dashboard endpoint", () => {
+    describe("#when GET /dashboard is called", () => {
+      test("#then it returns 200 with HTML content", async () => {
+        const res = await fetch(`${BASE}/dashboard`)
+        expect(res.status).toBe(200)
+        const contentType = res.headers.get("content-type")
+        expect(contentType).toContain("text/html")
+        const html = await res.text()
+        expect(html).toContain("oh-my-cursor Status")
+      })
+    })
+  })
+
   describe("#given the session is ending", () => {
     describe("#when POST /sessionEnd is called", () => {
       test("#then it cleans up and returns empty", async () => {

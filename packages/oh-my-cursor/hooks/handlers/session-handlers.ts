@@ -1,5 +1,6 @@
 import type { SessionState, HandlerMap } from "../types"
 import { getOrCreateSession } from "../shared"
+import { loadConfig } from "../config"
 import { writeContextRule, clearContextRule } from "../scripts/context-injector"
 import { contextCollector } from "../context-collector"
 import { COMPACTION_CONTEXT_PROMPT } from "../compaction-context-prompt"
@@ -141,39 +142,48 @@ export function createSessionHandlers(
         dispatchSummary: session.dispatchCounts,
       }).catch((err) => console.error("[oh-my-cursor] Failed to write context rule:", err))
 
-      contextCollector.register(convId, {
-        id: "compaction-prompt",
-        source: "compaction-context-injector",
-        content: COMPACTION_CONTEXT_PROMPT,
-        priority: "critical",
-      })
+      const config = loadConfig()
+      if (config.compaction.prompt_enabled) {
+        contextCollector.register(convId, {
+          id: "compaction-prompt",
+          source: "compaction-context-injector",
+          content: COMPACTION_CONTEXT_PROMPT,
+          priority: "critical",
+        })
 
-      const snapshotLines = [
-        "[session-snapshot]",
-        `Tool calls: ${session.toolCallCount}`,
-        `Errors: ${session.errorCount}`,
-        `Compaction epoch: ${session.lastCompactionEpoch}`,
-        `Dispatches: ${JSON.stringify(session.dispatchCounts)}`,
-      ]
-      if (session.ralphState?.active) {
-        snapshotLines.push(`Ralph loop: active (iteration ${session.ralphState.iteration})`)
-      }
-      if (session.boulderState?.active) {
-        snapshotLines.push(`Boulder: active (failures ${session.boulderState.failureCount})`)
-      }
+        const snapshotLines = [
+          "[session-snapshot]",
+          `Tool calls: ${session.toolCallCount}`,
+          `Errors: ${session.errorCount}`,
+          `Compaction epoch: ${session.lastCompactionEpoch}`,
+          `Dispatches: ${JSON.stringify(session.dispatchCounts)}`,
+        ]
+        if (session.ralphState?.active) {
+          snapshotLines.push(`Ralph loop: active (iteration ${session.ralphState.iteration})`)
+        }
+        if (session.boulderState?.active) {
+          snapshotLines.push(`Boulder: active (failures ${session.boulderState.failureCount})`)
+        }
 
-      contextCollector.register(convId, {
-        id: "session-snapshot",
-        source: "session-snapshot",
-        content: snapshotLines.join("\n"),
-        priority: "high",
-      })
+        contextCollector.register(convId, {
+          id: "session-snapshot",
+          source: "session-snapshot",
+          content: snapshotLines.join("\n"),
+          priority: "high",
+        })
+      }
 
       const pending = contextCollector.consume(convId)
       if (pending.hasContent) {
+        const maxChars = config.context_collector.max_context_chars
+        const merged =
+          pending.merged.length > maxChars
+            ? pending.merged.slice(0, maxChars) +
+              "\n\n[oh-my-cursor: additional context truncated to max_context_chars]"
+            : pending.merged
         return {
-          additional_context: pending.merged,
-          hookSpecificOutput: { hookEventName: "PreCompact", additionalContext: pending.merged },
+          additional_context: merged,
+          hookSpecificOutput: { hookEventName: "PreCompact", additionalContext: merged },
         }
       }
 

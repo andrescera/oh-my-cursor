@@ -1,9 +1,10 @@
-import { mkdir, writeFile, readFile } from "node:fs/promises"
+import { mkdir, writeFile } from "node:fs/promises"
 import { join } from "node:path"
+
+import { loadConfig } from "../config"
 
 const CONTEXT_FILE = ".cursor/rules/oh-my-cursor-context.mdc"
 
-const DEBOUNCE_MS = 5_000
 const lastWriteTimes = new Map<string, number>()
 
 interface ContextState {
@@ -26,9 +27,13 @@ export async function writeContextRule(
   projectDir: string,
   state: ContextState,
 ): Promise<void> {
+  const config = loadConfig()
+  if (!config.mdc_writer.enabled) return
+
   const now = Date.now()
+  const debounceMs = config.mdc_writer.debounce_ms
   const lastWrite = lastWriteTimes.get(projectDir) ?? 0
-  if (lastWrite > 0 && now - lastWrite < DEBOUNCE_MS) {
+  if (lastWrite > 0 && now - lastWrite < debounceMs) {
     return
   }
   lastWriteTimes.set(projectDir, now)
@@ -79,43 +84,6 @@ export async function writeContextRule(
   ].join("\n")
 
   await writeFile(join(projectDir, CONTEXT_FILE), content, "utf-8")
-}
-
-export async function readContextState(projectDir: string): Promise<ContextState | null> {
-  try {
-    const content = await readFile(join(projectDir, CONTEXT_FILE), "utf-8")
-    const sessionMatch = content.match(/Session: (.+)/)
-    return {
-      sessionId: sessionMatch?.[1] || "unknown",
-      projectDir,
-      activeAgents: [],
-      recentTools: [],
-      lastUpdated: new Date().toISOString(),
-    }
-  } catch (err) {
-    console.error("[oh-my-cursor] Failed to read context state:", err)
-    return null
-  }
-}
-
-const SKILL_KEYWORD_MAP: ReadonlyArray<{ keywords: RegExp; skill: string }> = [
-  { keywords: /\b(git|commit|rebase|merge|cherry-pick|stash)\b/i, skill: "git-master" },
-  { keywords: /\b(browser|scrape|navigate|webpage|screenshot)\b/i, skill: "dev-browser" },
-  { keywords: /\b(review|audit|quality)\b/i, skill: "review-work" },
-  { keywords: /\b(frontend|ui|ux|design|component|layout)\b/i, skill: "frontend-ui-ux" },
-  { keywords: /\b(playwright|e2e|end-to-end)\b/i, skill: "playwright" },
-  { keywords: /\b(ai slop|narration comments|clean comments)\b/i, skill: "ai-slop-remover" },
-  { keywords: /(?:\brule\b|\bcursor rule\b|\.cursor\/rules)/i, skill: "create-rule" },
-]
-
-export function matchSkills(context: string): string[] {
-  const matched = new Set<string>()
-  for (const { keywords, skill } of SKILL_KEYWORD_MAP) {
-    if (keywords.test(context)) {
-      matched.add(skill)
-    }
-  }
-  return [...matched]
 }
 
 export async function clearContextRule(projectDir: string): Promise<void> {

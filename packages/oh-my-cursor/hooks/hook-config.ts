@@ -1,11 +1,12 @@
 import { existsSync, readFileSync } from "node:fs"
 import { join } from "node:path"
 import { homedir } from "node:os"
+import { loadConfig } from "./config"
 
 const CONFIG_PATH = join(homedir(), ".config", "oh-my-cursor", "config.json")
 
 const ALL_HOOKS = [
-  "/health", "/sessionStart", "/sessionEnd", "/preCompact",
+  "/health", "/heartbeat", "/sessionStart", "/sessionEnd", "/preCompact",
   "/preToolUse", "/postToolUse", "/postToolUseFailure",
   "/stop", "/beforeSubmitPrompt",
   "/beforeShellExecution", "/afterShellExecution",
@@ -19,6 +20,11 @@ let cachedDisabled: Set<string> | null = null
 let lastLoadTime = 0
 const CACHE_TTL_MS = 30_000
 
+function normalizeHookName(hook: string): string {
+  const trimmed = hook.trim()
+  return trimmed.startsWith("/") ? trimmed : `/${trimmed}`
+}
+
 function loadDisabledHooks(): Set<string> {
   const now = Date.now()
   if (cachedDisabled && now - lastLoadTime < CACHE_TTL_MS) return cachedDisabled
@@ -29,7 +35,7 @@ function loadDisabledHooks(): Set<string> {
   if (envVal) {
     for (const hook of envVal.split(",")) {
       const trimmed = hook.trim()
-      if (trimmed) disabled.add(trimmed.startsWith("/") ? trimmed : `/${trimmed}`)
+      if (trimmed) disabled.add(normalizeHookName(trimmed))
     }
   }
 
@@ -40,14 +46,22 @@ function loadDisabledHooks(): Set<string> {
       if (Array.isArray(config.disabled_hooks)) {
         for (const hook of config.disabled_hooks) {
           if (typeof hook === "string" && hook.trim()) {
-            const trimmed = hook.trim()
-            disabled.add(trimmed.startsWith("/") ? trimmed : `/${trimmed}`)
+            disabled.add(normalizeHookName(hook))
           }
         }
       }
     }
   } catch {
-    // config file missing or malformed
+    // legacy config file missing or malformed
+  }
+
+  const pluginConfig = loadConfig()
+  if (Array.isArray(pluginConfig.disabled_hooks)) {
+    for (const hook of pluginConfig.disabled_hooks) {
+      if (typeof hook === "string" && hook.trim()) {
+        disabled.add(normalizeHookName(hook))
+      }
+    }
   }
 
   cachedDisabled = disabled

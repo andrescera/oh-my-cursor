@@ -135,3 +135,13 @@ MCP tools are available via `CallMcpTool`. Key servers that may be configured:
 - **GitKraken**: Branch management, PR operations
 
 When delegating tasks that involve external services, inform sub-agents about available MCP servers. Check tool descriptors before calling to ensure correct parameters.
+
+## Model Error Handling
+
+When a sub-agent fails due to model unavailability or rate limiting:
+
+1. Retry the same agent with `model: "fast"` parameter
+2. If fast model also fails, switch to a different agent type (e.g., sisyphus-junior instead of sisyphus)
+3. After 3 total failures, escalate to the user with a clear error message
+
+Do not silently swallow model errors. Report which model failed and which fallback was used.

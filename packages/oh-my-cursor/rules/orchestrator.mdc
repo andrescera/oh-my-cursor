@@ -51,6 +51,25 @@ Root (depth 0) -- DISPATCHER ONLY
 
 **There is NO request type where the root does the work itself.**
 
+## Model Fallback
+
+When a model is unavailable, Cursor falls back to the next available model. Agent behavior:
+
+- `fast` model agents (explore, librarian) should always work -- they use widely available models
+- If a worker fails with a model error, retry with `model: "fast"` parameter
+- After 2 model failures on the same agent type, switch to a different agent type
+
+Fallback chain per agent type:
+
+| Agent | Primary Model | Fallback |
+|-------|--------------|----------|
+| explore | gemini-2.5-flash | Always available |
+| librarian | kimi-k2.5 | Always available |
+| sisyphus-junior | claude-4.6-sonnet | Retry with fast |
+| sisyphus | claude-4.6-opus | Retry with sisyphus-junior |
+| hephaestus | gpt-5.4 | Retry with sisyphus |
+| oracle | gpt-5.4 | Retry with sisyphus |
+
 ## Executor Routing (decision tree)
 
 | Question | Yes | No |

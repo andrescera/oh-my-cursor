@@ -1,4 +1,4 @@
-import { existsSync, readdirSync } from "node:fs"
+import { existsSync, readdirSync, writeFileSync, unlinkSync } from "node:fs"
 import { join, resolve } from "node:path"
 
 import { serve } from "bun"
@@ -9,6 +9,7 @@ import {
   MCP_APP_TOOL,
   STATUS_HTML,
 } from "./mcp-app"
+import { loadConfig } from "./config"
 
 function collectAgentTranscriptDirs(): string[] {
   const dirs: string[] = []
@@ -38,7 +39,32 @@ function collectAgentTranscriptDirs(): string[] {
   return dirs
 }
 
-const PORT = parseInt(process.env.OH_MY_CURSOR_MCP_PORT || "47848")
+const config = loadConfig()
+const ENV_MCP_PORT = process.env.OH_MY_CURSOR_MCP_PORT
+const DEFAULT_MCP_PORT = config.daemon.mcp_port
+const MCP_PORT_FILE = "/tmp/oh-my-cursor-sidecar.port"
+const MAX_PORT_ATTEMPTS = 11
+
+function isPortInUseError(err: unknown): boolean {
+  if (!(err instanceof Error)) return false
+  const msg = err.message.toLowerCase()
+  return msg.includes("eaddrinuse") || msg.includes("address already in use")
+}
+
+function writePortFile(port: number): void {
+  writeFileSync(MCP_PORT_FILE, String(port), "utf-8")
+}
+
+function removePortFile(): void {
+  try {
+    if (existsSync(MCP_PORT_FILE)) unlinkSync(MCP_PORT_FILE)
+  } catch {
+    // best-effort cleanup
+  }
+}
+
+process.on("SIGTERM", () => { removePortFile(); process.exit(0) })
+process.on("SIGINT", () => { removePortFile(); process.exit(0) })
 
 const TOOLS = [
   {
@@ -647,93 +673,121 @@ async function handleToolCall(
   }
 }
 
-console.log(`[oh-my-cursor] MCP sidecar starting on port ${PORT}...`)
+const mcpFetchHandler = async (req: Request) => {
+  const url = new URL(req.url)
 
-serve({
-  port: PORT,
-  async fetch(req) {
-    const url = new URL(req.url)
+  if (url.pathname === "/mcp" && req.method === "POST") {
+    const body = await req.json()
 
-    if (url.pathname === "/mcp" && req.method === "POST") {
-      const body = await req.json()
+    if (body.method === "initialize") {
+      return Response.json({
+        jsonrpc: "2.0",
+        id: body.id,
+        result: {
+          protocolVersion: "2024-11-05",
+          capabilities: { tools: {}, resources: {} },
+          serverInfo: { name: "oh-my-cursor", version: "0.1.0" },
+        },
+      })
+    }
 
-      if (body.method === "initialize") {
+    if (body.method === "resources/list") {
+      return Response.json({
+        jsonrpc: "2.0",
+        id: body.id,
+        result: [MCP_APP_RESOURCE],
+      })
+    }
+
+    if (body.method === "resources/read") {
+      const uri = body.params?.uri
+      if (uri === MCP_APP_RESOURCE.uri) {
         return Response.json({
           jsonrpc: "2.0",
           id: body.id,
           result: {
-            protocolVersion: "2024-11-05",
-            capabilities: { tools: {}, resources: {} },
-            serverInfo: { name: "oh-my-cursor", version: "0.1.0" },
+            contents: [
+              {
+                uri: MCP_APP_RESOURCE.uri,
+                mimeType: "text/html",
+                text: STATUS_HTML,
+              },
+            ],
           },
         })
       }
+    }
 
-      if (body.method === "resources/list") {
-        return Response.json({
-          jsonrpc: "2.0",
-          id: body.id,
-          result: [MCP_APP_RESOURCE],
-        })
-      }
-
-      if (body.method === "resources/read") {
-        const uri = body.params?.uri
-        if (uri === MCP_APP_RESOURCE.uri) {
-          return Response.json({
-            jsonrpc: "2.0",
-            id: body.id,
-            result: {
-              contents: [
-                {
-                  uri: MCP_APP_RESOURCE.uri,
-                  mimeType: "text/html",
-                  text: STATUS_HTML,
-                },
-              ],
-            },
-          })
-        }
-      }
-
-      if (body.method === "tools/list") {
-        return Response.json({
-          jsonrpc: "2.0",
-          id: body.id,
-          result: { tools: TOOLS },
-        })
-      }
-
-      if (body.method === "tools/call") {
-        const { name, arguments: args } = body.params
-        if (name === "oh_my_cursor_status") {
-          return Response.json({
-            jsonrpc: "2.0",
-            id: body.id,
-            result: handleStatusToolCall(),
-          })
-        }
-        const result = await handleToolCall(name, args || {})
-        return Response.json({
-          jsonrpc: "2.0",
-          id: body.id,
-          result,
-        })
-      }
-
+    if (body.method === "tools/list") {
       return Response.json({
         jsonrpc: "2.0",
         id: body.id,
-        error: { code: -32601, message: "Method not found" },
+        result: { tools: TOOLS },
       })
     }
 
-    if (url.pathname === "/health") {
-      return Response.json({ status: "ok", tools: TOOLS.map((t) => t.name) })
+    if (body.method === "tools/call") {
+      const { name, arguments: args } = body.params
+      if (name === "oh_my_cursor_status") {
+        return Response.json({
+          jsonrpc: "2.0",
+          id: body.id,
+          result: handleStatusToolCall(),
+        })
+      }
+      const result = await handleToolCall(name, args || {})
+      return Response.json({
+        jsonrpc: "2.0",
+        id: body.id,
+        result,
+      })
     }
 
-    return new Response("Not found", { status: 404 })
-  },
-})
+    return Response.json({
+      jsonrpc: "2.0",
+      id: body.id,
+      error: { code: -32601, message: "Method not found" },
+    })
+  }
 
-console.log(`[oh-my-cursor] MCP sidecar ready on http://localhost:${PORT}`)
+  if (url.pathname === "/health") {
+    return Response.json({ status: "ok", tools: TOOLS.map((t) => t.name) })
+  }
+
+  return new Response("Not found", { status: 404 })
+}
+
+let actualMcpPort = ENV_MCP_PORT ? parseInt(ENV_MCP_PORT) : DEFAULT_MCP_PORT
+
+if (ENV_MCP_PORT) {
+  console.log(`[oh-my-cursor] MCP sidecar starting on port ${actualMcpPort} (env override)...`)
+  serve({ port: actualMcpPort, fetch: mcpFetchHandler })
+} else {
+  console.log(`[oh-my-cursor] MCP sidecar starting on port ${actualMcpPort}...`)
+  let started = false
+  for (let offset = 0; offset < MAX_PORT_ATTEMPTS; offset++) {
+    const tryPort = DEFAULT_MCP_PORT + offset
+    try {
+      serve({ port: tryPort, fetch: mcpFetchHandler })
+      actualMcpPort = tryPort
+      started = true
+      if (offset > 0) {
+        console.log(`[oh-my-cursor] Default MCP port ${DEFAULT_MCP_PORT} in use, using port ${actualMcpPort}`)
+      }
+      break
+    } catch (err) {
+      if (isPortInUseError(err)) {
+        console.log(`[oh-my-cursor] MCP port ${tryPort} in use, trying next...`)
+        continue
+      }
+      throw err
+    }
+  }
+  if (!started) {
+    console.error(`[oh-my-cursor] Could not find available MCP port in range ${DEFAULT_MCP_PORT}-${DEFAULT_MCP_PORT + MAX_PORT_ATTEMPTS - 1}`)
+    process.exit(1)
+  }
+}
+
+writePortFile(actualMcpPort)
+console.log(`[oh-my-cursor] MCP sidecar ready on http://localhost:${actualMcpPort}`)

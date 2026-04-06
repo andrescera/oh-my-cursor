@@ -16,10 +16,10 @@ $PluginId = "$PluginName@local"
 $ScriptDir = Split-Path -Parent $MyInvocation.MyCommand.Path
 
 if ($Scope -eq "user") {
-    $PluginDir = Join-Path $env:USERPROFILE ".cursor\plugins\$PluginName"
+    $PluginDir = Join-Path $env:USERPROFILE ".cursor\plugins\local\$PluginName"
     $CursorDir = Join-Path $env:USERPROFILE ".cursor"
 } else {
-    $PluginDir = ".cursor\plugins\$PluginName"
+    $PluginDir = ".cursor\plugins\local\$PluginName"
     $CursorDir = ".cursor"
 }
 

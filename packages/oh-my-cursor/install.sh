@@ -23,9 +23,9 @@ done
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 
 if [[ "$SCOPE" == "user" ]]; then
-  PLUGIN_DIR="$HOME/.cursor/plugins/$PLUGIN_NAME"
+  PLUGIN_DIR="$HOME/.cursor/plugins/local/$PLUGIN_NAME"
 else
-  PLUGIN_DIR=".cursor/plugins/$PLUGIN_NAME"
+  PLUGIN_DIR=".cursor/plugins/local/$PLUGIN_NAME"
 fi
 
 CLAUDE_PLUGINS="$HOME/.claude/plugins/installed_plugins.json"

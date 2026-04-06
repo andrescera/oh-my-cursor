@@ -95,6 +95,13 @@ const handlers: Record<string, (input: Record<string, unknown>) => Record<string
       if (session.ralphState?.active) ralphActive = true
     }
 
+    const allDispatchCounts: Record<string, number> = {}
+    for (const [, session] of sessions) {
+      for (const [key, val] of Object.entries(session.dispatchCounts)) {
+        allDispatchCounts[key] = (allDispatchCounts[key] || 0) + val
+      }
+    }
+
     return {
       status: "ok",
       sessions: sessions.size,
@@ -104,6 +111,7 @@ const handlers: Record<string, (input: Record<string, unknown>) => Record<string
       workerCounts,
       ralphActive,
       currentSessionId,
+      allDispatchCounts,
     }
   },
 
@@ -189,7 +197,8 @@ const handlers: Record<string, (input: Record<string, unknown>) => Record<string
     if (["Task", "task", "Agent", "agent"].includes(toolName)) {
       const agentType = (toolInput.subagent_type as string) || (toolInput.agent_type as string) || ""
       if (agentType) {
-        const agentKey = `subagent:${agentType.toLowerCase()}`
+        const normalized = agentType.toLowerCase().replace('generalpurpose', 'general-purpose')
+        const agentKey = `subagent:${normalized}`
         session.dispatchCounts[agentKey] = (session.dispatchCounts[agentKey] || 0) + 1
         console.log(`[oh-my-cursor] Dispatch tracked via preToolUse: ${agentKey} (${session.dispatchCounts[agentKey]})`)
       }

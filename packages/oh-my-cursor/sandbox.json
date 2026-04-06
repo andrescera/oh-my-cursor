@@ -1,0 +1,11 @@
+{
+  "networking": {
+    "allow": [
+      "*.exa.ai",
+      "mcp.context7.com",
+      "mcp.grep.app",
+      "api.anthropic.com",
+      "api.openai.com"
+    ]
+  }
+}

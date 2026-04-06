@@ -70,19 +70,16 @@ You (root thread)
 
 ## MCP Integration
 
-oh-my-cursor agents can interact with external services through Cursor's MCP (Model Context Protocol) system. Available MCP servers are automatically discovered and can be called via `CallMcpTool`.
+oh-my-cursor ships with 3 remote MCP servers and 1 local sidecar, configured in `mcp.json`:
 
 | Server | Capabilities |
 |--------|-------------|
-| desktop-commander | System commands, file operations |
-| Linear | Issue tracking, project management |
-| Notion | Documentation, knowledge base |
-| GitKraken | Git operations, PR management |
 | websearch | Web search via Exa/Tavily |
 | context7 | Library documentation lookup |
 | grep_app | Code search across repositories |
+| oh-my-cursor | Local sidecar (look_at, interactive_bash, skill_mcp) |
 
-Agents are MCP-aware and will use available servers when relevant to the task.
+Agents also discover and use any MCP servers you have configured in Cursor (e.g., Linear, Notion, GitKraken) via `CallMcpTool`.
 
 ## Worktrees
 

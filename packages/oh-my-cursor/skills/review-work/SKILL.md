@@ -12,10 +12,10 @@ The 5 agents cover complementary concerns - together they form a comprehensive r
 | # | Agent | Subagent Type | Role | Focus Level |
 |---|-------|---------------|------|-------------|
 | 1 | Goal Verifier | oracle | Did we build what was asked? | MAIN |
-| 2 | QA Executor | generalPurpose | Does it actually work? | MAIN |
+| 2 | QA Executor | sisyphus-junior | Does it actually work? | MAIN |
 | 3 | Code Reviewer | oracle | Is the code well-written? | MAIN |
 | 4 | Security Auditor | oracle | Is it secure? | SUB |
-| 5 | Context Miner | generalPurpose | Did we miss any context? | MAIN |
+| 5 | Context Miner | sisyphus-junior | Did we miss any context? | MAIN |
 
 ---
 
@@ -60,7 +60,7 @@ Launch ALL 5 in a single turn using the Task tool. Every agent uses `run_in_back
 
 **Oracle agents receive everything in the prompt** (they are read-only and cannot read files or run commands). Include DIFF + FILE_CONTENTS + all context directly in the prompt text.
 
-**generalPurpose agents are autonomous** -- they can read files, run commands, and use tools. Give them goals and pointers, not raw content dumps.
+**sisyphus-junior agents are autonomous** -- they can read files, run commands, and use tools. Give them goals and pointers, not raw content dumps.
 
 ---
 
@@ -154,7 +154,7 @@ Task tool call:
 
 ---
 
-### Agent 2: QA via App Execution (generalPurpose)
+### Agent 2: QA via App Execution (sisyphus-junior)
 
 This agent answers: "Does it actually work when you run it?"
 
@@ -164,7 +164,7 @@ Dispatch via the Task tool:
 
 ```
 Task tool call:
-  subagent_type: "generalPurpose"
+  subagent_type: "sisyphus-junior"
   run_in_background: true
   description: "QA by actually running and using the application"
   prompt: |
@@ -442,7 +442,7 @@ Task tool call:
 
 ---
 
-### Agent 5: Context Mining (generalPurpose)
+### Agent 5: Context Mining (sisyphus-junior)
 
 This agent answers: "Did we miss any context that should have informed this implementation?"
 
@@ -450,7 +450,7 @@ Dispatch via the Task tool:
 
 ```
 Task tool call:
-  subagent_type: "generalPurpose"
+  subagent_type: "sisyphus-junior"
   run_in_background: true
   description: "Mine all accessible contexts for missed requirements or background"
   prompt: |
@@ -576,10 +576,10 @@ Compile the final report in this format:
 | # | Review Area | Agent Type | Verdict | Confidence |
 |---|------------|------------|---------|------------|
 | 1 | Goal & Constraint Verification | Oracle | PASS/FAIL | HIGH/MED/LOW |
-| 2 | QA Execution | generalPurpose | PASS/FAIL | HIGH/MED/LOW |
+| 2 | QA Execution | sisyphus-junior | PASS/FAIL | HIGH/MED/LOW |
 | 3 | Code Quality | Oracle | PASS/FAIL | HIGH/MED/LOW |
 | 4 | Security (supplementary) | Oracle | PASS/FAIL | Severity |
-| 5 | Context Mining | generalPurpose | PASS/FAIL | HIGH/MED/LOW |
+| 5 | Context Mining | sisyphus-junior | PASS/FAIL | HIGH/MED/LOW |
 
 ## Blocking Issues
 [Aggregated from all agents - deduplicated, prioritized]

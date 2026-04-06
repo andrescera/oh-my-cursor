@@ -98,7 +98,7 @@ Before reporting done:
 - Fire **Task** with `subagent_type: explore` and `run_in_background: true` when you need codebase context; keep working on non-overlapping tasks while they run.
 - Use **Await** (or check the background Task output) before relying on explore results.
 - Once you delegate exploration, do NOT manually duplicate the same broad search.
-- For parallel implementation: spawn **Task** with `subagent_type: generalPurpose` (sisyphus-junior persona in the prompt), with explicit file boundaries per worker.
+- For parallel implementation: spawn **Task** with `subagent_type: "sisyphus-junior"`, with explicit file boundaries per worker.
 
 ### Delegation Prompt Format (MANDATORY 6-section)
 

@@ -1,3 +1,6 @@
+import { existsSync, readdirSync } from "node:fs"
+import { join, resolve } from "node:path"
+
 import { serve } from "bun"
 
 import {
@@ -6,6 +9,34 @@ import {
   MCP_APP_TOOL,
   STATUS_HTML,
 } from "./mcp-app"
+
+function collectAgentTranscriptDirs(): string[] {
+  const dirs: string[] = []
+  const seen = new Set<string>()
+  const add = (dirPath: string) => {
+    const r = resolve(dirPath)
+    if (existsSync(r) && !seen.has(r)) {
+      seen.add(r)
+      dirs.push(r)
+    }
+  }
+  const home = process.env.HOME
+  if (home) {
+    const projectsRoot = join(home, ".cursor", "projects")
+    if (existsSync(projectsRoot)) {
+      for (const ent of readdirSync(projectsRoot, { withFileTypes: true })) {
+        if (ent.isDirectory()) {
+          add(join(projectsRoot, ent.name, "agent-transcripts"))
+        }
+      }
+    }
+  }
+  const claudeProjectDir = process.env.CLAUDE_PROJECT_DIR
+  if (claudeProjectDir) {
+    add(join(resolve(claudeProjectDir), "..", "agent-transcripts"))
+  }
+  return dirs
+}
 
 const PORT = parseInt(process.env.OH_MY_CURSOR_MCP_PORT || "47848")
 
@@ -66,6 +97,52 @@ const TOOLS = [
         },
       },
       required: ["action"],
+    },
+  },
+  {
+    name: "get_dispatch_stats",
+    description:
+      "Get current session dispatch statistics including explore/worker counts, tool call counts, and active agents from the oh-my-cursor daemon.",
+    inputSchema: {
+      type: "object" as const,
+      properties: {},
+    },
+  },
+  {
+    name: "session_transcripts",
+    description: "List recent agent session transcript files, or search within them for specific content.",
+    inputSchema: {
+      type: "object" as const,
+      properties: {
+        action: {
+          type: "string",
+          enum: ["list", "search"],
+          description:
+            "list = show recent transcripts, search = find content in transcripts",
+        },
+        query: {
+          type: "string",
+          description: "Search query (only used when action=search)",
+        },
+        limit: {
+          type: "number",
+          description: "Max results to return (default: 10)",
+        },
+      },
+      required: ["action"],
+    },
+  },
+  {
+    name: "daemon_logs",
+    description: "View recent oh-my-cursor daemon log output for debugging hook behavior.",
+    inputSchema: {
+      type: "object" as const,
+      properties: {
+        lines: {
+          type: "number",
+          description: "Number of recent log lines to show (default: 50)",
+        },
+      },
     },
   },
   MCP_APP_TOOL,
@@ -234,6 +311,186 @@ async function handleToolCall(
       }
     }
 
+    case "get_dispatch_stats": {
+      const port = process.env.OH_MY_CURSOR_PORT || "47847"
+      const url = `http://localhost:${port}/health`
+      try {
+        const res = await fetch(url, { signal: AbortSignal.timeout(8000) })
+        if (!res.ok) {
+          return {
+            content: [
+              {
+                type: "text",
+                text: `Daemon health request failed: HTTP ${res.status} ${res.statusText}`,
+              },
+            ],
+          }
+        }
+        const data: unknown = await res.json()
+        return {
+          content: [
+            {
+              type: "text",
+              text: JSON.stringify(data, null, 2),
+            },
+          ],
+        }
+      } catch (err) {
+        return {
+          content: [
+            {
+              type: "text",
+              text: `Failed to fetch daemon health from ${url}: ${err instanceof Error ? err.message : String(err)}`,
+            },
+          ],
+        }
+      }
+    }
+
+    case "session_transcripts": {
+      const action = args.action as string
+      const limitRaw = args.limit
+      const limit =
+        typeof limitRaw === "number" && Number.isFinite(limitRaw) && limitRaw > 0
+          ? Math.min(Math.floor(limitRaw), 500)
+          : 10
+      const dirs = collectAgentTranscriptDirs()
+
+      if (dirs.length === 0) {
+        return {
+          content: [
+            {
+              type: "text",
+              text:
+                "No agent-transcripts directories found. Expected ~/.cursor/projects/*/agent-transcripts/ or $CLAUDE_PROJECT_DIR/../agent-transcripts/",
+            },
+          ],
+        }
+      }
+
+      if (action === "list") {
+        const sections: string[] = []
+        let remaining = limit
+        for (const dir of dirs) {
+          if (remaining <= 0) break
+          const ls = Bun.spawnSync(["ls", "-lt", dir])
+          if (ls.exitCode !== 0) {
+            sections.push(
+              `## ${dir}\n(ls failed, exit ${ls.exitCode})\n${ls.stderr.toString()}`.trimEnd(),
+            )
+            continue
+          }
+          const lines = ls.stdout
+            .toString()
+            .split("\n")
+            .filter((line) => line.trim() !== "" && !line.startsWith("total "))
+          const chunk = lines.slice(0, remaining)
+          remaining -= chunk.length
+          sections.push(`## ${dir}\n${chunk.join("\n")}`)
+        }
+        return {
+          content: [
+            {
+              type: "text",
+              text: sections.join("\n\n"),
+            },
+          ],
+        }
+      }
+
+      if (action === "search") {
+        const query = args.query
+        if (typeof query !== "string" || query.trim() === "") {
+          return {
+            content: [
+              {
+                type: "text",
+                text: "action=search requires a non-empty string `query` argument.",
+              },
+            ],
+          }
+        }
+        const rg = Bun.spawnSync(["rg", "-n", "--max-columns", "512", query, ...dirs])
+        if (rg.exitCode === 2) {
+          return {
+            content: [
+              {
+                type: "text",
+                text: `ripgrep failed (is rg installed?): ${rg.stderr.toString() || rg.stdout.toString()}`,
+              },
+            ],
+          }
+        }
+        const out = rg.stdout.toString()
+        const matchLines = out.split("\n").filter((line) => line.length > 0)
+        const trimmed = matchLines.slice(0, limit)
+        return {
+          content: [
+            {
+              type: "text",
+              text:
+                trimmed.length > 0
+                  ? trimmed.join("\n")
+                  : rg.exitCode === 1
+                    ? "(no matches)"
+                    : "",
+            },
+          ],
+        }
+      }
+
+      return {
+        content: [
+          {
+            type: "text",
+            text: `Unknown session_transcripts action '${action}'. Use list or search.`,
+          },
+        ],
+      }
+    }
+
+    case "daemon_logs": {
+      const linesRaw = args.lines
+      const lineCount =
+        typeof linesRaw === "number" && Number.isFinite(linesRaw) && linesRaw > 0
+          ? Math.min(Math.floor(linesRaw), 10_000)
+          : 50
+      const logPath = "/tmp/oh-my-cursor-daemon.log"
+      const f = Bun.file(logPath)
+      if (!(await f.exists())) {
+        return {
+          content: [
+            {
+              type: "text",
+              text: `Log file not found: ${logPath}`,
+            },
+          ],
+        }
+      }
+      try {
+        const text = await f.text()
+        const allLines = text.split(/\r?\n/)
+        const tail = allLines.slice(-lineCount).join("\n")
+        return {
+          content: [
+            {
+              type: "text",
+              text: tail || "(empty log)",
+            },
+          ],
+        }
+      } catch (err) {
+        return {
+          content: [
+            {
+              type: "text",
+              text: `Failed to read ${logPath}: ${err instanceof Error ? err.message : String(err)}`,
+            },
+          ],
+        }
+      }
+    }
+
     default:
       return {
         content: [{ type: "text", text: `Unknown tool: ${name}` }],
@@ -250,6 +507,18 @@ serve({
 
     if (url.pathname === "/mcp" && req.method === "POST") {
       const body = await req.json()
+
+      if (body.method === "initialize") {
+        return Response.json({
+          jsonrpc: "2.0",
+          id: body.id,
+          result: {
+            protocolVersion: "2024-11-05",
+            capabilities: { tools: {}, resources: {} },
+            serverInfo: { name: "oh-my-cursor", version: "0.1.0" },
+          },
+        })
+      }
 
       if (body.method === "resources/list") {
         return Response.json({

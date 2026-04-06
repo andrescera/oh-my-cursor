@@ -35,26 +35,25 @@ describe("hook daemon", () => {
   })
 
   describe("/sessionStart", () => {
-    test("returns additional_context and env", async () => {
+    test("returns hookSpecificOutput with context", async () => {
       const result = await post("/sessionStart", {
-        conversation_id: "sess-1",
-        workspace_roots: ["/project"],
+        session_id: "sess-1",
+        cwd: "/project",
         model: "claude-4.6-sonnet",
       })
-      expect(result.env.OH_MY_CURSOR_SESSION_ID).toBe("sess-1")
-      expect(result.env.OH_MY_CURSOR_PROJECT_DIR).toBe("/project")
-      expect(result.additional_context).toContain("oh-my-cursor Context")
-      expect(result.additional_context).toContain("sess-1")
+      expect(result.hookSpecificOutput.additionalContext).toContain("oh-my-cursor Context")
+      expect(result.hookSpecificOutput.additionalContext).toContain("sess-1")
+      expect(result.hookSpecificOutput.hookEventName).toBe("SessionStart")
     })
   })
 
   describe("/sessionEnd", () => {
     test("cleans up session", async () => {
-      await post("/sessionStart", { conversation_id: "sess-cleanup" })
+      await post("/sessionStart", { session_id: "sess-cleanup" })
       const health1 = await (await fetch(`${BASE}/health`)).json()
       const before = health1.sessions
 
-      await post("/sessionEnd", { conversation_id: "sess-cleanup" })
+      await post("/sessionEnd", { session_id: "sess-cleanup" })
       const health2 = await (await fetch(`${BASE}/health`)).json()
       expect(health2.sessions).toBe(before - 1)
     })
@@ -63,19 +62,19 @@ describe("hook daemon", () => {
   describe("/beforeShellExecution", () => {
     test("blocks dangerous commands", async () => {
       const result = await post("/beforeShellExecution", {
-        command: "rm -rf /",
-        conversation_id: "sess-1",
+        tool_input: { command: "rm -rf /" },
+        session_id: "sess-1",
       })
-      expect(result.permission).toBe("deny")
-      expect(result.user_message).toContain("Dangerous")
+      expect(result.hookSpecificOutput.permissionDecision).toBe("deny")
+      expect(result.hookSpecificOutput.permissionDecisionReason).toContain("blocked for safety")
     })
 
     test("allows safe commands", async () => {
       const result = await post("/beforeShellExecution", {
-        command: "ls -la",
-        conversation_id: "sess-1",
+        tool_input: { command: "ls -la" },
+        session_id: "sess-1",
       })
-      expect(result.permission).toBe("allow")
+      expect(result.hookSpecificOutput).toBeUndefined()
     })
   })
 
@@ -83,17 +82,17 @@ describe("hook daemon", () => {
     test("blocks sensitive files", async () => {
       const result = await post("/beforeReadFile", {
         file_path: "/app/.env.production",
-        conversation_id: "sess-1",
+        session_id: "sess-1",
       })
-      expect(result.permission).toBe("deny")
+      expect(result.hookSpecificOutput.permissionDecision).toBe("deny")
     })
 
     test("allows normal files", async () => {
       const result = await post("/beforeReadFile", {
         file_path: "/app/src/index.ts",
-        conversation_id: "sess-1",
+        session_id: "sess-1",
       })
-      expect(result.permission).toBe("allow")
+      expect(result.hookSpecificOutput).toBeUndefined()
     })
   })
 
@@ -101,116 +100,102 @@ describe("hook daemon", () => {
     test("allows tool use and tracks count", async () => {
       const result = await post("/preToolUse", {
         tool_name: "Shell",
-        conversation_id: "sess-1",
+        session_id: "sess-1",
       })
-      expect(result.permission).toBe("allow")
+      expect(Object.keys(result).length).toBe(0)
     })
   })
 
   describe("/subagentStart", () => {
     test("allows subagent within limits", async () => {
-      await post("/sessionStart", { conversation_id: "sess-limits" })
+      await post("/sessionStart", { session_id: "sess-limits" })
       const result = await post("/subagentStart", {
-        subagent_type: "explore",
-        task: "search codebase",
-        conversation_id: "sess-limits",
+        agent_type: "Explore",
+        session_id: "sess-limits",
       })
-      expect(result.permission).toBe("allow")
+      expect(Object.keys(result).length).toBe(0)
     })
 
-    test("denies explore beyond limit", async () => {
-      await post("/sessionStart", { conversation_id: "sess-limits-2" })
+    test("injects warning beyond explore limit", async () => {
+      await post("/sessionStart", { session_id: "sess-limits-2" })
       for (let i = 0; i < 6; i++) {
         await post("/subagentStart", {
-          subagent_type: "explore",
-          task: `search ${i}`,
-          conversation_id: "sess-limits-2",
+          agent_type: "Explore",
+          session_id: "sess-limits-2",
         })
       }
       const result = await post("/subagentStart", {
-        subagent_type: "explore",
-        task: "one too many",
-        conversation_id: "sess-limits-2",
+        agent_type: "Explore",
+        session_id: "sess-limits-2",
       })
-      expect(result.permission).toBe("deny")
-      expect(result.user_message).toContain("limit")
+      expect(result.hookSpecificOutput.additionalContext).toContain("dispatch-limit")
+      expect(result.hookSpecificOutput.hookEventName).toBe("SubagentStart")
     })
   })
 
   describe("/subagentStop", () => {
-    test("returns followup on error", async () => {
+    test("returns empty object", async () => {
       const result = await post("/subagentStop", {
-        status: "error",
-        subagent_type: "explore",
-        loop_count: 0,
+        agent_type: "Explore",
+        stop_hook_active: false,
+        session_id: "sess-1",
       })
-      expect(result.followup_message).toBeDefined()
-      expect(result.followup_message).toContain("retry")
+      expect(Object.keys(result).length).toBe(0)
     })
 
-    test("no followup on success", async () => {
+    test("returns empty when stop_hook_active is true", async () => {
       const result = await post("/subagentStop", {
-        status: "completed",
-        subagent_type: "explore",
+        agent_type: "Explore",
+        stop_hook_active: true,
+        session_id: "sess-1",
       })
-      expect(result.followup_message).toBeUndefined()
+      expect(Object.keys(result).length).toBe(0)
     })
   })
 
   describe("/postToolUse", () => {
     test("tracks tool calls and returns context periodically", async () => {
-      await post("/sessionStart", { conversation_id: "sess-context" })
+      await post("/sessionStart", { session_id: "sess-context" })
       for (let i = 0; i < 10; i++) {
         await post("/postToolUse", {
           tool_name: "Shell",
-          conversation_id: "sess-context",
+          session_id: "sess-context",
         })
       }
       const result = await post("/postToolUse", {
         tool_name: "Shell",
-        conversation_id: "sess-context",
+        session_id: "sess-context",
       })
       expect(result).toBeDefined()
     })
   })
 
   describe("/stop", () => {
-    test("returns empty when no todos active", async () => {
-      await post("/sessionStart", { conversation_id: "sess-stop" })
+    test("returns empty when no active loops", async () => {
+      await post("/sessionStart", { session_id: "sess-stop" })
       const result = await post("/stop", {
-        status: "completed",
-        loop_count: 0,
-        conversation_id: "sess-stop",
+        stop_hook_active: false,
+        session_id: "sess-stop",
       })
-      expect(result.followup_message).toBeUndefined()
+      expect(result.decision).toBeUndefined()
     })
 
-    test("returns retry on error with low loop count", async () => {
+    test("returns empty when stop_hook_active is true", async () => {
       const result = await post("/stop", {
-        status: "error",
-        loop_count: 1,
-        conversation_id: "sess-stop",
+        stop_hook_active: true,
+        session_id: "sess-stop",
       })
-      expect(result.followup_message).toBeDefined()
-      expect(result.followup_message).toContain("error")
+      expect(result.decision).toBeUndefined()
     })
   })
 
   describe("/preCompact", () => {
-    test("warns at high usage", async () => {
+    test("tracks compaction and returns empty", async () => {
       const result = await post("/preCompact", {
-        context_usage_percent: 95,
-        conversation_id: "sess-1",
+        trigger: "auto",
+        session_id: "sess-1",
       })
-      expect(result.user_message).toContain("95%")
-    })
-
-    test("no warning at low usage", async () => {
-      const result = await post("/preCompact", {
-        context_usage_percent: 50,
-        conversation_id: "sess-1",
-      })
-      expect(result.user_message).toBeUndefined()
+      expect(Object.keys(result).length).toBe(0)
     })
   })
 

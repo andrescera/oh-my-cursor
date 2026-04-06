@@ -1,6 +1,7 @@
 import { serve } from "bun"
 import { readFileSync, existsSync } from "node:fs"
 import { writeContextRule, clearContextRule } from "./scripts/context-injector"
+import { STATUS_HTML } from "./mcp-app"
 
 const PORT = parseInt(process.env.OH_MY_CURSOR_PORT || "47847")
 
@@ -522,6 +523,12 @@ serve({
   async fetch(req) {
     const url = new URL(req.url)
     const path = url.pathname
+
+    if (path === "/dashboard") {
+      return new Response(STATUS_HTML, {
+        headers: { "Content-Type": "text/html" },
+      })
+    }
 
     const handler = handlers[path]
     if (!handler) {

@@ -73,11 +73,11 @@ OLD_SKILL_DIRS=(
 
 cleanup_old_files() {
   for f in "${OLD_AGENT_FILES[@]}"; do
-    [[ -e "$f" ]] && rm -f "$f" && echo "[cleanup] Removed $f"
+    if [[ -e "$f" ]]; then rm -f "$f" && echo "[cleanup] Removed $f"; fi
   done
-  [[ -d "$HOME/.cursor/hooks/scripts" ]] && rm -rf "$HOME/.cursor/hooks/scripts" && echo "[cleanup] Removed ~/.cursor/hooks/scripts/"
+  if [[ -d "$HOME/.cursor/hooks/scripts" ]]; then rm -rf "$HOME/.cursor/hooks/scripts" && echo "[cleanup] Removed ~/.cursor/hooks/scripts/"; fi
   for d in "${OLD_SKILL_DIRS[@]}"; do
-    [[ -d "$d" ]] && rm -rf "$d" && echo "[cleanup] Removed $d/"
+    if [[ -d "$d" ]]; then rm -rf "$d" && echo "[cleanup] Removed $d/"; fi
   done
 }
 

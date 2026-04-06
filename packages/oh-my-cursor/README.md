@@ -26,9 +26,9 @@ bash install.sh --uninstall
 |-----------|-------|-------------|
 | Agents | 11 + protocol | Specialized subagents with model routing |
 | Rules | 4 | Orchestrator + coding standards |
-| Commands | 9 | Slash commands (/deep-plan, /refactor, /ralph-loop, etc.) |
-| Skills | 6 | Domain expertise (git, frontend, browser, review) |
-| Hooks | 1 daemon | Persistent Bun HTTP server for all 17 hook events |
+| Commands | 10 | Slash commands (/deep-plan, /ulw-loop, /refactor, /ralph-loop, etc.) |
+| Skills | 7 | Domain expertise (git, frontend, browser, review, playwright) |
+| Hooks | 1 daemon | Persistent Bun HTTP server; 30+ hook handlers in daemon |
 | MCP | 4 servers | websearch, context7, grep_app + sidecar |
 
 ## Architecture
@@ -77,6 +77,7 @@ You (root thread)
 | `/refactor` | Intelligent refactoring with LSP + AST-grep |
 | `/init-deep` | Generate hierarchical AGENTS.md files |
 | `/ralph-loop` | Self-referential loop until task completion |
+| `/ulw-loop` | Ultrawork loop with Oracle verification gate |
 | `/cancel-ralph` | Cancel active Ralph loop |
 | `/stop-continuation` | Stop all continuation mechanisms |
 | `/handoff` | Create context summary for new session |
@@ -111,6 +112,18 @@ All hooks run through a persistent Bun HTTP server (clooks pattern) for zero sub
 ## Coverage vs OpenCode
 
 This plugin achieves ~92-95% of oh-my-openagent's functionality using Cursor's native APIs.
+
+| Area | Coverage (approx.) |
+|------|---------------------|
+| Agents | ~98% |
+| Tools | ~65% |
+| Hooks | ~85% |
+| Skills | ~95% |
+| Commands | ~95% |
+| MCPs | ~100% |
+| Context injection | ~90% |
+| Continuation / loops | ~95% |
+| **Overall** | **~92-95%** |
 
 **What works natively:** Agents, model routing with thinking variants, sub-agent orchestration, background agents, skills, commands, rules, context injection, continuation loops, session management via ACP, Cloud Agent automations.
 

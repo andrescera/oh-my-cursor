@@ -78,9 +78,13 @@ echo ""
 echo "==> Skills"
 for skill in git-master frontend-ui-ux dev-browser agent-browser review-work ai-slop-remover; do
   if [[ -d "$SCRIPT_DIR/skills/$skill" ]]; then
-    mkdir -p "$DEST/skills/$skill"
-    cp -r "$SCRIPT_DIR/skills/$skill/"* "$DEST/skills/$skill/" 2>/dev/null || true
-    echo "[ok] $DEST/skills/$skill/"
+    if [[ "$DRY_RUN" == "true" ]]; then
+      echo "[dry-run] Would copy: $SCRIPT_DIR/skills/$skill/ -> $DEST/skills/$skill/"
+    else
+      mkdir -p "$DEST/skills/$skill"
+      cp -r "$SCRIPT_DIR/skills/$skill/"* "$DEST/skills/$skill/" 2>/dev/null || true
+      echo "[ok] $DEST/skills/$skill/"
+    fi
   fi
 done
 
@@ -88,10 +92,12 @@ echo ""
 echo "==> Hooks"
 copy_file "$SCRIPT_DIR/hooks/daemon.ts" "$DEST/hooks/daemon.ts"
 copy_file "$SCRIPT_DIR/hooks/hooks.json" "$DEST/hooks.json"
-mkdir -p "$DEST/hooks/scripts"
+if [[ "$DRY_RUN" != "true" ]]; then
+  mkdir -p "$DEST/hooks/scripts"
+  chmod +x "$DEST/hooks/scripts/start-daemon.sh" 2>/dev/null || true
+fi
 copy_file "$SCRIPT_DIR/hooks/scripts/start-daemon.sh" "$DEST/hooks/scripts/start-daemon.sh"
 copy_file "$SCRIPT_DIR/hooks/scripts/context-injector.ts" "$DEST/hooks/scripts/context-injector.ts"
-chmod +x "$DEST/hooks/scripts/start-daemon.sh" 2>/dev/null || true
 
 echo ""
 echo "==> MCP Sidecar"

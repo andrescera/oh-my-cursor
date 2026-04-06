@@ -2,6 +2,7 @@ import { serve } from "bun"
 import { readFileSync, existsSync } from "node:fs"
 import { writeContextRule, clearContextRule } from "./scripts/context-injector"
 import { STATUS_HTML } from "./mcp-app"
+import { logEvent, getEvents, getSessionSummary, getLogPath } from "./event-logger"
 
 const PORT = parseInt(process.env.OH_MY_CURSOR_PORT || "47847")
 
@@ -590,6 +591,41 @@ const handlers: Record<string, (input: Record<string, unknown>) => Record<string
   },
 }
 
+function extractMeta(
+  event: string,
+  input: Record<string, unknown>,
+  toolInput: Record<string, unknown>,
+  result: Record<string, unknown>,
+): Record<string, unknown> | undefined {
+  const meta: Record<string, unknown> = {}
+
+  if (toolInput.file_path || input.file_path) {
+    meta.file = (toolInput.file_path || input.file_path) as string
+  }
+
+  if (event === "/beforeShellExecution") {
+    meta.command = ((input.command as string) || (toolInput.command as string) || "").slice(0, 200)
+  }
+
+  if (event === "/preToolUse" && ["Task", "task", "Agent", "agent"].includes((input.tool_name as string) || "")) {
+    meta.description = ((toolInput.description as string) || "").slice(0, 100)
+  }
+
+  if (event === "/sessionStart" || event === "/sessionEnd") {
+    meta.project = ((input.workspace_roots as string[])?.[0]) || (input.cwd as string) || ""
+  }
+
+  if (event === "/stop") {
+    meta.status = (input.status as string) || ""
+  }
+
+  if (result.permission === "deny") {
+    meta.reason = (result.userMessage as string) || (result.agentMessage as string) || ""
+  }
+
+  return Object.keys(meta).length > 0 ? meta : undefined
+}
+
 console.log(`[oh-my-cursor] Hook daemon starting on port ${PORT}...`)
 
 serve({
@@ -604,6 +640,25 @@ serve({
       })
     }
 
+    if (path === "/session-log") {
+      const limit = parseInt(url.searchParams.get("limit") || "100")
+      const sessionId = url.searchParams.get("session") || undefined
+      const event = url.searchParams.get("event") || undefined
+      const action = url.searchParams.get("action") || undefined
+      const events = getEvents({ limit, sessionId, event, action })
+      return new Response(JSON.stringify(events), {
+        headers: { "Content-Type": "application/json" },
+      })
+    }
+
+    if (path === "/session-log/summary") {
+      const sessionId = url.searchParams.get("session") || undefined
+      const summary = getSessionSummary(sessionId)
+      return new Response(JSON.stringify(summary), {
+        headers: { "Content-Type": "application/json" },
+      })
+    }
+
     const handler = handlers[path]
     if (!handler) {
       return new Response(JSON.stringify({ error: "unknown hook event" }), {
@@ -614,7 +669,24 @@ serve({
 
     try {
       const body = req.method === "POST" ? await req.json() : {}
-      const result = handler(parseInput(body))
+      const parsed = parseInput(body)
+      const result = handler(parsed)
+
+      if (path !== "/health") {
+        const toolInput = (parsed.tool_input as Record<string, unknown>) || {}
+        logEvent({
+          ts: new Date().toISOString(),
+          event: path,
+          sessionId: (parsed.conversation_id as string) || (parsed.session_id as string) || "",
+          tool: (parsed.tool_name as string) || undefined,
+          agentType: (toolInput.subagent_type as string) || (toolInput.agent_type as string) || (parsed.agent_type as string) || undefined,
+          action: (result.permission as string) || (result.decision === "block" ? "block" : result.followup_message ? "continue" : "noop"),
+          durationMs: (parsed.duration_ms as number) || undefined,
+          error: (parsed.error as string) || undefined,
+          meta: extractMeta(path, parsed, toolInput, result),
+        })
+      }
+
       return new Response(JSON.stringify(result), {
         headers: { "Content-Type": "application/json" },
       })

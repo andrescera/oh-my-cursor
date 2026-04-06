@@ -145,6 +145,40 @@ const TOOLS = [
       },
     },
   },
+  {
+    name: "session_log",
+    description:
+      "Query the oh-my-cursor session event log. Returns structured events from the current or past sessions for analysis, review, and improvement.",
+    inputSchema: {
+      type: "object" as const,
+      properties: {
+        action: {
+          type: "string",
+          enum: ["recent", "summary", "search", "export"],
+          description:
+            "recent = last N events, summary = session statistics, search = filter by event/tool, export = full log file path",
+        },
+        limit: {
+          type: "number",
+          description: "Max events to return (default: 50, max: 500). Used with recent and search.",
+        },
+        session_id: {
+          type: "string",
+          description: "Filter events by session ID. Optional.",
+        },
+        event_filter: {
+          type: "string",
+          description:
+            "Filter by hook event name, e.g. '/preToolUse', '/stop', '/postToolUseFailure'",
+        },
+        action_filter: {
+          type: "string",
+          description: "Filter by action: 'allow', 'deny', 'block', 'continue', 'noop'",
+        },
+      },
+      required: ["action"],
+    },
+  },
   MCP_APP_TOOL,
 ]
 
@@ -488,6 +522,121 @@ async function handleToolCall(
             },
           ],
         }
+      }
+    }
+
+    case "session_log": {
+      const action = args.action as string
+      const port = process.env.OH_MY_CURSOR_PORT || "47847"
+
+      if (action === "export") {
+        try {
+          const res = await fetch(`http://localhost:${port}/session-log?limit=1`, {
+            signal: AbortSignal.timeout(5000),
+          })
+          if (!res.ok) {
+            return {
+              content: [
+                { type: "text", text: `Daemon not reachable (HTTP ${res.status})` },
+              ],
+            }
+          }
+        } catch (err) {
+          return {
+            content: [
+              {
+                type: "text",
+                text: `Daemon offline: ${err instanceof Error ? err.message : String(err)}`,
+              },
+            ],
+          }
+        }
+        const logPath = process.env.OH_MY_CURSOR_PROJECT_DIR
+          ? join(resolve(process.env.OH_MY_CURSOR_PROJECT_DIR), ".cursor/hooks/state/session-log.jsonl")
+          : "/tmp/oh-my-cursor-session-log.jsonl"
+        return {
+          content: [
+            {
+              type: "text",
+              text: `Session log file: ${logPath}\n\nUse Read tool to read it, or cat/jq to process.`,
+            },
+          ],
+        }
+      }
+
+      const limitRaw = args.limit
+      const limit =
+        typeof limitRaw === "number" && Number.isFinite(limitRaw) && limitRaw > 0
+          ? Math.min(Math.floor(limitRaw), 500)
+          : 50
+      const sessionId = args.session_id as string | undefined
+      const eventFilter = args.event_filter as string | undefined
+      const actionFilter = args.action_filter as string | undefined
+
+      if (action === "summary") {
+        try {
+          const params = new URLSearchParams()
+          if (sessionId) params.set("session", sessionId)
+          const res = await fetch(`http://localhost:${port}/session-log/summary?${params}`, {
+            signal: AbortSignal.timeout(8000),
+          })
+          if (!res.ok) {
+            return {
+              content: [{ type: "text", text: `Summary request failed: HTTP ${res.status}` }],
+            }
+          }
+          const data = await res.json()
+          return { content: [{ type: "text", text: JSON.stringify(data, null, 2) }] }
+        } catch (err) {
+          return {
+            content: [
+              {
+                type: "text",
+                text: `Failed: ${err instanceof Error ? err.message : String(err)}`,
+              },
+            ],
+          }
+        }
+      }
+
+      if (action === "recent" || action === "search") {
+        try {
+          const params = new URLSearchParams({ limit: String(limit) })
+          if (sessionId) params.set("session", sessionId)
+          if (eventFilter) params.set("event", eventFilter)
+          if (actionFilter) params.set("action", actionFilter)
+          const res = await fetch(`http://localhost:${port}/session-log?${params}`, {
+            signal: AbortSignal.timeout(8000),
+          })
+          if (!res.ok) {
+            return {
+              content: [{ type: "text", text: `Log request failed: HTTP ${res.status}` }],
+            }
+          }
+          const events = await res.json()
+          if (!Array.isArray(events) || events.length === 0) {
+            return { content: [{ type: "text", text: "(no events found)" }] }
+          }
+          return { content: [{ type: "text", text: JSON.stringify(events, null, 2) }] }
+        } catch (err) {
+          return {
+            content: [
+              {
+                type: "text",
+                text: `Failed: ${err instanceof Error ? err.message : String(err)}`,
+              },
+            ],
+          }
+        }
+      }
+
+      return {
+        content: [
+          {
+            type: "text",
+            text: `Unknown session_log action '${action}'. Use: recent, summary, search, export`,
+          },
+        ],
       }
     }
 

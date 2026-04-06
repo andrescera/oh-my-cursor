@@ -78,12 +78,18 @@ const handlers: Record<string, (input: Record<string, unknown>) => Record<string
     const convId = (input.conversation_id as string) || "unknown"
     const session = getOrCreateSession(convId)
 
-    if (toolName === "Shell" || toolName === "Write" || toolName === "Task") {
-      const contextNote = `[${new Date().toISOString()}] ${toolName} executed`
-      session.contextHistory.push(contextNote)
+    const contextNote = `[${new Date().toISOString()}] ${toolName} completed`
+    session.contextHistory.push(contextNote)
+
+    if (session.contextHistory.length > 50) {
+      session.contextHistory = session.contextHistory.slice(-30)
     }
 
-    return {}
+    return {
+      additional_context: session.contextHistory.length % 10 === 0
+        ? `[oh-my-cursor] Session activity: ${session.contextHistory.length} tool calls this session.`
+        : undefined,
+    }
   },
 
   "/postToolUseFailure": (input) => {
@@ -103,16 +109,36 @@ const handlers: Record<string, (input: Record<string, unknown>) => Record<string
     const agentKey = `subagent:${subagentType}`
     session.dispatchCounts[agentKey] = (session.dispatchCounts[agentKey] || 0) + 1
 
+    const exploreCount = session.dispatchCounts["subagent:explore"] || 0
+    const juniorCount = session.dispatchCounts["subagent:generalPurpose"] || 0
+
+    if (subagentType === "explore" && exploreCount > 5) {
+      return {
+        permission: "deny",
+        user_message: `Explore dispatch limit reached (${exploreCount}/5). Batch queries into fewer dispatches.`,
+      }
+    }
+
+    if (juniorCount > 8) {
+      return {
+        permission: "deny",
+        user_message: `Worker dispatch limit reached (${juniorCount}/8). Wait for current workers to complete.`,
+      }
+    }
+
     return { permission: "allow" }
   },
 
   "/subagentStop": (input) => {
     const status = input.status as string
     const subagentType = input.subagent_type as string
-    const summary = input.summary as string
+    const summary = (input.summary as string) || ""
+    const loopCount = (input.loop_count as number) || 0
 
-    if (status === "error") {
-      console.error(`[oh-my-cursor] Subagent ${subagentType} failed`)
+    if (status === "error" && loopCount < 3) {
+      return {
+        followup_message: `Subagent ${subagentType} failed. Review the error and retry with adjusted context.`,
+      }
     }
 
     return {}
@@ -167,7 +193,13 @@ const handlers: Record<string, (input: Record<string, unknown>) => Record<string
 
   "/afterAgentResponse": () => ({}),
 
-  "/afterAgentThought": () => ({}),
+  "/afterAgentThought": (input) => {
+    const durationMs = input.duration_ms as number
+    if (durationMs && durationMs > 30000) {
+      console.log(`[oh-my-cursor] Long thinking block: ${Math.round(durationMs / 1000)}s`)
+    }
+    return {}
+  },
 
   "/preCompact": (input) => {
     const usagePercent = input.context_usage_percent as number
@@ -181,6 +213,28 @@ const handlers: Record<string, (input: Record<string, unknown>) => Record<string
   "/stop": (input) => {
     const status = input.status as string
     const loopCount = (input.loop_count as number) || 0
+    const convId = (input.conversation_id as string) || "unknown"
+    const session = getOrCreateSession(convId)
+
+    if (status === "completed" && session.contextHistory.length > 0) {
+      const hasIncompleteTodos = session.contextHistory.some(
+        (entry) => entry.includes("TodoWrite") || entry.includes("in_progress"),
+      )
+
+      if (hasIncompleteTodos && loopCount < 100) {
+        return {
+          followup_message:
+            "There are incomplete todos remaining. Continue working on the next pending task. Check TodoRead for current state.",
+        }
+      }
+    }
+
+    if (status === "error" && loopCount < 3) {
+      return {
+        followup_message:
+          "The previous attempt encountered an error. Review what went wrong and try a different approach.",
+      }
+    }
 
     return {}
   },

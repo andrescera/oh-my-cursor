@@ -8,7 +8,7 @@
 
 ## TL;DR
 
-Extract `packages/oh-my-cursor/` from the oh-my-openagent monorepo into a standalone fork, restructure it as a root-level project, set it as default branch, and ensure legal compliance with the SUL-1.0 license.
+Extract the oh-my-cursor plugin from the oh-my-openagent monorepo into a standalone fork, restructure it as a root-level project, set it as default branch, and ensure legal compliance with the SUL-1.0 license.
 
 **Deliverables:** 8 tasks across 3 waves
 **Critical path:** Legal compliance (Wave 1) -> Repo restructuring (Wave 2) -> Polish & push (Wave 3)
@@ -39,7 +39,7 @@ The parent repo uses SUL-1.0 (NOT MIT, NOT Apache). Key obligations for the fork
 
 ### License Mismatch (Must Fix)
 
-`packages/oh-my-cursor` currently claims MIT in README.md and plugin.json, but the parent code is SUL-1.0. The fork must either:
+The standalone plugin currently claims MIT in README.md and plugin.json, but the parent code is SUL-1.0. The fork must either:
 - **Option A (Recommended):** Use SUL-1.0 for the whole fork (legally sound)
 - **Option B:** Dual-license only YOUR original code as MIT, while noting that derived portions are SUL-1.0 (complex, error-prone)
 
@@ -51,7 +51,7 @@ Forking is explicitly permitted by the SUL-1.0 license as long as the obligation
 
 ## Source Inventory
 
-### What's in packages/oh-my-cursor/ (98 files)
+### What's in the plugin tree (98 files)
 
 | Category | Count | Description |
 |----------|-------|-------------|
@@ -66,7 +66,7 @@ Forking is explicitly permitted by the SUL-1.0 license as long as the obligation
 
 ### External Dependencies: NONE
 
-packages/oh-my-cursor has zero imports from other monorepo packages. It is fully self-contained.
+The plugin has zero imports from other monorepo packages. It is fully self-contained.
 
 ---
 
@@ -99,10 +99,10 @@ packages/oh-my-cursor has zero imports from other monorepo packages. It is fully
 
 ### Wave 2: Repo Restructuring (the main work)
 
-#### T02: Move packages/oh-my-cursor/ contents to repo root
+#### T02: Move plugin contents to repo root
 
 **What to do:**
-1. Move all directories from `packages/oh-my-cursor/` to repo root:
+1. Move all directories from the former monorepo plugin directory to repo root:
    - `hooks/` -> `hooks/`
    - `agents/` -> `agents/`
    - `commands/` -> `commands/`
@@ -111,7 +111,7 @@ packages/oh-my-cursor has zero imports from other monorepo packages. It is fully
    - `scripts/` -> `scripts/`
    - `automations/` -> `automations/`
    - `.cursor-plugin/` -> `.cursor-plugin/`
-2. Move root-level files from `packages/oh-my-cursor/`:
+2. Move root-level files from that plugin directory:
    - `README.md` -> `README.md` (replaces monorepo README)
    - `mcp.json` -> `mcp.json`
    - `worktrees.json` -> `worktrees.json`
@@ -173,14 +173,14 @@ packages/oh-my-cursor has zero imports from other monorepo packages. It is fully
 4. In `mcp.json`: no monorepo references. Verify.
 5. In `.cursor-plugin/plugin.json`: update repository URL to point to the fork repo
 6. In `README.md`: 
-   - Update any `packages/oh-my-cursor/` references to root-relative paths
+   - Update any monorepo-relative plugin paths to root-relative paths
    - Update git clone URL to fork repo
    - Update credits to prominently link oh-my-openagent
 7. In `DEEPLINKS.md`: no monorepo references. Verify.
-8. In `scripts/config-generator.ts`: references `packages/oh-my-cursor/agents/` -- update to `agents/`
+8. In `scripts/config-generator.ts`: ensure generated stubs reference `agents/` (not old monorepo paths)
 
 **Acceptance Criteria:**
-- [ ] No references to `packages/oh-my-cursor/` in any file
+- [ ] No references to old monorepo plugin directory paths in any file
 - [ ] No references to the monorepo structure
 - [ ] Repository URL in plugin.json points to fork
 - [ ] install.sh works from repo root
@@ -282,7 +282,7 @@ packages/oh-my-cursor has zero imports from other monorepo packages. It is fully
 | Commit | Tasks | Message |
 |--------|-------|---------|
 | 1 | T01 | `docs: add LICENSE, NOTICE, and attribution for oh-my-openagent fork` |
-| 2 | T02+T03 | `refactor: extract packages/oh-my-cursor to repo root, remove monorepo files` |
+| 2 | T02+T03 | `refactor: extract oh-my-cursor to repo root, remove monorepo files` |
 | 3 | T04+T05 | `fix: update paths and references for standalone repo structure` |
 | 4 | T08 | `docs: add CONTRIBUTING.md for standalone fork` |
 

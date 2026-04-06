@@ -5,8 +5,8 @@
   "author": {
     "name": "oh-my-openagent contributors"
   },
-  "repository": "https://github.com/anomalyco/opencode",
-  "license": "MIT",
+  "repository": "https://github.com/code-yeongyu/oh-my-openagent",
+  "license": "SUL-1.0",
   "keywords": ["multi-agent", "orchestration", "hooks", "subagents", "planning"],
   "agents": "./agents/",
   "commands": "./commands/",

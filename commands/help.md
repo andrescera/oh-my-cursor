@@ -1,6 +1,6 @@
 # Help
 
-oh-my-cursor uses a **dispatcher root**: the main chat thread only delegates work via the Task tool (plus TodoWrite, AskQuestion, SwitchMode). It does not edit, read, or search the codebase itself. Coordinators and workers are defined in `packages/oh-my-cursor/rules/orchestrator.mdc` (routing table, batching, and lifecycle).
+oh-my-cursor uses a **dispatcher root**: the main chat thread only delegates work via the Task tool (plus TodoWrite, AskQuestion, SwitchMode). It does not edit, read, or search the codebase itself. Coordinators and workers are defined in `rules/orchestrator.mdc` (routing table, batching, and lifecycle).
 
 ## Agents
 
@@ -37,7 +37,7 @@ oh-my-cursor uses a **dispatcher root**: the main chat thread only delegates wor
 
 ## Skills
 
-Skills live under `packages/oh-my-cursor/skills/<name>/SKILL.md`. Load when the task matches the triggers.
+Skills live under `skills/<name>/SKILL.md`. Load when the task matches the triggers.
 
 - **agent-browser**: Web testing, navigation, forms, screenshots, extracting page data.
 - **ai-slop-remover**: One file at a time; remove noisy comments, generic names, shallow abstractions; parallelize per file for batches.

@@ -89,7 +89,7 @@ async function generatePlugin(configPath: string, outputDir: string): Promise<vo
     version: "0.1.0",
     description: "Multi-agent orchestration for Cursor (generated from oh-my-opencode config)",
     author: { name: "oh-my-openagent contributors" },
-    license: "MIT",
+    license: "SUL-1.0",
   }
   await writeFile(
     join(outputDir, ".cursor-plugin", "plugin.json"),
@@ -116,7 +116,7 @@ async function generatePlugin(configPath: string, outputDir: string): Promise<vo
     if (promptAppend) {
       lines.push(promptAppend, "")
     }
-    lines.push(`This agent was generated from oh-my-opencode config. See the full agent definition in packages/oh-my-cursor/agents/${agentName}.md for the complete prompt.`)
+    lines.push(`This agent was generated from oh-my-opencode config. See the full agent definition in agents/${agentName}.md for the complete prompt.`)
 
     await writeFile(
       join(outputDir, "agents", `${agentName}.md`),

@@ -165,4 +165,4 @@ Inspired by [oh-my-cursor](https://github.com/tmcfarlane/oh-my-cursor) orchestra
 
 ## License
 
-MIT
+Sustainable Use License 1.0 (SUL-1.0). See [LICENSE.md](LICENSE.md) for full text.

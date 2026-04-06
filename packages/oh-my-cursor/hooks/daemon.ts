@@ -2,12 +2,37 @@ import { serve } from "bun"
 
 const PORT = parseInt(process.env.OH_MY_CURSOR_PORT || "47847")
 
+type RalphLoopState = {
+  active: boolean
+  iteration: number
+  maxIterations: number
+  startedAt: string
+}
+
+type BoulderState = {
+  active: boolean
+  failureCount: number
+  lastContinuationAt: string | null
+  stagnationCount: number
+}
+
 type SessionState = {
   id: string
   startedAt: string
   env: Record<string, string>
   dispatchCounts: Record<string, number>
   contextHistory: string[]
+  readPaths: Set<string>
+  injectedPaths: Set<string>
+  pendingWriteArgs: Map<string, unknown>
+  toolCallCount: number
+  reminderInjected: boolean
+  ralphState: RalphLoopState | null
+  boulderState: BoulderState | null
+  stoppedAt: string | null
+  errorCount: number
+  lastCompactionEpoch: number
+  compactionSnapshot: unknown | null
 }
 
 const sessions = new Map<string, SessionState>()
@@ -20,6 +45,17 @@ function getOrCreateSession(conversationId: string): SessionState {
       env: {},
       dispatchCounts: {},
       contextHistory: [],
+      readPaths: new Set(),
+      injectedPaths: new Set(),
+      pendingWriteArgs: new Map(),
+      toolCallCount: 0,
+      reminderInjected: false,
+      ralphState: null,
+      boulderState: null,
+      stoppedAt: null,
+      errorCount: 0,
+      lastCompactionEpoch: 0,
+      compactionSnapshot: null,
     })
   }
   return sessions.get(conversationId)!

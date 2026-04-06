@@ -26,7 +26,7 @@ bash install.sh --uninstall
 |-----------|-------|-------------|
 | Agents | 11 + protocol | Specialized subagents with model routing |
 | Rules | 4 | Orchestrator + coding standards |
-| Commands | 9 | Slash commands (/plan, /refactor, /ralph-loop, etc.) |
+| Commands | 9 | Slash commands (/deep-plan, /refactor, /ralph-loop, etc.) |
 | Skills | 6 | Domain expertise (git, frontend, browser, review) |
 | Hooks | 1 daemon | Persistent Bun HTTP server for all 17 hook events |
 | MCP | 4 servers | websearch, context7, grep_app + sidecar |
@@ -72,7 +72,7 @@ You (root thread)
 
 | Command | Description |
 |---------|-------------|
-| `/plan` | Create a strategic work plan with Prometheus |
+| `/deep-plan` | Create a strategic work plan with Prometheus |
 | `/start-work` | Execute an existing plan with Atlas |
 | `/refactor` | Intelligent refactoring with LSP + AST-grep |
 | `/init-deep` | Generate hierarchical AGENTS.md files |

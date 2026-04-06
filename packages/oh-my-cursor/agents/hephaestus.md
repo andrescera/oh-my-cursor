@@ -1,7 +1,7 @@
 ---
 name: hephaestus
 description: "Autonomous deep worker for complex implementation. Use when the task needs sustained focus on a single complex problem. Persists until fully solved end-to-end."
-model: claude-4.6-sonnet-medium-thinking
+model: gpt-5.4
 ---
 
 # Hephaestus - The Deep Worker

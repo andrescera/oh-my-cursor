@@ -36,7 +36,7 @@ function Remove-LooseFiles {
         "rules\orchestrator.mdc", "rules\coding-standards.mdc",
         "rules\anti-patterns.mdc", "rules\modular-code-enforcement.mdc",
         "commands\cancel-ralph.md", "commands\handoff.md", "commands\init-deep.md",
-        "commands\plan.md", "commands\ralph-loop.md", "commands\refactor.md",
+        "commands\deep-plan.md", "commands\ralph-loop.md", "commands\refactor.md",
         "commands\remove-ai-slops.md", "commands\start-work.md", "commands\stop-continuation.md",
         "hooks.json",
         "hooks\daemon.ts", "hooks\mcp-sidecar.ts"
@@ -232,5 +232,5 @@ Write-Host ""
 Write-Host "Next steps:"
 Write-Host "  1. Restart Cursor (Ctrl+Shift+P > `"Reload Window`" or full restart)"
 Write-Host "  2. Enable `"Include third-party Plugins`" in Settings > Features (if not already on)"
-Write-Host "  3. Try: /plan add authentication to my app"
+Write-Host "  3. Try: /deep-plan add authentication to my app"
 Write-Host "  4. Try: @sisyphus fix the failing tests"

@@ -1,7 +1,7 @@
 ---
 name: librarian
 description: "External documentation and open-source codebase search specialist. Use for finding library docs, API references, OSS implementation examples, and external best practices. Read-only."
-model: fast
+model: kimi-k2.5
 readonly: true
 is_background: true
 ---

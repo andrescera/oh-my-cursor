@@ -1,7 +1,7 @@
 ---
 name: multimodal-looker
 description: "Media file interpreter for PDFs, images, and diagrams. Use when files cannot be read as plain text and need visual analysis."
-model: inherit
+model: gemini-3.1-pro
 readonly: true
 ---
 

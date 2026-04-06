@@ -7,5 +7,10 @@
   },
   "repository": "https://github.com/anomalyco/opencode",
   "license": "MIT",
-  "keywords": ["multi-agent", "orchestration", "hooks", "subagents", "planning"]
+  "keywords": ["multi-agent", "orchestration", "hooks", "subagents", "planning"],
+  "agents": "./agents/",
+  "commands": "./commands/",
+  "skills": "./skills/",
+  "rules": "./rules/",
+  "hooks": "./hooks/hooks.json"
 }

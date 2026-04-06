@@ -11,7 +11,7 @@
  * UI resources via the MCP Apps extension spec.
  */
 
-const STATUS_HTML = `<!DOCTYPE html>
+export const STATUS_HTML = `<!DOCTYPE html>
 <html>
 <head>
   <style>
@@ -112,8 +112,17 @@ const STATUS_HTML = `<!DOCTYPE html>
         const data = await res.json();
         document.getElementById('daemon-status').textContent = 'Connected';
         document.getElementById('daemon-status').className = 'stat-value status-ok';
+        document.getElementById('session-id').textContent = data.currentSessionId || '--';
         document.getElementById('session-count').textContent = data.sessions || 0;
         document.getElementById('uptime').textContent = Math.round(data.uptime || 0) + 's';
+        document.getElementById('tool-calls').textContent = String(data.toolCalls ?? 0);
+        document.getElementById('explore-count').textContent =
+          String(data.exploreCounts ?? 0) + ' / 5';
+        document.getElementById('worker-count').textContent =
+          String(data.workerCounts ?? 0) + ' / 8';
+        document.getElementById('ralph-status').textContent = data.ralphActive
+          ? 'Active'
+          : 'Inactive';
       } catch {
         document.getElementById('daemon-status').textContent = 'Offline';
         document.getElementById('daemon-status').className = 'stat-value status-error';

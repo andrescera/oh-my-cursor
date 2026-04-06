@@ -1,5 +1,12 @@
 import { serve } from "bun"
 
+import {
+  handleStatusToolCall,
+  MCP_APP_RESOURCE,
+  MCP_APP_TOOL,
+  STATUS_HTML,
+} from "./mcp-app"
+
 const PORT = parseInt(process.env.OH_MY_CURSOR_MCP_PORT || "47848")
 
 const TOOLS = [
@@ -61,6 +68,7 @@ const TOOLS = [
       required: ["action"],
     },
   },
+  MCP_APP_TOOL,
 ]
 
 async function handleToolCall(
@@ -243,6 +251,33 @@ serve({
     if (url.pathname === "/mcp" && req.method === "POST") {
       const body = await req.json()
 
+      if (body.method === "resources/list") {
+        return Response.json({
+          jsonrpc: "2.0",
+          id: body.id,
+          result: [MCP_APP_RESOURCE],
+        })
+      }
+
+      if (body.method === "resources/read") {
+        const uri = body.params?.uri
+        if (uri === MCP_APP_RESOURCE.uri) {
+          return Response.json({
+            jsonrpc: "2.0",
+            id: body.id,
+            result: {
+              contents: [
+                {
+                  uri: MCP_APP_RESOURCE.uri,
+                  mimeType: "text/html",
+                  text: STATUS_HTML,
+                },
+              ],
+            },
+          })
+        }
+      }
+
       if (body.method === "tools/list") {
         return Response.json({
           jsonrpc: "2.0",
@@ -253,6 +288,13 @@ serve({
 
       if (body.method === "tools/call") {
         const { name, arguments: args } = body.params
+        if (name === "oh_my_cursor_status") {
+          return Response.json({
+            jsonrpc: "2.0",
+            id: body.id,
+            result: handleStatusToolCall(),
+          })
+        }
         const result = await handleToolCall(name, args || {})
         return Response.json({
           jsonrpc: "2.0",

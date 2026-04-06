@@ -1,0 +1,85 @@
+{
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "curl -s -X POST http://localhost:47847/beforeShellExecution -H 'Content-Type: application/json' -d \"$(cat)\""
+          }
+        ]
+      },
+      {
+        "matcher": "Read",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "curl -s -X POST http://localhost:47847/beforeReadFile -H 'Content-Type: application/json' -d \"$(cat)\""
+          }
+        ]
+      }
+    ],
+    "PostToolUse": [
+      {
+        "matcher": ".*",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "curl -s -X POST http://localhost:47847/postToolUse -H 'Content-Type: application/json' -d \"$(cat)\""
+          }
+        ]
+      }
+    ],
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "curl -s -X POST http://localhost:47847/stop -H 'Content-Type: application/json' -d \"$(cat)\""
+          }
+        ]
+      }
+    ],
+    "SubagentStop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "curl -s -X POST http://localhost:47847/subagentStop -H 'Content-Type: application/json' -d \"$(cat)\""
+          }
+        ]
+      }
+    ],
+    "SessionStart": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "curl -s -X POST http://localhost:47847/sessionStart -H 'Content-Type: application/json' -d \"$(cat)\""
+          }
+        ]
+      }
+    ],
+    "SessionEnd": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "curl -s -X POST http://localhost:47847/sessionEnd -H 'Content-Type: application/json' -d \"$(cat)\""
+          }
+        ]
+      }
+    ],
+    "PreCompact": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "curl -s -X POST http://localhost:47847/preCompact -H 'Content-Type: application/json' -d \"$(cat)\""
+          }
+        ]
+      }
+    ]
+  }
+}

@@ -7,7 +7,7 @@ Dispatch to **sisyphus** for intelligent refactoring with full codebase awarenes
 3. **Codemap**: Build dependency graph and impact analysis from exploration results.
 4. **Test assessment**: Evaluate test coverage. If coverage is low for affected areas, pause and inform user.
 5. **Plan**: Create detailed refactoring plan with atomic steps and rollback checkpoints.
-6. **Execute**: Step-by-step refactoring with continuous verification. Run lints and tests after EVERY change. Use LSP tools (go-to-definition, find-references, rename) for precise analysis.
+6. **Execute**: Step-by-step refactoring with continuous verification. Run lints and tests after EVERY change. Use Grep and Glob for dependency analysis, StrReplace for precise renames.
 7. **Verify**: Full test suite, type check, lint check after completion.
 
 ## Rules

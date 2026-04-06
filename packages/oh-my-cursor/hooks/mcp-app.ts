@@ -11,6 +11,8 @@
  * UI resources via the MCP Apps extension spec.
  */
 
+const DAEMON_PORT = process.env.OH_MY_CURSOR_PORT || "47847"
+
 export const STATUS_HTML = `<!DOCTYPE html>
 <html>
 <head>
@@ -200,7 +202,7 @@ export const STATUS_HTML = `<!DOCTYPE html>
       </div>
       <div class="event-actions">
         <span class="event-count" id="event-count">0 events</span>
-        <a class="action-btn" href="http://localhost:47847/session-log/download" download="session-log.jsonl" target="_blank">Download JSONL</a>
+        <a class="action-btn" href="http://localhost:${DAEMON_PORT}/session-log/download" download="session-log.jsonl" target="_blank">Download JSONL</a>
         <button class="action-btn" onclick="copyLog()">Copy JSON</button>
         <button class="action-btn" onclick="clearLogUI()">Clear</button>
       </div>
@@ -211,7 +213,7 @@ export const STATUS_HTML = `<!DOCTYPE html>
   <script>
     async function refresh() {
       try {
-        const res = await fetch('http://localhost:47847/health');
+        const res = await fetch('http://localhost:${DAEMON_PORT}/health');
         const data = await res.json();
         document.getElementById('daemon-status').textContent = 'Connected';
         document.getElementById('daemon-status').className = 'stat-value status-ok';
@@ -257,7 +259,7 @@ export const STATUS_HTML = `<!DOCTYPE html>
 
     async function refreshEvents() {
       try {
-        const res = await fetch('http://localhost:47847/session-log?limit=200');
+        const res = await fetch('http://localhost:${DAEMON_PORT}/session-log?limit=200');
         let events = await res.json();
         if (currentFilter === 'tools') events = events.filter(e => e.tool && !['Task','task','Agent','agent'].includes(e.tool));
         else if (currentFilter === 'dispatches') events = events.filter(e => e.agentType);
@@ -298,7 +300,7 @@ export const STATUS_HTML = `<!DOCTYPE html>
 
     async function copyLog() {
       try {
-        const res = await fetch('http://localhost:47847/session-log?limit=500');
+        const res = await fetch('http://localhost:${DAEMON_PORT}/session-log?limit=500');
         const events = await res.json();
         await navigator.clipboard.writeText(JSON.stringify(events, null, 2));
         alert('Copied ' + events.length + ' events to clipboard');
@@ -308,7 +310,7 @@ export const STATUS_HTML = `<!DOCTYPE html>
     async function clearLogUI() {
       if (!confirm('Clear all session events?')) return;
       try {
-        await fetch('http://localhost:47847/session-log/clear', { method: 'POST' });
+        await fetch('http://localhost:${DAEMON_PORT}/session-log/clear', { method: 'POST' });
         refreshEvents();
       } catch { alert('Failed to clear'); }
     }

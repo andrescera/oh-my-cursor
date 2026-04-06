@@ -26,7 +26,7 @@ bash install.sh --uninstall
 |-----------|-------|-------------|
 | Agents | 11 + protocol | Specialized subagents with model routing |
 | Rules | 4 | Orchestrator + coding standards |
-| Commands | 10 | Slash commands (/deep-plan, /ulw-loop, /refactor, /ralph-loop, etc.) |
+| Commands | 11 | Slash commands (/deep-plan, /ulw-loop, /refactor, /ralph-loop, etc.) |
 | Skills | 7 | Domain expertise (git, frontend, browser, review, playwright) |
 | Hooks | 1 daemon | Persistent Bun HTTP server; 30+ hook handlers in daemon |
 | MCP | 4 servers | websearch, context7, grep_app + sidecar |
@@ -39,17 +39,17 @@ You (root thread)
        │
        ├── Intent Gate: what did the user ask?
        │
-       ├── Task(explore) ──── Codebase search (fast, readonly, background)
-       ├── Task(librarian) ── External docs search (fast, readonly, background)
+       ├── Task(explore) ──── Codebase search (gemini-2.5-flash, readonly, background)
+       ├── Task(librarian) ── External docs search (kimi-k2.5, readonly, background)
        ├── Task(sisyphus) ─── Complex multi-file work (opus-max-thinking)
-       ├── Task(hephaestus) ─ Sustained deep work (sonnet-medium-thinking)
+       ├── Task(hephaestus) ─ Sustained deep work (gpt-5.4)
        ├── Task(atlas) ────── Plan execution via delegation (sonnet-medium-thinking)
        ├── Task(prometheus) ─ Strategic planning (opus-max-thinking)
-       ├── Task(oracle) ───── Architecture consultation (opus-high-thinking, readonly)
+       ├── Task(oracle) ───── Architecture consultation (gpt-5.4, readonly)
        ├── Task(metis) ────── Pre-planning gap analysis (opus-max-thinking, readonly)
-       ├── Task(momus) ────── Plan review (opus-max-thinking, readonly)
+       ├── Task(momus) ────── Plan review (gpt-5.4, readonly)
        ├── Task(sisyphus-junior) ── Quick focused tasks (sonnet-medium-thinking)
-       └── Task(multimodal-looker) ── Visual analysis (inherit, readonly)
+       └── Task(multimodal-looker) ── Visual analysis (gemini-3.1-pro, readonly)
 ```
 
 ## Agents
@@ -57,16 +57,16 @@ You (root thread)
 | Agent | Model | Role |
 |-------|-------|------|
 | **sisyphus** | claude-4.6-opus-max-thinking | Main orchestrator + deep worker |
-| **hephaestus** | claude-4.6-sonnet-medium-thinking | Autonomous deep worker |
+| **hephaestus** | gpt-5.4 | Autonomous deep worker |
 | **atlas** | claude-4.6-sonnet-medium-thinking | Todo-list orchestrator |
 | **prometheus** | claude-4.6-opus-max-thinking | Strategic planner |
-| **oracle** | claude-4.6-opus-high-thinking | Architecture consultant (readonly) |
+| **oracle** | gpt-5.4 | Architecture consultant (readonly) |
 | **metis** | claude-4.6-opus-max-thinking | Pre-planning analysis (readonly) |
-| **momus** | claude-4.6-opus-max-thinking | Plan reviewer (readonly) |
-| **explore** | fast | Codebase search (readonly, background) |
-| **librarian** | fast | External docs search (readonly, background) |
+| **momus** | gpt-5.4 | Plan reviewer (readonly) |
+| **explore** | gemini-2.5-flash | Codebase search (readonly, background) |
+| **librarian** | kimi-k2.5 | External docs search (readonly, background) |
 | **sisyphus-junior** | claude-4.6-sonnet-medium-thinking | Quick task executor |
-| **multimodal-looker** | inherit | Visual file analysis (readonly) |
+| **multimodal-looker** | gemini-3.1-pro | Visual file analysis (readonly) |
 
 ## Slash Commands
 
@@ -75,6 +75,7 @@ You (root thread)
 | `/deep-plan` | Create a strategic work plan with Prometheus |
 | `/start-work` | Execute an existing plan with Atlas |
 | `/refactor` | Intelligent refactoring with LSP + AST-grep |
+| `/briareus` | Massive parallelism: decompose into micro-tasks and run many sisyphus-junior workers at once |
 | `/init-deep` | Generate hierarchical AGENTS.md files |
 | `/ralph-loop` | Self-referential loop until task completion |
 | `/ulw-loop` | Ultrawork loop with Oracle verification gate |

@@ -210,6 +210,28 @@ describe("hook daemon", () => {
       expect(result.permission).toBe("deny")
       expect(result.userMessage).toContain("dispatch-limit")
     })
+
+    describe("#given worker dispatch count exceeds limit of 8", () => {
+      describe("#when a new general-purpose worker is dispatched", () => {
+        test("#then it denies the dispatch with worker limit message", async () => {
+          await post("/sessionStart", { session_id: "sess-worker-limits" })
+          for (let i = 0; i < 8; i++) {
+            await post("/subagentStart", {
+              agent_type: "general-purpose",
+              session_id: "sess-worker-limits",
+            })
+          }
+          const result = await post("/subagentStart", {
+            agent_type: "general-purpose",
+            session_id: "sess-worker-limits",
+          })
+          expect(result.permission).toBe("deny")
+          expect(result.hookSpecificOutput.additionalContext).toContain("dispatch-limit")
+          expect(result.hookSpecificOutput.additionalContext).toContain("Worker")
+          expect(result.hookSpecificOutput.hookEventName).toBe("SubagentStart")
+        })
+      })
+    })
   })
 
   describe("/subagentStop", () => {
@@ -266,6 +288,42 @@ describe("hook daemon", () => {
       })
       expect(result).toBeDefined()
     })
+
+    describe("#given a Read tool for a file in a directory with AGENTS.md", () => {
+      describe("#when the handler is called", () => {
+        test("#then it injects AGENTS.md content as directory context", async () => {
+          await post("/sessionStart", { session_id: "sess-agents-inject" })
+          const result = await post("/postToolUse", {
+            tool_name: "Read",
+            tool_input: { file_path: "/mnt/development/oh-my-openagent/package.json" },
+            session_id: "sess-agents-inject",
+          })
+          expect(result.additional_context).toContain("[directory-context]")
+          expect(result.additional_context).toContain("AGENTS.md")
+          expect(result.hookSpecificOutput.hookEventName).toBe("PostToolUse")
+        })
+      })
+    })
+
+    describe("#given AGENTS.md was already injected for a directory", () => {
+      describe("#when reading another file in the same directory", () => {
+        test("#then it does not re-inject AGENTS.md", async () => {
+          await post("/sessionStart", { session_id: "sess-agents-dedup" })
+          await post("/postToolUse", {
+            tool_name: "Read",
+            tool_input: { file_path: "/mnt/development/oh-my-openagent/package.json" },
+            session_id: "sess-agents-dedup",
+          })
+          const result = await post("/postToolUse", {
+            tool_name: "Read",
+            tool_input: { file_path: "/mnt/development/oh-my-openagent/tsconfig.json" },
+            session_id: "sess-agents-dedup",
+          })
+          const ctx = result.additional_context || ""
+          expect(ctx).not.toContain("[directory-context]")
+        })
+      })
+    })
   })
 
   describe("/stop", () => {
@@ -314,6 +372,41 @@ describe("hook daemon", () => {
         conversation_id: "conv-stop-error",
       })
       expect(result.decision).toBeUndefined()
+    })
+
+    describe("#given an active ralph loop with max iterations", () => {
+      describe("#when stop is called", () => {
+        test("#then it blocks and returns continuation message with iteration count", async () => {
+          await post("/sessionStart", { session_id: "sess-ralph-stop" })
+          await post("/beforeSubmitPrompt", {
+            prompt: "/ralph-loop --max-iterations 5",
+            session_id: "sess-ralph-stop",
+          })
+          const result = await post("/stop", {
+            session_id: "sess-ralph-stop",
+          })
+          expect(result.decision).toBe("block")
+          expect(result.followup_message).toContain("Continue working")
+          expect(result.followup_message).toContain("1/5")
+        })
+      })
+    })
+
+    describe("#given context history contains TodoWrite entries", () => {
+      describe("#when stop is called with no active ralph loop", () => {
+        test("#then it blocks and requests todo completion via boulder state", async () => {
+          await post("/sessionStart", { session_id: "sess-boulder-stop" })
+          await post("/postToolUse", {
+            tool_name: "TodoWrite",
+            session_id: "sess-boulder-stop",
+          })
+          const result = await post("/stop", {
+            session_id: "sess-boulder-stop",
+          })
+          expect(result.decision).toBe("block")
+          expect(result.followup_message).toContain("incomplete todos")
+        })
+      })
     })
   })
 
@@ -376,6 +469,179 @@ describe("hook daemon", () => {
       expect(result.continue).toBe(true)
       expect(result.additional_context).toContain("ralph-loop")
       expect(result.hookSpecificOutput.additionalContext).toContain("ralph-loop")
+    })
+  })
+
+  describe("/postToolUseFailure", () => {
+    describe("#given a rate limit error", () => {
+      describe("#when the handler is called", () => {
+        test("#then it returns rate limit recovery guidance", async () => {
+          const result = await post("/postToolUseFailure", {
+            tool_name: "Shell",
+            error: "429 Too Many Requests",
+            session_id: "sess-fail-rate",
+          })
+          expect(result.additional_context).toContain("session-recovery")
+          expect(result.additional_context).toContain("Rate limit")
+          expect(result.hookSpecificOutput.hookEventName).toBe("PostToolUseFailure")
+        })
+      })
+    })
+
+    describe("#given a timeout error", () => {
+      describe("#when the handler is called", () => {
+        test("#then it returns timeout recovery guidance", async () => {
+          const result = await post("/postToolUseFailure", {
+            tool_name: "Task",
+            error: "Request timed out after 30s",
+            session_id: "sess-fail-timeout",
+          })
+          expect(result.additional_context).toContain("session-recovery")
+          expect(result.additional_context).toContain("timed out")
+          expect(result.hookSpecificOutput.hookEventName).toBe("PostToolUseFailure")
+        })
+      })
+    })
+
+    describe("#given a permission denied error", () => {
+      describe("#when the handler is called", () => {
+        test("#then it returns permission recovery guidance", async () => {
+          const result = await post("/postToolUseFailure", {
+            tool_name: "Write",
+            error: "Permission denied: /etc/passwd",
+            session_id: "sess-fail-perm",
+          })
+          expect(result.additional_context).toContain("session-recovery")
+          expect(result.additional_context).toContain("Permission denied")
+          expect(result.hookSpecificOutput.hookEventName).toBe("PostToolUseFailure")
+        })
+      })
+    })
+
+    describe("#given a not found error", () => {
+      describe("#when the handler is called", () => {
+        test("#then it returns not found recovery guidance", async () => {
+          const result = await post("/postToolUseFailure", {
+            tool_name: "Read",
+            error: "No such file or directory",
+            session_id: "sess-fail-notfound",
+          })
+          expect(result.additional_context).toContain("session-recovery")
+          expect(result.additional_context).toContain("not found")
+          expect(result.hookSpecificOutput.hookEventName).toBe("PostToolUseFailure")
+        })
+      })
+    })
+
+    describe("#given a generic error with no matching pattern", () => {
+      describe("#when the handler is called", () => {
+        test("#then it returns empty object", async () => {
+          const result = await post("/postToolUseFailure", {
+            tool_name: "Shell",
+            error: "Something unexpected happened",
+            session_id: "sess-fail-generic",
+          })
+          expect(Object.keys(result).length).toBe(0)
+        })
+      })
+    })
+  })
+
+  describe("/afterShellExecution", () => {
+    describe("#given any shell execution completes", () => {
+      describe("#when the handler is called", () => {
+        test("#then it returns empty object", async () => {
+          const result = await post("/afterShellExecution", {
+            tool_name: "Shell",
+            output: "command output",
+            session_id: "sess-after-shell",
+          })
+          expect(Object.keys(result).length).toBe(0)
+        })
+      })
+    })
+  })
+
+  describe("/beforeMCPExecution", () => {
+    describe("#given an MCP tool is about to execute", () => {
+      describe("#when the handler is called", () => {
+        test("#then it returns empty object", async () => {
+          const result = await post("/beforeMCPExecution", {
+            mcp_name: "websearch",
+            session_id: "sess-before-mcp",
+          })
+          expect(Object.keys(result).length).toBe(0)
+        })
+      })
+    })
+  })
+
+  describe("/afterMCPExecution", () => {
+    describe("#given an MCP tool completes execution", () => {
+      describe("#when the handler is called", () => {
+        test("#then it returns empty object", async () => {
+          const result = await post("/afterMCPExecution", {
+            mcp_name: "websearch",
+            output: "search results",
+            session_id: "sess-after-mcp",
+          })
+          expect(Object.keys(result).length).toBe(0)
+        })
+      })
+    })
+  })
+
+  describe("/afterFileEdit", () => {
+    describe("#given a file edit completes", () => {
+      describe("#when the handler is called", () => {
+        test("#then it returns empty object", async () => {
+          const result = await post("/afterFileEdit", {
+            file_path: "/project/src/file.ts",
+            session_id: "sess-after-edit",
+          })
+          expect(Object.keys(result).length).toBe(0)
+        })
+      })
+    })
+  })
+
+  describe("/afterAgentResponse", () => {
+    describe("#given an agent produces a response", () => {
+      describe("#when the handler is called", () => {
+        test("#then it returns empty object", async () => {
+          const result = await post("/afterAgentResponse", {
+            response: "Agent response text",
+            session_id: "sess-after-agent",
+          })
+          expect(Object.keys(result).length).toBe(0)
+        })
+      })
+    })
+  })
+
+  describe("/afterAgentThought", () => {
+    describe("#given a short thinking duration under 30s", () => {
+      describe("#when the handler is called", () => {
+        test("#then it returns empty object", async () => {
+          const result = await post("/afterAgentThought", {
+            duration_ms: 5000,
+            session_id: "sess-thought-short",
+          })
+          expect(Object.keys(result).length).toBe(0)
+        })
+      })
+    })
+
+    describe("#given a long thinking duration exceeding 30s", () => {
+      describe("#when the handler is called", () => {
+        test("#then it still returns empty object", async () => {
+          const result = await post("/afterAgentThought", {
+            duration_ms: 45000,
+            session_id: "sess-thought-long",
+          })
+          expect(Object.keys(result).length).toBe(0)
+        })
+      })
     })
   })
 

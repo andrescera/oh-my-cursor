@@ -1,0 +1,22 @@
+---
+description: "oh-my-cursor dynamic context (auto-updated by hook daemon)"
+alwaysApply: true
+---
+
+# oh-my-cursor Session Context
+
+Session: sess-prompt-ralph
+Last updated: 2026-04-06T09:46:07.728Z
+
+## Active Session State
+
+No active agents
+
+
+
+## Orchestration Reminders
+
+- Follow the orchestrator rule for all delegation
+- Use the 6-section task brief format for every Task dispatch
+- Batch related searches into single explore dispatches
+- Executors self-verify before reporting done

@@ -1,10 +1,11 @@
-import { serve } from "bun"
-import { readFileSync, existsSync } from "node:fs"
+import { serve, type Server } from "bun"
+import { readFileSync, writeFileSync, unlinkSync, existsSync } from "node:fs"
 import { writeContextRule, clearContextRule } from "./scripts/context-injector"
 import { STATUS_HTML } from "./mcp-app"
 import { logEvent, getEvents, getSessionSummary, getLogPath, clearLog } from "./event-logger"
 
 const PORT = parseInt(process.env.OH_MY_CURSOR_PORT || "47847")
+const PID_FILE = "/tmp/oh-my-cursor-daemon.pid"
 
 type RalphLoopState = {
   active: boolean
@@ -68,6 +69,80 @@ function getOrCreateSession(conversationId: string): SessionState {
 function parseInput(body: unknown): Record<string, unknown> {
   if (typeof body === "string") return JSON.parse(body)
   return body as Record<string, unknown>
+}
+
+function isProcessAlive(pid: number): boolean {
+  try {
+    process.kill(pid, 0)
+    return true
+  } catch (err) {
+    if (err instanceof Error && "code" in err && (err as { code?: string }).code === "EPERM") {
+      return true
+    }
+    return false
+  }
+}
+
+function handleStaleProcess(): void {
+  if (!existsSync(PID_FILE)) return
+
+  try {
+    const pidStr = readFileSync(PID_FILE, "utf-8").trim()
+    const pid = parseInt(pidStr, 10)
+    if (isNaN(pid)) {
+      console.log("[oh-my-cursor] Removing invalid PID file")
+      unlinkSync(PID_FILE)
+      return
+    }
+
+    if (isProcessAlive(pid)) {
+      console.log(`[oh-my-cursor] Killing stale daemon process (PID ${pid})`)
+      try {
+        process.kill(pid, "SIGTERM")
+      } catch (killErr) {
+        console.error("[oh-my-cursor] Failed to kill stale process:", killErr instanceof Error ? killErr.message : String(killErr))
+      }
+    }
+
+    unlinkSync(PID_FILE)
+  } catch (readErr) {
+    console.error("[oh-my-cursor] Error handling stale PID file:", readErr instanceof Error ? readErr.message : String(readErr))
+  }
+}
+
+function writePidFile(): void {
+  writeFileSync(PID_FILE, String(process.pid), "utf-8")
+  console.log(`[oh-my-cursor] PID file written: ${PID_FILE} (PID ${process.pid})`)
+}
+
+function removePidFile(): void {
+  try {
+    if (existsSync(PID_FILE)) {
+      unlinkSync(PID_FILE)
+      console.log("[oh-my-cursor] PID file removed")
+    }
+  } catch (err) {
+    console.error("[oh-my-cursor] Failed to remove PID file:", err instanceof Error ? err.message : String(err))
+  }
+}
+
+let server: Server | null = null
+let isShuttingDown = false
+
+function gracefulShutdown(reason: string): void {
+  if (isShuttingDown) return
+  isShuttingDown = true
+
+  console.log(`[oh-my-cursor] Shutting down: ${reason}`)
+  removePidFile()
+
+  if (server) {
+    server.stop(true)
+    console.log("[oh-my-cursor] HTTP server closed")
+  }
+
+  console.log("[oh-my-cursor] Shutdown complete")
+  process.exit(0)
 }
 
 const handlers: Record<string, (input: Record<string, unknown>) => Record<string, unknown>> = {
@@ -270,7 +345,7 @@ const handlers: Record<string, (input: Record<string, unknown>) => Record<string
             additionalContext += (additionalContext ? "\n\n" : "") +
               "[directory-context] AGENTS.md found at " + agentsPath + ":\n" + snippet
           }
-        } catch (err) { /* AGENTS.md is optional */ }
+        } catch { /* AGENTS.md is optional, skip silently */ }
       }
     }
 
@@ -589,6 +664,11 @@ const handlers: Record<string, (input: Record<string, unknown>) => Record<string
 
     return {}
   },
+
+  "/shutdown": () => {
+    setTimeout(() => gracefulShutdown("shutdown endpoint"), 100)
+    return { status: "shutting_down" }
+  },
 }
 
 function extractMeta(
@@ -626,9 +706,11 @@ function extractMeta(
   return Object.keys(meta).length > 0 ? meta : undefined
 }
 
+handleStaleProcess()
+
 console.log(`[oh-my-cursor] Hook daemon starting on port ${PORT}...`)
 
-serve({
+server = serve({
   port: PORT,
   async fetch(req) {
     const url = new URL(req.url)
@@ -724,5 +806,10 @@ serve({
     }
   },
 })
+
+writePidFile()
+
+process.on("SIGTERM", () => gracefulShutdown("SIGTERM"))
+process.on("SIGINT", () => gracefulShutdown("SIGINT"))
 
 console.log(`[oh-my-cursor] Hook daemon ready on http://localhost:${PORT}`)

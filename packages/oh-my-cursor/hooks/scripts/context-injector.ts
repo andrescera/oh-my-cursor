@@ -66,7 +66,8 @@ export async function readContextState(projectDir: string): Promise<ContextState
       recentTools: [],
       lastUpdated: new Date().toISOString(),
     }
-  } catch {
+  } catch (err) {
+    console.error("[oh-my-cursor] Failed to read context state:", err)
     return null
   }
 }

@@ -193,43 +193,33 @@ describe("hook daemon", () => {
       expect(Object.keys(result).length).toBe(0)
     })
 
-    test("injects warning beyond explore limit with dual response", async () => {
+    test("returns empty (limits enforced in preToolUse)", async () => {
       await post("/sessionStart", { session_id: "sess-limits-2" })
-      for (let i = 0; i < 6; i++) {
-        await post("/subagentStart", {
-          agent_type: "Explore",
-          session_id: "sess-limits-2",
-        })
-      }
       const result = await post("/subagentStart", {
         agent_type: "Explore",
         session_id: "sess-limits-2",
       })
-      expect(result.hookSpecificOutput.additionalContext).toContain("dispatch-limit")
-      expect(result.hookSpecificOutput.hookEventName).toBe("SubagentStart")
-      expect(result.permission).toBe("deny")
-      expect(result.userMessage).toContain("dispatch-limit")
+      expect(Object.keys(result).length).toBe(0)
     })
 
-    describe("#given worker dispatch count exceeds limit of 8", () => {
-      describe("#when a new general-purpose worker is dispatched", () => {
-        test("#then it denies the dispatch with worker limit message", async () => {
-          await post("/sessionStart", { session_id: "sess-worker-limits" })
-          for (let i = 0; i < 8; i++) {
-            await post("/subagentStart", {
-              agent_type: "general-purpose",
-              session_id: "sess-worker-limits",
-            })
-          }
-          const result = await post("/subagentStart", {
-            agent_type: "general-purpose",
-            session_id: "sess-worker-limits",
+    describe("#given explore dispatch limit", () => {
+      test("#then preToolUse(Task) denies beyond limit", async () => {
+        await post("/sessionStart", { session_id: "sess-explore-limit" })
+        for (let i = 0; i < 6; i++) {
+          await post("/preToolUse", {
+            tool_name: "Task",
+            tool_input: { subagent_type: "explore" },
+            session_id: "sess-explore-limit",
           })
-          expect(result.permission).toBe("deny")
-          expect(result.hookSpecificOutput.additionalContext).toContain("dispatch-limit")
-          expect(result.hookSpecificOutput.additionalContext).toContain("Worker")
-          expect(result.hookSpecificOutput.hookEventName).toBe("SubagentStart")
+        }
+        const result = await post("/preToolUse", {
+          tool_name: "Task",
+          tool_input: { subagent_type: "explore" },
+          session_id: "sess-explore-limit",
         })
+        expect(result.permission).toBe("deny")
+        expect(result.hookSpecificOutput.permissionDecision).toBe("deny")
+        expect(result.hookSpecificOutput.permissionDecisionReason).toContain("dispatch-limit")
       })
     })
   })

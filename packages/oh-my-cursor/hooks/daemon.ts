@@ -147,6 +147,14 @@ function gracefulShutdown(reason: string): void {
 
 const handlers: Record<string, (input: Record<string, unknown>) => Record<string, unknown>> = {
   "/health": () => {
+    const TWO_HOURS = 2 * 60 * 60 * 1000
+    const now = Date.now()
+    for (const [id, session] of sessions) {
+      if (now - new Date(session.startedAt).getTime() > TWO_HOURS && !session.ralphState?.active) {
+        sessions.delete(id)
+      }
+    }
+
     let totalToolCalls = 0
     let exploreCounts = 0
     let workerCounts = 0
@@ -276,7 +284,41 @@ const handlers: Record<string, (input: Record<string, unknown>) => Record<string
         const normalized = agentType.toLowerCase().replace('generalpurpose', 'general-purpose')
         const agentKey = `subagent:${normalized}`
         session.dispatchCounts[agentKey] = (session.dispatchCounts[agentKey] || 0) + 1
-        console.log(`[oh-my-cursor] Dispatch tracked via preToolUse: ${agentKey} (${session.dispatchCounts[agentKey]})`)
+
+        const exploreCount = session.dispatchCounts["subagent:explore"] || 0
+        if (normalized === "explore" && exploreCount > 5) {
+          const limitMsg = `[dispatch-limit] Explore dispatch limit reached (${exploreCount}/5). Batch queries into fewer dispatches.`
+          console.log(`[oh-my-cursor] ${limitMsg}`)
+          return {
+            permission: "deny",
+            userMessage: limitMsg,
+            agentMessage: limitMsg,
+            hookSpecificOutput: {
+              hookEventName: "PreToolUse",
+              permissionDecision: "deny",
+              permissionDecisionReason: limitMsg,
+            },
+          }
+        }
+
+        const workerCount = (session.dispatchCounts["subagent:general-purpose"] || 0) +
+          (session.dispatchCounts["subagent:sisyphus"] || 0) +
+          (session.dispatchCounts["subagent:sisyphus-junior"] || 0) +
+          (session.dispatchCounts["subagent:hephaestus"] || 0)
+        if (workerCount > 8) {
+          const limitMsg = `[dispatch-limit] Worker dispatch limit reached (${workerCount}/8). Wait for current workers to complete.`
+          console.log(`[oh-my-cursor] ${limitMsg}`)
+          return {
+            permission: "deny",
+            userMessage: limitMsg,
+            agentMessage: limitMsg,
+            hookSpecificOutput: {
+              hookEventName: "PreToolUse",
+              permissionDecision: "deny",
+              permissionDecisionReason: limitMsg,
+            },
+          }
+        }
       }
     }
 
@@ -370,7 +412,7 @@ const handlers: Record<string, (input: Record<string, unknown>) => Record<string
 
   "/postToolUseFailure": (input) => {
     const toolName = (input.tool_name as string) || ""
-    const errorMessage = (input.error as string) || ""
+    const errorMessage = (input.error as string) || (input.error_message as string) || ((input.tool_response as Record<string, unknown>)?.error as string) || ""
     const convId = (input.conversation_id as string) || (input.session_id as string) || "unknown"
     const session = getOrCreateSession(convId)
 
@@ -397,43 +439,8 @@ const handlers: Record<string, (input: Record<string, unknown>) => Record<string
   },
 
   "/subagentStart": (input) => {
-    const subagentType = (input.agent_type as string) || (input.subagent_type as string) || ""
     const convId = (input.conversation_id as string) || (input.session_id as string) || "unknown"
     const session = getOrCreateSession(convId)
-
-    const agentKey = `subagent:${subagentType.toLowerCase()}`
-    session.dispatchCounts[agentKey] = (session.dispatchCounts[agentKey] || 0) + 1
-
-    const exploreCount = session.dispatchCounts["subagent:explore"] || 0
-    const juniorCount = session.dispatchCounts["subagent:general-purpose"] || 0
-
-    if (subagentType.toLowerCase() === "explore" && exploreCount > 5) {
-      const limitMsg = `[dispatch-limit] Explore dispatch limit reached (${exploreCount}/5). Batch queries into fewer dispatches.`
-      console.log(`[oh-my-cursor] Explore dispatch limit reached (${exploreCount}/5)`)
-      return {
-        permission: "deny",
-        userMessage: limitMsg,
-        agentMessage: limitMsg,
-        hookSpecificOutput: {
-          hookEventName: "SubagentStart",
-          additionalContext: limitMsg,
-        },
-      }
-    }
-
-    if (juniorCount > 8) {
-      const limitMsg = `[dispatch-limit] Worker dispatch limit reached (${juniorCount}/8). Wait for current workers to complete.`
-      console.log(`[oh-my-cursor] Worker dispatch limit reached (${juniorCount}/8)`)
-      return {
-        permission: "deny",
-        userMessage: limitMsg,
-        agentMessage: limitMsg,
-        hookSpecificOutput: {
-          hookEventName: "SubagentStart",
-          additionalContext: limitMsg,
-        },
-      }
-    }
 
     const projectDir = session.env.OH_MY_CURSOR_PROJECT_DIR || process.cwd()
     writeContextRule(projectDir, {
@@ -788,9 +795,9 @@ server = serve({
           sessionId: (parsed.conversation_id as string) || (parsed.session_id as string) || "",
           tool: (parsed.tool_name as string) || undefined,
           agentType: (toolInput.subagent_type as string) || (toolInput.agent_type as string) || (parsed.agent_type as string) || undefined,
-          action: (result.permission as string) || (result.decision === "block" ? "block" : result.followup_message ? "continue" : "noop"),
+          action: path === "/postToolUseFailure" ? "error" : (result.permission as string) || (result.decision === "block" ? "block" : result.followup_message ? "continue" : "noop"),
           durationMs: (parsed.duration_ms as number) || undefined,
-          error: (parsed.error as string) || undefined,
+          error: (parsed.error as string) || (parsed.error_message as string) || ((parsed.tool_response as Record<string, unknown>)?.error as string) || undefined,
           meta: extractMeta(path, parsed, toolInput, result),
         })
       }

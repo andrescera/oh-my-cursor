@@ -1,0 +1,32 @@
+---
+description: "AI-specific anti-patterns to avoid in generated code"
+alwaysApply: true
+---
+
+# Anti-Patterns
+
+## AI Slop Patterns (BLOCKING violations)
+
+- Excessive inline comments narrating what code does
+- Over-abstraction (single-use wrappers, unnecessary indirection)
+- Generic variable names: data, result, item, temp, info, response, value
+- Redundant type annotations that TypeScript/language can infer
+- Console.log left in production code
+- Commented-out code blocks
+- Em dashes and en dashes in code comments or strings
+- AI filler phrases: "Let's", "Now let's", "First, we need to", "simply", "basically", "just"
+
+## Structural Anti-Patterns
+
+- Shotgun debugging (random changes hoping something works)
+- Scope inflation ("also tests for adjacent modules")
+- Premature abstraction ("extracted to utility" before seeing repetition)
+- Over-validation ("15 error checks for 3 inputs")
+- Sequential work when parallel is possible
+
+## Testing Anti-Patterns
+
+- Deleting failing tests to "pass"
+- Tests that test implementation, not behavior
+- Missing edge case coverage
+- "Verify it works" as acceptance criteria (HOW? What does "works" mean?)

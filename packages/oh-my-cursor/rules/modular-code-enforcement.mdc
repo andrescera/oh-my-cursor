@@ -1,0 +1,31 @@
+---
+description: "Enforce modular code organization: small files, clear boundaries, no monoliths"
+globs: "**/*.ts,**/*.tsx,**/*.js,**/*.jsx"
+---
+
+# Modular Code Enforcement
+
+## File Size
+
+- **Soft limit**: 200 lines of code per file
+- **Hard limit**: 400 lines -- split into modules if approaching
+- **Exempt**: Prompt templates, generated files, test fixtures
+
+## Module Boundaries
+
+- Each module has a clear single responsibility
+- index.ts exports only -- no business logic
+- Shared code goes in a shared/ directory, not duplicated
+
+## Naming
+
+- Files: kebab-case (e.g., `user-service.ts`, not `UserService.ts`)
+- Directories: kebab-case
+- No catch-all names: utils.ts, helpers.ts, service.ts, common.ts
+- Name files after what they contain, not what they do generically
+
+## Imports
+
+- Relative within module (`./sibling`)
+- Barrel imports across modules (`from "../shared"`)
+- No path aliases (@/ etc.) -- relative imports only

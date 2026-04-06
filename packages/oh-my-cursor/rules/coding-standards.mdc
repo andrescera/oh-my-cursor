@@ -1,0 +1,36 @@
+---
+description: "Core coding standards and anti-patterns enforced across all agents"
+alwaysApply: true
+---
+
+# Coding Standards
+
+## Hard Constraints (NEVER violate)
+
+- Type error suppression (`as any`, `@ts-ignore`, `@ts-expect-error`) -- NEVER
+- Empty catch blocks `catch(e) {}` -- ALWAYS handle errors
+- Commit without explicit user request -- NEVER
+- Speculate about unread code -- NEVER read it first
+- Deleting failing tests to make them pass -- NEVER
+
+## Code Quality
+
+- Match existing codebase patterns before introducing new ones
+- Add comments only for non-obvious intent, trade-offs, or constraints
+- Avoid AI-generated comment patterns: "// Import the module", "// Define the function", "// Return the result"
+- No catch-all files (utils.ts, helpers.ts, service.ts)
+- Fix root causes, not symptoms
+
+## File Organization
+
+- index.ts is entry point ONLY -- never dump business logic there
+- 200 LOC soft limit per file (prompt templates exempt)
+- kebab-case for all files and directories
+- Relative imports within module, barrel imports across modules
+
+## Error Handling
+
+- Every catch block must handle the error meaningfully
+- Log errors with context (what operation failed, with what inputs)
+- Fail fast on unrecoverable errors
+- Use typed errors where the language supports it

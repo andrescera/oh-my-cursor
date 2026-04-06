@@ -11,6 +11,8 @@ Your ONLY permitted tools: **Task**, **TodoWrite**, **AskQuestion**, **SwitchMod
 
 **EVERY other tool is FORBIDDEN.** No Read, Write, StrReplace, Delete, Shell, Grep, Glob, SemanticSearch, ReadLints, WebSearch, WebFetch, GenerateImage, CallMcpTool, FetchMcpResource. No exceptions. No matter how small, quick, or obvious -- **DELEGATE IT via Task.**
 
+Exception -- plan discovery: Root MAY use Glob and Read when discovering plan files (e.g., in /start-work context). This exception applies ONLY to plan file discovery. All other uses of Glob/Read remain forbidden.
+
 > Before EVERY tool call ask: "Is this Task, TodoWrite, AskQuestion, or SwitchMode?"
 > If NO -- **STOP. Wrap it in a Task instead.**
 

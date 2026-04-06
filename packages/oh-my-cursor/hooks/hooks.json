@@ -1,0 +1,23 @@
+{
+  "version": 1,
+  "hooks": {
+    "sessionStart": [{ "command": "bun run .cursor/hooks/scripts/start-daemon.sh" }],
+    "sessionEnd": [{ "command": "curl -s -X POST http://localhost:47847/sessionEnd -H 'Content-Type: application/json' -d \"$(cat)\"" }],
+    "preToolUse": [{ "command": "curl -s -X POST http://localhost:47847/preToolUse -H 'Content-Type: application/json' -d \"$(cat)\"" }],
+    "postToolUse": [{ "command": "curl -s -X POST http://localhost:47847/postToolUse -H 'Content-Type: application/json' -d \"$(cat)\"" }],
+    "postToolUseFailure": [{ "command": "curl -s -X POST http://localhost:47847/postToolUseFailure -H 'Content-Type: application/json' -d \"$(cat)\"" }],
+    "subagentStart": [{ "command": "curl -s -X POST http://localhost:47847/subagentStart -H 'Content-Type: application/json' -d \"$(cat)\"" }],
+    "subagentStop": [{ "command": "curl -s -X POST http://localhost:47847/subagentStop -H 'Content-Type: application/json' -d \"$(cat)\"", "loop_limit": null }],
+    "beforeShellExecution": [{ "command": "curl -s -X POST http://localhost:47847/beforeShellExecution -H 'Content-Type: application/json' -d \"$(cat)\"", "matcher": "rm|curl|wget|docker|sudo" }],
+    "afterShellExecution": [{ "command": "curl -s -X POST http://localhost:47847/afterShellExecution -H 'Content-Type: application/json' -d \"$(cat)\"" }],
+    "beforeMCPExecution": [{ "command": "curl -s -X POST http://localhost:47847/beforeMCPExecution -H 'Content-Type: application/json' -d \"$(cat)\"" }],
+    "afterMCPExecution": [{ "command": "curl -s -X POST http://localhost:47847/afterMCPExecution -H 'Content-Type: application/json' -d \"$(cat)\"" }],
+    "beforeReadFile": [{ "command": "curl -s -X POST http://localhost:47847/beforeReadFile -H 'Content-Type: application/json' -d \"$(cat)\"" }],
+    "afterFileEdit": [{ "command": "curl -s -X POST http://localhost:47847/afterFileEdit -H 'Content-Type: application/json' -d \"$(cat)\"" }],
+    "afterAgentResponse": [{ "command": "curl -s -X POST http://localhost:47847/afterAgentResponse -H 'Content-Type: application/json' -d \"$(cat)\"" }],
+    "afterAgentThought": [{ "command": "curl -s -X POST http://localhost:47847/afterAgentThought -H 'Content-Type: application/json' -d \"$(cat)\"" }],
+    "preCompact": [{ "command": "curl -s -X POST http://localhost:47847/preCompact -H 'Content-Type: application/json' -d \"$(cat)\"" }],
+    "stop": [{ "command": "curl -s -X POST http://localhost:47847/stop -H 'Content-Type: application/json' -d \"$(cat)\"", "loop_limit": null }],
+    "beforeSubmitPrompt": [{ "command": "curl -s -X POST http://localhost:47847/beforeSubmitPrompt -H 'Content-Type: application/json' -d \"$(cat)\"" }]
+  }
+}

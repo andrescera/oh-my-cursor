@@ -81,7 +81,7 @@ const handlers: Record<string, (input: Record<string, unknown>) => Record<string
       currentSessionId = id
       totalToolCalls += session.toolCallCount
       exploreCounts += session.dispatchCounts["subagent:explore"] || 0
-      workerCounts += session.dispatchCounts["subagent:general-purpose"] || 0
+      workerCounts += (session.dispatchCounts["subagent:general-purpose"] || 0) + (session.dispatchCounts["subagent:generalpurpose"] || 0)
       if (session.ralphState?.active) ralphActive = true
     }
 
@@ -98,9 +98,9 @@ const handlers: Record<string, (input: Record<string, unknown>) => Record<string
   },
 
   "/sessionStart": (input) => {
-    const convId = (input.session_id as string) || (input.conversation_id as string) || "unknown"
+    const convId = (input.conversation_id as string) || (input.session_id as string) || "unknown"
     const session = getOrCreateSession(convId)
-    const projectDir = (input.cwd as string) || process.cwd()
+    const projectDir = ((input.workspace_roots as string[])?.[0]) || (input.cwd as string) || process.cwd()
 
     session.env.OH_MY_CURSOR_SESSION_ID = convId
     session.env.OH_MY_CURSOR_PROJECT_DIR = projectDir
@@ -113,28 +113,31 @@ const handlers: Record<string, (input: Record<string, unknown>) => Record<string
       lastUpdated: new Date().toISOString(),
     }).catch((err) => console.error("[oh-my-cursor] Failed to write context rule:", err))
 
+    const contextStr = [
+      "## oh-my-cursor Context",
+      "",
+      `Session: ${convId}`,
+      `Project: ${projectDir}`,
+      `Started: ${session.startedAt}`,
+      "",
+      "You are operating within the oh-my-cursor multi-agent orchestration system.",
+      "Follow the orchestrator rule for all task delegation.",
+    ].join("\n")
+
     return {
+      additional_context: contextStr,
       hookSpecificOutput: {
         hookEventName: "SessionStart",
-        additionalContext: [
-          "## oh-my-cursor Context",
-          "",
-          `Session: ${convId}`,
-          `Project: ${projectDir}`,
-          `Started: ${session.startedAt}`,
-          "",
-          "You are operating within the oh-my-cursor multi-agent orchestration system.",
-          "Follow the orchestrator rule for all task delegation.",
-        ].join("\n"),
+        additionalContext: contextStr,
       },
     }
   },
 
   "/sessionEnd": (input) => {
-    const convId = (input.session_id as string) || (input.conversation_id as string) || "unknown"
+    const convId = (input.conversation_id as string) || (input.session_id as string) || "unknown"
     sessions.delete(convId)
 
-    const projectDir = (input.cwd as string) || process.cwd()
+    const projectDir = ((input.workspace_roots as string[])?.[0]) || (input.cwd as string) || process.cwd()
     clearContextRule(projectDir).catch((err) => console.error("[oh-my-cursor] Failed to clear context rule:", err))
 
     return {}
@@ -142,7 +145,7 @@ const handlers: Record<string, (input: Record<string, unknown>) => Record<string
 
   "/preToolUse": (input) => {
     const toolName = (input.tool_name as string) || ""
-    const convId = (input.session_id as string) || (input.conversation_id as string) || "unknown"
+    const convId = (input.conversation_id as string) || (input.session_id as string) || "unknown"
     const session = getOrCreateSession(convId)
     const toolInput = (input.tool_input as Record<string, unknown>) || {}
 
@@ -150,11 +153,15 @@ const handlers: Record<string, (input: Record<string, unknown>) => Record<string
       const filePath = (toolInput.file_path || toolInput.path) as string
       if (filePath && !filePath.includes(".sisyphus") && !filePath.includes("node_modules")) {
         if (existsSync(filePath) && !session.readPaths.has(filePath)) {
+          const reason = "File exists but was not read first: " + filePath + ". Use Read tool first."
           return {
+            permission: "deny",
+            userMessage: reason,
+            agentMessage: reason,
             hookSpecificOutput: {
               hookEventName: "PreToolUse",
               permissionDecision: "deny",
-              permissionDecisionReason: "File exists but was not read first: " + filePath + ". Use Read tool first.",
+              permissionDecisionReason: reason,
             },
           }
         }
@@ -176,8 +183,8 @@ const handlers: Record<string, (input: Record<string, unknown>) => Record<string
 
   "/postToolUse": (input) => {
     const toolName = (input.tool_name as string) || ""
-    const output = JSON.stringify(input.tool_response || "")
-    const convId = (input.session_id as string) || (input.conversation_id as string) || "unknown"
+    const output = JSON.stringify(input.tool_response || input.output || "")
+    const convId = (input.conversation_id as string) || (input.session_id as string) || "unknown"
     const session = getOrCreateSession(convId)
     const toolInput = (input.tool_input as Record<string, unknown>) || {}
 
@@ -220,8 +227,9 @@ const handlers: Record<string, (input: Record<string, unknown>) => Record<string
         "[tool-output-truncator] Output was truncated from " + output.length + " to 30000 chars."
     }
 
-    if (["read", "Read"].includes(toolName) && toolInput.file_path) {
-      const filePath = toolInput.file_path as string
+    const readFilePath = (toolInput.file_path as string) || (input.file_path as string)
+    if (["read", "Read"].includes(toolName) && readFilePath) {
+      const filePath = readFilePath
       const dir = filePath.substring(0, filePath.lastIndexOf("/"))
       const agentsPath = dir + "/AGENTS.md"
       if (!session.injectedPaths.has(agentsPath)) {
@@ -244,19 +252,22 @@ const handlers: Record<string, (input: Record<string, unknown>) => Record<string
         "[skill-reminder] You have access to skills and the Task tool for delegation. Consider using them for specialized work (git operations, browser automation, code review, etc.)."
     }
 
-    if (["read", "Read"].includes(toolName) && toolInput.file_path) {
-      session.readPaths.add(toolInput.file_path as string)
+    if (["read", "Read"].includes(toolName) && readFilePath) {
+      session.readPaths.add(readFilePath)
     }
 
     return additionalContext
-      ? { hookSpecificOutput: { hookEventName: "PostToolUse", additionalContext } }
+      ? {
+          additional_context: additionalContext,
+          hookSpecificOutput: { hookEventName: "PostToolUse", additionalContext },
+        }
       : {}
   },
 
   "/postToolUseFailure": (input) => {
     const toolName = (input.tool_name as string) || ""
     const errorMessage = (input.error as string) || ""
-    const convId = (input.session_id as string) || (input.conversation_id as string) || "unknown"
+    const convId = (input.conversation_id as string) || (input.session_id as string) || "unknown"
     const session = getOrCreateSession(convId)
 
     session.errorCount++
@@ -274,13 +285,16 @@ const handlers: Record<string, (input: Record<string, unknown>) => Record<string
     }
 
     return guidance
-      ? { hookSpecificOutput: { hookEventName: "PostToolUseFailure", additionalContext: "[session-recovery] " + guidance } }
+      ? {
+          additional_context: "[session-recovery] " + guidance,
+          hookSpecificOutput: { hookEventName: "PostToolUseFailure", additionalContext: "[session-recovery] " + guidance },
+        }
       : {}
   },
 
   "/subagentStart": (input) => {
-    const subagentType = (input.agent_type as string) || ""
-    const convId = (input.session_id as string) || (input.conversation_id as string) || "unknown"
+    const subagentType = (input.agent_type as string) || (input.subagent_type as string) || ""
+    const convId = (input.conversation_id as string) || (input.session_id as string) || "unknown"
     const session = getOrCreateSession(convId)
 
     const agentKey = `subagent:${subagentType.toLowerCase()}`
@@ -290,21 +304,29 @@ const handlers: Record<string, (input: Record<string, unknown>) => Record<string
     const juniorCount = session.dispatchCounts["subagent:general-purpose"] || 0
 
     if (subagentType.toLowerCase() === "explore" && exploreCount > 5) {
+      const limitMsg = `[dispatch-limit] Explore dispatch limit reached (${exploreCount}/5). Batch queries into fewer dispatches.`
       console.log(`[oh-my-cursor] Explore dispatch limit reached (${exploreCount}/5)`)
       return {
+        permission: "deny",
+        userMessage: limitMsg,
+        agentMessage: limitMsg,
         hookSpecificOutput: {
           hookEventName: "SubagentStart",
-          additionalContext: `[dispatch-limit] Explore dispatch limit reached (${exploreCount}/5). Batch queries into fewer dispatches.`,
+          additionalContext: limitMsg,
         },
       }
     }
 
     if (juniorCount > 8) {
+      const limitMsg = `[dispatch-limit] Worker dispatch limit reached (${juniorCount}/8). Wait for current workers to complete.`
       console.log(`[oh-my-cursor] Worker dispatch limit reached (${juniorCount}/8)`)
       return {
+        permission: "deny",
+        userMessage: limitMsg,
+        agentMessage: limitMsg,
         hookSpecificOutput: {
           hookEventName: "SubagentStart",
-          additionalContext: `[dispatch-limit] Worker dispatch limit reached (${juniorCount}/8). Wait for current workers to complete.`,
+          additionalContext: limitMsg,
         },
       }
     }
@@ -322,9 +344,11 @@ const handlers: Record<string, (input: Record<string, unknown>) => Record<string
   },
 
   "/subagentStop": (input) => {
-    const subagentType = (input.agent_type as string) || ""
+    const subagentType = (input.agent_type as string) || (input.subagent_type as string) || ""
+    const status = (input.status as string) || ""
     const stopHookActive = Boolean(input.stop_hook_active)
-    const convId = (input.session_id as string) || (input.conversation_id as string) || "unknown"
+    const loopCount = (input.loop_count as number) || 0
+    const convId = (input.conversation_id as string) || (input.session_id as string) || "unknown"
     const session = getOrCreateSession(convId)
 
     if (!stopHookActive) {
@@ -332,12 +356,16 @@ const handlers: Record<string, (input: Record<string, unknown>) => Record<string
       session.dispatchCounts[stopKey] = (session.dispatchCounts[stopKey] || 0) + 1
     }
 
+    if (loopCount > 0) {
+      console.log(`[oh-my-cursor] Subagent ${subagentType} stopped after ${loopCount} loops (status: ${status})`)
+    }
+
     return {}
   },
 
   "/beforeShellExecution": (input) => {
     const toolInput = (input.tool_input as Record<string, unknown>) || {}
-    const command = (toolInput.command as string) || ""
+    const command = (input.command as string) || (toolInput.command as string) || ""
 
     const dangerousPatterns = [
       /rm\s+-rf\s+\//,
@@ -349,6 +377,10 @@ const handlers: Record<string, (input: Record<string, unknown>) => Record<string
     for (const pattern of dangerousPatterns) {
       if (pattern.test(command)) {
         return {
+          continue: false,
+          permission: "deny",
+          userMessage: `Command blocked for safety: ${command}`,
+          agentMessage: `Command blocked for safety: ${command}. Use a safer alternative.`,
           hookSpecificOutput: {
             hookEventName: "PreToolUse",
             permissionDecision: "deny",
@@ -369,16 +401,21 @@ const handlers: Record<string, (input: Record<string, unknown>) => Record<string
 
   "/beforeReadFile": (input) => {
     const toolInput = (input.tool_input as Record<string, unknown>) || {}
-    const filePath = (toolInput.file_path || input.file_path) as string
+    const filePath = (input.file_path as string) || (toolInput.file_path as string) || ""
 
     const sensitivePatterns = [/\.env\.local$/, /\.env\.production$/, /credentials\.json$/]
     for (const pattern of sensitivePatterns) {
       if (pattern.test(filePath)) {
+        const reason = `Access to sensitive file blocked: ${filePath}`
         return {
+          continue: false,
+          permission: "deny",
+          userMessage: reason,
+          agentMessage: reason,
           hookSpecificOutput: {
             hookEventName: "PreToolUse",
             permissionDecision: "deny",
-            permissionDecisionReason: `Access to sensitive file blocked: ${filePath}`,
+            permissionDecisionReason: reason,
           },
         }
       }
@@ -400,7 +437,7 @@ const handlers: Record<string, (input: Record<string, unknown>) => Record<string
   },
 
   "/preCompact": (input) => {
-    const convId = (input.session_id as string) || (input.conversation_id as string) || "unknown"
+    const convId = (input.conversation_id as string) || (input.session_id as string) || "unknown"
     const session = getOrCreateSession(convId)
 
     session.lastCompactionEpoch++
@@ -417,11 +454,13 @@ const handlers: Record<string, (input: Record<string, unknown>) => Record<string
   },
 
   "/stop": (input) => {
+    const status = (input.status as string) || ""
     const stopHookActive = Boolean(input.stop_hook_active)
-    const convId = (input.session_id as string) || (input.conversation_id as string) || "unknown"
+    const loopCount = (input.loop_count as number) || 0
+    const convId = (input.conversation_id as string) || (input.session_id as string) || "unknown"
     const session = getOrCreateSession(convId)
 
-    if (session.stoppedAt || stopHookActive) {
+    if (session.stoppedAt || stopHookActive || (status && status !== "completed")) {
       return {}
     }
 
@@ -440,9 +479,11 @@ const handlers: Record<string, (input: Record<string, unknown>) => Record<string
         return {}
       }
 
+      const message = "Continue working. Iteration " + ralph.iteration + "/" + (ralph.maxIterations || "unlimited") + ". When fully done, output <promise>DONE</promise>."
       return {
+        followup_message: message,
         decision: "block",
-        reason: "Continue working. Iteration " + ralph.iteration + "/" + (ralph.maxIterations || "unlimited") + ". When fully done, output <promise>DONE</promise>.",
+        reason: message,
       }
     }
 
@@ -455,9 +496,11 @@ const handlers: Record<string, (input: Record<string, unknown>) => Record<string
           session.boulderState = { active: true, failureCount: 0, lastContinuationAt: null, stagnationCount: 0 }
         }
         session.boulderState.lastContinuationAt = new Date().toISOString()
+        const message = "You have incomplete todos. Continue working on them until all are completed or cancelled."
         return {
+          followup_message: message,
           decision: "block",
-          reason: "You have incomplete todos. Continue working on them until all are completed or cancelled.",
+          reason: message,
         }
       }
     }
@@ -466,8 +509,8 @@ const handlers: Record<string, (input: Record<string, unknown>) => Record<string
   },
 
   "/beforeSubmitPrompt": (input) => {
-    const userMessage = (input.prompt as string) || ""
-    const convId = (input.session_id as string) || (input.conversation_id as string) || "unknown"
+    const userMessage = (input.prompt as string) || (input.user_message as string) || ""
+    const convId = (input.conversation_id as string) || (input.session_id as string) || "unknown"
     const session = getOrCreateSession(convId)
 
     let additionalContext = ""
@@ -506,6 +549,8 @@ const handlers: Record<string, (input: Record<string, unknown>) => Record<string
 
     if (additionalContext) {
       return {
+        continue: true,
+        additional_context: additionalContext.trim(),
         hookSpecificOutput: {
           hookEventName: "UserPromptSubmit",
           additionalContext: additionalContext.trim(),

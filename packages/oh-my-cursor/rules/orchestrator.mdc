@@ -37,17 +37,17 @@ Root (depth 0) -- DISPATCHER ONLY
 
 | Agent | Model | Fire When |
 |-------|-------|-----------|
-| **explore** | `fast` | Any search, exploration, "how does X work", docs lookup |
-| **librarian** | `fast` | External docs, library APIs, OSS code search |
+| **explore** | `gemini-2.5-flash` | Any search, exploration, "how does X work", docs lookup |
+| **librarian** | `kimi-k2.5` | External docs, library APIs, OSS code search |
 | **sisyphus-junior** | `claude-4.6-sonnet-medium-thinking` | Simple single-file changes, quick focused tasks |
 | **sisyphus** | `claude-4.6-opus-max-thinking` | Complex multi-file work, architecture + implementation |
-| **hephaestus** | `claude-4.6-sonnet-medium-thinking` | Sustained deep work on a single complex problem |
+| **hephaestus** | `gpt-5.4` | Sustained deep work on a single complex problem |
 | **atlas** | `claude-4.6-sonnet-medium-thinking` | Plan exists -> executes plan step-by-step via delegation |
-| **oracle** | `claude-4.6-opus-high-thinking` | Need architecture advice, debugging consultation |
+| **oracle** | `gpt-5.4` | Need architecture advice, debugging consultation |
 | **prometheus** | `claude-4.6-opus-max-thinking` | Complex planning, ambiguous scope analysis |
 | **metis** | `claude-4.6-opus-max-thinking` | Pre-planning gap analysis, risk assessment |
-| **momus** | `claude-4.6-opus-max-thinking` | Plan review, quality audit |
-| **multimodal-looker** | `inherit` | Images, PDFs, diagrams, visual analysis |
+| **momus** | `gpt-5.4` | Plan review, quality audit |
+| **multimodal-looker** | `gemini-3.1-pro` | Images, PDFs, diagrams, visual analysis |
 
 **There is NO request type where the root does the work itself.**
 

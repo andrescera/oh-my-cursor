@@ -1,28 +1,15 @@
-Start an ULTRAWORK Loop -- a self-referential development loop that runs until verified completion.
+Activate an **ULTRAWORK Loop** -- deep sustained work with Oracle verification cycles.
 
-## How It Works
-
-1. Work on the task continuously
-2. When you believe the work is complete, output: `<promise>DONE</promise>`
-3. That does not finish the loop yet. The system will require Oracle verification
-4. The loop only ends after the system confirms Oracle verified the result
-5. There is no iteration limit
+Like Ralph loop but with verification: after completing each major milestone, dispatch to oracle for a strategic review before continuing.
 
 ## Rules
 
-- Focus on finishing the task completely
-- After you emit the completion promise, run Oracle verification when instructed
-- Do not treat DONE as final completion until Oracle verifies it
-
-## Exit Conditions
-
-1. **Verified Completion**: Oracle verifies the result and the system confirms it
-2. **Cancel**: User runs `/cancel-ralph`
+1. Work autonomously and deeply on the task
+2. After each major milestone, consult oracle for verification
+3. No iteration limit -- keep going until truly done
+4. When FULLY complete, output: `<promise>DONE</promise>`
+5. Use `/cancel-ralph` or `/stop-continuation` to exit early
 
 ## Your Task
 
-Parse the arguments below and begin working on the task. The format is:
-
-`"task description" [--completion-promise=TEXT] [--strategy=reset|continue]`
-
-Default completion promise is "DONE".
+Begin deep work on the task described below.

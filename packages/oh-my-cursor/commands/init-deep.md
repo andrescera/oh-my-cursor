@@ -1,24 +1,13 @@
-Generate hierarchical AGENTS.md files for the project.
+Dispatch parallel **explore** agents to generate a hierarchical AGENTS.md knowledge base for the codebase.
 
-## What It Does
+## Process
 
-1. **Discovery**: Fire parallel explore agents + analyze project structure
-2. **Score**: Determine which directories warrant their own AGENTS.md
-3. **Generate**: Create root AGENTS.md + subdirectory files in parallel
-4. **Review**: Deduplicate, trim, validate
+1. **Structure scan**: Dispatch explore agents in background to analyze directory structure, file counts, and module boundaries.
+2. **Code analysis**: Parallel explore dispatches for: key entry points, architecture patterns, dependency graphs, test infrastructure, and build system.
+3. **Synthesis**: Merge exploration results into a structured AGENTS.md with: overview, module descriptions, key patterns, conventions, and anti-patterns.
+4. **Write**: Create or update AGENTS.md at the project root.
 
-## Usage
+## Flags
 
-```
-/init-deep                    # Update existing + create new
-/init-deep --create-new       # Remove all, regenerate from scratch
-/init-deep --max-depth=2      # Limit directory depth (default: 3)
-```
-
-## Quality Rules
-
-- Root AGENTS.md: 50-150 lines
-- Subdirectory AGENTS.md: 30-80 lines
-- Never repeat parent content in child files
-- Only document deviations from standard practices
-- Telegraphic style, no filler
+- `--create-new`: Generate fresh AGENTS.md (ignore existing)
+- `--max-depth N`: Limit directory traversal depth (default: 3)

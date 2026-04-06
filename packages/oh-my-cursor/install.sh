@@ -48,6 +48,7 @@ OLD_AGENT_FILES=(
   "$HOME/.cursor/rules/coding-standards.mdc"
   "$HOME/.cursor/rules/anti-patterns.mdc"
   "$HOME/.cursor/rules/modular-code-enforcement.mdc"
+  "$HOME/.cursor/commands/briareus.md"
   "$HOME/.cursor/commands/cancel-ralph.md"
   "$HOME/.cursor/commands/handoff.md"
   "$HOME/.cursor/commands/init-deep.md"

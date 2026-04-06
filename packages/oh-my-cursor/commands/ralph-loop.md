@@ -1,25 +1,21 @@
-Start a Ralph Loop -- a self-referential development loop that runs until task completion.
+Activate a **Ralph Loop** -- a self-referential development loop that runs until task completion.
 
-## How It Works
-
-1. Work on the task continuously
-2. When FULLY complete, output: `<promise>DONE</promise>`
-3. If you don't output the promise, the loop automatically continues
-4. Maximum iterations: configurable (default 100)
+The stop hook will automatically continue the session after each turn. Work continuously until the task is fully complete.
 
 ## Rules
 
-- Focus on completing the task fully, not partially
-- Don't output the completion promise until the task is truly done
-- Each iteration should make meaningful progress
-- If stuck, try different approaches
-- Use todos to track your progress
+1. Focus on completing the task fully, not partially
+2. Each iteration must make meaningful progress -- no busy work
+3. Use TodoWrite to track progress across iterations
+4. If stuck after 3 attempts at the same approach, try a different strategy
+5. When FULLY complete, output: `<promise>DONE</promise>`
+6. The loop auto-continues until you output the promise or hit max iterations
 
 ## Exit Conditions
 
-1. **Completion**: Output your completion promise tag when fully complete
-2. **Max Iterations**: Loop stops automatically at limit
-3. **Cancel**: User runs `/stop-continuation`
+- **Completion**: Output `<promise>DONE</promise>` when truly done
+- **Max iterations**: Loop stops at the configured limit (default: unlimited)
+- **Manual cancel**: User runs `/cancel-ralph` or `/stop-continuation`
 
 ## Your Task
 

@@ -1,8 +1,3 @@
-Stop all continuation mechanisms for the current session.
+Stop all continuation loops and return to normal chat.
 
-This will:
-1. Stop the Ralph Loop from automatically continuing
-2. Clear any active continuation state
-3. Allow the session to end normally
-
-After running this command, the session will not auto-continue. You can manually continue work when ready.
+This cancels: Ralph loops, ultrawork loops, todo-continuation-enforcer (boulder), and any other active continuation mechanisms.

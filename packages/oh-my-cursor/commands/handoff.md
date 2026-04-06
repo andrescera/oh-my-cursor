@@ -1,26 +1,15 @@
-Create a detailed context summary for continuing work in a new session.
+Build a handoff document for continuing work in a new session.
 
-## When to Use
+## Steps
 
-- Context window approaching capacity
-- Quality is degrading from long conversation
-- Want to start fresh while preserving essential context
+1. **Gather context**: Dispatch explore to read recent session history, active todos, and git diff.
+2. **Synthesize**: Dispatch sisyphus-junior to compile a handoff document with:
+   - Active task description and current status
+   - Completed items and remaining work
+   - Key decisions made and their rationale
+   - Important file paths (max 10)
+   - Known issues or blockers
+   - Exact user requests (verbatim)
+   - Continuation instructions for the next session
 
-## Process
-
-1. Gather session history, todos, git diff, uncommitted changes
-2. Extract key decisions, work completed, pending tasks
-3. Format as self-contained handoff summary
-4. Provide instructions for continuing in a new session
-
-## Output Format
-
-The handoff includes:
-- USER REQUESTS (verbatim)
-- GOAL (one sentence)
-- WORK COMPLETED (first person bullets)
-- CURRENT STATE (codebase state)
-- PENDING TASKS (with todo state)
-- KEY FILES (max 10, prioritized)
-- IMPORTANT DECISIONS (with reasoning)
-- CONTEXT FOR CONTINUATION (warnings, gotchas)
+Write the handoff to `.cursor/handoffs/` or print to chat.

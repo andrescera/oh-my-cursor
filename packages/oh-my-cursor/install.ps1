@@ -35,7 +35,7 @@ function Remove-LooseFiles {
         "agents\protocols\coordinator.md",
         "rules\orchestrator.mdc", "rules\coding-standards.mdc",
         "rules\anti-patterns.mdc", "rules\modular-code-enforcement.mdc",
-        "commands\cancel-ralph.md", "commands\handoff.md", "commands\init-deep.md",
+        "commands\briareus.md", "commands\cancel-ralph.md", "commands\handoff.md", "commands\init-deep.md",
         "commands\deep-plan.md", "commands\ralph-loop.md", "commands\refactor.md",
         "commands\remove-ai-slops.md", "commands\start-work.md", "commands\stop-continuation.md",
         "hooks.json",

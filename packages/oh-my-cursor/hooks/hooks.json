@@ -1,7 +1,7 @@
 {
   "version": 1,
   "hooks": {
-    "sessionStart": [{ "command": "bun run .cursor/hooks/scripts/start-daemon.sh" }],
+    "sessionStart": [{ "command": "bash \"$HOME/.cursor/plugins/local/oh-my-cursor/hooks/scripts/start-daemon.sh\"" }],
     "sessionEnd": [{ "command": "curl -s -X POST http://localhost:47847/sessionEnd -H 'Content-Type: application/json' -d \"$(cat)\"" }],
     "preToolUse": [{ "command": "curl -s -X POST http://localhost:47847/preToolUse -H 'Content-Type: application/json' -d \"$(cat)\"" }],
     "postToolUse": [{ "command": "curl -s -X POST http://localhost:47847/postToolUse -H 'Content-Type: application/json' -d \"$(cat)\"" }],

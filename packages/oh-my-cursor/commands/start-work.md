@@ -1,25 +1,13 @@
-Start a work session from an existing plan.
+Dispatch to **atlas** (the plan executor) to execute an existing work plan.
 
-## What to Do
+## Steps
 
-1. **Find available plans**: Search for plan files at `.sisyphus/plans/` or `.cursor/plans/`
-2. **Select plan**: If one plan, auto-select. If multiple, list with timestamps and ask user.
-3. **Read the plan**: Read the full plan file before starting any work
-4. **Decompose into todos**: Break every plan task into granular, implementation-level sub-steps
-5. **Register todos**: TodoWrite ALL sub-steps before starting work
-6. **Execute**: Follow atlas delegation protocols -- delegate via Task tool in parallel waves
+1. **Find plans**: Search `.sisyphus/plans/` and `.cursor/plans/` for plan files.
+2. **Select**: If one plan exists, auto-select it. If multiple, list them with timestamps and ask user to choose.
+3. **Read**: Read the full plan file before any work begins.
+4. **Decompose**: Break every plan task into granular, atomic sub-steps. Each sub-step must specify: file to modify, what to change, expected behavior, and how to verify. "Implement feature X" is NOT acceptable.
+5. **Register todos**: TodoWrite ALL sub-steps before starting.
+6. **Execute**: Delegate in parallel waves following the plan's dependency matrix. Use sisyphus-junior for single-file tasks, sisyphus for multi-file work. Dispatch explore agents in background for context gathering.
+7. **Verify**: Each executor self-verifies (lints, tests, build) before reporting success.
 
-## Task Breakdown (MANDATORY)
-
-Each plan checkbox item must be split into concrete sub-tasks:
-- Each sub-task touches a clear set of files/functions
-- Include: file to modify, what to change, expected behavior, how to verify
-- "implement feature X" is NOT acceptable
-- "add validateToken() to src/auth/middleware.ts that checks JWT expiry" IS acceptable
-
-## Critical
-
-- Read the FULL plan file before delegating any tasks
-- Always track progress with todos
-- Follow parallel wave execution from the plan
-- Verify each completed task before moving to the next
+Never ask "should I continue?" between plan steps. Only stop when blocked by ambiguity.

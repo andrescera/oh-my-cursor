@@ -1,8 +1,3 @@
-Cancel the currently active Ralph Loop.
+Cancel the active Ralph loop and return to normal chat.
 
-This will:
-1. Stop the loop from continuing
-2. Clear the loop state
-3. Allow the session to end normally
-
-The session will return to normal interactive mode.
+Equivalent to `/stop-continuation` but specifically targets the Ralph loop state.

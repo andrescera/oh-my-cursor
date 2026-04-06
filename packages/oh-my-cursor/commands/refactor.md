@@ -1,24 +1,19 @@
-Perform intelligent refactoring with full codebase awareness.
+Dispatch to **sisyphus** for intelligent refactoring with full codebase awareness.
 
-## Process
+## Phases
 
-1. **Understand Intent**: Parse the refactoring target and scope
-2. **Explore Codebase**: Launch parallel search agents to map dependencies and patterns
-3. **Build Codemap**: Construct dependency graph and impact zones
-4. **Assess Tests**: Evaluate test coverage and determine verification strategy
-5. **Plan**: Create detailed refactoring plan with atomic steps
-6. **Execute**: Step-by-step refactoring with continuous verification
-7. **Verify**: Full test suite, type check, lint check after completion
-
-## Usage
-
-`/refactor <target> [--scope=file|module|project] [--strategy=safe|aggressive]`
+1. **Intent gate**: Parse the refactoring target, scope (file/module/project), and strategy (safe/aggressive). If ambiguous, ask ONE clarifying question.
+2. **Parallel exploration**: Dispatch explore agents to map dependencies, find all references, identify impact zones, and check test coverage.
+3. **Codemap**: Build dependency graph and impact analysis from exploration results.
+4. **Test assessment**: Evaluate test coverage. If coverage is low for affected areas, pause and inform user.
+5. **Plan**: Create detailed refactoring plan with atomic steps and rollback checkpoints.
+6. **Execute**: Step-by-step refactoring with continuous verification. Run lints and tests after EVERY change. Use LSP tools (go-to-definition, find-references, rename) for precise analysis.
+7. **Verify**: Full test suite, type check, lint check after completion.
 
 ## Rules
 
-- ALWAYS preview before applying (dry run first)
-- Run tests after EVERY change
-- Never proceed with failing tests
+- ALWAYS dry-run before applying
+- Run tests after EVERY change -- never proceed with failing tests
 - Follow existing codebase patterns
-- Use LSP tools for precise analysis (go-to-definition, find-references)
 - Commit at logical checkpoints
+- On 3 consecutive failures: revert to last working state and ask user

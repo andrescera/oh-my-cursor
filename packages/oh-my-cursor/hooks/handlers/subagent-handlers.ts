@@ -27,6 +27,10 @@ export function createSubagentHandlers(
         activeAgents: Object.keys(session.dispatchCounts).filter(k => k.startsWith("subagent:")),
         recentTools: session.contextHistory.slice(-5).map(e => e.split(" ").pop() || ""),
         lastUpdated: new Date().toISOString(),
+        toolCallCount: session.toolCallCount,
+        errorCount: session.errorCount,
+        compactionEpoch: session.lastCompactionEpoch,
+        dispatchSummary: session.dispatchCounts,
       }).catch((err) => console.error("[oh-my-cursor] Failed to update context rule:", err))
 
       return {}

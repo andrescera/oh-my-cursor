@@ -1,6 +1,8 @@
 import type { SessionState, HandlerMap } from "../types"
 import { getOrCreateSession } from "../shared"
 import { writeContextRule, clearContextRule } from "../scripts/context-injector"
+import { contextCollector } from "../context-collector"
+import { COMPACTION_CONTEXT_PROMPT } from "../compaction-context-prompt"
 
 export function createSessionHandlers(
   sessions: Map<string, SessionState>,
@@ -74,6 +76,10 @@ export function createSessionHandlers(
         activeAgents: [],
         recentTools: [],
         lastUpdated: new Date().toISOString(),
+        toolCallCount: 0,
+        errorCount: 0,
+        compactionEpoch: 0,
+        dispatchSummary: {},
       }).catch((err) => console.error("[oh-my-cursor] Failed to write context rule:", err))
 
       const contextStr = [
@@ -119,6 +125,57 @@ export function createSessionHandlers(
       }
       session.injectedPaths.clear()
       session.reminderInjected = false
+
+      contextCollector.clear(convId)
+
+      const projectDir = session.env.OH_MY_CURSOR_PROJECT_DIR || process.cwd()
+      writeContextRule(projectDir, {
+        sessionId: convId,
+        projectDir,
+        activeAgents: Object.keys(session.dispatchCounts).filter(k => k.startsWith("subagent:")),
+        recentTools: session.contextHistory.slice(-5).map(e => e.split(" ").pop() || ""),
+        lastUpdated: new Date().toISOString(),
+        toolCallCount: session.toolCallCount,
+        errorCount: session.errorCount,
+        compactionEpoch: session.lastCompactionEpoch,
+        dispatchSummary: session.dispatchCounts,
+      }).catch((err) => console.error("[oh-my-cursor] Failed to write context rule:", err))
+
+      contextCollector.register(convId, {
+        id: "compaction-prompt",
+        source: "compaction-context-injector",
+        content: COMPACTION_CONTEXT_PROMPT,
+        priority: "critical",
+      })
+
+      const snapshotLines = [
+        "[session-snapshot]",
+        `Tool calls: ${session.toolCallCount}`,
+        `Errors: ${session.errorCount}`,
+        `Compaction epoch: ${session.lastCompactionEpoch}`,
+        `Dispatches: ${JSON.stringify(session.dispatchCounts)}`,
+      ]
+      if (session.ralphState?.active) {
+        snapshotLines.push(`Ralph loop: active (iteration ${session.ralphState.iteration})`)
+      }
+      if (session.boulderState?.active) {
+        snapshotLines.push(`Boulder: active (failures ${session.boulderState.failureCount})`)
+      }
+
+      contextCollector.register(convId, {
+        id: "session-snapshot",
+        source: "session-snapshot",
+        content: snapshotLines.join("\n"),
+        priority: "high",
+      })
+
+      const pending = contextCollector.consume(convId)
+      if (pending.hasContent) {
+        return {
+          additional_context: pending.merged,
+          hookSpecificOutput: { hookEventName: "PreCompact", additionalContext: pending.merged },
+        }
+      }
 
       return {}
     },

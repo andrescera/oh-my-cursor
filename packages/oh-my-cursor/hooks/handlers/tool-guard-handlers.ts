@@ -6,6 +6,7 @@ import { createContextWindowMonitor } from "./context-window-monitor"
 import { createCommentChecker } from "./comment-checker"
 import { createToolOutputTruncator } from "./tool-output-truncator"
 import { createDelegateTaskRetry } from "./delegate-task-retry"
+import { contextCollector } from "../context-collector"
 
 const WORKER_TYPES = new Set([
   "general-purpose", "generalpurpose",
@@ -104,28 +105,38 @@ export function createToolGuardHandlers(
 
       const contextNote = `[${new Date().toISOString()}] ${toolName} completed`
       session.contextHistory.push(contextNote)
-
       if (session.contextHistory.length > 50) {
         session.contextHistory = session.contextHistory.slice(-30)
       }
 
-      let additionalContext = ""
-
       if (session.contextHistory.length % 10 === 0) {
-        additionalContext += `[oh-my-cursor] Session activity: ${session.contextHistory.length} tool calls this session.`
+        contextCollector.register(convId, {
+          id: "session-activity",
+          source: "session-activity",
+          content: `[oh-my-cursor] Session activity: ${session.contextHistory.length} tool calls this session.`,
+          priority: "low",
+        })
       }
 
       if (["edit", "write", "str_replace", "apply_patch", "Edit", "Write", "StrReplace"].includes(toolName)) {
         if (/failed|error|could not|no match|not found in file/i.test(output)) {
-          additionalContext += (additionalContext ? "\n\n" : "") +
-            "[edit-error-recovery] Edit failed. Read the file first to verify the exact content, then retry with the correct old_string."
+          contextCollector.register(convId, {
+            id: "edit-error",
+            source: "edit-error-recovery",
+            content: "[edit-error-recovery] Edit failed. Read the file first to verify the exact content, then retry with the correct old_string.",
+            priority: "critical",
+          })
         }
       }
 
       if (!["bash", "shell", "read", "Read", "Shell"].includes(toolName)) {
         if (/unexpected token|json.*parse|invalid json|syntaxerror.*json/i.test(output)) {
-          additionalContext += (additionalContext ? "\n\n" : "") +
-            "[json-error-recovery] JSON parse error detected. Check for: trailing commas, unescaped quotes, missing brackets, or invalid escape sequences."
+          contextCollector.register(convId, {
+            id: "json-error",
+            source: "json-error-recovery",
+            content: "[json-error-recovery] JSON parse error detected. Check for: trailing commas, unescaped quotes, missing brackets, or invalid escape sequences.",
+            priority: "high",
+          })
         }
       }
 
@@ -140,8 +151,12 @@ export function createToolGuardHandlers(
             if (content) {
               session.injectedPaths.add(agentsPath)
               const snippet = content.length > 2000 ? content.slice(0, 2000) + "\n...[truncated]" : content
-              additionalContext += (additionalContext ? "\n\n" : "") +
-                "[directory-context] AGENTS.md found at " + agentsPath + ":\n" + snippet
+              contextCollector.register(convId, {
+                id: `agents-${agentsPath}`,
+                source: "directory-context",
+                content: "[directory-context] AGENTS.md found at " + agentsPath + ":\n" + snippet,
+                priority: "normal",
+              })
             }
           } catch { /* AGENTS.md is optional */ }
         }
@@ -150,8 +165,12 @@ export function createToolGuardHandlers(
       session.toolCallCount++
       if (session.toolCallCount >= 3 && !session.reminderInjected && !["task", "Task", "TodoWrite"].includes(toolName)) {
         session.reminderInjected = true
-        additionalContext += (additionalContext ? "\n\n" : "") +
-          "[skill-reminder] You have access to skills and the Task tool for delegation. Consider using them for specialized work (git operations, browser automation, code review, etc.)."
+        contextCollector.register(convId, {
+          id: "skill-reminder",
+          source: "skill-reminder",
+          content: "[skill-reminder] You have access to skills and the Task tool for delegation. Consider using them for specialized work (git operations, browser automation, code review, etc.).",
+          priority: "low",
+        })
       }
 
       if (["read", "Read"].includes(toolName) && readFilePath) {
@@ -161,13 +180,23 @@ export function createToolGuardHandlers(
 
       const cw = contextWindowMonitor({ sessionId: convId, content: output })
       if (cw.additional_context) {
-        additionalContext += (additionalContext ? "\n\n" : "") + cw.additional_context
+        contextCollector.register(convId, {
+          id: "context-window",
+          source: "context-window-monitor",
+          content: cw.additional_context,
+          priority: "high",
+        })
       }
 
       const cc = commentChecker({ tool_name: toolName, output })
       const ccCtx = cc.additional_context as string | undefined
       if (ccCtx) {
-        additionalContext += (additionalContext ? "\n\n" : "") + ccCtx
+        contextCollector.register(convId, {
+          id: "comment-check",
+          source: "comment-checker",
+          content: ccCtx,
+          priority: "high",
+        })
       }
 
       const trunc = toolOutputTruncator({ output })
@@ -175,6 +204,12 @@ export function createToolGuardHandlers(
       const truncMod = trunc.modified_output as string | undefined
       if (truncMod !== undefined) {
         modifiedOutput = truncMod
+        contextCollector.register(convId, {
+          id: "truncation-notice",
+          source: "tool-output-truncator",
+          content: `[tool-output-truncator] Output was truncated from ${output.length} chars.`,
+          priority: "normal",
+        })
       }
 
       if (["task", "Task"].includes(toolName)) {
@@ -183,14 +218,20 @@ export function createToolGuardHandlers(
           output,
         })
         if (dr.additional_context) {
-          additionalContext += (additionalContext ? "\n\n" : "") + dr.additional_context
+          contextCollector.register(convId, {
+            id: "delegate-retry",
+            source: "delegate-task-retry",
+            content: dr.additional_context,
+            priority: "high",
+          })
         }
       }
 
+      const pending = contextCollector.consume(convId)
       const out: Record<string, unknown> = {}
-      if (additionalContext) {
-        out.additional_context = additionalContext
-        out.hookSpecificOutput = { hookEventName: "PostToolUse", additionalContext }
+      if (pending.hasContent) {
+        out.additional_context = pending.merged
+        out.hookSpecificOutput = { hookEventName: "PostToolUse", additionalContext: pending.merged }
       }
       if (modifiedOutput !== undefined) {
         out.modified_output = modifiedOutput
@@ -218,10 +259,19 @@ export function createToolGuardHandlers(
         guidance = "Resource not found. Verify the path or URL is correct."
       }
 
-      return guidance
+      if (guidance) {
+        contextCollector.register(convId, {
+          id: "recovery-guidance",
+          source: "session-recovery",
+          content: "[session-recovery] " + guidance,
+          priority: "critical",
+        })
+      }
+      const failurePending = contextCollector.consume(convId)
+      return failurePending.hasContent
         ? {
-            additional_context: "[session-recovery] " + guidance,
-            hookSpecificOutput: { hookEventName: "PostToolUseFailure", additionalContext: "[session-recovery] " + guidance },
+            additional_context: failurePending.merged,
+            hookSpecificOutput: { hookEventName: "PostToolUseFailure", additionalContext: failurePending.merged },
           }
         : {}
     },

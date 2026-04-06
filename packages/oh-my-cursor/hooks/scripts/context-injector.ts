@@ -3,12 +3,19 @@ import { join } from "node:path"
 
 const CONTEXT_FILE = ".cursor/rules/oh-my-cursor-context.mdc"
 
+const DEBOUNCE_MS = 5_000
+const lastWriteTimes = new Map<string, number>()
+
 interface ContextState {
   sessionId: string
   projectDir: string
   activeAgents: string[]
   recentTools: string[]
   lastUpdated: string
+  toolCallCount?: number
+  errorCount?: number
+  compactionEpoch?: number
+  dispatchSummary?: Record<string, number>
 }
 
 async function ensureDir(dirPath: string): Promise<void> {
@@ -19,6 +26,13 @@ export async function writeContextRule(
   projectDir: string,
   state: ContextState,
 ): Promise<void> {
+  const now = Date.now()
+  const lastWrite = lastWriteTimes.get(projectDir) ?? 0
+  if (lastWrite > 0 && now - lastWrite < DEBOUNCE_MS) {
+    return
+  }
+  lastWriteTimes.set(projectDir, now)
+
   const rulesDir = join(projectDir, ".cursor", "rules")
   await ensureDir(rulesDir)
 
@@ -42,6 +56,18 @@ export async function writeContextRule(
     state.recentTools.length > 0
       ? `Recent tool activity: ${state.recentTools.slice(-5).join(", ")}`
       : "",
+    "",
+    "## Session Metrics",
+    "",
+    `Tool calls: ${state.toolCallCount ?? 0}`,
+    `Errors: ${state.errorCount ?? 0}`,
+    `Compaction epoch: ${state.compactionEpoch ?? 0}`,
+    "",
+    "## Dispatch Summary",
+    "",
+    ...(state.dispatchSummary && Object.keys(state.dispatchSummary).length > 0
+      ? Object.entries(state.dispatchSummary).map(([key, count]) => `- ${key}: ${count}`)
+      : ["No dispatches yet"]),
     "",
     "## Orchestration Reminders",
     "",
@@ -93,6 +119,7 @@ export function matchSkills(context: string): string[] {
 }
 
 export async function clearContextRule(projectDir: string): Promise<void> {
+  lastWriteTimes.delete(projectDir)
   const { unlink } = await import("node:fs/promises")
   try {
     await unlink(join(projectDir, CONTEXT_FILE))

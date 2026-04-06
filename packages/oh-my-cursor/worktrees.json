@@ -1,0 +1,7 @@
+{
+  "setup-worktree": [
+    "echo 'Setting up oh-my-cursor worktree...'",
+    "cp -r $ROOT_WORKTREE_PATH/.cursor . 2>/dev/null || true",
+    "echo 'Worktree ready.'"
+  ]
+}

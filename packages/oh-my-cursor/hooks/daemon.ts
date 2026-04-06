@@ -81,7 +81,17 @@ const handlers: Record<string, (input: Record<string, unknown>) => Record<string
       currentSessionId = id
       totalToolCalls += session.toolCallCount
       exploreCounts += session.dispatchCounts["subagent:explore"] || 0
-      workerCounts += (session.dispatchCounts["subagent:general-purpose"] || 0) + (session.dispatchCounts["subagent:generalpurpose"] || 0)
+      workerCounts +=
+        (session.dispatchCounts["subagent:general-purpose"] || 0) +
+        (session.dispatchCounts["subagent:generalpurpose"] || 0) +
+        (session.dispatchCounts["subagent:sisyphus"] || 0) +
+        (session.dispatchCounts["subagent:sisyphus-junior"] || 0) +
+        (session.dispatchCounts["subagent:hephaestus"] || 0) +
+        (session.dispatchCounts["subagent:atlas"] || 0) +
+        (session.dispatchCounts["subagent:oracle"] || 0) +
+        (session.dispatchCounts["subagent:prometheus"] || 0) +
+        (session.dispatchCounts["subagent:metis"] || 0) +
+        (session.dispatchCounts["subagent:momus"] || 0)
       if (session.ralphState?.active) ralphActive = true
     }
 
@@ -174,6 +184,15 @@ const handlers: Record<string, (input: Record<string, unknown>) => Record<string
         path: toolInput.file_path || toolInput.path,
         content: toolInput.new_string || toolInput.content || toolInput.contents,
       })
+    }
+
+    if (["Task", "task", "Agent", "agent"].includes(toolName)) {
+      const agentType = (toolInput.subagent_type as string) || (toolInput.agent_type as string) || ""
+      if (agentType) {
+        const agentKey = `subagent:${agentType.toLowerCase()}`
+        session.dispatchCounts[agentKey] = (session.dispatchCounts[agentKey] || 0) + 1
+        console.log(`[oh-my-cursor] Dispatch tracked via preToolUse: ${agentKey} (${session.dispatchCounts[agentKey]})`)
+      }
     }
 
     session.dispatchCounts[toolName] = (session.dispatchCounts[toolName] || 0) + 1

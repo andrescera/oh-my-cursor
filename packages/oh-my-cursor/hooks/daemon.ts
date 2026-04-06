@@ -2,7 +2,7 @@ import { serve } from "bun"
 import { readFileSync, existsSync } from "node:fs"
 import { writeContextRule, clearContextRule } from "./scripts/context-injector"
 import { STATUS_HTML } from "./mcp-app"
-import { logEvent, getEvents, getSessionSummary, getLogPath } from "./event-logger"
+import { logEvent, getEvents, getSessionSummary, getLogPath, clearLog } from "./event-logger"
 
 const PORT = parseInt(process.env.OH_MY_CURSOR_PORT || "47847")
 
@@ -655,6 +655,32 @@ serve({
       const sessionId = url.searchParams.get("session") || undefined
       const summary = getSessionSummary(sessionId)
       return new Response(JSON.stringify(summary), {
+        headers: { "Content-Type": "application/json" },
+      })
+    }
+
+    if (path === "/session-log/download") {
+      const filePath = getLogPath()
+      try {
+        const file = Bun.file(filePath)
+        if (await file.exists()) {
+          const text = await file.text()
+          return new Response(text, {
+            headers: {
+              "Content-Type": "application/x-ndjson",
+              "Content-Disposition": 'attachment; filename="session-log.jsonl"',
+            },
+          })
+        }
+        return new Response("No log file found", { status: 404 })
+      } catch (err) {
+        return new Response("Failed to read log: " + (err instanceof Error ? err.message : String(err)), { status: 500 })
+      }
+    }
+
+    if (path === "/session-log/clear" && req.method === "POST") {
+      clearLog()
+      return new Response(JSON.stringify({ status: "cleared" }), {
         headers: { "Content-Type": "application/json" },
       })
     }

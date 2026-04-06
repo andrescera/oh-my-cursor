@@ -110,6 +110,35 @@ export const STATUS_HTML = `<!DOCTYPE html>
     .action-deny { color: #f44747; }
     .action-block, .action-continue { color: #dcdcaa; }
     .action-noop { color: #555; }
+    .event-toolbar { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }
+    .event-actions { display: flex; gap: 4px; }
+    .action-btn {
+      padding: 3px 10px;
+      border: 1px solid var(--vscode-editorWidget-border, #454545);
+      background: transparent;
+      color: var(--vscode-descriptionForeground, #888);
+      cursor: pointer;
+      font-size: 11px;
+      border-radius: 3px;
+      text-decoration: none;
+    }
+    .action-btn:hover { color: var(--vscode-foreground, #ccc); border-color: #666; }
+    .event-row { cursor: pointer; flex-wrap: wrap; }
+    .event-row:hover { background: rgba(255,255,255,0.03); }
+    .event-detail {
+      width: 100%;
+      padding: 6px 8px;
+      margin-top: 4px;
+      background: rgba(0,0,0,0.2);
+      border-radius: 3px;
+      font-size: 10px;
+      white-space: pre-wrap;
+      word-break: break-all;
+      color: var(--vscode-descriptionForeground, #888);
+      display: none;
+    }
+    .event-detail.open { display: block; }
+    .event-count { font-size: 11px; color: var(--vscode-descriptionForeground, #666); }
   </style>
 </head>
 <body>
@@ -161,12 +190,20 @@ export const STATUS_HTML = `<!DOCTYPE html>
   </div>
 
   <div id="tab-events" class="tab-content" style="display:none">
-    <div class="filters">
-      <button class="filter-btn active" data-filter="all">All</button>
-      <button class="filter-btn" data-filter="tools">Tools</button>
-      <button class="filter-btn" data-filter="dispatches">Dispatches</button>
-      <button class="filter-btn" data-filter="errors">Errors</button>
-      <button class="filter-btn" data-filter="denies">Denies</button>
+    <div class="event-toolbar">
+      <div class="filters">
+        <button class="filter-btn active" data-filter="all">All</button>
+        <button class="filter-btn" data-filter="tools">Tools</button>
+        <button class="filter-btn" data-filter="dispatches">Dispatches</button>
+        <button class="filter-btn" data-filter="errors">Errors</button>
+        <button class="filter-btn" data-filter="denies">Denies</button>
+      </div>
+      <div class="event-actions">
+        <span class="event-count" id="event-count">0 events</span>
+        <a class="action-btn" href="http://localhost:47847/session-log/download" download="session-log.jsonl" target="_blank">Download JSONL</a>
+        <button class="action-btn" onclick="copyLog()">Copy JSON</button>
+        <button class="action-btn" onclick="clearLogUI()">Clear</button>
+      </div>
     </div>
     <div id="event-list" class="event-list"></div>
   </div>
@@ -220,32 +257,60 @@ export const STATUS_HTML = `<!DOCTYPE html>
 
     async function refreshEvents() {
       try {
-        const res = await fetch('http://localhost:47847/session-log?limit=100');
+        const res = await fetch('http://localhost:47847/session-log?limit=200');
         let events = await res.json();
         if (currentFilter === 'tools') events = events.filter(e => e.tool && !['Task','task','Agent','agent'].includes(e.tool));
         else if (currentFilter === 'dispatches') events = events.filter(e => e.agentType);
         else if (currentFilter === 'errors') events = events.filter(e => e.error || e.event === '/postToolUseFailure');
         else if (currentFilter === 'denies') events = events.filter(e => e.action === 'deny');
 
+        document.getElementById('event-count').textContent = events.length + ' events';
         const list = document.getElementById('event-list');
         if (!events.length) { list.innerHTML = '<div style="padding:12px;color:#666">No events yet</div>'; return; }
-        list.innerHTML = events.map(e => {
+        list.innerHTML = events.map((e, i) => {
           const time = new Date(e.ts).toLocaleTimeString('en-US', {hour12:false,hour:'2-digit',minute:'2-digit',second:'2-digit'});
           const actionClass = 'action-' + (e.action || 'noop');
-          const metaStr = e.meta ? Object.entries(e.meta).map(([k,v]) => k + '=' + String(v).slice(0,40)).join(' ') : '';
           const agentBadge = e.agentType ? '<span style="color:#c586c0">[' + e.agentType + ']</span> ' : '';
-          return '<div class="event-row">' +
+          const errorSnip = e.error ? '<span style="color:#f44747;margin-left:4px">' + e.error.slice(0,50) + '</span>' : '';
+          const metaSnip = e.meta ? Object.entries(e.meta).map(([k,v]) => k + '=' + String(v).slice(0,30)).join(' ') : '';
+          const detail = JSON.stringify(e, null, 2);
+          return '<div class="event-row" onclick="toggleDetail(' + i + ')">' +
             '<span class="event-time">' + time + '</span>' +
             '<span class="event-hook">' + e.event + '</span>' +
             '<span class="event-tool">' + agentBadge + (e.tool || '') + '</span>' +
             '<span class="event-action ' + actionClass + '">' + (e.action || '-') + '</span>' +
-            (e.error ? '<span style="color:#f44747">' + e.error.slice(0,60) + '</span>' : '') +
-            '<span class="event-meta">' + metaStr + '</span>' +
+            errorSnip +
+            '<span class="event-meta">' + metaStr(metaSnip) + '</span>' +
+            '<div class="event-detail" id="detail-' + i + '">' + escHtml(detail) + '</div>' +
             '</div>';
         }).join('');
       } catch {
         document.getElementById('event-list').innerHTML = '<div style="padding:12px;color:#f44747">Failed to fetch events</div>';
       }
+    }
+
+    function metaStr(s) { return s; }
+    function escHtml(s) { return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+    function toggleDetail(i) {
+      const el = document.getElementById('detail-' + i);
+      if (el) el.classList.toggle('open');
+    }
+
+    async function copyLog() {
+      try {
+        const res = await fetch('http://localhost:47847/session-log?limit=500');
+        const events = await res.json();
+        await navigator.clipboard.writeText(JSON.stringify(events, null, 2));
+        alert('Copied ' + events.length + ' events to clipboard');
+      } catch { alert('Failed to copy'); }
+    }
+
+    async function clearLogUI() {
+      if (!confirm('Clear all session events?')) return;
+      try {
+        await fetch('http://localhost:47847/session-log/clear', { method: 'POST' });
+        refreshEvents();
+      } catch { alert('Failed to clear'); }
     }
 
     setInterval(() => { if (document.getElementById('tab-events')?.style.display !== 'none') refreshEvents(); }, 3000);

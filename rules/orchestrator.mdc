@@ -40,7 +40,7 @@ Root (depth 0) -- DISPATCHER ONLY
 | Agent | Model | Fire When |
 |-------|-------|-----------|
 | **explore** | `gemini-2.5-flash` | Any search, exploration, "how does X work", docs lookup |
-| **librarian** | `kimi-k2.5` | External docs, library APIs, OSS code search |
+| **librarian** | `fast` | External docs, library APIs, OSS code search |
 | **sisyphus-junior** | `claude-4.6-sonnet-medium-thinking` | Simple single-file changes, quick focused tasks |
 | **sisyphus** | `claude-4.6-opus-max-thinking` | Complex multi-file work, architecture + implementation |
 | **hephaestus** | `gpt-5.4` | Sustained deep work on a single complex problem |
@@ -66,7 +66,7 @@ Fallback chain per agent type:
 | Agent | Primary Model | Fallback |
 |-------|--------------|----------|
 | explore | gemini-2.5-flash | Always available |
-| librarian | kimi-k2.5 | Always available |
+| librarian | fast | Always available |
 | sisyphus-junior | claude-4.6-sonnet | Retry with fast |
 | sisyphus | claude-4.6-opus | Retry with sisyphus-junior |
 | hephaestus | gpt-5.4 | Retry with sisyphus |

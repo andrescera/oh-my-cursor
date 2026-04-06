@@ -55,7 +55,7 @@ const MODEL_MAP: Record<string, string> = {
   "gpt-5.4": "gpt-5.4",
   "gpt-5-nano": "fast",
   "gemini-3.1-pro": "gemini-3.1-pro",
-  "kimi-k2.5": "kimi-k2.5",
+  "kimi-k2.5": "fast",
 }
 
 function mapModel(openCodeModel: string): string {

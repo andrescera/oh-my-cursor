@@ -40,7 +40,7 @@ You (root thread)
        ├── Intent Gate: what did the user ask?
        │
        ├── Task(explore) ──── Codebase search (gemini-2.5-flash, readonly, background)
-       ├── Task(librarian) ── External docs search (kimi-k2.5, readonly, background)
+       ├── Task(librarian) ── External docs search (fast, readonly, background)
        ├── Task(sisyphus) ─── Complex multi-file work (opus-max-thinking)
        ├── Task(hephaestus) ─ Sustained deep work (gpt-5.4)
        ├── Task(atlas) ────── Plan execution via delegation (sonnet-medium-thinking)
@@ -64,7 +64,7 @@ You (root thread)
 | **metis** | claude-4.6-opus-max-thinking | Pre-planning analysis (readonly) |
 | **momus** | gpt-5.4 | Plan reviewer (readonly) |
 | **explore** | gemini-2.5-flash | Codebase search (readonly, background) |
-| **librarian** | kimi-k2.5 | External docs search (readonly, background) |
+| **librarian** | fast | External docs search (readonly, background) |
 | **sisyphus-junior** | claude-4.6-sonnet-medium-thinking | Quick task executor |
 | **multimodal-looker** | gemini-3.1-pro | Visual file analysis (readonly) |
 

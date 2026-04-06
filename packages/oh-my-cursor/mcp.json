@@ -9,6 +9,9 @@
     },
     "grep_app": {
       "url": "https://mcp.grep.app"
+    },
+    "oh-my-cursor": {
+      "url": "http://localhost:47848/mcp"
     }
   }
 }

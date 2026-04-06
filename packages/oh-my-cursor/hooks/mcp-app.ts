@@ -25,24 +25,42 @@ export const STATUS_HTML = `<!DOCTYPE html>
       padding: 16px;
       font-size: 13px;
     }
+    .header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; }
     h2 {
       font-size: 14px;
       font-weight: 600;
-      margin-bottom: 12px;
       color: var(--vscode-foreground, #cccccc);
     }
+    .refresh-btn {
+      padding: 4px 12px;
+      border: 1px solid var(--vscode-panel-border, #454545);
+      background: var(--vscode-button-secondaryBackground, #3a3d41);
+      color: var(--vscode-button-secondaryForeground, #cccccc);
+      cursor: pointer;
+      font-size: 11px;
+      border-radius: 3px;
+    }
+    .refresh-btn:hover { background: var(--vscode-button-secondaryHoverBackground, #45494e); }
     .card {
       background: var(--vscode-editorWidget-background, #252526);
-      border: 1px solid var(--vscode-editorWidget-border, #454545);
+      border: 1px solid var(--vscode-panel-border, #454545);
       border-radius: 6px;
       padding: 12px;
       margin-bottom: 12px;
+    }
+    .card-title {
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--vscode-foreground, #cccccc);
+      margin-bottom: 8px;
+      padding-bottom: 6px;
+      border-bottom: 1px solid var(--vscode-panel-border, #333);
     }
     .stat {
       display: flex;
       justify-content: space-between;
       padding: 4px 0;
-      border-bottom: 1px solid var(--vscode-editorWidget-border, #333);
+      border-bottom: 1px solid var(--vscode-panel-border, #333);
     }
     .stat:last-child { border-bottom: none; }
     .stat-label { color: var(--vscode-descriptionForeground, #888); }
@@ -67,7 +85,7 @@ export const STATUS_HTML = `<!DOCTYPE html>
     .tabs { display: flex; gap: 2px; margin-bottom: 12px; }
     .tab {
       padding: 6px 16px;
-      border: 1px solid var(--vscode-editorWidget-border, #454545);
+      border: 1px solid var(--vscode-panel-border, #454545);
       background: transparent;
       color: var(--vscode-descriptionForeground, #888);
       cursor: pointer;
@@ -79,10 +97,68 @@ export const STATUS_HTML = `<!DOCTYPE html>
       background: var(--vscode-editorWidget-background, #252526);
       color: var(--vscode-foreground, #cccccc);
     }
+    .hook-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+    .hook-column h3 {
+      font-size: 12px;
+      font-weight: 600;
+      margin-bottom: 6px;
+      color: var(--vscode-foreground, #cccccc);
+    }
+    .hook-item {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      padding: 3px 0;
+      font-size: 12px;
+      font-family: monospace;
+    }
+    .badge {
+      display: inline-block;
+      padding: 1px 6px;
+      border-radius: 3px;
+      font-size: 10px;
+      font-weight: 600;
+      text-transform: uppercase;
+    }
+    .badge-enabled { background: rgba(78,201,176,0.15); color: #4ec9b0; }
+    .badge-disabled { background: rgba(244,71,71,0.15); color: #f44747; }
+    .hook-count {
+      font-size: 11px;
+      color: var(--vscode-descriptionForeground, #666);
+      margin-bottom: 8px;
+    }
+    .bg-task {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 6px 8px;
+      border-bottom: 1px solid var(--vscode-panel-border, #333);
+      font-size: 12px;
+    }
+    .bg-task:last-child { border-bottom: none; }
+    .bg-task-name { font-weight: 500; }
+    .bg-task-model { color: #569cd6; font-size: 11px; }
+    .bg-task-status { font-size: 11px; }
+    .bg-empty {
+      padding: 16px;
+      text-align: center;
+      color: var(--vscode-descriptionForeground, #666);
+      font-size: 12px;
+    }
+    .error-item {
+      padding: 6px 8px;
+      border-bottom: 1px solid var(--vscode-panel-border, #333);
+      font-size: 11px;
+      font-family: monospace;
+    }
+    .error-item:last-child { border-bottom: none; }
+    .error-time { color: var(--vscode-descriptionForeground, #666); margin-right: 8px; }
+    .error-hook { color: var(--vscode-descriptionForeground, #888); margin-right: 8px; }
+    .error-msg { color: #f44747; }
     .filters { display: flex; gap: 4px; margin-bottom: 8px; }
     .filter-btn {
       padding: 3px 10px;
-      border: 1px solid var(--vscode-editorWidget-border, #454545);
+      border: 1px solid var(--vscode-panel-border, #454545);
       background: transparent;
       color: var(--vscode-descriptionForeground, #888);
       cursor: pointer;
@@ -100,9 +176,12 @@ export const STATUS_HTML = `<!DOCTYPE html>
       padding: 3px 6px;
       font-size: 11px;
       font-family: monospace;
-      border-bottom: 1px solid var(--vscode-editorWidget-border, #333);
+      border-bottom: 1px solid var(--vscode-panel-border, #333);
       align-items: center;
+      cursor: pointer;
+      flex-wrap: wrap;
     }
+    .event-row:hover { background: rgba(255,255,255,0.03); }
     .event-time { color: var(--vscode-descriptionForeground, #666); min-width: 65px; }
     .event-hook { color: var(--vscode-descriptionForeground, #888); min-width: 140px; }
     .event-tool { color: #569cd6; min-width: 80px; }
@@ -116,7 +195,7 @@ export const STATUS_HTML = `<!DOCTYPE html>
     .event-actions { display: flex; gap: 4px; }
     .action-btn {
       padding: 3px 10px;
-      border: 1px solid var(--vscode-editorWidget-border, #454545);
+      border: 1px solid var(--vscode-panel-border, #454545);
       background: transparent;
       color: var(--vscode-descriptionForeground, #888);
       cursor: pointer;
@@ -125,8 +204,6 @@ export const STATUS_HTML = `<!DOCTYPE html>
       text-decoration: none;
     }
     .action-btn:hover { color: var(--vscode-foreground, #ccc); border-color: #666; }
-    .event-row { cursor: pointer; flex-wrap: wrap; }
-    .event-row:hover { background: rgba(255,255,255,0.03); }
     .event-detail {
       width: 100%;
       padding: 6px 8px;
@@ -144,10 +221,15 @@ export const STATUS_HTML = `<!DOCTYPE html>
   </style>
 </head>
 <body>
-  <h2>oh-my-cursor Status</h2>
+  <div class="header">
+    <h2>oh-my-cursor Status</h2>
+    <button class="refresh-btn" onclick="refreshAll()">Refresh</button>
+  </div>
 
   <div class="tabs">
     <button class="tab active" onclick="switchTab('status')">Status</button>
+    <button class="tab" onclick="switchTab('hooks')">Hooks</button>
+    <button class="tab" onclick="switchTab('background')">Background</button>
     <button class="tab" onclick="switchTab('events')">Event Log</button>
   </div>
 
@@ -188,6 +270,27 @@ export const STATUS_HTML = `<!DOCTYPE html>
         <span class="stat-label">Ralph Loop</span>
         <span class="stat-value" id="ralph-status">Inactive</span>
       </div>
+    </div>
+
+    <div class="card">
+      <div class="card-title">Recent Errors</div>
+      <div id="recent-errors"><div class="bg-empty">No recent errors</div></div>
+    </div>
+  </div>
+
+  <div id="tab-hooks" class="tab-content" style="display:none">
+    <div class="card">
+      <div class="hook-count" id="hook-count">Loading...</div>
+      <div class="hook-grid" id="hook-grid">
+        <div class="bg-empty">Loading hook configuration...</div>
+      </div>
+    </div>
+  </div>
+
+  <div id="tab-background" class="tab-content" style="display:none">
+    <div class="card">
+      <div class="card-title">Active Background Tasks</div>
+      <div id="bg-tasks"><div class="bg-empty">Loading...</div></div>
     </div>
   </div>
 
@@ -233,8 +336,107 @@ export const STATUS_HTML = `<!DOCTYPE html>
         document.getElementById('daemon-status').className = 'stat-value status-error';
       }
     }
+
+    async function refreshHooks() {
+      try {
+        const res = await fetch('http://localhost:${DAEMON_PORT}/config');
+        const data = await res.json();
+        const enabled = data.enabled || [];
+        const disabled = data.disabled || [];
+        document.getElementById('hook-count').textContent =
+          enabled.length + ' enabled, ' + disabled.length + ' disabled';
+        const grid = document.getElementById('hook-grid');
+        grid.innerHTML =
+          '<div class="hook-column"><h3>Enabled</h3>' +
+          (enabled.length
+            ? enabled.map(function(h) {
+                return '<div class="hook-item"><span class="dot dot-active"></span>' +
+                  '<span>' + escHtml(h) + '</span>' +
+                  '<span class="badge badge-enabled">on</span></div>';
+              }).join('')
+            : '<div class="bg-empty">None</div>') +
+          '</div><div class="hook-column"><h3>Disabled</h3>' +
+          (disabled.length
+            ? disabled.map(function(h) {
+                return '<div class="hook-item"><span class="dot dot-idle"></span>' +
+                  '<span>' + escHtml(h) + '</span>' +
+                  '<span class="badge badge-disabled">off</span></div>';
+              }).join('')
+            : '<div class="bg-empty">All hooks enabled</div>') +
+          '</div>';
+      } catch {
+        document.getElementById('hook-grid').innerHTML =
+          '<div class="bg-empty" style="color:#f44747">Failed to load hook config</div>';
+      }
+    }
+
+    async function refreshBackground() {
+      try {
+        const res = await fetch('http://localhost:${DAEMON_PORT}/backgroundTasks');
+        const tasks = await res.json();
+        const container = document.getElementById('bg-tasks');
+        if (!tasks || !tasks.length) {
+          container.innerHTML = '<div class="bg-empty">No active background tasks</div>';
+          return;
+        }
+        container.innerHTML = tasks.map(function(t) {
+          var statusClass = t.status === 'running' ? 'status-ok'
+            : t.status === 'error' ? 'status-error' : 'status-warn';
+          return '<div class="bg-task">' +
+            '<span class="dot ' + (t.status === 'running' ? 'dot-active' : 'dot-idle') + '"></span>' +
+            '<span class="bg-task-name">' + escHtml(t.name || t.id || 'task') + '</span>' +
+            (t.model ? '<span class="bg-task-model">' + escHtml(t.model) + '</span>' : '') +
+            '<span class="bg-task-status ' + statusClass + '">' + escHtml(t.status || 'unknown') + '</span>' +
+            '</div>';
+        }).join('');
+      } catch {
+        document.getElementById('bg-tasks').innerHTML =
+          '<div class="bg-empty" style="color:#f44747">Failed to load background tasks</div>';
+      }
+    }
+
+    async function refreshErrors() {
+      try {
+        const res = await fetch('http://localhost:${DAEMON_PORT}/session-log?limit=200');
+        const events = await res.json();
+        var errors = events.filter(function(e) {
+          return e.error || e.event === '/postToolUseFailure';
+        }).slice(0, 5);
+        var container = document.getElementById('recent-errors');
+        if (!errors.length) {
+          container.innerHTML = '<div class="bg-empty">No recent errors</div>';
+          return;
+        }
+        container.innerHTML = errors.map(function(e) {
+          var time = new Date(e.ts).toLocaleTimeString('en-US', {hour12:false,hour:'2-digit',minute:'2-digit',second:'2-digit'});
+          return '<div class="error-item">' +
+            '<span class="error-time">' + time + '</span>' +
+            '<span class="error-hook">' + escHtml(e.event || '') + '</span>' +
+            '<span class="error-msg">' + escHtml((e.error || 'Tool failure').slice(0, 80)) + '</span>' +
+            '</div>';
+        }).join('');
+      } catch {
+        document.getElementById('recent-errors').innerHTML =
+          '<div class="bg-empty">No recent errors</div>';
+      }
+    }
+
+    function refreshAll() {
+      refresh();
+      refreshErrors();
+      var activeTab = document.querySelector('.tab-content.active');
+      if (activeTab) {
+        var id = activeTab.id;
+        if (id === 'tab-hooks') refreshHooks();
+        else if (id === 'tab-background') refreshBackground();
+        else if (id === 'tab-events') refreshEvents();
+      }
+    }
+
     refresh();
+    refreshErrors();
     setInterval(refresh, 5000);
+    setInterval(refreshErrors, 5000);
 
     let currentFilter = 'all';
 
@@ -246,6 +448,8 @@ export const STATUS_HTML = `<!DOCTYPE html>
       el.style.display = 'block';
       el.classList.add('active');
       if (tab === 'events') refreshEvents();
+      else if (tab === 'hooks') refreshHooks();
+      else if (tab === 'background') refreshBackground();
     }
 
     document.querySelectorAll('.filter-btn').forEach(btn => {
@@ -350,7 +554,7 @@ export function handleStatusToolCall(): {
     content: [
       {
         type: "text",
-        text: "oh-my-cursor status dashboard loaded. The dashboard shows daemon health, session state, dispatch counts, and Ralph loop status.",
+        text: "oh-my-cursor status dashboard loaded. The dashboard shows daemon health, session state, dispatch counts, Ralph loop status, hook configuration, background tasks, and recent errors.",
       },
     ],
     _meta: {

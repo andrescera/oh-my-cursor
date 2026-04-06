@@ -124,3 +124,14 @@ After every worker returns:
 | 3rd failure | Document what failed, move to independent tasks |
 | All independent tasks done | Revisit blocked tasks with fresh context |
 | Still blocked | Report to user with full failure context |
+
+## MCP Integration
+
+MCP tools are available via `CallMcpTool`. Key servers that may be configured:
+
+- **Linear**: Issue creation, updates, project queries
+- **desktop-commander**: System commands, file operations beyond sandbox
+- **Notion**: Documentation, knowledge base queries
+- **GitKraken**: Branch management, PR operations
+
+When delegating tasks that involve external services, inform sub-agents about available MCP servers. Check tool descriptors before calling to ensure correct parameters.

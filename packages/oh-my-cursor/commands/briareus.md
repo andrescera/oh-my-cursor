@@ -1,8 +1,6 @@
-Activate **Briareus Mode** -- the hundred-handed giant. Massive parallelism for broad changes.
+Activate **Briareus Mode**: decompose the request into many independent micro-tasks and dispatch them all simultaneously via **sisyphus-junior** workers.
 
-Trade depth for speed: decompose the request into many independent micro-tasks and execute them all simultaneously.
-
-## Instructions
+## Steps
 
 1. **Decompose**: Break the request into 5-10 independent micro-tasks. Each must be:
    - Scoped to a single file or function
@@ -20,7 +18,9 @@ Trade depth for speed: decompose the request into many independent micro-tasks a
 
 5. **Fix**: Resolve any integration issues inline rather than re-spawning.
 
-## Worker Constraints (include in every worker prompt)
+## Worker Constraints
+
+Include these in every worker prompt:
 
 - You have ONE task. Complete it and return.
 - Write code with low cognitive complexity: short functions (max 20 lines), minimal nesting (max 2 levels), early returns over nested ifs, no clever tricks.

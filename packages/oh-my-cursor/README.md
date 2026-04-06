@@ -68,6 +68,34 @@ You (root thread)
 | **sisyphus-junior** | claude-4.6-sonnet-medium-thinking | Quick task executor |
 | **multimodal-looker** | gemini-3.1-pro | Visual file analysis (readonly) |
 
+## MCP Integration
+
+oh-my-cursor agents can interact with external services through Cursor's MCP (Model Context Protocol) system. Available MCP servers are automatically discovered and can be called via `CallMcpTool`.
+
+| Server | Capabilities |
+|--------|-------------|
+| desktop-commander | System commands, file operations |
+| Linear | Issue tracking, project management |
+| Notion | Documentation, knowledge base |
+| GitKraken | Git operations, PR management |
+| websearch | Web search via Exa/Tavily |
+| context7 | Library documentation lookup |
+| grep_app | Code search across repositories |
+
+Agents are MCP-aware and will use available servers when relevant to the task.
+
+## Worktrees
+
+oh-my-cursor supports git worktrees for isolated parallel execution via the `best-of-n-runner` agent.
+
+**How it works:**
+- Each `best-of-n-runner` gets its own git worktree and branch
+- Worktree configuration is in `worktrees.json`
+- Cursor's built-in worktree support handles directory isolation
+
+**Configuration:**
+The `worktrees.json` file defines worktree settings. The `best-of-n-runner` agent automatically creates and manages worktrees when dispatched for parallel solution attempts.
+
 ## Slash Commands
 
 | Command | Description |

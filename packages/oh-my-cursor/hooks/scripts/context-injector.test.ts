@@ -3,7 +3,7 @@ import { mkdtempSync, existsSync, rmSync, readFileSync } from "node:fs"
 import { tmpdir } from "node:os"
 import { join } from "node:path"
 
-import { writeContextRule, readContextState, clearContextRule } from "./context-injector"
+import { writeContextRule, readContextState, clearContextRule, matchSkills } from "./context-injector"
 
 let tmpDir: string
 
@@ -254,6 +254,78 @@ describe("context-injector", () => {
         await clearContextRule(dir)
         const state = await readContextState(dir)
         expect(state).toBeNull()
+      })
+    })
+  })
+
+  describe("#given matchSkills", () => {
+    describe("#when context contains git keywords", () => {
+      test("#then returns git-master", () => {
+        expect(matchSkills("I need to commit my changes")).toEqual(["git-master"])
+        expect(matchSkills("rebase the branch onto main")).toEqual(["git-master"])
+        expect(matchSkills("cherry-pick that fix")).toEqual(["git-master"])
+        expect(matchSkills("stash my work")).toEqual(["git-master"])
+      })
+    })
+
+    describe("#when context contains browser keywords", () => {
+      test("#then returns dev-browser", () => {
+        expect(matchSkills("open the browser and navigate")).toEqual(["dev-browser"])
+        expect(matchSkills("scrape the webpage for data")).toContain("dev-browser")
+        expect(matchSkills("take a screenshot of the page")).toEqual(["dev-browser"])
+      })
+    })
+
+    describe("#when context contains multiple keyword matches", () => {
+      test("#then returns multiple skills", () => {
+        const result = matchSkills("commit the frontend component changes")
+        expect(result).toContain("git-master")
+        expect(result).toContain("frontend-ui-ux")
+        expect(result.length).toBe(2)
+      })
+
+      test("#then returns deduplicated results", () => {
+        const result = matchSkills("git commit and rebase and merge")
+        expect(result).toEqual(["git-master"])
+      })
+    })
+
+    describe("#when context has no matching keywords", () => {
+      test("#then returns empty array", () => {
+        expect(matchSkills("hello world")).toEqual([])
+        expect(matchSkills("")).toEqual([])
+        expect(matchSkills("calculate the sum of two numbers")).toEqual([])
+      })
+    })
+
+    describe("#when context has mixed case keywords", () => {
+      test("#then matches case-insensitively", () => {
+        expect(matchSkills("GIT commit")).toEqual(["git-master"])
+        expect(matchSkills("BROWSER automation")).toEqual(["dev-browser"])
+        expect(matchSkills("Review the code for Quality")).toEqual(["review-work"])
+        expect(matchSkills("Frontend UI Design")).toEqual(["frontend-ui-ux"])
+        expect(matchSkills("run Playwright E2E tests")).toContain("playwright")
+      })
+    })
+
+    describe("#when context matches review keywords", () => {
+      test("#then returns review-work", () => {
+        expect(matchSkills("review the pull request")).toEqual(["review-work"])
+        expect(matchSkills("run an audit on the codebase")).toEqual(["review-work"])
+      })
+    })
+
+    describe("#when context matches ai-slop keywords", () => {
+      test("#then returns ai-slop-remover", () => {
+        expect(matchSkills("remove AI slop from the file")).toEqual(["ai-slop-remover"])
+        expect(matchSkills("clean comments in the module")).toEqual(["ai-slop-remover"])
+      })
+    })
+
+    describe("#when context matches create-rule keywords", () => {
+      test("#then returns create-rule", () => {
+        expect(matchSkills("create a new cursor rule")).toContain("create-rule")
+        expect(matchSkills("edit .cursor/rules file")).toEqual(["create-rule"])
       })
     })
   })

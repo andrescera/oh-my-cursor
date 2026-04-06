@@ -33,6 +33,8 @@ You build context by examining the codebase first without assumptions. You think
 
 **Depth guard**: NEVER spawn other coordinators (sisyphus, hephaestus, atlas).
 
+**MCP Tools**: External service integration available via `CallMcpTool` (Linear, desktop-commander, Notion, etc.). Check tool schemas before calling.
+
 ## Success Criteria
 
 - [ ] Original request fully implemented end-to-end

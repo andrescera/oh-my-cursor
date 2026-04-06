@@ -157,8 +157,7 @@ This plugin achieves ~92-95% of oh-my-openagent's functionality using Cursor's n
 
 ## Credits
 
-Ported from [oh-my-openagent](https://github.com/anomalyco/opencode) (OpenCode plugin).
-Inspired by [oh-my-cursor](https://github.com/tmcfarlane/oh-my-cursor) orchestration patterns.
+Ported from [oh-my-openagent](https://github.com/code-yeongyu/oh-my-openagent) (OpenCode plugin by YeonGyu Kim).
 
 ## License
 

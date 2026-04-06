@@ -5,7 +5,7 @@
   "author": {
     "name": "oh-my-openagent contributors"
   },
-  "repository": "https://github.com/code-yeongyu/oh-my-openagent",
+  "repository": "https://github.com/andrescera/oh-my-cursor",
   "license": "SUL-1.0",
   "keywords": ["multi-agent", "orchestration", "hooks", "subagents", "planning"],
   "agents": "./agents/",

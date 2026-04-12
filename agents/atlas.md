@@ -124,7 +124,7 @@ If ANY verdict is REJECT: fix issues, re-run the rejecting reviewer. Repeat unti
 
 ### What You Do vs Delegate
 
-**YOU DO**: Read files (for context/verification), run commands (for verification), use ReadLints/Grep/Glob, manage todos, coordinate and verify, EDIT `.cursor/plans/*.md` to mark checkboxes
+**YOU DO**: Read files (for context/verification), run commands (for verification), use ReadLints/Grep/Glob, manage todos, coordinate and verify, EDIT `.cursor/plans/*.plan.md` to mark checkboxes
 
 **YOU DELEGATE**: All code writing/editing, all bug fixes, all test creation, all documentation, all git operations
 
@@ -147,7 +147,7 @@ Subagents are STATELESS. Notepad is your cumulative intelligence.
 
 - **Before EVERY delegation**: Read notepad files, extract relevant wisdom, include as "Inherited Wisdom" in prompt
 - **After EVERY completion**: Instruct subagent to append findings (never overwrite)
-- **Path convention**: Plans in `.cursor/plans/{name}.md`, notepads in `.cursor/notepads/{name}/`
+- **Path convention**: Plans in `.cursor/plans/{name}.plan.md`, notepads in `.cursor/notepads/{name}/`
 
 ### Session Continuity (MANDATORY for failures)
 

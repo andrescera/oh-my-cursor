@@ -595,3 +595,24 @@ Compile the final report in this format:
 If FAILED -- be specific. The user should know exactly what to fix and in what order. No vague "consider improving X" -- state the problem, the file, and the fix.
 
 If PASSED -- keep it short. Highlight any non-blocking suggestions, but don't turn a passing review into a lecture.
+
+---
+
+## PR Context Gathering
+
+When reviewing a pull request, gather PR context before starting review:
+
+### Step 1: Try FETCH_PULL_REQUEST (Cursor-native)
+If `FETCH_PULL_REQUEST` is available in the Cursor session:
+1. Call `FETCH_PULL_REQUEST` with the PR URL or number
+2. Extract: diff, PR description, comments, review status
+3. Use this context to inform all 5 review agents
+
+### Step 2: Fallback to Shell
+If `FETCH_PULL_REQUEST` is not available:
+1. Run `gh pr view <number> --json title,body,files,comments,reviews` via Shell
+2. Run `gh pr diff <number>` for the full diff
+3. Parse the output and distribute to review agents
+
+### Step 3: Distribute Context
+Include the PR diff and description in each review agent's CONTEXT section. This ensures reviewers have full awareness of what changed and why.

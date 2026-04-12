@@ -19,7 +19,7 @@ Dispatch to **sisyphus** for intelligent refactoring with full codebase awarenes
 - ALWAYS dry-run before applying
 - Run tests after EVERY change -- never proceed with failing tests
 - Follow existing codebase patterns
-- Commit at logical checkpoints
+- If user requested commits or has a commit-between-batches rule active, commit at logical checkpoints; otherwise stage changes for review
 - On 3 consecutive failures: revert to last working state and ask user
 
 ## Six-section task brief template (required for the sisyphus dispatch)

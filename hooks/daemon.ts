@@ -1,5 +1,7 @@
 import { serve, type Server } from "bun"
 import { readFileSync, writeFileSync, unlinkSync, existsSync } from "node:fs"
+import { homedir } from "node:os"
+import { join } from "node:path"
 import { STATUS_HTML } from "./mcp-app"
 import { logEvent, getEvents, getSessionSummary, getLogPath, clearLog } from "./event-logger"
 import { sessions, parseInput, extractMeta } from "./shared"
@@ -167,6 +169,30 @@ const handlers: HandlerMap = {
     setTimeout(() => gracefulShutdown("shutdown endpoint"), 100)
     return { status: "shutting_down" }
   },
+  "/status": () => {
+    const memUsage = process.memoryUsage()
+    return {
+      status: "ok",
+      uptime: process.uptime(),
+      memory: {
+        rss: memUsage.rss,
+        heapUsed: memUsage.heapUsed,
+        heapTotal: memUsage.heapTotal,
+      },
+      restartCount: parseInt(process.env.OH_MY_CURSOR_RESTART_COUNT || "0", 10),
+      lastError: null,
+      ports: {
+        daemon: actualPort,
+        configDefault: DEFAULT_PORT,
+      },
+      configFiles: {
+        user: join(homedir(), ".config", "oh-my-cursor", "config.jsonc"),
+        project: join(process.cwd(), ".cursor", "oh-my-cursor.jsonc"),
+      },
+      activeSessions: sessions.size,
+      startTime: new Date(startTime).toISOString(),
+    }
+  },
 }
 
 handleStaleProcess()
@@ -251,7 +277,7 @@ const fetchHandler = async (req: Request) => {
     const parsed = parseInput(body)
     const result = handler(parsed)
 
-    if (path !== "/health" && path !== "/heartbeat") {
+    if (path !== "/health" && path !== "/heartbeat" && path !== "/status") {
       const toolInput = (parsed.tool_input as Record<string, unknown>) || {}
       logEvent({
         ts: new Date().toISOString(),

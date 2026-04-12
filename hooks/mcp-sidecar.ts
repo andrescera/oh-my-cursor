@@ -712,6 +712,8 @@ async function handleToolCall(
   }
 }
 
+let daemonHealthy = true
+
 const mcpFetchHandler = async (req: Request) => {
   const url = new URL(req.url)
 
@@ -771,7 +773,10 @@ const mcpFetchHandler = async (req: Request) => {
         return Response.json({
           jsonrpc: "2.0",
           id: body.id,
-          result: handleStatusToolCall(),
+          result: {
+            ...handleStatusToolCall(),
+            daemon_healthy: daemonHealthy,
+          },
         })
       }
       const result = await handleToolCall(name, args || {})
@@ -790,7 +795,11 @@ const mcpFetchHandler = async (req: Request) => {
   }
 
   if (url.pathname === "/health") {
-    return Response.json({ status: "ok", tools: TOOLS.map((t) => t.name) })
+    return Response.json({
+      status: "ok",
+      tools: TOOLS.map((t) => t.name),
+      daemonHealthy,
+    })
   }
 
   return new Response("Not found", { status: 404 })
@@ -834,3 +843,19 @@ if (ENV_MCP_PORT) {
 
 writePortFile(actualMcpPort)
 console.log(`[oh-my-cursor] MCP sidecar ready on http://localhost:${actualMcpPort}`)
+
+setInterval(async () => {
+  try {
+    const daemonPort = process.env.OH_MY_CURSOR_DAEMON_PORT || "47847"
+    const res = await fetch(`http://localhost:${daemonPort}/health`, {
+      signal: AbortSignal.timeout(5000),
+    })
+    daemonHealthy = res.ok
+    if (!res.ok) {
+      console.warn(`[oh-my-cursor] Daemon health check failed: HTTP ${res.status}`)
+    }
+  } catch {
+    daemonHealthy = false
+    console.warn("[oh-my-cursor] Daemon health check failed: unreachable")
+  }
+}, 30_000)

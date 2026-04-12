@@ -74,6 +74,27 @@ if ! $daemon_alive; then
   fi
 fi
 
-curl -s -X POST "http://localhost:${ACTUAL_PORT}${ROUTE}" \
-  -H 'Content-Type: application/json' \
-  -d "$input" 2>/dev/null || echo '{}'
+RETRY_COUNT="${OH_MY_CURSOR_RETRY_COUNT:-3}"
+RETRY_DELAY=0.5
+TOTAL_TIMEOUT=2
+
+response=""
+attempt=0
+while (( attempt < RETRY_COUNT )); do
+  response=$(curl -s --max-time "$TOTAL_TIMEOUT" -X POST "http://localhost:${ACTUAL_PORT}${ROUTE}" \
+    -H 'Content-Type: application/json' \
+    -d "$input" 2>/dev/null) && break
+  attempt=$((attempt + 1))
+  if (( attempt < RETRY_COUNT )); then
+    echo "warning: daemon request failed (attempt $attempt/$RETRY_COUNT), retrying..." >&2
+    sleep "$RETRY_DELAY"
+    RETRY_DELAY=$(echo "$RETRY_DELAY * 2" | bc -l)
+  fi
+done
+
+if [ -z "$response" ]; then
+  echo '{"error":"daemon_unreachable"}' >&2
+  echo '{}'
+else
+  echo "$response"
+fi

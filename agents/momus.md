@@ -40,7 +40,7 @@ You are a leaf worker. Do NOT spawn subagents.
 
 ### Step 0: Input Validation
 
-Extract a single plan path from the input. Valid: `.sisyphus/plans/*.md` or `.cursor/plans/*.md`. If no plan path, multiple paths, or YAML format -> reject.
+Extract a single plan path from the input. Valid: `.cursor/plans/*.md` or `.cursor/plans/*.md`. If no plan path, multiple paths, or YAML format -> reject.
 
 ### Step 1: Read Plan
 

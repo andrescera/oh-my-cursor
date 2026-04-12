@@ -31,7 +31,7 @@ oh-my-cursor uses a **dispatcher root**: the main chat thread only delegates wor
 | `/ralph-loop` | Continuation loop until `<promise>DONE</promise>` or cancel. |
 | `/refactor` | Sisyphus-led refactor with exploration, plan, incremental verify. |
 | `/remove-ai-slops` | Branch diff files cleaned in parallel with the ai-slop-remover skill. |
-| `/start-work` | Atlas loads a plan from `.sisyphus/plans/` or `.cursor/plans/` and executes it. |
+| `/start-work` | Atlas loads a plan from `.cursor/plans/` or `.cursor/plans/` and executes it. |
 | `/stop-continuation` | Stop Ralph, ultrawork, and other continuation mechanisms. |
 | `/ulw-loop` | Deep loop with oracle checks between milestones until DONE or cancel. |
 

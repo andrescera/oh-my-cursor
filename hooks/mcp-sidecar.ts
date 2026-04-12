@@ -1,4 +1,10 @@
-import { existsSync, readdirSync, writeFileSync, unlinkSync } from "node:fs"
+import {
+  existsSync,
+  readFileSync,
+  readdirSync,
+  writeFileSync,
+  unlinkSync,
+} from "node:fs"
 import { join, resolve } from "node:path"
 
 import { serve } from "bun"
@@ -10,6 +16,24 @@ import {
   STATUS_HTML,
 } from "./mcp-app"
 import { loadConfig } from "./config"
+
+function getPluginRoot(): string {
+  return resolve(import.meta.dir, "..")
+}
+
+function listSkillNamesFromPluginRoot(): string[] {
+  const skillsDir = join(getPluginRoot(), "skills")
+  if (!existsSync(skillsDir)) return []
+  const names: string[] = []
+  for (const ent of readdirSync(skillsDir, { withFileTypes: true })) {
+    if (!ent.isDirectory()) continue
+    if (existsSync(join(skillsDir, ent.name, "SKILL.md"))) {
+      names.push(ent.name)
+    }
+  }
+  names.sort()
+  return names
+}
 
 function collectAgentTranscriptDirs(): string[] {
   const dirs: string[] = []
@@ -42,6 +66,25 @@ function collectAgentTranscriptDirs(): string[] {
 const config = loadConfig()
 const ENV_MCP_PORT = process.env.OH_MY_CURSOR_MCP_PORT
 const DEFAULT_MCP_PORT = config.daemon.mcp_port
+const DAEMON_PORT_FILE = "/tmp/oh-my-cursor-daemon.port"
+// TODO: Refactored into port-manager.ts in T18
+function resolvePreferredMcpPortFromDaemonFile(fallbackMcpPort: number): number {
+  try {
+    if (!existsSync(DAEMON_PORT_FILE)) return fallbackMcpPort
+    const raw = readFileSync(DAEMON_PORT_FILE, "utf-8").trim()
+    const daemonPort = parseInt(raw, 10)
+    if (
+      Number.isFinite(daemonPort) &&
+      daemonPort >= 1 &&
+      daemonPort <= 65535
+    ) {
+      return daemonPort + 1
+    }
+  } catch {
+    // ignore invalid or unreadable daemon port file
+  }
+  return fallbackMcpPort
+}
 const MCP_PORT_FILE = "/tmp/oh-my-cursor-sidecar.port"
 const MAX_PORT_ATTEMPTS = 11
 
@@ -108,21 +151,17 @@ const TOOLS = [
   {
     name: "skill_mcp",
     description:
-      "Manage skill-embedded MCP servers. Start, stop, or query MCP servers that are bundled with skills.",
+      "Read a skill's SKILL.md documentation. Returns the full skill definition for the named skill.",
     inputSchema: {
       type: "object" as const,
       properties: {
-        action: {
-          type: "string",
-          enum: ["start", "stop", "list", "status"],
-          description: "Action to perform on skill MCP servers",
-        },
         skill_name: {
           type: "string",
-          description: "Name of the skill whose MCP server to manage",
+          description:
+            "Name of the skill directory (e.g., 'git-master', 'review-work')",
         },
       },
-      required: ["action"],
+      required: ["skill_name"],
     },
   },
   {
@@ -322,52 +361,52 @@ async function handleToolCall(
     }
 
     case "skill_mcp": {
-      const action = args.action as string
-      const skillName = args.skill_name as string
+      const skillNameRaw = args.skill_name
+      const skillName =
+        typeof skillNameRaw === "string" ? skillNameRaw.trim() : ""
+      const available = listSkillNamesFromPluginRoot()
+      const labelForError =
+        typeof skillNameRaw === "string"
+          ? skillNameRaw
+          : skillNameRaw === undefined
+            ? ""
+            : String(skillNameRaw)
 
-      switch (action) {
-        case "list":
-          return {
-            content: [
-              {
-                type: "text",
-                text: "Available skill MCPs:\n- dev-browser (playwright automation)\n- agent-browser (CLI browser automation)\n\nUse action='status' with skill_name to check if running.",
-              },
-            ],
-          }
-        case "status":
-          return {
-            content: [
-              {
-                type: "text",
-                text: `Skill MCP '${skillName || "unknown"}': Not running. Use action='start' to launch.`,
-              },
-            ],
-          }
-        case "start":
-          return {
-            content: [
-              {
-                type: "text",
-                text: `Starting skill MCP '${skillName}'... Use the dev-browser or agent-browser skill instructions to set up the server.`,
-              },
-            ],
-          }
-        case "stop":
-          return {
-            content: [
-              { type: "text", text: `Stopping skill MCP '${skillName}'...` },
-            ],
-          }
-        default:
-          return {
-            content: [
-              {
-                type: "text",
-                text: `Unknown action '${action}'. Valid actions: start, stop, list, status`,
-              },
-            ],
-          }
+      if (!skillName) {
+        return {
+          content: [
+            {
+              type: "text",
+              text: `Skill '${labelForError}' not found. Available skills: ${available.join(", ")}`,
+            },
+          ],
+        }
+      }
+
+      const skillPath = join(getPluginRoot(), "skills", skillName, "SKILL.md")
+      if (!existsSync(skillPath)) {
+        return {
+          content: [
+            {
+              type: "text",
+              text: `Skill '${skillName}' not found. Available skills: ${available.join(", ")}`,
+            },
+          ],
+        }
+      }
+
+      try {
+        const fileContent = readFileSync(skillPath, "utf-8")
+        return { content: [{ type: "text", text: fileContent }] }
+      } catch (err) {
+        return {
+          content: [
+            {
+              type: "text",
+              text: `Failed to read ${skillPath}: ${err instanceof Error ? err.message : String(err)}`,
+            },
+          ],
+        }
       }
     }
 
@@ -758,21 +797,25 @@ const mcpFetchHandler = async (req: Request) => {
 }
 
 let actualMcpPort = ENV_MCP_PORT ? parseInt(ENV_MCP_PORT) : DEFAULT_MCP_PORT
+const scanBaseMcpPort = ENV_MCP_PORT
+  ? DEFAULT_MCP_PORT
+  : resolvePreferredMcpPortFromDaemonFile(DEFAULT_MCP_PORT)
 
 if (ENV_MCP_PORT) {
   console.log(`[oh-my-cursor] MCP sidecar starting on port ${actualMcpPort} (env override)...`)
   serve({ port: actualMcpPort, fetch: mcpFetchHandler })
 } else {
+  actualMcpPort = scanBaseMcpPort
   console.log(`[oh-my-cursor] MCP sidecar starting on port ${actualMcpPort}...`)
   let started = false
   for (let offset = 0; offset < MAX_PORT_ATTEMPTS; offset++) {
-    const tryPort = DEFAULT_MCP_PORT + offset
+    const tryPort = scanBaseMcpPort + offset
     try {
       serve({ port: tryPort, fetch: mcpFetchHandler })
       actualMcpPort = tryPort
       started = true
       if (offset > 0) {
-        console.log(`[oh-my-cursor] Default MCP port ${DEFAULT_MCP_PORT} in use, using port ${actualMcpPort}`)
+        console.log(`[oh-my-cursor] Preferred MCP port ${scanBaseMcpPort} in use, using port ${actualMcpPort}`)
       }
       break
     } catch (err) {
@@ -784,7 +827,7 @@ if (ENV_MCP_PORT) {
     }
   }
   if (!started) {
-    console.error(`[oh-my-cursor] Could not find available MCP port in range ${DEFAULT_MCP_PORT}-${DEFAULT_MCP_PORT + MAX_PORT_ATTEMPTS - 1}`)
+    console.error(`[oh-my-cursor] Could not find available MCP port in range ${scanBaseMcpPort}-${scanBaseMcpPort + MAX_PORT_ATTEMPTS - 1}`)
     process.exit(1)
   }
 }

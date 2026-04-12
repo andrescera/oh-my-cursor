@@ -87,6 +87,7 @@ ACTUAL_MCP_PORT="$(read_port_file "$MCP_PORT_FILE" "$MCP_PORT")"
 
 if ! curl -s "http://localhost:${ACTUAL_MCP_PORT}/health" >/dev/null 2>&1; then
   if [ -f "$SIDECAR_SCRIPT" ]; then
+    export OH_MY_CURSOR_DAEMON_PORT="$ACTUAL_PORT"
     nohup bun run "$SIDECAR_SCRIPT" >/tmp/oh-my-cursor-sidecar.log 2>&1 &
     if ! wait_for_health "$MCP_PORT"; then
       ACTUAL_MCP_PORT="$(read_port_file "$MCP_PORT_FILE" "$MCP_PORT")"

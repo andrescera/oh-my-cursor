@@ -64,7 +64,11 @@ export function createContinuationHandlers(
       const convId = (input.conversation_id as string) || (input.session_id as string) || "unknown"
       const session = getOrCreateSession(convId)
 
-      let additionalContext = ""
+      let additionalContext = [
+        "[oh-my-cursor] Identity: Plan=Prometheus | Agent=Orchestrator/Atlas | Debug=Diagnostic | Ask=Advisor",
+        "[oh-my-cursor] FORBIDDEN per mode: Plan(Shell,Delete,StrReplace,impl-Tasks) Agent(direct Write/Shell) Debug/Ask(Write,Shell,Task)",
+        "[oh-my-cursor] Agent mode: NEVER edit directly, delegate ALL via Task",
+      ].join("\n")
 
       if (session.stoppedAt) {
         session.stoppedAt = null

@@ -1,9 +1,16 @@
 import { describe, test, expect, beforeAll, afterAll } from "bun:test"
+import { mkdirSync, writeFileSync, unlinkSync, rmdirSync } from "node:fs"
+import { join } from "node:path"
+import { tmpdir } from "node:os"
 import type { Server } from "bun"
 
 const PORT = 47899
 let server: ReturnType<typeof import("bun")["serve"]> | null = null
 const BASE = `http://localhost:${PORT}`
+
+const AGENTS_TEST_DIR = join(tmpdir(), "oh-my-cursor-test-agents")
+const AGENTS_TEST_FILE = join(AGENTS_TEST_DIR, "dummy.txt")
+const AGENTS_MD_PATH = join(AGENTS_TEST_DIR, "AGENTS.md")
 
 async function post(path: string, body: Record<string, unknown> = {}) {
   const res = await fetch(`${BASE}${path}`, {
@@ -15,12 +22,19 @@ async function post(path: string, body: Record<string, unknown> = {}) {
 }
 
 beforeAll(async () => {
+  mkdirSync(AGENTS_TEST_DIR, { recursive: true })
+  writeFileSync(AGENTS_TEST_FILE, "test file", "utf-8")
+  writeFileSync(AGENTS_MD_PATH, "# Test AGENTS\nThis directory has test rules.", "utf-8")
+
   process.env.OH_MY_CURSOR_PORT = String(PORT)
   await import("./daemon.ts")
   await Bun.sleep(500)
 })
 
 afterAll(() => {
+  try { unlinkSync(AGENTS_TEST_FILE) } catch {}
+  try { unlinkSync(AGENTS_MD_PATH) } catch {}
+  try { rmdirSync(AGENTS_TEST_DIR) } catch {}
   process.exit(0)
 })
 
@@ -287,7 +301,7 @@ describe("hook daemon", () => {
           await post("/sessionStart", { session_id: "sess-agents-inject" })
           const result = await post("/postToolUse", {
             tool_name: "Read",
-            tool_input: { file_path: "/mnt/development/oh-my-openagent/package.json" },
+            tool_input: { file_path: AGENTS_TEST_FILE },
             session_id: "sess-agents-inject",
           })
           expect(result.additional_context).toContain("[directory-context]")
@@ -303,12 +317,12 @@ describe("hook daemon", () => {
           await post("/sessionStart", { session_id: "sess-agents-dedup" })
           await post("/postToolUse", {
             tool_name: "Read",
-            tool_input: { file_path: "/mnt/development/oh-my-openagent/package.json" },
+            tool_input: { file_path: AGENTS_TEST_FILE },
             session_id: "sess-agents-dedup",
           })
           const result = await post("/postToolUse", {
             tool_name: "Read",
-            tool_input: { file_path: "/mnt/development/oh-my-openagent/tsconfig.json" },
+            tool_input: { file_path: AGENTS_TEST_FILE },
             session_id: "sess-agents-dedup",
           })
           const ctx = result.additional_context || ""
@@ -426,22 +440,26 @@ describe("hook daemon", () => {
   })
 
   describe("/beforeSubmitPrompt", () => {
-    test("returns empty for normal messages (prompt field)", async () => {
+    test("injects persona constraints for normal messages (prompt field)", async () => {
       await post("/sessionStart", { session_id: "sess-prompt" })
       const result = await post("/beforeSubmitPrompt", {
         prompt: "Hello world",
         session_id: "sess-prompt",
       })
-      expect(Object.keys(result).length).toBe(0)
+      expect(result.continue).toBe(true)
+      expect(result.additional_context).toContain("Prometheus")
+      expect(result.additional_context).toContain("FORBIDDEN")
     })
 
-    test("accepts user_message field (Cursor-native)", async () => {
+    test("injects persona constraints via user_message field (Cursor-native)", async () => {
       await post("/sessionStart", { conversation_id: "conv-prompt" })
       const result = await post("/beforeSubmitPrompt", {
         user_message: "Hello world",
         conversation_id: "conv-prompt",
       })
-      expect(Object.keys(result).length).toBe(0)
+      expect(result.continue).toBe(true)
+      expect(result.additional_context).toContain("Prometheus")
+      expect(result.additional_context).toContain("FORBIDDEN")
     })
 
     test("detects ultrawork keyword with dual response", async () => {

@@ -64,7 +64,7 @@ Hook options used: `command`, `matcher`, `failClosed`, `loop_limit`, `type: "pro
 
 Slash commands via `commands/*.md` organized by category:
 
-- **Orchestration**: /deep-plan, /start-work, /briareus, /refactor, /init-deep, /handoff
+- **Orchestration**: /plan, /start-work, /briareus, /refactor, /init-deep, /handoff
 - **Monitoring**: /status, /agents, /help
 - **Configuration**: /config
 - **Continuation**: /ralph-loop, /ulw-loop, /cancel-ralph, /stop-continuation, /remove-ai-slops
@@ -137,13 +137,13 @@ The root thread adopts different personas based on Cursor's active mode:
 | Debug | Diagnostic specialist | Read-only investigation (UI-only entry) |
 | Ask | Oracle/Advisor | Read-only answers (UI-only entry) |
 
-**Entry points**: `/deep-plan` slash command or manual UI mode switch (clicking Plan/Agent toggle in Cursor).
+**Entry points**: `/plan` slash command or manual UI mode switch (clicking Plan/Agent toggle in Cursor).
 
 **Flow: Plan → Agent transition**
 
 ```mermaid
 flowchart TD
-    A["/deep-plan command\nor UI → Plan mode"] -->|SwitchMode plan| B["Root becomes Prometheus"]
+    A["/plan command\nor UI → Plan mode"] -->|SwitchMode plan| B["Root becomes Prometheus"]
     B --> C["Interview user (1-3 questions)"]
     C --> D["Dispatch explore / metis research"]
     D --> E["Write plan to .cursor/plans/"]
@@ -163,7 +163,7 @@ Key benefits over subagent mode:
 ### Subagent Mode (fallback)
 
 Set `orchestration.mode: "subagent"` in config. Commands dispatch dedicated subagents:
-- `/deep-plan` → `Task(prometheus)`
+- `/plan` → `Task(prometheus)`
 - `/start-work` → `Task(atlas)`
 
 Useful for very large plans (50+ tasks) where context window may fill up.

@@ -502,7 +502,7 @@ print_success_banner() {
   echo ""
   echo "Next steps:"
   echo "  1. Restart Cursor (Cmd+Shift+P > 'Reload Window' or full restart)"
-  echo "  2. Try: /deep-plan add authentication to my app"
+  echo "  2. Try: /plan add authentication to my app"
   echo "  3. Try: @sisyphus fix the failing tests"
   echo ""
 }

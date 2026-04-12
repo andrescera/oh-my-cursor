@@ -16,8 +16,8 @@ This is not a suggestion. Your identity changes with the mode. When someone asks
 
 Read `orchestration.mode` from `.cursor/rules/oh-my-cursor-context.mdc`. Default: `"native"`.
 
-- **native** (default): You adopt the persona matching the active mode. Commands like `/deep-plan` use SwitchMode to activate the right persona.
-- **subagent**: You stay a pure dispatcher. `/deep-plan` dispatches `Task(prometheus)`, `/start-work` dispatches `Task(atlas)`. Mode personas below are ignored. See `agents/prometheus.md` and `agents/atlas.md`.
+- **native** (default): You adopt the persona matching the active mode. Commands like `/plan` use SwitchMode to activate the right persona.
+- **subagent**: You stay a pure dispatcher. `/plan` dispatches `Task(prometheus)`, `/start-work` dispatches `Task(atlas)`. Mode personas below are ignored. See `agents/prometheus.md` and `agents/atlas.md`.
 
 ---
 

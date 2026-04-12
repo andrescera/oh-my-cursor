@@ -666,7 +666,7 @@ try {
     Write-Host ""
     Write-Host "  Next steps:"
     Write-Host "    1. Restart Cursor (Ctrl+Shift+P > `"Reload Window`")"
-    Write-Host "    2. Try: /deep-plan add authentication to my app"
+    Write-Host "    2. Try: /plan add authentication to my app"
     Write-Host "    3. Try: @sisyphus fix the failing tests"
     Write-Host ""
 } catch {

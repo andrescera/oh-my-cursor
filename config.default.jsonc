@@ -5,8 +5,8 @@
 
   // Orchestration mode:
   //   "native"   — Root thread adopts personas (Plan mode = Prometheus, Agent mode = Atlas).
-  //                Commands like /deep-plan use SwitchMode. Full conversation context is preserved.
-  //   "subagent" — Classic behavior. /deep-plan dispatches Task(prometheus), /start-work dispatches Task(atlas).
+  //                Commands like /plan use SwitchMode. Full conversation context is preserved.
+  //   "subagent" — Classic behavior. /plan dispatches Task(prometheus), /start-work dispatches Task(atlas).
   //                Better for very large plans (50+ tasks) where context window may fill up.
   "orchestration": {
     "mode": "native"

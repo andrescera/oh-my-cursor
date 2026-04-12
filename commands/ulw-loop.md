@@ -2,7 +2,7 @@ You MUST use the **Task** tool to run the **ULTRAWORK** loop. Dispatch **Hephaes
 
 ## Steps (you execute these tool calls)
 
-1. Compose a six-section task brief using the same template as `/deep-plan` and `/start-work` (read those command files if needed).
+1. Compose a six-section task brief using the same template as `/plan` and `/start-work` (read those command files if needed).
 2. Call **Task** with `subagent_type="hephaestus"`. Put the user's requested work in **CONTEXT** and include the **ULW instructions for Hephaestus** block below verbatim in the Hephaestus task body.
 
 ## ULW instructions for Hephaestus (include verbatim in the Task prompt)

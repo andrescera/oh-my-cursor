@@ -81,7 +81,7 @@ From PowerShell in the repo root:
 |-----------|-------|-------------|
 | Agents | 11 + protocol | Specialized subagents with model routing |
 | Rules | 4 | Orchestrator + coding standards |
-| Commands | 16 | Slash commands (/deep-plan, /ulw-loop, /refactor, /ralph-loop, etc.) |
+| Commands | 16 | Slash commands (/plan, /ulw-loop, /refactor, /ralph-loop, etc.) |
 | Skills | 7 | Domain expertise (git, frontend, browser, review, playwright) |
 | Hooks | 1 daemon | Persistent Bun HTTP server; 30+ hook handlers in daemon |
 | MCP | 4 servers | websearch, context7, grep_app + sidecar |
@@ -158,7 +158,7 @@ The `worktrees.json` file defines worktree settings. The `best-of-n-runner` agen
 
 | Command | Description |
 |---------|-------------|
-| `/deep-plan` | Create a strategic work plan with Prometheus |
+| `/plan` | Create a strategic work plan with Prometheus |
 | `/start-work` | Execute an existing plan with Atlas |
 | `/refactor` | Intelligent refactoring with LSP + AST-grep |
 | `/briareus` | Massive parallelism: decompose into micro-tasks and run many sisyphus-junior workers at once |

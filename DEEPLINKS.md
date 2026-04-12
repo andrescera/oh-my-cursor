@@ -13,7 +13,7 @@ Share individual components with one click. Deeplinks open Cursor and install th
 
 | Command | Deeplink |
 |---------|----------|
-| /deep-plan | `cursor://anysphere.cursor-deeplink/command?name=deep-plan&text=Create%20a%20strategic%20work%20plan%20using%20Prometheus` |
+| /plan | `cursor://anysphere.cursor-deeplink/command?name=plan&text=Create%20a%20strategic%20work%20plan%20using%20Prometheus` |
 | /refactor | `cursor://anysphere.cursor-deeplink/command?name=refactor&text=Perform%20intelligent%20refactoring%20with%20full%20codebase%20awareness` |
 | /ralph-loop | `cursor://anysphere.cursor-deeplink/command?name=ralph-loop&text=Start%20a%20self-referential%20development%20loop%20until%20completion` |
 | /handoff | `cursor://anysphere.cursor-deeplink/command?name=handoff&text=Create%20a%20detailed%20context%20summary%20for%20continuing%20work` |
@@ -23,4 +23,4 @@ Share individual components with one click. Deeplinks open Cursor and install th
 Replace `cursor://anysphere.cursor-deeplink/` with `https://cursor.com/link/` for web-based sharing:
 
 - [Install orchestrator rule](https://cursor.com/link/rule?name=orchestrator&text=Root%20Thread%20%3D%20Dispatcher.%20NEVER%20a%20Worker.)
-- [Install /deep-plan command](https://cursor.com/link/command?name=deep-plan&text=Create%20a%20strategic%20work%20plan%20using%20Prometheus)
+- [Install /plan command](https://cursor.com/link/command?name=plan&text=Create%20a%20strategic%20work%20plan%20using%20Prometheus)

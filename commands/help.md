@@ -24,7 +24,7 @@ oh-my-cursor uses a **dispatcher root**: the main chat thread only delegates wor
 
 | Command | Description |
 |---------|-------------|
-| `/deep-plan` | Switch to Plan mode (Prometheus persona); research via explore/metis; write plan to `.cursor/plans/`; optional Momus review. |
+| `/plan` | Switch to Plan mode (Prometheus persona); research via explore/metis; write plan to `.cursor/plans/`; optional Momus review. |
 | `/start-work` | Execute a plan from `.cursor/plans/` — native mode (root=Atlas) or subagent mode (Task atlas). |
 | `/briareus` | Split work into many tiny parallel tasks; dispatch multiple sisyphus-junior workers. |
 | `/refactor` | Sisyphus-led refactor with exploration, plan, incremental verify. |
@@ -75,7 +75,7 @@ Skills live under `skills/<name>/SKILL.md`. Load when the task matches the trigg
 
 ## Quick reference
 
-For complex or ambiguous work use `/deep-plan` (then confirm and `/start-work`). For a small, clear change, describe it and route to a quick executor per orchestrator rules.
+For complex or ambiguous work use `/plan` (then confirm and `/start-work`). For a small, clear change, describe it and route to a quick executor per orchestrator rules.
 
 ## Common patterns
 

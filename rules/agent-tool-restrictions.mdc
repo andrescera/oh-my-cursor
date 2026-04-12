@@ -1,7 +1,6 @@
 ---
 description: "Per-agent tool restrictions — enforces read-only, planner, and worker boundaries"
-globs: ["agents/**/*.md"]
-alwaysApply: false
+alwaysApply: true
 ---
 
 # Agent Tool Restrictions
@@ -33,11 +32,13 @@ These agents MUST NOT use mutation tools:
 Violations indicate an agent is exceeding its role boundary.
 
 ## Planner Agents
-**Applies to:** prometheus
+**Applies to:** prometheus (when dispatched as subagent via Task(prometheus))
 
 Planners produce only markdown plan files:
-- **Forbidden:** Write (non-.md files), Shell (implementation commands), StrReplace (source code)
+- **Forbidden:** Write (non-.md files), Shell (implementation commands), StrReplace (source code), Task (sub-agent dispatch)
 - **Allowed:** Write (.md plan files only), Read, Grep, Glob, AskQuestion, TodoWrite
+
+> **Note:** In native mode, root-as-Prometheus follows the "Plan mode" permissions above (which include Task dispatch for explore, metis, momus). This "Planner Agents" section applies only when prometheus runs as a dispatched subagent.
 
 ## Worker Agents
 **Applies to:** sisyphus-junior

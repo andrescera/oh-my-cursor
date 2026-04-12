@@ -182,7 +182,7 @@ export function createSessionHandlers(
               "\n\n[oh-my-cursor: additional context truncated to max_context_chars]"
             : pending.merged
         return {
-          additional_context: merged,
+          user_message: merged,
           hookSpecificOutput: { hookEventName: "PreCompact", additionalContext: merged },
         }
       }

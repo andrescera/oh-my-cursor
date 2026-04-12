@@ -173,6 +173,20 @@ This plugin achieves ~92-95% of oh-my-openagent's functionality using Cursor's n
 
 **Irreducible gap (~5-8%):** Provider-level config, fine-grained per-request effort control, session tree opacity, programmatic model switching mid-session.
 
+## Documentation
+
+oh-my-cursor includes comprehensive architecture and integration documentation:
+
+| Document | Description |
+|----------|-------------|
+| [ARCHITECTURE.md](ARCHITECTURE.md) | System architecture with mermaid flow diagrams |
+| [docs/cursor-integration.md](docs/cursor-integration.md) | Every native Cursor feature the plugin uses |
+| [docs/agent-nativeness-audit.md](docs/agent-nativeness-audit.md) | Agent-to-native-tool mapping and recommendations |
+| [CONTRIBUTING.md](CONTRIBUTING.md) | Development setup and contribution guidelines |
+| [DEEPLINKS.md](DEEPLINKS.md) | Cursor deeplink reference |
+
+See [ARCHITECTURE.md](ARCHITECTURE.md) for detailed diagrams and data flow documentation.
+
 ## Credits
 
 Ported from [oh-my-openagent](https://github.com/code-yeongyu/oh-my-openagent) (OpenCode plugin by YeonGyu Kim).

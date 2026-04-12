@@ -3,9 +3,9 @@
   "hooks": {
     "sessionStart": [{ "command": "bash \"$HOME/.cursor/plugins/local/oh-my-cursor/hooks/scripts/start-daemon.sh\"" }],
     "sessionEnd": [{ "command": "bash \"$HOME/.cursor/plugins/local/oh-my-cursor/hooks/scripts/ensure-daemon.sh\" /sessionEnd" }],
-    "preToolUse": [{ "command": "bash \"$HOME/.cursor/plugins/local/oh-my-cursor/hooks/scripts/ensure-daemon.sh\" /preToolUse", "matcher": "Shell|Write|Delete" }],
+    "preToolUse": [{ "command": "bash \"$HOME/.cursor/plugins/local/oh-my-cursor/hooks/scripts/ensure-daemon.sh\" /preToolUse", "matcher": "Shell|Write|Delete|StrReplace|Edit|Task" }],
     "postToolUse": [{ "command": "bash \"$HOME/.cursor/plugins/local/oh-my-cursor/hooks/scripts/ensure-daemon.sh\" /postToolUse" }],
-    "postToolUseFailure": [{ "command": "bash \"$HOME/.cursor/plugins/local/oh-my-cursor/hooks/scripts/ensure-daemon.sh\" /postToolUseFailure", "matcher": "Shell|Write|Delete" }],
+    "postToolUseFailure": [{ "command": "bash \"$HOME/.cursor/plugins/local/oh-my-cursor/hooks/scripts/ensure-daemon.sh\" /postToolUseFailure", "matcher": "Shell|Write|Delete|StrReplace|Edit|Task" }],
     "subagentStart": [{ "command": "bash \"$HOME/.cursor/plugins/local/oh-my-cursor/hooks/scripts/ensure-daemon.sh\" /subagentStart" }],
     "subagentStop": [{ "command": "bash \"$HOME/.cursor/plugins/local/oh-my-cursor/hooks/scripts/ensure-daemon.sh\" /subagentStop", "loop_limit": null }],
     "beforeShellExecution": [{ "command": "bash \"$HOME/.cursor/plugins/local/oh-my-cursor/hooks/scripts/ensure-daemon.sh\" /beforeShellExecution", "matcher": "rm|curl|wget|docker|sudo", "failClosed": true }],

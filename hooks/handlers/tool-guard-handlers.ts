@@ -41,8 +41,9 @@ export function createToolGuardHandlers(
       const toolInput = (input.tool_input as Record<string, unknown>) || {}
 
       if (["write", "Write", "str_replace", "StrReplace", "edit", "Edit", "apply_patch", "ApplyPatch"].includes(toolName)) {
+        const isEditOperation = Boolean(toolInput.old_string)
         const filePath = (toolInput.file_path || toolInput.path) as string
-        if (filePath && !filePath.includes(".sisyphus") && !filePath.includes("node_modules") && !filePath.includes(".cursor/")) {
+        if (!isEditOperation && filePath && !filePath.includes(".sisyphus") && !filePath.includes("node_modules") && !filePath.includes(".cursor/")) {
           if (existsSync(filePath) && !globalReadPaths.has(filePath) && !session.readPaths.has(filePath)) {
             const reason = "File exists but was not read first: " + filePath + ". Use Read tool first."
             return {

@@ -1,9 +1,11 @@
 import { describe, test, expect, beforeAll, afterAll } from "bun:test"
 import type { Subprocess } from "bun"
+import { writeFileSync, unlinkSync } from "node:fs"
 
 const PORT = 47899
 const BASE = `http://localhost:${PORT}`
 const SESSION_ID = "integration-test-session"
+const GUARD_TEST_FILE = "/tmp/oh-my-cursor-guard-test.txt"
 
 let daemon: Subprocess | null = null
 
@@ -42,9 +44,13 @@ beforeAll(async () => {
     stderr: "ignore",
   })
   await waitForDaemon()
+  writeFileSync(GUARD_TEST_FILE, "test content", "utf-8")
 })
 
 afterAll(async () => {
+  try {
+    unlinkSync(GUARD_TEST_FILE)
+  } catch {}
   if (daemon) {
     daemon.kill()
     await daemon.exited
@@ -141,6 +147,35 @@ describe("daemon integration lifecycle", () => {
         // The guard only denies when the file exists AND wasn't read
         // For a non-existent file, it allows (new file creation)
         expect(data.permission).toBeUndefined()
+      })
+    })
+  })
+
+  describe("#given an existing file was never read but edit has old_string", () => {
+    describe("#when POST /preToolUse with Write and old_string is called", () => {
+      test("#then it allows the edit (old_string proves file awareness)", async () => {
+        const { data } = await post("/preToolUse", {
+          tool_name: "Write",
+          tool_input: { file_path: GUARD_TEST_FILE, old_string: "test content", new_string: "new content" },
+          session_id: SESSION_ID,
+        })
+
+        expect(data.permission).toBeUndefined()
+      })
+    })
+  })
+
+  describe("#given an existing file was never read and write has no old_string", () => {
+    describe("#when POST /preToolUse with blind Write is called", () => {
+      test("#then it denies the write", async () => {
+        const { data } = await post("/preToolUse", {
+          tool_name: "Write",
+          tool_input: { file_path: GUARD_TEST_FILE, contents: "overwrite" },
+          session_id: "guard-test-fresh-session",
+        })
+
+        expect(data.permission).toBe("deny")
+        expect(data.agentMessage).toContain("not read first")
       })
     })
   })

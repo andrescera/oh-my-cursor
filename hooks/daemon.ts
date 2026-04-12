@@ -4,7 +4,7 @@ import { homedir } from "node:os"
 import { join } from "node:path"
 import { STATUS_HTML } from "./mcp-app"
 import { logEvent, getEvents, getSessionSummary, getLogPath, clearLog } from "./event-logger"
-import { sessions, parseInput, extractMeta } from "./shared"
+import { sessions, parseInput, extractMeta, globalReadPaths } from "./shared"
 import { isHookEnabled, getHookConfig } from "./hook-config"
 import { createSessionHandlers } from "./handlers/session-handlers"
 import { createToolGuardHandlers } from "./handlers/tool-guard-handlers"
@@ -28,6 +28,9 @@ const restored = persistence.load()
 if (restored) {
   for (const [id, state] of restored) {
     sessions.set(id, state)
+    for (const p of state.readPaths) {
+      globalReadPaths.add(p)
+    }
   }
 }
 

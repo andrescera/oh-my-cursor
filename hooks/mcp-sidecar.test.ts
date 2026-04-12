@@ -227,16 +227,16 @@ describe("mcp-sidecar", () => {
       })
     })
 
-    describe("#when calling skill_mcp with list action", () => {
-      test("#then returns available skill MCPs", async () => {
+    describe("#when calling skill_mcp with empty skill_name", () => {
+      test("#then returns available skills list", async () => {
         const result = await jsonrpc("tools/call", {
           name: "skill_mcp",
-          arguments: { action: "list" },
+          arguments: { skill_name: "" },
         })
 
         expect(result.result.content).toBeArray()
         expect(result.result.content[0].type).toBe("text")
-        expect(result.result.content[0].text).toContain("Available skill MCPs")
+        expect(result.result.content[0].text).toContain("Available skills")
       })
     })
 
@@ -251,14 +251,15 @@ describe("mcp-sidecar", () => {
       })
     })
 
-    describe("#when calling skill_mcp with unknown action", () => {
-      test("#then returns unknown action error", async () => {
+    describe("#when calling skill_mcp with nonexistent skill", () => {
+      test("#then returns not found with available skills", async () => {
         const result = await jsonrpc("tools/call", {
           name: "skill_mcp",
-          arguments: { action: "invalid-action" },
+          arguments: { skill_name: "nonexistent-skill" },
         })
 
-        expect(result.result.content[0].text).toContain("Unknown action")
+        expect(result.result.content[0].text).toContain("not found")
+        expect(result.result.content[0].text).toContain("Available skills")
       })
     })
 

@@ -17,6 +17,7 @@ import {
 } from "./mcp-app"
 import { loadConfig } from "./config"
 import { cleanupStaleProcess } from "./process-guard"
+import { readPortCoordination, writePortCoordination } from "./port-manager"
 
 function getPluginRoot(): string {
   return resolve(import.meta.dir, "..")
@@ -847,6 +848,12 @@ if (ENV_MCP_PORT) {
 
 writePortFile(actualMcpPort)
 writeFileSync(MCP_PID_FILE, String(process.pid), "utf-8")
+
+const coord = readPortCoordination()
+if (coord) {
+  writePortCoordination({ ...coord, sidecar: actualMcpPort, updatedAt: new Date().toISOString() })
+}
+
 console.log(`[oh-my-cursor] MCP sidecar ready on http://localhost:${actualMcpPort}`)
 
 setInterval(async () => {

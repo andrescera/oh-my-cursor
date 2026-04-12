@@ -17,6 +17,7 @@ import { StatePersistence } from "./state-persistence"
 import { createHeartbeatHandler, startHeartbeatWriter, HEARTBEAT_FILE } from "./handlers/heartbeat"
 import { loadConfig } from "./config"
 import { cleanupStaleProcess } from "./process-guard"
+import { writePortCoordination } from "./port-manager"
 import type { HandlerMap } from "./types"
 
 const config = loadConfig()
@@ -314,6 +315,11 @@ if (ENV_PORT) {
 
 writePidFile()
 writePortFile(actualPort)
+writePortCoordination({
+  daemon: actualPort,
+  sidecar: actualPort + 1,
+  updatedAt: new Date().toISOString(),
+})
 heartbeatInterval = startHeartbeatWriter()
 persistenceInterval = setInterval(() => {
   persistence.save(sessions)

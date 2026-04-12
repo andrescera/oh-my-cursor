@@ -24,6 +24,23 @@ graph TD
     Sisyphus -->|delegates| SJ
 ```
 
+### Mode-Based Routing (Native Mode)
+
+```mermaid
+graph TD
+    User[User Message] --> ModeCheck{Current Mode?}
+    ModeCheck -->|Plan| PlanPersona["Root = Prometheus Persona"]
+    ModeCheck -->|Agent| AgentPersona["Root = Orchestrator/Atlas"]
+    ModeCheck -->|Debug| DebugPersona["Root = Diagnostic Specialist"]
+    ModeCheck -->|Ask| AskPersona["Root = Read-Only Advisor"]
+    PlanPersona -->|research| Explore["Task(explore)"]
+    PlanPersona -->|gap analysis| Metis["Task(metis)"]
+    PlanPersona -->|writes directly| PlanFile[".cursor/plans/*.md"]
+    AgentPersona -->|plan exists| Execute["Atlas coordination"]
+    AgentPersona -->|quick task| SJ2["Task(sisyphus-junior)"]
+    Execute -->|delegates| Workers["Task(sisyphus-junior) workers"]
+```
+
 ## Hook Daemon Data Flow
 
 ```mermaid
@@ -76,7 +93,7 @@ graph LR
 
 | Tier | Agents | Can Spawn Sub-agents | Can Edit Code |
 |------|--------|---------------------|---------------|
-| Coordinator | sisyphus, hephaestus, atlas | Yes (explore, sisyphus-junior) | Via delegation only |
+| Coordinator | sisyphus, hephaestus, atlas | Yes (see per-agent lists) | Via delegation only |
 | Planner | prometheus | No | Never (markdown only) |
 | Reviewer | metis, momus | No | Never (read-only) |
 | Worker | sisyphus-junior | No | Yes (leaf executor) |

@@ -10,7 +10,7 @@ oh-my-cursor uses a **dispatcher root**: the main chat thread only delegates wor
 | explore | gemini-3-flash | Codebase search and structure questions; read-only, often background. |
 | hephaestus | gpt-5.4-high | Sustained deep work on one complex problem until end-to-end completion. |
 | librarian | fast (latest Composer) | External docs, APIs, OSS examples; read-only. |
-| metis | claude-4.6-opus-max-thinking | Pre-planning gap analysis and risks; read-only. |
+| metis | gpt-5.4-medium | Pre-planning gap analysis and risks; read-only. |
 | momus | gpt-5.4-medium | Reviews plans for executability and completeness; read-only. |
 | multimodal-looker | gemini-3.1-pro | PDFs, images, diagrams when plain-text read is not enough. |
 | oracle | gpt-5.4-medium | Architecture and debugging consultation; read-only. |
@@ -24,8 +24,8 @@ oh-my-cursor uses a **dispatcher root**: the main chat thread only delegates wor
 
 | Command | Description |
 |---------|-------------|
-| `/deep-plan` | Run prometheus plus explore and metis; write plan under `.cursor/plans/`; optional momus review. |
-| `/start-work` | Atlas loads a plan from `.cursor/plans/` and executes it. |
+| `/deep-plan` | Switch to Plan mode (Prometheus persona); research via explore/metis; write plan to `.cursor/plans/`; optional Momus review. |
+| `/start-work` | Execute a plan from `.cursor/plans/` — native mode (root=Atlas) or subagent mode (Task atlas). |
 | `/briareus` | Split work into many tiny parallel tasks; dispatch multiple sisyphus-junior workers. |
 | `/refactor` | Sisyphus-led refactor with exploration, plan, incremental verify. |
 | `/init-deep` | Parallel explore passes to create or refresh root `AGENTS.md`. |
@@ -44,6 +44,12 @@ oh-my-cursor uses a **dispatcher root**: the main chat thread only delegates wor
 | Command | Description |
 |---------|-------------|
 | `/config` | Display the current merged oh-my-cursor configuration. |
+
+### Experimental
+
+| Command | Description |
+|---------|-------------|
+| `/cloud-agents` | Dispatch and manage agents via cloud API (requires experimental.cloud_agents). |
 
 ### Continuation
 

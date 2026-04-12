@@ -81,12 +81,18 @@ From PowerShell in the repo root:
 |-----------|-------|-------------|
 | Agents | 11 + protocol | Specialized subagents with model routing |
 | Rules | 4 | Orchestrator + coding standards |
-| Commands | 11 | Slash commands (/deep-plan, /ulw-loop, /refactor, /ralph-loop, etc.) |
+| Commands | 16 | Slash commands (/deep-plan, /ulw-loop, /refactor, /ralph-loop, etc.) |
 | Skills | 7 | Domain expertise (git, frontend, browser, review, playwright) |
 | Hooks | 1 daemon | Persistent Bun HTTP server; 30+ hook handlers in daemon |
 | MCP | 4 servers | websearch, context7, grep_app + sidecar |
 
 ## Architecture
+
+Mode-Based Routing:
+  Plan Mode  → Root = Prometheus persona (research, plan writing)
+  Agent Mode → Root = Orchestrator/Atlas (dispatch, verify, coordinate)
+  Debug Mode → Root = Diagnostic specialist (read-only)
+  Ask Mode   → Root = Oracle/Advisor (read-only)
 
 ```
 You (root thread)
@@ -101,7 +107,7 @@ You (root thread)
        ├── Task(atlas) ────── Plan execution via delegation (sonnet-medium-thinking)
        ├── Task(prometheus) ─ Strategic planning (opus-max-thinking)
        ├── Task(oracle) ───── Architecture consultation (gpt-5.4, readonly)
-       ├── Task(metis) ────── Pre-planning gap analysis (opus-max-thinking, readonly)
+       ├── Task(metis) ────── Pre-planning gap analysis (gpt-5.4, readonly)
        ├── Task(momus) ────── Plan review (gpt-5.4, readonly)
        ├── Task(sisyphus-junior) ── Quick focused tasks (sonnet-medium-thinking)
        └── Task(multimodal-looker) ── Visual analysis (gemini-3.1-pro, readonly)
@@ -116,7 +122,7 @@ You (root thread)
 | **atlas** | claude-4.6-sonnet-medium-thinking | Todo-list orchestrator |
 | **prometheus** | claude-4.6-opus-max-thinking | Strategic planner |
 | **oracle** | gpt-5.4-medium | Architecture consultant (readonly) |
-| **metis** | claude-4.6-opus-max-thinking | Pre-planning analysis (readonly) |
+| **metis** | gpt-5.4-medium | Pre-planning analysis (readonly) |
 | **momus** | gpt-5.4-medium | Plan reviewer (readonly) |
 | **explore** | gemini-3-flash | Codebase search (readonly, background) |
 | **librarian** | fast (latest Composer) | External docs search (readonly, background) |

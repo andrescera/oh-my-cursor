@@ -24,6 +24,6 @@ Display the full oh-my-cursor agent inventory with models, roles, and capabiliti
    - **Specialists**: explore, librarian, oracle, multimodal-looker (domain-specific)
 
 5. Include the coordinator protocol worker lists for each coordinator:
-   - sisyphus: explore, sisyphus-junior
+   - sisyphus: explore, oracle, librarian, sisyphus-junior, multimodal-looker
    - hephaestus: explore, sisyphus-junior
    - atlas: explore, oracle, sisyphus-junior

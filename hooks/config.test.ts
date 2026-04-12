@@ -1,4 +1,4 @@
-import { describe, test, expect, beforeEach, afterEach } from "bun:test"
+import { describe, test, expect, beforeEach, afterEach, spyOn } from "bun:test"
 import { mkdirSync, writeFileSync, existsSync, rmSync } from "node:fs"
 import { join } from "node:path"
 import {
@@ -7,6 +7,7 @@ import {
   stripJsoncComments,
   deepMerge,
   DEFAULT_CONFIG,
+  validateConfig,
 } from "./config"
 
 const TEST_PROJECT_DIR = "/tmp/oh-my-cursor-config-test-project"
@@ -152,6 +153,7 @@ describe("config", () => {
           const config = loadConfig()
 
           // then
+          expect(config.version).toBe(1)
           expect(config.disabled_hooks).toEqual([])
           expect(config.disabled_agents).toEqual([])
           expect(config.subagent_limits.explore).toBe(6)
@@ -159,6 +161,13 @@ describe("config", () => {
           expect(config.state_persistence.enabled).toBe(true)
           expect(config.daemon.port).toBe(47847)
           expect(config.daemon.mcp_port).toBe(47848)
+          expect(config.experimental).toEqual({
+            cloud_agents: false,
+            webhooks: false,
+            automations: false,
+          })
+          expect(config.mcp_allowlist).toEqual(["*"])
+          expect(config.notifications).toEqual({ enabled: true, sound: false })
         })
       })
     })
@@ -235,6 +244,7 @@ describe("config", () => {
     describe("#given the exported default config", () => {
       describe("#when its structure is inspected", () => {
         test("#then it has all required fields", () => {
+          expect(DEFAULT_CONFIG.version).toBe(1)
           expect(DEFAULT_CONFIG).toHaveProperty("disabled_hooks")
           expect(DEFAULT_CONFIG).toHaveProperty("disabled_agents")
           expect(DEFAULT_CONFIG).toHaveProperty("subagent_limits")
@@ -242,6 +252,78 @@ describe("config", () => {
           expect(DEFAULT_CONFIG).toHaveProperty("daemon")
           expect(DEFAULT_CONFIG.daemon.port).toBe(47847)
           expect(DEFAULT_CONFIG.daemon.mcp_port).toBe(47848)
+          expect(DEFAULT_CONFIG.experimental.cloud_agents).toBe(false)
+          expect(DEFAULT_CONFIG.experimental.webhooks).toBe(false)
+          expect(DEFAULT_CONFIG.experimental.automations).toBe(false)
+          expect(DEFAULT_CONFIG.mcp_allowlist).toEqual(["*"])
+          expect(DEFAULT_CONFIG.notifications).toEqual({ enabled: true, sound: false })
+        })
+      })
+    })
+  })
+
+  describe("validateConfig", () => {
+    describe("#given raw config with unknown top-level keys", () => {
+      describe("#when validateConfig runs", () => {
+        test("#then console.warn is called for each unknown key", () => {
+          const warnSpy = spyOn(console, "warn")
+          try {
+            validateConfig({
+              mystery: 1,
+              also_unknown: "x",
+              version: 1,
+            } as Record<string, unknown>)
+            expect(warnSpy.mock.calls.length).toBeGreaterThanOrEqual(2)
+            const messages = warnSpy.mock.calls.map((c) => String(c[0]))
+            expect(
+              messages.some((m) => m.includes('Unknown config key: "mystery"')),
+            ).toBe(true)
+            expect(
+              messages.some((m) => m.includes('Unknown config key: "also_unknown"')),
+            ).toBe(true)
+          } finally {
+            warnSpy.mockRestore()
+          }
+        })
+      })
+    })
+
+    describe("#given partial config", () => {
+      describe("#when validateConfig runs", () => {
+        test("#then missing fields are filled from defaults", () => {
+          const result = validateConfig({ version: 99 })
+          expect(result.version).toBe(99)
+          expect(result.disabled_hooks).toEqual([])
+          expect(result.daemon.port).toBe(47847)
+          expect(result.mcp_allowlist).toEqual(["*"])
+        })
+
+        test("#then unspecified experimental flags default to false", () => {
+          const result = validateConfig({
+            experimental: { cloud_agents: true },
+          } as Record<string, unknown>)
+          expect(result.experimental.cloud_agents).toBe(true)
+          expect(result.experimental.webhooks).toBe(false)
+          expect(result.experimental.automations).toBe(false)
+        })
+      })
+    })
+
+    describe("#given null", () => {
+      describe("#when validateConfig runs", () => {
+        test("#then it returns a clone of defaults", () => {
+          const result = validateConfig(null)
+          expect(result).toEqual(DEFAULT_CONFIG)
+          expect(result).not.toBe(DEFAULT_CONFIG)
+        })
+      })
+    })
+
+    describe("#given an empty object", () => {
+      describe("#when validateConfig runs", () => {
+        test("#then it returns full defaults", () => {
+          const result = validateConfig({})
+          expect(result).toEqual(DEFAULT_CONFIG)
         })
       })
     })

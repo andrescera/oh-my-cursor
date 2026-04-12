@@ -1,19 +1,10 @@
 import { existsSync, readFileSync } from "node:fs"
 import { join } from "node:path"
 import { homedir } from "node:os"
-
-export type OhMyCursorConfig = {
-  disabled_hooks: string[]
-  disabled_agents: string[]
-  subagent_limits: { explore: number; worker: number }
-  state_persistence: { enabled: boolean; path: string }
-  daemon: { port: number; mcp_port: number }
-  context_collector: { enabled: boolean; max_context_chars: number }
-  compaction: { prompt_enabled: boolean }
-  mdc_writer: { debounce_ms: number; enabled: boolean }
-}
+import type { OhMyCursorConfig } from "./types"
 
 export const DEFAULT_CONFIG: OhMyCursorConfig = {
+  version: 1,
   disabled_hooks: [],
   disabled_agents: [],
   subagent_limits: { explore: 6, worker: 8 },
@@ -22,6 +13,26 @@ export const DEFAULT_CONFIG: OhMyCursorConfig = {
   context_collector: { enabled: true, max_context_chars: 50000 },
   compaction: { prompt_enabled: true },
   mdc_writer: { debounce_ms: 5000, enabled: true },
+  experimental: { cloud_agents: false, webhooks: false, automations: false },
+  mcp_allowlist: ["*"],
+  notifications: { enabled: true, sound: false },
+}
+
+export function validateConfig(raw: unknown): OhMyCursorConfig {
+  if (typeof raw !== "object" || raw === null) {
+    return structuredClone(DEFAULT_CONFIG)
+  }
+  const obj = raw as Record<string, unknown>
+  const known = new Set(Object.keys(DEFAULT_CONFIG))
+  for (const key of Object.keys(obj)) {
+    if (!known.has(key)) {
+      console.warn(`[oh-my-cursor] Unknown config key: "${key}"`)
+    }
+  }
+  return deepMerge(
+    structuredClone(DEFAULT_CONFIG) as unknown as Record<string, unknown>,
+    obj,
+  ) as unknown as OhMyCursorConfig
 }
 
 export function stripJsoncComments(text: string): string {
@@ -94,16 +105,7 @@ export function loadConfig(): OhMyCursorConfig {
     merged = deepMerge(merged, projectConfig)
   }
 
-  const config = merged as unknown as OhMyCursorConfig
-
-  if (!Array.isArray(config.disabled_hooks)) config.disabled_hooks = []
-  if (!Array.isArray(config.disabled_agents)) config.disabled_agents = []
-  if (!config.subagent_limits) config.subagent_limits = { ...DEFAULT_CONFIG.subagent_limits }
-  if (!config.state_persistence) config.state_persistence = { ...DEFAULT_CONFIG.state_persistence }
-  if (!config.daemon) config.daemon = { ...DEFAULT_CONFIG.daemon }
-  if (!config.context_collector) config.context_collector = { ...DEFAULT_CONFIG.context_collector }
-  if (!config.compaction) config.compaction = { ...DEFAULT_CONFIG.compaction }
-  if (!config.mdc_writer) config.mdc_writer = { ...DEFAULT_CONFIG.mdc_writer }
+  const config = validateConfig(merged)
 
   cachedConfig = config
   configLoadTime = now

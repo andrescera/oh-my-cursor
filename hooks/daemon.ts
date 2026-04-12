@@ -224,6 +224,56 @@ const fetchHandler = async (req: Request) => {
     })
   }
 
+
+  if (path === "/webhook/cloud-agent" && req.method === "POST") {
+    const cfg = loadConfig()
+    if (!cfg.experimental.webhooks) {
+      return new Response(JSON.stringify({ error: "webhooks not enabled" }), {
+        status: 404,
+        headers: { "Content-Type": "application/json" },
+      })
+    }
+
+    try {
+      const payload = await req.json()
+      const signature = req.headers.get("x-webhook-signature") || ""
+      const webhookSecret = (cfg as Record<string, unknown>).webhook_secret as string | undefined
+
+      if (webhookSecret && signature) {
+        const encoder = new TextEncoder()
+        const key = await crypto.subtle.importKey(
+          "raw", encoder.encode(webhookSecret),
+          { name: "HMAC", hash: "SHA-256" }, false, ["sign"]
+        )
+        const sig = await crypto.subtle.sign("HMAC", key, encoder.encode(JSON.stringify(payload)))
+        const expected = Array.from(new Uint8Array(sig)).map(b => b.toString(16).padStart(2, "0")).join("")
+        if (signature !== expected) {
+          return new Response(JSON.stringify({ error: "invalid signature" }), {
+            status: 401,
+            headers: { "Content-Type": "application/json" },
+          })
+        }
+      }
+
+      logEvent({
+        ts: new Date().toISOString(),
+        event: "/webhook/cloud-agent",
+        sessionId: "",
+        action: "webhook",
+        meta: { agent_id: payload.agent_id, status: payload.status },
+      })
+
+      return new Response(JSON.stringify({ status: "received" }), {
+        headers: { "Content-Type": "application/json" },
+      })
+    } catch (err) {
+      return new Response(JSON.stringify({ error: err instanceof Error ? err.message : String(err) }), {
+        status: 400,
+        headers: { "Content-Type": "application/json" },
+      })
+    }
+  }
+
   const handler = handlers[path]
   if (!handler) {
     return new Response(JSON.stringify({ error: "unknown hook event" }), {

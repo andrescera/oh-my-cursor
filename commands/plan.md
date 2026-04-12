@@ -1,4 +1,18 @@
-Use **TodoWrite** to track phase progress. Execute the workflow matching the current `orchestration.mode` (check `.cursor/rules/oh-my-cursor-context.mdc`). Default is `native`.
+Use **TodoWrite** to track phase progress. Register all phases as todos before starting:
+
+```
+TodoWrite([
+  { id: "plan-switchmode", content: "Switch to Plan mode", status: "in_progress" },
+  { id: "plan-interview", content: "Interview: scope the request", status: "pending" },
+  { id: "plan-explore", content: "Explore: dispatch Task(explore)", status: "pending" },
+  { id: "plan-metis", content: "Gap analysis: dispatch Task(metis)", status: "pending" },
+  { id: "plan-write", content: "Write plan to .cursor/plans/", status: "pending" },
+  { id: "plan-review", content: "Review: offer optional Momus audit", status: "pending" },
+  { id: "plan-handoff", content: "Hand off to user", status: "pending" },
+])
+```
+
+Execute the workflow matching the current `orchestration.mode` (check `.cursor/rules/oh-my-cursor-context.mdc`). Default is `native`.
 
 ---
 
@@ -6,21 +20,39 @@ Use **TodoWrite** to track phase progress. Execute the workflow matching the cur
 
 ### Step 1 — Switch to Plan mode
 
-Call `SwitchMode(plan)`. You are now the Prometheus persona defined in `orchestrator.mdc`. Stay in Plan mode for the entire planning workflow. Do NOT switch back to Agent mode until the plan is complete and the user is ready to execute.
+Mark `plan-switchmode` as `in_progress`. Call `SwitchMode(plan)`. You are now the Prometheus persona defined in `orchestrator.mdc`. Stay in Plan mode for the entire planning workflow. Do NOT switch back to Agent mode until the plan is complete and the user is ready to execute.
+
+**If SwitchMode is rejected or unavailable**, fall through to the **Subagent mode** workflow defined below. Mark `plan-switchmode` as `completed` with a note that native mode was unavailable.
+
+Mark `plan-switchmode` as `completed` when Plan mode is active.
 
 ### Step 2 — Interview
 
+Mark `plan-interview` as `in_progress`.
+
 Ask the user 1–3 scoping questions via **AskQuestion** to clarify the request. Focus on ambiguity, constraints, and desired outcomes. Do NOT skip this step — even well-defined requests benefit from confirming scope boundaries.
+
+Mark `plan-interview` as `completed` when done.
 
 ### Step 3 — Explore (parallel)
 
+Mark `plan-explore` as `in_progress`.
+
 Dispatch one or more `Task(subagent_type="explore", run_in_background=true)` agents to map relevant codebase areas. Use the six-section brief. Batch related searches into a single explore dispatch.
+
+Mark `plan-explore` as `completed` when explore agents finish.
 
 ### Step 4 — Gap analysis
 
+Mark `plan-metis` as `in_progress`.
+
 Once explore completes, dispatch `Task(subagent_type="metis")` with explore results as CONTEXT. Metis identifies missing requirements, ambiguities, and technical risks.
 
+Mark `plan-metis` as `completed` when Metis returns.
+
 ### Step 5 — Write the plan
+
+Mark `plan-write` as `in_progress`.
 
 Write the plan directly to `.cursor/plans/<name>.plan.md` using the **Write** tool. The plan MUST include:
 
@@ -32,7 +64,11 @@ Write the plan directly to `.cursor/plans/<name>.plan.md` using the **Write** to
 - **Commit strategy** — logical commit boundaries
 - **Final verification wave** — post-implementation consistency checks
 
+Mark `plan-write` as `completed` when the plan file is written.
+
 ### Step 6 — Review (optional)
+
+Mark `plan-review` as `in_progress`.
 
 Ask the user via **AskQuestion**: *"Would you like a quality review of this plan? (Momus audit)"* with Yes/No options.
 
@@ -41,11 +77,17 @@ Ask the user via **AskQuestion**: *"Would you like a quality review of this plan
 
 Do NOT auto-dispatch Momus. Always ask first.
 
+Mark `plan-review` as `completed` when review is done or skipped.
+
 ### Step 7 — Hand off
+
+Mark `plan-handoff` as `in_progress`.
 
 Tell the user: *"Plan ready. Run `/start-work` or switch to Agent mode to begin execution."*
 
 Do NOT begin implementing. Do NOT switch to Agent mode.
+
+Mark `plan-handoff` as `completed`.
 
 ---
 

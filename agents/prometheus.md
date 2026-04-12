@@ -111,7 +111,9 @@ ALL YES -> Auto-transition to plan generation.
 
 **Trigger**: Clearance check passes OR user explicitly requests.
 
-**Immediately on trigger, register todos via TodoWrite:**
+**In native mode**, the `/plan` command manages TodoWrite with the canonical schema defined in `commands/plan.md` (IDs: `plan-switchmode`, `plan-interview`, `plan-explore`, `plan-metis`, `plan-write`, `plan-review`, `plan-handoff`). Do NOT register your own todos — they are already tracked by the command handler.
+
+**In subagent mode**, register todos via TodoWrite on trigger:
 ```
 TodoWrite([
   { id: "plan-1", content: "Consult Metis for gap analysis", status: "in_progress" },

@@ -2,244 +2,689 @@
 set -euo pipefail
 
 PLUGIN_NAME="oh-my-cursor"
-PLUGIN_ID="${PLUGIN_NAME}@local"
-DEFAULT_PORT=47847
+DEFAULT_DAEMON_PORT=47847
+DEFAULT_MCP_PORT=47848
+LOCK_FILE="/tmp/oh-my-cursor-install.lock"
+
+TEMP_FILES=(
+  /tmp/oh-my-cursor-daemon.pid
+  /tmp/oh-my-cursor-daemon.port
+  /tmp/oh-my-cursor-sidecar.port
+  /tmp/oh-my-cursor-heartbeat
+  /tmp/oh-my-cursor-restart-count
+  /tmp/oh-my-cursor-ports.json
+)
+
+MCP_KEYS=("websearch" "context7" "grep_app" "oh-my-cursor")
 
 SCOPE="user"
 FORCE=false
 DRY_RUN=false
-UNINSTALL=false
+MODE="auto"
 
-while [[ $# -gt 0 ]]; do
-  case $1 in
-    --project) SCOPE="project"; shift ;;
-    --force) FORCE=true; shift ;;
-    --dry-run) DRY_RUN=true; shift ;;
-    --uninstall) UNINSTALL=true; shift ;;
-    *) shift ;;
-  esac
-done
+# --- CLI parsing ---
 
-SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+usage() {
+  cat <<'USAGE'
+oh-my-cursor installer
 
-if [[ "$SCOPE" == "user" ]]; then
-  PLUGIN_DIR="$HOME/.cursor/plugins/local/$PLUGIN_NAME"
-else
-  PLUGIN_DIR=".cursor/plugins/local/$PLUGIN_NAME"
-fi
+Usage:
+  ./install.sh                    Auto: fresh install or update
+  ./install.sh --force            Force fresh install (nuke existing)
+  ./install.sh --uninstall        Complete removal
+  ./install.sh --version          Print installed version
+  ./install.sh --check-update     Compare installed vs source version
+  ./install.sh --dry-run          Preview mode (combinable with above)
+  ./install.sh --project          Project-scoped install
+  ./install.sh --help             This help text
 
-CLAUDE_PLUGINS="$HOME/.claude/plugins/installed_plugins.json"
-CLAUDE_SETTINGS="$HOME/.claude/settings.json"
+Options:
+  --force          Force fresh install even if already installed
+  --uninstall      Remove oh-my-cursor completely
+  --version        Show installed version
+  --check-update   Check if an update is available
+  --dry-run        Show what would happen without making changes
+  --project        Install to .cursor/ in current directory instead of ~/.cursor/
+  --help           Show this help message
 
-OLD_AGENT_FILES=(
-  "$HOME/.cursor/agents/sisyphus.md"
-  "$HOME/.cursor/agents/hephaestus.md"
-  "$HOME/.cursor/agents/oracle.md"
-  "$HOME/.cursor/agents/librarian.md"
-  "$HOME/.cursor/agents/explore.md"
-  "$HOME/.cursor/agents/multimodal-looker.md"
-  "$HOME/.cursor/agents/metis.md"
-  "$HOME/.cursor/agents/momus.md"
-  "$HOME/.cursor/agents/atlas.md"
-  "$HOME/.cursor/agents/prometheus.md"
-  "$HOME/.cursor/agents/sisyphus-junior.md"
-  "$HOME/.cursor/agents/protocols/coordinator.md"
-  "$HOME/.cursor/rules/orchestrator.mdc"
-  "$HOME/.cursor/rules/coding-standards.mdc"
-  "$HOME/.cursor/rules/anti-patterns.mdc"
-  "$HOME/.cursor/rules/modular-code-enforcement.mdc"
-  "$HOME/.cursor/commands/briareus.md"
-  "$HOME/.cursor/commands/cancel-ralph.md"
-  "$HOME/.cursor/commands/handoff.md"
-  "$HOME/.cursor/commands/init-deep.md"
-  "$HOME/.cursor/commands/deep-plan.md"
-  "$HOME/.cursor/commands/ralph-loop.md"
-  "$HOME/.cursor/commands/refactor.md"
-  "$HOME/.cursor/commands/remove-ai-slops.md"
-  "$HOME/.cursor/commands/start-work.md"
-  "$HOME/.cursor/commands/stop-continuation.md"
-  "$HOME/.cursor/hooks.json"
-  "$HOME/.cursor/hooks/daemon.ts"
-  "$HOME/.cursor/hooks/mcp-sidecar.ts"
-)
+Environment variables:
+  OH_MY_CURSOR_PORT       Daemon port (default: 47847)
+  OH_MY_CURSOR_MCP_PORT   MCP sidecar port (default: 47848)
+USAGE
+}
 
-OLD_SKILL_DIRS=(
-  "$HOME/.cursor/skills/agent-browser"
-  "$HOME/.cursor/skills/ai-slop-remover"
-  "$HOME/.cursor/skills/dev-browser"
-  "$HOME/.cursor/skills/frontend-ui-ux"
-  "$HOME/.cursor/skills/git-master"
-  "$HOME/.cursor/skills/review-work"
-)
+# --- Output helpers ---
 
-cleanup_old_files() {
-  for f in "${OLD_AGENT_FILES[@]}"; do
-    if [[ -e "$f" ]]; then rm -f "$f" && echo "[cleanup] Removed $f"; fi
-  done
-  if [[ -d "$HOME/.cursor/hooks/scripts" ]]; then rm -rf "$HOME/.cursor/hooks/scripts" && echo "[cleanup] Removed ~/.cursor/hooks/scripts/"; fi
-  for d in "${OLD_SKILL_DIRS[@]}"; do
-    if [[ -d "$d" ]]; then rm -rf "$d" && echo "[cleanup] Removed $d/"; fi
+log()  { printf '\033[0;32m%s\033[0m\n' "$*"; }
+warn() { printf '\033[0;33m%s\033[0m\n' "$*" >&2; }
+err()  { printf '\033[0;31m%s\033[0m\n' "$*" >&2; }
+
+# --- Prerequisites ---
+
+check_prerequisites() {
+  local missing=()
+  if ! command -v bun &>/dev/null; then
+    missing+=("bun (required for daemon)")
+  fi
+  if ! command -v python3 &>/dev/null && ! command -v jq &>/dev/null; then
+    missing+=("python3 or jq (required for JSON manipulation)")
+  fi
+  if ! command -v curl &>/dev/null; then
+    missing+=("curl (required for health checks)")
+  fi
+  if (( ${#missing[@]} > 0 )); then
+    err "Missing prerequisites:"
+    for m in "${missing[@]}"; do
+      err "  - $m"
+    done
+    exit 1
+  fi
+}
+
+# --- Version helpers ---
+
+get_source_version() {
+  local manifest="$SCRIPT_DIR/.cursor-plugin/plugin.json"
+  if [[ ! -f "$manifest" ]]; then
+    echo "unknown"
+    return
+  fi
+  if command -v python3 &>/dev/null; then
+    python3 -c "import json; print(json.load(open('$manifest'))['version'])" 2>/dev/null || echo "unknown"
+  elif command -v jq &>/dev/null; then
+    jq -r '.version' "$manifest" 2>/dev/null || echo "unknown"
+  else
+    echo "unknown"
+  fi
+}
+
+get_installed_version() {
+  local vfile="$PLUGIN_DIR/.version"
+  if [[ -f "$vfile" ]]; then
+    cat "$vfile"
+  else
+    echo "none"
+  fi
+}
+
+write_version_file() {
+  local ver
+  ver="$(get_source_version)"
+  if [[ "$DRY_RUN" == "true" ]]; then
+    log "[dry-run] Would write version $ver to $PLUGIN_DIR/.version"
+    return
+  fi
+  echo "$ver" > "$PLUGIN_DIR/.version"
+}
+
+# --- Daemon lifecycle ---
+
+stop_daemon() {
+  local port
+  port="$(cat /tmp/oh-my-cursor-daemon.port 2>/dev/null || echo "$DEFAULT_DAEMON_PORT")"
+
+  # Graceful shutdown via HTTP
+  if curl -s --max-time 3 -X POST "http://localhost:${port}/shutdown" &>/dev/null; then
+    sleep 1
+  fi
+
+  # Kill daemon by PID
+  local pidfile="/tmp/oh-my-cursor-daemon.pid"
+  if [[ -f "$pidfile" ]]; then
+    local pid
+    pid="$(cat "$pidfile" 2>/dev/null || echo "")"
+    if [[ -n "$pid" ]] && kill -0 "$pid" 2>/dev/null; then
+      kill "$pid" 2>/dev/null || true
+      local waited=0
+      while kill -0 "$pid" 2>/dev/null && (( waited < 5 )); do
+        sleep 1
+        (( waited++ )) || true
+      done
+      if kill -0 "$pid" 2>/dev/null; then
+        kill -9 "$pid" 2>/dev/null || true
+      fi
+    fi
+  fi
+
+  # Kill sidecar by port file
+  local mcp_port
+  mcp_port="$(cat /tmp/oh-my-cursor-sidecar.port 2>/dev/null || echo "$DEFAULT_MCP_PORT")"
+  if curl -s --max-time 3 -X POST "http://localhost:${mcp_port}/shutdown" &>/dev/null; then
+    sleep 1
+  fi
+
+  # Clean up temp files
+  for f in "${TEMP_FILES[@]}"; do
+    rm -f "$f" 2>/dev/null || true
   done
 }
 
-if [[ "$UNINSTALL" == "true" ]]; then
+start_daemon() {
+  local starter="$PLUGIN_DIR/hooks/scripts/start-daemon.sh"
+  if [[ ! -f "$starter" ]]; then
+    warn "Daemon start script not found at $starter"
+    return 1
+  fi
+  chmod +x "$starter"
+  echo '{}' | "$starter"
+  local port
+  port="$(cat /tmp/oh-my-cursor-daemon.port 2>/dev/null || echo "$DEFAULT_DAEMON_PORT")"
+  local delay=0.2
+  local elapsed=0
+  while (( $(echo "$elapsed < 8" | bc -l 2>/dev/null || echo 0) )); do
+    if curl -s "http://localhost:${port}/health" &>/dev/null; then
+      log "Daemon healthy on port $port"
+      return 0
+    fi
+    sleep "$delay"
+    elapsed=$(echo "$elapsed + $delay" | bc -l 2>/dev/null || echo 9)
+    delay=$(echo "$delay * 2" | bc -l 2>/dev/null || echo 1)
+  done
+  warn "Daemon did not become healthy within 8s — check /tmp/oh-my-cursor-daemon.log"
+  return 1
+}
+
+verify_installation() {
+  local ok=true
+  if [[ ! -d "$PLUGIN_DIR" ]]; then
+    err "Plugin directory missing: $PLUGIN_DIR"
+    ok=false
+  fi
+  if [[ ! -f "$PLUGIN_DIR/.version" ]]; then
+    warn "Version file missing"
+  fi
+  local port
+  port="$(cat /tmp/oh-my-cursor-daemon.port 2>/dev/null || echo "$DEFAULT_DAEMON_PORT")"
+  if ! curl -s "http://localhost:${port}/health" &>/dev/null; then
+    warn "Daemon health check failed on port $port"
+  fi
+  if [[ "$ok" == "false" ]]; then
+    return 1
+  fi
+}
+
+# --- Backup / Restore ---
+
+backup_installation() {
+  if [[ -d "$PLUGIN_DIR.bak" ]]; then
+    rm -rf "$PLUGIN_DIR.bak"
+  fi
+  if [[ -d "$PLUGIN_DIR" ]]; then
+    cp -r "$PLUGIN_DIR" "$PLUGIN_DIR.bak"
+  fi
+}
+
+restore_backup() {
+  if [[ -d "$PLUGIN_DIR.bak" ]]; then
+    rm -rf "$PLUGIN_DIR"
+    mv "$PLUGIN_DIR.bak" "$PLUGIN_DIR"
+    warn "Restored backup"
+  fi
+}
+
+# --- MCP config management ---
+
+merge_mcp_config() {
+  local target="$MCP_CONFIG"
+  local source="$SCRIPT_DIR/mcp.json"
+
+  if [[ ! -f "$source" ]]; then
+    warn "Source mcp.json not found at $source"
+    return
+  fi
+
   if [[ "$DRY_RUN" == "true" ]]; then
-    echo "[dry-run] Would remove plugin dir: $PLUGIN_DIR"
-    echo "[dry-run] Would remove entry from $CLAUDE_PLUGINS"
-    echo "[dry-run] Would remove entry from $CLAUDE_SETTINGS"
-    echo "[dry-run] Would clean up legacy loose files"
+    log "[dry-run] Would merge MCP servers into $target"
+    return
+  fi
+
+  if command -v python3 &>/dev/null; then
+    python3 - "$target" "$source" "$FORCE" <<'PYEOF'
+import sys, json, os, re
+
+target_path, source_path, force_str = sys.argv[1], sys.argv[2], sys.argv[3]
+force = force_str.lower() == "true"
+
+with open(source_path) as f:
+    source = json.load(f)
+
+source_servers = source.get("mcpServers", {})
+
+if os.path.exists(target_path):
+    with open(target_path) as f:
+        raw = f.read()
+    # Strip JSONC single-line comments
+    cleaned = re.sub(r'//.*$', '', raw, flags=re.MULTILINE)
+    # Strip JSONC block comments
+    cleaned = re.sub(r'/\*.*?\*/', '', cleaned, flags=re.DOTALL)
+    cleaned = cleaned.strip()
+    target = json.loads(cleaned) if cleaned else {}
+else:
+    target = {}
+
+target.setdefault("mcpServers", {})
+
+added = []
+skipped = []
+for key, val in source_servers.items():
+    if key in target["mcpServers"] and not force:
+        skipped.append(key)
+    else:
+        target["mcpServers"][key] = val
+        added.append(key)
+
+os.makedirs(os.path.dirname(target_path) or ".", exist_ok=True)
+with open(target_path, "w") as f:
+    json.dump(target, f, indent=2)
+    f.write("\n")
+
+if added:
+    print(f"[ok] Added MCP servers: {', '.join(added)}")
+if skipped:
+    print(f"[skip] Already present: {', '.join(skipped)}")
+PYEOF
+  elif command -v jq &>/dev/null; then
+    if [[ ! -f "$target" ]]; then
+      mkdir -p "$(dirname "$target")"
+      cp "$source" "$target"
+      log "[ok] Created $target from source"
+      return
+    fi
+    local merged
+    if [[ "$FORCE" == "true" ]]; then
+      merged="$(jq -s '.[0] * .[1]' "$target" "$source")"
+    else
+      merged="$(jq -s '.[0].mcpServers as $existing | .[1].mcpServers as $new | .[0] | .mcpServers = ($new + $existing)' "$target" "$source")"
+    fi
+    echo "$merged" > "$target"
+    log "[ok] Merged MCP config (jq)"
+  fi
+}
+
+unmerge_mcp_config() {
+  local target="$MCP_CONFIG"
+
+  if [[ ! -f "$target" ]]; then
+    return
+  fi
+
+  if [[ "$DRY_RUN" == "true" ]]; then
+    log "[dry-run] Would remove our MCP servers from $target"
+    return
+  fi
+
+  if command -v python3 &>/dev/null; then
+    python3 - "$target" <<'PYEOF'
+import sys, json, os, re
+
+target_path = sys.argv[1]
+keys_to_remove = ["websearch", "context7", "grep_app", "oh-my-cursor"]
+
+if not os.path.exists(target_path):
+    sys.exit(0)
+
+with open(target_path) as f:
+    raw = f.read()
+
+cleaned = re.sub(r'//.*$', '', raw, flags=re.MULTILINE)
+cleaned = re.sub(r'/\*.*?\*/', '', cleaned, flags=re.DOTALL)
+cleaned = cleaned.strip()
+if not cleaned:
+    sys.exit(0)
+
+data = json.loads(cleaned)
+servers = data.get("mcpServers", {})
+removed = []
+for key in keys_to_remove:
+    if key in servers:
+        del servers[key]
+        removed.append(key)
+
+with open(target_path, "w") as f:
+    json.dump(data, f, indent=2)
+    f.write("\n")
+
+if removed:
+    print(f"[ok] Removed MCP servers: {', '.join(removed)}")
+PYEOF
+  elif command -v jq &>/dev/null; then
+    local tmp
+    tmp="$(jq 'del(.mcpServers.websearch, .mcpServers.context7, .mcpServers.grep_app, .mcpServers["oh-my-cursor"])' "$target")"
+    echo "$tmp" > "$target"
+    log "[ok] Removed our MCP servers (jq)"
+  fi
+}
+
+# --- Legacy cleanup ---
+
+cleanup_legacy_loose_files() {
+  local cursor_home="$HOME/.cursor"
+  local dirs_to_scan=("agents" "commands" "rules" "skills")
+
+  for dir in "${dirs_to_scan[@]}"; do
+    local src="$SCRIPT_DIR/$dir"
+    local target="$cursor_home/$dir"
+    if [[ -d "$src" ]] && [[ -d "$target" ]]; then
+      while IFS= read -r -d '' relpath; do
+        local loose_file="$target/$relpath"
+        if [[ -e "$loose_file" ]]; then
+          if [[ "$DRY_RUN" == "true" ]]; then
+            log "[dry-run] Would remove legacy file: $loose_file"
+          else
+            rm -f "$loose_file"
+            log "[cleanup] Removed $loose_file"
+          fi
+        fi
+      done < <(cd "$src" && find . -type f -print0 | sed -z 's|^\./||')
+
+      if [[ "$DRY_RUN" != "true" ]]; then
+        find "$target" -type d -empty -delete 2>/dev/null || true
+      fi
+    fi
+  done
+
+  local legacy_hooks=("$cursor_home/hooks/daemon.ts" "$cursor_home/hooks/mcp-sidecar.ts")
+  for f in "${legacy_hooks[@]}"; do
+    if [[ -e "$f" ]]; then
+      if [[ "$DRY_RUN" == "true" ]]; then
+        log "[dry-run] Would remove legacy hook: $f"
+      else
+        rm -f "$f"
+        log "[cleanup] Removed $f"
+      fi
+    fi
+  done
+
+  if [[ -d "$cursor_home/hooks/scripts" ]]; then
+    if [[ "$DRY_RUN" == "true" ]]; then
+      log "[dry-run] Would remove legacy hooks/scripts/"
+    else
+      rm -rf "$cursor_home/hooks/scripts"
+      log "[cleanup] Removed $cursor_home/hooks/scripts/"
+    fi
+  fi
+}
+
+# --- File operations ---
+
+copy_plugin_files() {
+  if [[ "$DRY_RUN" == "true" ]]; then
+    log "[dry-run] Would copy plugin files to $PLUGIN_DIR"
+    return
+  fi
+
+  mkdir -p "$PLUGIN_DIR"
+
+  local dirs=(.cursor-plugin agents commands rules skills hooks scripts automations docs)
+  for dir in "${dirs[@]}"; do
+    local src="$SCRIPT_DIR/$dir"
+    if [[ -d "$src" ]]; then
+      cp -r "$src" "$PLUGIN_DIR/"
+      log "[ok] Copied $dir/"
+    fi
+  done
+
+  local files=(mcp.json sandbox.json worktrees.json README.md ARCHITECTURE.md CONTRIBUTING.md)
+  for file in "${files[@]}"; do
+    local src="$SCRIPT_DIR/$file"
+    if [[ -f "$src" ]]; then
+      cp "$src" "$PLUGIN_DIR/"
+      log "[ok] Copied $file"
+    fi
+  done
+
+  write_version_file
+}
+
+remove_plugin_files() {
+  if [[ "$DRY_RUN" == "true" ]]; then
+    log "[dry-run] Would remove $PLUGIN_DIR"
+    return
+  fi
+  rm -rf "$PLUGIN_DIR"
+}
+
+# --- Lock management ---
+
+acquire_lock() {
+  if [[ -f "$LOCK_FILE" ]]; then
+    local lock_pid
+    lock_pid="$(cat "$LOCK_FILE" 2>/dev/null || echo "")"
+    if [[ -n "$lock_pid" ]] && kill -0 "$lock_pid" 2>/dev/null; then
+      err "Another install is running (PID $lock_pid). If this is stale, remove $LOCK_FILE"
+      exit 1
+    fi
+    rm -f "$LOCK_FILE"
+  fi
+  echo $$ > "$LOCK_FILE"
+}
+
+release_lock() {
+  rm -f "$LOCK_FILE"
+}
+
+# --- Banners ---
+
+print_success_banner() {
+  local ver
+  ver="$(get_source_version)"
+  echo ""
+  log "oh-my-cursor v${ver} installed successfully!"
+  echo ""
+  echo "Next steps:"
+  echo "  1. Restart Cursor (Cmd+Shift+P > 'Reload Window' or full restart)"
+  echo "  2. Try: /deep-plan add authentication to my app"
+  echo "  3. Try: @sisyphus fix the failing tests"
+  echo ""
+}
+
+print_update_banner() {
+  local old_ver="$1"
+  local new_ver="$2"
+  echo ""
+  log "oh-my-cursor updated: v${old_ver} → v${new_ver}"
+  echo ""
+  echo "Next steps:"
+  echo "  1. Restart Cursor (Cmd+Shift+P > 'Reload Window' or full restart)"
+  echo ""
+}
+
+print_uninstall_banner() {
+  echo ""
+  log "oh-my-cursor has been completely removed."
+  echo ""
+}
+
+# --- Trap for cleanup on failure ---
+
+_install_failed=false
+
+cleanup_on_exit() {
+  if [[ "$_install_failed" == "true" ]]; then
+    warn "Installation failed — attempting to restore backup..."
+    restore_backup
+  fi
+  release_lock
+}
+
+# --- Main ---
+
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+
+while [[ $# -gt 0 ]]; do
+  case $1 in
+    --project)      SCOPE="project"; shift ;;
+    --force)        FORCE=true; shift ;;
+    --dry-run)      DRY_RUN=true; shift ;;
+    --uninstall)    MODE="uninstall"; shift ;;
+    --version)      MODE="version"; shift ;;
+    --check-update) MODE="check-update"; shift ;;
+    --help|-h)      usage; exit 0 ;;
+    *)              err "Unknown option: $1"; usage; exit 1 ;;
+  esac
+done
+
+if [[ "$SCOPE" == "user" ]]; then
+  PLUGIN_DIR="${OH_MY_CURSOR_PLUGIN_DIR:-$HOME/.cursor/plugins/local/$PLUGIN_NAME}"
+  MCP_CONFIG="${OH_MY_CURSOR_MCP_CONFIG:-$HOME/.cursor/mcp.json}"
+else
+  PLUGIN_DIR="${OH_MY_CURSOR_PLUGIN_DIR:-.cursor/plugins/local/$PLUGIN_NAME}"
+  MCP_CONFIG="${OH_MY_CURSOR_MCP_CONFIG:-.cursor/mcp.json}"
+fi
+
+# --- Mode: version ---
+
+if [[ "$MODE" == "version" ]]; then
+  ver="$(get_installed_version)"
+  if [[ "$ver" == "none" ]]; then
+    echo "oh-my-cursor is not installed"
+    exit 1
+  fi
+  echo "oh-my-cursor v${ver}"
+  exit 0
+fi
+
+# --- Mode: check-update ---
+
+if [[ "$MODE" == "check-update" ]]; then
+  installed="$(get_installed_version)"
+  source_ver="$(get_source_version)"
+  if [[ "$installed" == "none" ]]; then
+    echo "Not installed. Source version: $source_ver"
+    exit 1
+  fi
+  if [[ "$installed" == "$source_ver" ]]; then
+    echo "Up to date: v${installed}"
+    exit 0
+  fi
+  echo "Update available: v${installed} → v${source_ver}"
+  exit 0
+fi
+
+# --- Mode: uninstall ---
+
+if [[ "$MODE" == "uninstall" ]]; then
+  if [[ "$DRY_RUN" == "true" ]]; then
+    log "[dry-run] Would stop daemon"
+    log "[dry-run] Would remove plugin dir: $PLUGIN_DIR"
+    log "[dry-run] Would remove backup: $PLUGIN_DIR.bak"
+    log "[dry-run] Would remove our MCP servers from $MCP_CONFIG"
+    log "[dry-run] Would clean up legacy loose files"
+    log "[dry-run] Would clean up /tmp/oh-my-cursor-* files"
     exit 0
   fi
 
   echo "Uninstalling $PLUGIN_NAME..."
-
-  [[ -d "$PLUGIN_DIR" ]] && rm -rf "$PLUGIN_DIR" && echo "[ok] Removed $PLUGIN_DIR"
-
-  if [[ -f "$CLAUDE_PLUGINS" ]]; then
-    python3 - "$CLAUDE_PLUGINS" "$PLUGIN_ID" <<'EOF'
-import sys, json
-
-path, plugin_id = sys.argv[1], sys.argv[2]
-with open(path) as f:
-    data = json.load(f)
-
-if "plugins" in data and plugin_id in data["plugins"]:
-    del data["plugins"][plugin_id]
-    with open(path, "w") as f:
-        json.dump(data, f, indent=2)
-    print(f"[ok] Removed {plugin_id} from installed_plugins.json")
-EOF
-  fi
-
-  if [[ -f "$CLAUDE_SETTINGS" ]]; then
-    python3 - "$CLAUDE_SETTINGS" "$PLUGIN_ID" <<'EOF'
-import sys, json
-
-path, plugin_id = sys.argv[1], sys.argv[2]
-with open(path) as f:
-    data = json.load(f)
-
-enabled = data.get("enabledPlugins", {})
-if plugin_id in enabled:
-    del enabled[plugin_id]
-    data["enabledPlugins"] = enabled
-    with open(path, "w") as f:
-        json.dump(data, f, indent=2)
-    print(f"[ok] Removed {plugin_id} from settings.json enabledPlugins")
-EOF
-  fi
-
-  cleanup_old_files
-  echo "Done."
+  acquire_lock
+  trap release_lock EXIT
+  stop_daemon
+  remove_plugin_files
+  [[ -d "$PLUGIN_DIR.bak" ]] && rm -rf "$PLUGIN_DIR.bak"
+  unmerge_mcp_config
+  cleanup_legacy_loose_files
+  # Clean leftover temp files
+  rm -f /tmp/oh-my-cursor-* 2>/dev/null || true
+  release_lock
+  trap - EXIT
+  print_uninstall_banner
   exit 0
 fi
 
-if ! command -v python3 &>/dev/null; then
-  echo "Error: python3 is required but not found." >&2
-  exit 1
-fi
+# --- Mode: auto (install or update) ---
 
-if [[ "$DRY_RUN" == "true" ]]; then
-  echo "[dry-run] Would clean up legacy loose files"
-  echo "[dry-run] Would install plugin to: $(cd "$(dirname "$PLUGIN_DIR")" 2>/dev/null && pwd || echo "$PLUGIN_DIR" | xargs dirname)/$(basename "$PLUGIN_DIR")"
-  echo "[dry-run] Would register in: $CLAUDE_PLUGINS"
-  echo "[dry-run] Would enable in: $CLAUDE_SETTINGS"
-  exit 0
-fi
+check_prerequisites
 
-echo "Installing $PLUGIN_NAME (scope: $SCOPE)..."
-echo ""
+if [[ -d "$PLUGIN_DIR" ]] && [[ "$FORCE" != "true" ]]; then
+  # Update flow
+  installed="$(get_installed_version)"
+  source_ver="$(get_source_version)"
 
-echo "==> Step 1: Cleaning up legacy loose files"
-cleanup_old_files
-
-echo ""
-echo "==> Step 2: Copying plugin package"
-
-PLUGIN_DIR_ABS="$(python3 -c "import os; print(os.path.abspath('$PLUGIN_DIR'))")"
-
-if [[ -d "$PLUGIN_DIR_ABS" ]]; then
-  if [[ "$FORCE" == "true" ]]; then
-    rm -rf "$PLUGIN_DIR_ABS"
-    echo "[ok] Removed existing plugin dir (--force)"
+  if [[ "$installed" == "$source_ver" ]] && [[ "$FORCE" != "true" ]]; then
+    log "oh-my-cursor v${installed} is already up to date."
+    exit 0
   fi
+
+  if [[ "$DRY_RUN" == "true" ]]; then
+    log "[dry-run] Would update oh-my-cursor: v${installed} → v${source_ver}"
+    log "[dry-run] Would backup $PLUGIN_DIR"
+    log "[dry-run] Would stop daemon"
+    log "[dry-run] Would remove and re-copy plugin files"
+    log "[dry-run] Would merge MCP config"
+    log "[dry-run] Would start daemon"
+    exit 0
+  fi
+
+  echo "Updating $PLUGIN_NAME (v${installed} → v${source_ver})..."
+  acquire_lock
+  trap cleanup_on_exit EXIT
+  _install_failed=true
+  backup_installation
+  stop_daemon
+  remove_plugin_files
+  copy_plugin_files
+  merge_mcp_config
+  start_daemon || warn "Daemon start failed — plugin files are installed, daemon can be started manually"
+  _install_failed=false
+  verify_installation || true
+  release_lock
+  trap - EXIT
+  print_update_banner "$installed" "$source_ver"
+
+elif [[ "$FORCE" == "true" ]] && [[ -d "$PLUGIN_DIR" ]]; then
+  # Force reinstall
+  source_ver="$(get_source_version)"
+
+  if [[ "$DRY_RUN" == "true" ]]; then
+    log "[dry-run] Would force reinstall oh-my-cursor v${source_ver}"
+    log "[dry-run] Would stop daemon"
+    log "[dry-run] Would remove existing $PLUGIN_DIR"
+    log "[dry-run] Would clean up legacy loose files"
+    log "[dry-run] Would copy plugin files"
+    log "[dry-run] Would merge MCP config (force overwrite)"
+    log "[dry-run] Would start daemon"
+    exit 0
+  fi
+
+  echo "Force reinstalling $PLUGIN_NAME v${source_ver}..."
+  acquire_lock
+  trap cleanup_on_exit EXIT
+  _install_failed=true
+  stop_daemon
+  remove_plugin_files
+  cleanup_legacy_loose_files
+  copy_plugin_files
+  merge_mcp_config
+  start_daemon || warn "Daemon start failed — plugin files are installed, daemon can be started manually"
+  _install_failed=false
+  verify_installation || true
+  release_lock
+  trap - EXIT
+  print_success_banner
+
+else
+  # Fresh install
+  source_ver="$(get_source_version)"
+
+  if [[ "$DRY_RUN" == "true" ]]; then
+    log "[dry-run] Would install oh-my-cursor v${source_ver}"
+    log "[dry-run] Would clean up legacy loose files"
+    log "[dry-run] Would copy plugin files to $PLUGIN_DIR"
+    log "[dry-run] Would merge MCP config into $MCP_CONFIG"
+    log "[dry-run] Would start daemon"
+    exit 0
+  fi
+
+  echo "Installing $PLUGIN_NAME v${source_ver} (scope: $SCOPE)..."
+  acquire_lock
+  trap cleanup_on_exit EXIT
+  _install_failed=true
+  cleanup_legacy_loose_files
+  copy_plugin_files
+  merge_mcp_config
+  start_daemon || warn "Daemon start failed — plugin files are installed, daemon can be started manually"
+  _install_failed=false
+  verify_installation || true
+  release_lock
+  trap - EXIT
+  print_success_banner
 fi
-
-mkdir -p "$PLUGIN_DIR_ABS"
-
-for dir in .cursor-plugin agents commands rules skills hooks scripts automations; do
-  src="$SCRIPT_DIR/$dir"
-  if [[ -d "$src" ]]; then
-    cp -r "$src" "$PLUGIN_DIR_ABS/"
-    echo "[ok] Copied $dir/"
-  fi
-done
-
-for file in mcp.json sandbox.json README.md DEEPLINKS.md worktrees.json; do
-  src="$SCRIPT_DIR/$file"
-  if [[ -f "$src" ]]; then
-    cp "$src" "$PLUGIN_DIR_ABS/"
-    echo "[ok] Copied $file"
-  fi
-done
-
-echo ""
-echo "==> Step 3: Registering in installed_plugins.json"
-
-mkdir -p "$(dirname "$CLAUDE_PLUGINS")"
-
-python3 - "$CLAUDE_PLUGINS" "$PLUGIN_ID" "$PLUGIN_DIR_ABS" "$SCOPE" <<'EOF'
-import sys, json, os
-
-path, plugin_id, install_path, scope = sys.argv[1], sys.argv[2], sys.argv[3], sys.argv[4]
-
-if os.path.exists(path):
-    with open(path) as f:
-        content = f.read().strip()
-    data = json.loads(content) if content else {}
-else:
-    data = {}
-
-data.setdefault("version", 2)
-data.setdefault("plugins", {})
-
-data["plugins"][plugin_id] = [{"scope": scope, "installPath": install_path}]
-
-with open(path, "w") as f:
-    json.dump(data, f, indent=2)
-
-print(f"[ok] Registered {plugin_id} in installed_plugins.json")
-EOF
-
-echo ""
-echo "==> Step 4: Enabling in settings.json"
-
-python3 - "$CLAUDE_SETTINGS" "$PLUGIN_ID" <<'EOF'
-import sys, json, os
-
-path, plugin_id = sys.argv[1], sys.argv[2]
-
-if os.path.exists(path):
-    with open(path) as f:
-        content = f.read().strip()
-    data = json.loads(content) if content else {}
-else:
-    data = {}
-
-data.setdefault("enabledPlugins", {})
-data["enabledPlugins"][plugin_id] = True
-
-with open(path, "w") as f:
-    json.dump(data, f, indent=2)
-
-print(f"[ok] Enabled {plugin_id} in settings.json")
-EOF
-
-echo ""
-echo "oh-my-cursor installed successfully!"
-echo ""
-echo "Next steps:"
-echo "  1. Restart Cursor (Cmd+Shift+P > \"Reload Window\" or full restart)"
-echo "  2. Enable \"Include third-party Plugins\" in Settings > Features (if not already on)"
-echo "  3. Try: /deep-plan add authentication to my app"
-echo "  4. Try: @sisyphus fix the failing tests"

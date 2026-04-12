@@ -6,18 +6,73 @@ Multi-agent orchestration for Cursor IDE. Ported from [oh-my-openagent](https://
 
 ## Quick Start
 
+### Prerequisites
+
+- **bun** — required (hook daemon and MCP sidecar)
+- **python3** or **jq** — recommended for JSON merge operations during install
+
+### Install (Linux / macOS)
+
+User scope (applies to all Cursor projects):
+
 ```bash
-# Install to user scope (applies to all Cursor projects)
 bash install.sh
+# or
+./install.sh
+```
 
-# Install to current project only
-bash install.sh --project
+If oh-my-cursor is already installed, re-running `./install.sh` detects the existing install, backs up the current plugin directory, and performs an update.
 
-# Preview changes
-bash install.sh --dry-run
+Current project only:
 
-# Uninstall
-bash install.sh --uninstall
+```bash
+./install.sh --project
+```
+
+Preview changes without writing files:
+
+```bash
+./install.sh --dry-run
+```
+
+Overwrite an existing plugin install:
+
+```bash
+./install.sh --force
+```
+
+Remove the plugin and clean up Cursor-side files:
+
+```bash
+./install.sh --uninstall
+```
+
+Print installer version:
+
+```bash
+./install.sh --version
+```
+
+Check whether a newer release is available:
+
+```bash
+./install.sh --check-update
+```
+
+**MCP config:** `mcp.json` is merged into your existing Cursor MCP configuration — it is not replaced wholesale, so your other servers stay intact.
+
+### Install (Windows)
+
+From PowerShell in the repo root:
+
+```powershell
+.\install.ps1                          # user scope
+.\install.ps1 -Scope project           # current project only
+.\install.ps1 -DryRun                  # preview
+.\install.ps1 -Force                   # overwrite existing plugin dir
+.\install.ps1 -Uninstall               # remove plugin + cleanup
+.\install.ps1 -Version                 # print installed version
+.\install.ps1 -CheckUpdate             # check for updates
 ```
 
 ## What Gets Installed

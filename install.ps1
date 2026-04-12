@@ -1,73 +1,294 @@
-# oh-my-cursor installer for Windows
-# Usage: .\install.ps1 [-Scope project] [-Force] [-DryRun] [-Uninstall]
+# oh-my-cursor installer for Windows / PowerShell
+# Usage: .\install.ps1 [-Scope user|project] [-Force] [-DryRun] [-Uninstall] [-Version] [-CheckUpdate] [-Help]
 
 param(
     [ValidateSet("user", "project")]
     [string]$Scope = "user",
     [switch]$Force,
     [switch]$DryRun,
-    [switch]$Uninstall
+    [switch]$Uninstall,
+    [switch]$Version,
+    [switch]$CheckUpdate,
+    [switch]$Help
 )
 
 $ErrorActionPreference = 'Stop'
 
 $PluginName = "oh-my-cursor"
-$PluginId = "$PluginName@local"
 $ScriptDir = Split-Path -Parent $MyInvocation.MyCommand.Path
+$DefaultDaemonPort = 47847
+$DefaultMcpPort = 47848
+$OurMcpKeys = @("websearch", "context7", "grep_app", "oh-my-cursor")
+
+$TempDir = if ($env:TEMP) { $env:TEMP } else { "/tmp" }
+$TempFiles = @(
+    "oh-my-cursor-daemon.pid",
+    "oh-my-cursor-daemon.port",
+    "oh-my-cursor-sidecar.port",
+    "oh-my-cursor-heartbeat",
+    "oh-my-cursor-restart-count",
+    "oh-my-cursor-ports.json"
+)
 
 if ($Scope -eq "user") {
-    $PluginDir = Join-Path $env:USERPROFILE ".cursor\plugins\local\$PluginName"
     $CursorDir = Join-Path $env:USERPROFILE ".cursor"
+    $PluginDir = Join-Path $CursorDir "plugins\local\$PluginName"
+    $McpConfigPath = Join-Path $env:USERPROFILE ".cursor\mcp.json"
 } else {
-    $PluginDir = ".cursor\plugins\local\$PluginName"
     $CursorDir = ".cursor"
+    $PluginDir = Join-Path $CursorDir "plugins\local\$PluginName"
+    $McpConfigPath = ".cursor\mcp.json"
 }
 
-$ClaudePlugins = Join-Path $env:USERPROFILE ".claude\plugins\installed_plugins.json"
-$ClaudeSettings = Join-Path $env:USERPROFILE ".claude\settings.json"
+$BackupDir = "${PluginDir}.bak"
+$LockFile = Join-Path $TempDir "oh-my-cursor-install.lock"
 
-function Remove-LooseFiles {
-    $looseFiles = @(
-        "agents\sisyphus.md", "agents\hephaestus.md", "agents\oracle.md",
-        "agents\librarian.md", "agents\explore.md", "agents\multimodal-looker.md",
-        "agents\metis.md", "agents\momus.md", "agents\atlas.md",
-        "agents\prometheus.md", "agents\sisyphus-junior.md",
-        "agents\protocols\coordinator.md",
-        "rules\orchestrator.mdc", "rules\coding-standards.mdc",
-        "rules\anti-patterns.mdc", "rules\modular-code-enforcement.mdc",
-        "commands\briareus.md", "commands\cancel-ralph.md", "commands\handoff.md", "commands\init-deep.md",
-        "commands\deep-plan.md", "commands\ralph-loop.md", "commands\refactor.md",
-        "commands\remove-ai-slops.md", "commands\start-work.md", "commands\stop-continuation.md",
-        "hooks.json",
-        "hooks\daemon.ts", "hooks\mcp-sidecar.ts"
-    )
+# --- Output helpers ---
 
-    foreach ($rel in $looseFiles) {
-        $p = Join-Path $CursorDir $rel
-        if (Test-Path $p) {
-            if ($DryRun) { Write-Host "[dry-run] Would remove: $p" }
-            else { Remove-Item $p -Force; Write-Host "[removed] $p" }
-        }
+function Write-Log {
+    param([string]$Message)
+    Write-Host $Message -ForegroundColor Green
+}
+
+function Write-Warn {
+    param([string]$Message)
+    Write-Host $Message -ForegroundColor Yellow
+}
+
+function Write-Err {
+    param([string]$Message)
+    Write-Host $Message -ForegroundColor Red
+}
+
+function Show-Usage {
+    Write-Host @"
+
+  oh-my-cursor installer (PowerShell)
+
+  USAGE:
+    .\install.ps1                        Auto: fresh install or update
+    .\install.ps1 -Force                 Force fresh install (overwrite)
+    .\install.ps1 -Uninstall             Complete removal
+    .\install.ps1 -Version               Print installed version
+    .\install.ps1 -CheckUpdate           Compare installed vs source version
+    .\install.ps1 -DryRun                Preview mode (combinable with others)
+    .\install.ps1 -Scope project         Project-scoped install
+    .\install.ps1 -Help                  Show this help
+
+  FLAGS:
+    -Scope <user|project>    Install scope (default: user)
+    -Force                   Force reinstall even if up to date
+    -DryRun                  Preview changes without applying
+    -Uninstall               Remove oh-my-cursor completely
+    -Version                 Show installed version
+    -CheckUpdate             Check if update is available
+    -Help                    Show this help text
+
+"@
+}
+
+# --- Prerequisites ---
+
+function Test-Prerequisites {
+    $missing = @()
+    if (-not (Get-Command "bun" -ErrorAction SilentlyContinue)) {
+        $missing += "bun"
     }
-
-    $looseDirs = @("hooks\scripts")
-    foreach ($rel in $looseDirs) {
-        $p = Join-Path $CursorDir $rel
-        if (Test-Path $p) {
-            if ($DryRun) { Write-Host "[dry-run] Would remove: $p" }
-            else { Remove-Item $p -Recurse -Force; Write-Host "[removed] $p" }
-        }
-    }
-
-    $looseSkills = @("agent-browser", "ai-slop-remover", "dev-browser", "frontend-ui-ux", "git-master", "review-work")
-    foreach ($s in $looseSkills) {
-        $p = Join-Path $CursorDir "skills\$s"
-        if (Test-Path $p) {
-            if ($DryRun) { Write-Host "[dry-run] Would remove: $p" }
-            else { Remove-Item $p -Recurse -Force; Write-Host "[removed] $p" }
-        }
+    if ($missing.Count -gt 0) {
+        Write-Err "Missing required tools: $($missing -join ', ')"
+        Write-Err "Install bun: https://bun.sh"
+        exit 1
     }
 }
+
+# --- Version management ---
+
+function Get-SourceVersion {
+    $manifestPath = Join-Path $ScriptDir ".cursor-plugin\plugin.json"
+    if (-not (Test-Path $manifestPath)) {
+        Write-Err "Plugin manifest not found: $manifestPath"
+        exit 1
+    }
+    $manifest = Get-Content $manifestPath -Raw | ConvertFrom-Json
+    return $manifest.version
+}
+
+function Get-InstalledVersion {
+    $versionFile = Join-Path $PluginDir ".version"
+    if (Test-Path $versionFile) {
+        return (Get-Content $versionFile -Raw).Trim()
+    }
+    return "none"
+}
+
+function Write-VersionFile {
+    $ver = Get-SourceVersion
+    $versionFile = Join-Path $PluginDir ".version"
+    if ($DryRun) {
+        Write-Host "[dry-run] Would write version $ver to $versionFile"
+        return
+    }
+    $dir = Split-Path -Parent $versionFile
+    if (-not (Test-Path $dir)) {
+        New-Item -ItemType Directory -Path $dir -Force | Out-Null
+    }
+    Set-Content -Path $versionFile -Value $ver -Encoding UTF8 -NoNewline
+}
+
+# --- Daemon lifecycle ---
+
+function Stop-OhMyCursorDaemon {
+    $pidFile = Join-Path $TempDir "oh-my-cursor-daemon.pid"
+    $portFile = Join-Path $TempDir "oh-my-cursor-daemon.port"
+
+    if (-not (Test-Path $pidFile)) {
+        Write-Host "  No daemon PID file found, skipping stop"
+        return
+    }
+
+    $pid = [int](Get-Content $pidFile -Raw).Trim()
+    $port = $DefaultDaemonPort
+    if (Test-Path $portFile) {
+        $port = [int](Get-Content $portFile -Raw).Trim()
+    }
+
+    if ($DryRun) {
+        Write-Host "[dry-run] Would stop daemon (PID: $pid, port: $port)"
+        return
+    }
+
+    # Graceful shutdown via HTTP
+    try {
+        Invoke-RestMethod -Uri "http://localhost:${port}/shutdown" -Method Post -TimeoutSec 5 | Out-Null
+        Write-Host "  Sent shutdown request to daemon"
+        Start-Sleep -Seconds 2
+    } catch {
+        Write-Warn "  Graceful shutdown failed, forcing stop"
+    }
+
+    # Force stop if still running
+    try {
+        $proc = Get-Process -Id $pid -ErrorAction SilentlyContinue
+        if ($proc -and -not $proc.HasExited) {
+            Stop-Process -Id $pid -Force
+            Write-Host "  Daemon process stopped (PID: $pid)"
+        }
+    } catch {
+        Write-Host "  Daemon process already stopped"
+    }
+
+    # Clean up temp files
+    foreach ($tf in $TempFiles) {
+        $p = Join-Path $TempDir $tf
+        if (Test-Path $p) { Remove-Item $p -Force }
+    }
+}
+
+function Start-OhMyCursorDaemon {
+    if ($DryRun) {
+        Write-Host "[dry-run] Would start daemon"
+        return
+    }
+
+    $startScript = Join-Path $PluginDir "hooks\scripts\start-daemon.sh"
+    if (-not (Test-Path $startScript)) {
+        Write-Warn "  Daemon start script not found, skipping"
+        return
+    }
+
+    try {
+        if ($IsLinux -or $IsMacOS) {
+            & bash $startScript
+        } else {
+            & bash $startScript 2>$null
+        }
+    } catch {
+        Write-Warn "  Failed to start daemon: $_"
+        return
+    }
+
+    # Health check with retry
+    $maxRetries = 10
+    $portFile = Join-Path $TempDir "oh-my-cursor-daemon.port"
+    $port = $DefaultDaemonPort
+    if (Test-Path $portFile) {
+        $port = [int](Get-Content $portFile -Raw).Trim()
+    }
+
+    for ($i = 1; $i -le $maxRetries; $i++) {
+        Start-Sleep -Seconds 1
+        try {
+            $resp = Invoke-RestMethod -Uri "http://localhost:${port}/health" -TimeoutSec 2
+            Write-Log "  Daemon healthy (port: $port)"
+            return
+        } catch {}
+    }
+    Write-Warn "  Daemon started but health check did not pass after ${maxRetries}s"
+}
+
+# --- Installation verification ---
+
+function Test-Installation {
+    $ok = $true
+
+    if (-not (Test-Path $PluginDir)) {
+        Write-Err "  Plugin directory missing: $PluginDir"
+        $ok = $false
+    }
+
+    $versionFile = Join-Path $PluginDir ".version"
+    if (-not (Test-Path $versionFile)) {
+        Write-Err "  Version file missing"
+        $ok = $false
+    }
+
+    $portFile = Join-Path $TempDir "oh-my-cursor-daemon.port"
+    $port = $DefaultDaemonPort
+    if (Test-Path $portFile) {
+        $port = [int](Get-Content $portFile -Raw).Trim()
+    }
+    try {
+        Invoke-RestMethod -Uri "http://localhost:${port}/health" -TimeoutSec 2 | Out-Null
+    } catch {
+        Write-Warn "  Daemon health check failed (non-critical)"
+    }
+
+    return $ok
+}
+
+# --- Backup / Restore ---
+
+function Backup-Installation {
+    if (-not (Test-Path $PluginDir)) { return }
+    if ($DryRun) {
+        Write-Host "[dry-run] Would backup $PluginDir to $BackupDir"
+        return
+    }
+    if (Test-Path $BackupDir) {
+        Remove-Item $BackupDir -Recurse -Force
+    }
+    Copy-Item -Path $PluginDir -Destination $BackupDir -Recurse
+    Write-Host "  Backup created: $BackupDir"
+}
+
+function Restore-Backup {
+    if (-not (Test-Path $BackupDir)) {
+        Write-Err "  No backup found to restore"
+        return $false
+    }
+    if ($DryRun) {
+        Write-Host "[dry-run] Would restore backup from $BackupDir"
+        return $true
+    }
+    if (Test-Path $PluginDir) {
+        Remove-Item $PluginDir -Recurse -Force
+    }
+    Rename-Item -Path $BackupDir -NewName (Split-Path -Leaf $PluginDir)
+    Write-Log "  Backup restored"
+    return $true
+}
+
+# --- MCP config management ---
 
 function Read-JsonSafe {
     param([string]$Path, [PSCustomObject]$Default)
@@ -77,7 +298,7 @@ function Read-JsonSafe {
         if ([string]::IsNullOrWhiteSpace($raw)) { return $Default }
         return $raw | ConvertFrom-Json
     } catch {
-        Write-Warning "Malformed JSON at $Path, treating as empty."
+        Write-Warn "  Malformed JSON at $Path, treating as empty"
         return $Default
     }
 }
@@ -85,152 +306,378 @@ function Read-JsonSafe {
 function Write-JsonSafe {
     param([string]$Path, [object]$Data)
     $dir = Split-Path -Parent $Path
-    if (-not (Test-Path $dir)) { New-Item -ItemType Directory -Path $dir -Force | Out-Null }
+    if ($dir -and -not (Test-Path $dir)) {
+        New-Item -ItemType Directory -Path $dir -Force | Out-Null
+    }
     $Data | ConvertTo-Json -Depth 10 | Set-Content $Path -Encoding UTF8
 }
 
-if ($Uninstall) {
-    Write-Host "Uninstalling $PluginName..."
-    Write-Host ""
-
-    Write-Host "==> Removing plugin directory"
-    if (Test-Path $PluginDir) {
-        if ($DryRun) { Write-Host "[dry-run] Would remove: $PluginDir" }
-        else { Remove-Item $PluginDir -Recurse -Force; Write-Host "[removed] $PluginDir" }
-    } else {
-        Write-Host "[skip] $PluginDir not found"
+function Merge-McpConfig {
+    $sourceMcp = Join-Path $ScriptDir "mcp.json"
+    if (-not (Test-Path $sourceMcp)) {
+        Write-Warn "  Source mcp.json not found, skipping MCP merge"
+        return
     }
 
-    Write-Host ""
-    Write-Host "==> Deregistering from installed_plugins.json"
+    $sourceData = Get-Content $sourceMcp -Raw | ConvertFrom-Json
+
     if ($DryRun) {
-        Write-Host "[dry-run] Would remove $PluginId from $ClaudePlugins"
-    } else {
-        $defaultReg = [PSCustomObject]@{ version = 2; plugins = [PSCustomObject]@{} }
-        $reg = Read-JsonSafe $ClaudePlugins $defaultReg
-        $existing = $reg.plugins.PSObject.Properties[$PluginId]
+        Write-Host "[dry-run] Would merge MCP servers into $McpConfigPath"
+        foreach ($key in $OurMcpKeys) {
+            Write-Host "  [dry-run] Would add/update: $key"
+        }
+        return
+    }
+
+    $defaultTarget = [PSCustomObject]@{ mcpServers = [PSCustomObject]@{} }
+    $target = Read-JsonSafe $McpConfigPath $defaultTarget
+
+    if ($null -eq $target.mcpServers) {
+        $target | Add-Member -NotePropertyName "mcpServers" -NotePropertyValue ([PSCustomObject]@{}) -Force
+    }
+
+    $added = 0
+    $skipped = 0
+    foreach ($key in $OurMcpKeys) {
+        $sourceEntry = $sourceData.mcpServers.PSObject.Properties[$key]
+        if (-not $sourceEntry) { continue }
+
+        $existing = $target.mcpServers.PSObject.Properties[$key]
+        if ($existing -and -not $Force) {
+            $skipped++
+            continue
+        }
+        $target.mcpServers | Add-Member -NotePropertyName $key -NotePropertyValue $sourceEntry.Value -Force
+        $added++
+    }
+
+    Write-JsonSafe $McpConfigPath $target
+    Write-Host "  MCP config updated: $added added, $skipped skipped (existing)"
+}
+
+function Remove-McpConfig {
+    if (-not (Test-Path $McpConfigPath)) { return }
+
+    if ($DryRun) {
+        Write-Host "[dry-run] Would remove MCP keys: $($OurMcpKeys -join ', ')"
+        return
+    }
+
+    $defaultTarget = [PSCustomObject]@{ mcpServers = [PSCustomObject]@{} }
+    $target = Read-JsonSafe $McpConfigPath $defaultTarget
+
+    if ($null -eq $target.mcpServers) { return }
+
+    $removed = 0
+    foreach ($key in $OurMcpKeys) {
+        $existing = $target.mcpServers.PSObject.Properties[$key]
         if ($existing) {
-            $reg.plugins.PSObject.Properties.Remove($PluginId)
-            Write-JsonSafe $ClaudePlugins $reg
-            Write-Host "[ok] Removed $PluginId from $ClaudePlugins"
-        } else {
-            Write-Host "[skip] $PluginId not found in $ClaudePlugins"
+            $target.mcpServers.PSObject.Properties.Remove($key)
+            $removed++
         }
     }
 
-    Write-Host ""
-    Write-Host "==> Disabling in settings.json"
+    if ($removed -gt 0) {
+        Write-JsonSafe $McpConfigPath $target
+        Write-Host "  Removed $removed MCP server entries"
+    }
+}
+
+# --- Legacy cleanup (dynamic, no hardcoded lists) ---
+
+function Remove-LegacyLooseFiles {
+    $scanDirs = @("agents", "commands", "rules", "skills")
+
+    foreach ($dir in $scanDirs) {
+        $sourceDir = Join-Path $ScriptDir $dir
+        if (-not (Test-Path $sourceDir)) { continue }
+
+        $sourceItems = Get-ChildItem -Path $sourceDir -Recurse
+        foreach ($item in $sourceItems) {
+            $relativePath = $item.FullName.Substring($sourceDir.Length).TrimStart([IO.Path]::DirectorySeparatorChar, [IO.Path]::AltDirectorySeparatorChar)
+            $targetPath = Join-Path (Join-Path $CursorDir $dir) $relativePath
+
+            if (Test-Path $targetPath) {
+                if ($DryRun) {
+                    Write-Host "[dry-run] Would remove legacy: $targetPath"
+                } else {
+                    if ((Get-Item $targetPath).PSIsContainer) {
+                        Remove-Item $targetPath -Recurse -Force
+                    } else {
+                        Remove-Item $targetPath -Force
+                    }
+                    Write-Host "  [removed] $targetPath"
+                }
+            }
+        }
+    }
+
+    # Hooks: daemon.ts, mcp-sidecar.ts
+    $hookFiles = @("hooks\daemon.ts", "hooks\mcp-sidecar.ts")
+    foreach ($rel in $hookFiles) {
+        $p = Join-Path $CursorDir $rel
+        if (Test-Path $p) {
+            if ($DryRun) {
+                Write-Host "[dry-run] Would remove legacy: $p"
+            } else {
+                Remove-Item $p -Force
+                Write-Host "  [removed] $p"
+            }
+        }
+    }
+
+    # hooks/scripts directory
+    $hooksScripts = Join-Path $CursorDir "hooks\scripts"
+    if (Test-Path $hooksScripts) {
+        if ($DryRun) {
+            Write-Host "[dry-run] Would remove legacy: $hooksScripts"
+        } else {
+            Remove-Item $hooksScripts -Recurse -Force
+            Write-Host "  [removed] $hooksScripts"
+        }
+    }
+}
+
+# --- File operations ---
+
+function Copy-PluginFiles {
     if ($DryRun) {
-        Write-Host "[dry-run] Would disable $PluginId in $ClaudeSettings"
-    } else {
-        $cfg = Read-JsonSafe $ClaudeSettings ([PSCustomObject]@{})
-        if ($cfg.enabledPlugins -and $cfg.enabledPlugins.PSObject.Properties[$PluginId]) {
-            $cfg.enabledPlugins.PSObject.Properties.Remove($PluginId)
-            Write-JsonSafe $ClaudeSettings $cfg
-            Write-Host "[ok] Disabled $PluginId in $ClaudeSettings"
-        } else {
-            Write-Host "[skip] $PluginId not found in $ClaudeSettings"
-        }
+        Write-Host "[dry-run] Would copy plugin files to $PluginDir"
+        return
     }
 
-    Write-Host ""
-    Write-Host "==> Cleaning up old loose files"
-    Remove-LooseFiles
-
-    Write-Host ""
-    Write-Host "Done."
-    exit 0
-}
-
-Write-Host "Installing $PluginName (scope: $Scope)..."
-Write-Host ""
-
-Write-Host "==> Step 1: Cleaning up old loose files"
-Remove-LooseFiles
-
-Write-Host ""
-Write-Host "==> Step 2: Copying plugin package"
-
-if ((Test-Path $PluginDir) -and (-not $Force)) {
-    Write-Host "ERROR: $PluginDir already exists. Use -Force to overwrite." -ForegroundColor Red
-    exit 1
-}
-
-if ($DryRun) {
-    Write-Host "[dry-run] Would copy plugin package from $ScriptDir to $PluginDir"
-} else {
-    if (Test-Path $PluginDir) {
-        Remove-Item $PluginDir -Recurse -Force
+    if (-not (Test-Path $PluginDir)) {
+        New-Item -ItemType Directory -Path $PluginDir -Force | Out-Null
     }
-    New-Item -ItemType Directory -Path $PluginDir -Force | Out-Null
 
-    $dirs = @(".cursor-plugin", "agents", "commands", "rules", "skills", "hooks", "scripts", "automations")
+    $dirs = @(".cursor-plugin", "agents", "commands", "rules", "skills", "hooks", "scripts", "automations", "docs")
     foreach ($d in $dirs) {
         $src = Join-Path $ScriptDir $d
         if (Test-Path $src) {
             Copy-Item -Path $src -Destination $PluginDir -Recurse -Force
-            Write-Host "[ok] $d\"
+            Write-Host "  [ok] $d/"
         }
     }
 
-    $files = @("mcp.json", "sandbox.json", "README.md", "DEEPLINKS.md", "worktrees.json")
+    $files = @("mcp.json", "sandbox.json", "worktrees.json", "README.md", "ARCHITECTURE.md", "CONTRIBUTING.md")
     foreach ($f in $files) {
         $src = Join-Path $ScriptDir $f
         if (Test-Path $src) {
             Copy-Item -Path $src -Destination (Join-Path $PluginDir $f) -Force
-            Write-Host "[ok] $f"
+            Write-Host "  [ok] $f"
         }
     }
 
-    Write-Host "[ok] Plugin package installed to $PluginDir"
+    Write-VersionFile
+    Write-Log "  Plugin files installed to $PluginDir"
 }
 
-Write-Host ""
-Write-Host "==> Step 3: Registering in installed_plugins.json"
+function Remove-PluginFiles {
+    if (-not (Test-Path $PluginDir)) {
+        Write-Host "  Plugin directory not found, nothing to remove"
+        return
+    }
+    if ($DryRun) {
+        Write-Host "[dry-run] Would remove $PluginDir"
+        return
+    }
+    Remove-Item $PluginDir -Recurse -Force
+    Write-Host "  Plugin directory removed"
+}
 
-if ($DryRun) {
-    Write-Host "[dry-run] Would register $PluginId -> $PluginDir in $ClaudePlugins"
+# --- Install lock ---
+
+function Get-InstallLock {
+    $maxWait = 30
+    for ($i = 0; $i -lt $maxWait; $i++) {
+        if (-not (Test-Path $LockFile)) {
+            Set-Content -Path $LockFile -Value $PID -Encoding UTF8
+            return
+        }
+        $lockPid = (Get-Content $LockFile -Raw).Trim()
+        try {
+            $proc = Get-Process -Id ([int]$lockPid) -ErrorAction SilentlyContinue
+            if (-not $proc -or $proc.HasExited) {
+                Remove-Item $LockFile -Force
+                Set-Content -Path $LockFile -Value $PID -Encoding UTF8
+                return
+            }
+        } catch {
+            Remove-Item $LockFile -Force -ErrorAction SilentlyContinue
+            Set-Content -Path $LockFile -Value $PID -Encoding UTF8
+            return
+        }
+        Start-Sleep -Seconds 1
+    }
+    Write-Err "Timed out waiting for install lock (${maxWait}s). Remove $LockFile manually if stale."
+    exit 1
+}
+
+function Release-InstallLock {
+    if (Test-Path $LockFile) {
+        Remove-Item $LockFile -Force -ErrorAction SilentlyContinue
+    }
+}
+
+# --- Main flows ---
+
+if ($Help) {
+    Show-Usage
+    exit 0
+}
+
+if ($Version) {
+    $installed = Get-InstalledVersion
+    if ($installed -eq "none") {
+        Write-Host "$PluginName is not installed"
+    } else {
+        Write-Host "$PluginName v$installed"
+    }
+    exit 0
+}
+
+if ($CheckUpdate) {
+    $installed = Get-InstalledVersion
+    $source = Get-SourceVersion
+    if ($installed -eq "none") {
+        Write-Host "$PluginName is not installed (available: v$source)"
+    } elseif ($installed -eq $source) {
+        Write-Host "$PluginName v$installed is up to date"
+    } else {
+        Write-Host "$PluginName update available: v$installed -> v$source"
+    }
+    exit 0
+}
+
+if ($Uninstall) {
+    Write-Host ""
+    Write-Host "  Uninstalling $PluginName..." -ForegroundColor Cyan
+    Write-Host ""
+
+    Get-InstallLock
+    try {
+        Write-Host "==> Stopping daemon"
+        Stop-OhMyCursorDaemon
+
+        Write-Host "==> Removing plugin files"
+        Remove-PluginFiles
+
+        if (Test-Path $BackupDir) {
+            if ($DryRun) {
+                Write-Host "[dry-run] Would remove backup: $BackupDir"
+            } else {
+                Remove-Item $BackupDir -Recurse -Force
+                Write-Host "  Backup removed"
+            }
+        }
+
+        Write-Host "==> Removing MCP config entries"
+        Remove-McpConfig
+
+        Write-Host "==> Cleaning up legacy files"
+        Remove-LegacyLooseFiles
+
+        # Clean up temp files
+        if (-not $DryRun) {
+            foreach ($tf in $TempFiles) {
+                $p = Join-Path $TempDir $tf
+                if (Test-Path $p) { Remove-Item $p -Force }
+            }
+        }
+
+        Release-InstallLock
+
+        Write-Host ""
+        Write-Log "  $PluginName uninstalled successfully."
+        Write-Host ""
+    } catch {
+        Release-InstallLock
+        Write-Err "  Uninstall failed: $_"
+        exit 1
+    }
+    exit 0
+}
+
+# --- Install / Update ---
+
+$isUpdate = Test-Path $PluginDir
+
+Write-Host ""
+if ($isUpdate) {
+    Write-Host "  Updating $PluginName (scope: $Scope)..." -ForegroundColor Cyan
 } else {
-    $resolvedPath = if (Test-Path $PluginDir) { (Resolve-Path $PluginDir).Path } else { $PluginDir }
+    Write-Host "  Installing $PluginName (scope: $Scope)..." -ForegroundColor Cyan
+}
+Write-Host ""
 
-    $defaultReg = [PSCustomObject]@{ version = 2; plugins = [PSCustomObject]@{} }
-    $reg = Read-JsonSafe $ClaudePlugins $defaultReg
+Test-Prerequisites
 
-    if ($null -eq $reg.version) {
-        $reg | Add-Member -NotePropertyName "version" -NotePropertyValue 2 -Force
-    }
-    if ($null -eq $reg.plugins) {
-        $reg | Add-Member -NotePropertyName "plugins" -NotePropertyValue ([PSCustomObject]@{}) -Force
-    }
+$sourceVersion = Get-SourceVersion
+$installedVersion = Get-InstalledVersion
 
-    $entry = @([PSCustomObject]@{ scope = $Scope; installPath = $resolvedPath })
-    $reg.plugins | Add-Member -NotePropertyName $PluginId -NotePropertyValue $entry -Force
-
-    Write-JsonSafe $ClaudePlugins $reg
-    Write-Host "[ok] $ClaudePlugins"
+if ($isUpdate -and $installedVersion -eq $sourceVersion -and -not $Force) {
+    Write-Host "  $PluginName v$installedVersion is already up to date."
+    Write-Host "  Use -Force to reinstall."
+    exit 0
 }
 
-Write-Host ""
-Write-Host "==> Step 4: Enabling in settings.json"
+Get-InstallLock
+try {
+    if ($isUpdate) {
+        Write-Host "==> Backing up current installation"
+        Backup-Installation
 
-if ($DryRun) {
-    Write-Host "[dry-run] Would set enabledPlugins.$PluginId = true in $ClaudeSettings"
-} else {
-    $cfg = Read-JsonSafe $ClaudeSettings ([PSCustomObject]@{})
-    if ($null -eq $cfg.enabledPlugins) {
-        $cfg | Add-Member -NotePropertyName "enabledPlugins" -NotePropertyValue ([PSCustomObject]@{}) -Force
+        Write-Host "==> Stopping daemon"
+        Stop-OhMyCursorDaemon
+
+        Write-Host "==> Removing old plugin files"
+        Remove-PluginFiles
+    } else {
+        Write-Host "==> Cleaning up legacy files"
+        Remove-LegacyLooseFiles
     }
-    $cfg.enabledPlugins | Add-Member -NotePropertyName $PluginId -NotePropertyValue $true -Force
 
-    Write-JsonSafe $ClaudeSettings $cfg
-    Write-Host "[ok] $ClaudeSettings"
+    Write-Host "==> Copying plugin files"
+    Copy-PluginFiles
+
+    Write-Host "==> Merging MCP configuration"
+    Merge-McpConfig
+
+    Write-Host "==> Starting daemon"
+    Start-OhMyCursorDaemon
+
+    Write-Host "==> Verifying installation"
+    $valid = Test-Installation
+
+    Release-InstallLock
+
+    if ($valid) {
+        if (Test-Path $BackupDir) {
+            Remove-Item $BackupDir -Recurse -Force -ErrorAction SilentlyContinue
+        }
+    }
+
+    Write-Host ""
+    if ($isUpdate) {
+        Write-Log "  $PluginName updated successfully: v$installedVersion -> v$sourceVersion"
+    } else {
+        Write-Log "  $PluginName v$sourceVersion installed successfully!"
+    }
+    Write-Host ""
+    Write-Host "  Next steps:"
+    Write-Host "    1. Restart Cursor (Ctrl+Shift+P > `"Reload Window`")"
+    Write-Host "    2. Try: /deep-plan add authentication to my app"
+    Write-Host "    3. Try: @sisyphus fix the failing tests"
+    Write-Host ""
+} catch {
+    Write-Err "  Installation failed: $_"
+    if ($isUpdate) {
+        Write-Warn "  Attempting to restore backup..."
+        $restored = Restore-Backup
+        if ($restored) {
+            Write-Log "  Previous version restored successfully"
+        }
+    }
+    Release-InstallLock
+    exit 1
 }
-
-Write-Host ""
-Write-Host "oh-my-cursor installed successfully!"
-Write-Host ""
-Write-Host "Next steps:"
-Write-Host "  1. Restart Cursor (Ctrl+Shift+P > `"Reload Window`" or full restart)"
-Write-Host "  2. Enable `"Include third-party Plugins`" in Settings > Features (if not already on)"
-Write-Host "  3. Try: /deep-plan add authentication to my app"
-Write-Host "  4. Try: @sisyphus fix the failing tests"

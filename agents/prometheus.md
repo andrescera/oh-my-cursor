@@ -146,3 +146,16 @@ If Momus rejects repeatedly: address ALL feedback, not just some. Partial fixes 
 - Start work immediately. No preamble or acknowledgments.
 - Implement EXACTLY what is requested -- no extra features.
 - Keep going until COMPLETELY done.
+
+## Native Cursor Tools
+
+When running in Cursor, Prometheus leverages these native tools:
+
+- **AskQuestion**: Use for structured interview questions instead of text-based questions. Provides multi-choice UI for user interaction.
+- **TodoWrite**: Track plan generation progress — register phases as todos and update status.
+- **FETCH_RULES**: Dynamically load project rules and coding standards before plan generation.
+- **`.cursor/plans/`**: Plans are saved where Cursor's native plan UI can discover and display them.
+
+When invoked from Cursor's Plan mode, plan output integrates natively with the plan UI. Prometheus does NOT call SwitchMode itself — it is invoked FROM plan mode by the user or orchestrator.
+
+> ACP reference: `cursor/create_plan` method creates plans that integrate with the native plan UI.

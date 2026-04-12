@@ -17,6 +17,8 @@ export const HOOK_TIER_ASSIGNMENTS: Record<string, number> = {
   "/config": HookTier.SESSION,
   "/sessionHistory": HookTier.SESSION,
   "/backgroundTasks": HookTier.SESSION,
+  "/subagentStart": HookTier.SESSION,
+  "/subagentStop": HookTier.SESSION,
 
   "/preToolUse": HookTier.TOOL_GUARD,
   "/postToolUse": HookTier.TOOL_GUARD,
@@ -27,6 +29,9 @@ export const HOOK_TIER_ASSIGNMENTS: Record<string, number> = {
   "/afterFileEdit": HookTier.TOOL_GUARD,
   "/beforeMCPExecution": HookTier.TOOL_GUARD,
   "/afterMCPExecution": HookTier.TOOL_GUARD,
+
+  "/afterAgentResponse": HookTier.TRANSFORM,
+  "/afterAgentThought": HookTier.TRANSFORM,
 
   "/stop": HookTier.CONTINUATION,
   "/beforeSubmitPrompt": HookTier.CONTINUATION,

@@ -169,6 +169,11 @@ The `worktrees.json` file defines worktree settings. The `best-of-n-runner` agen
 | `/stop-continuation` | Stop all continuation mechanisms |
 | `/handoff` | Create context summary for new session |
 | `/remove-ai-slops` | Remove AI code smells from branch changes |
+| `/status` | System health: daemon uptime, sessions, tool calls, sidecar status |
+| `/agents` | List all agents with models, roles, and capabilities |
+| `/help` | Overview of agents, commands, skills, and usage patterns |
+| `/config` | Display the current merged oh-my-cursor configuration |
+| `/cloud-agents` | Dispatch and manage agents via cloud API (experimental) |
 
 ## Hook Daemon
 

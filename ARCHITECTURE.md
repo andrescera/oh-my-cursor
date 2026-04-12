@@ -21,10 +21,18 @@ graph TD
     Prometheus -->|plan file| Plans[.cursor/plans/*.md]
     Plans -->|/start-work| Atlas
     Atlas -->|delegates| SJ
+    Atlas -->|search| Explore
+    Atlas -->|consult| Oracle[oracle agent]
     Sisyphus -->|delegates| SJ
+    Sisyphus -->|search| Explore
+    Sisyphus -->|consult| Oracle
+    Sisyphus -->|docs| Librarian
+    Sisyphus -->|visual| ML[multimodal-looker]
 ```
 
 ### Mode-Based Routing (Native Mode)
+
+Cursor's native mode system drives top-level routing: **Plan mode** activates the Prometheus persona (research + plan writing), while **Agent mode** activates the Orchestrator/Atlas persona (dispatch, verify, coordinate). Debug and Ask modes are read-only.
 
 ```mermaid
 graph TD
@@ -98,6 +106,14 @@ graph LR
 | Reviewer | metis, momus | No | Never (read-only) |
 | Worker | sisyphus-junior | No | Yes (leaf executor) |
 | Specialist | explore, librarian, oracle, multimodal-looker | No | Never (read-only) |
+
+### Coordinator Worker Lists
+
+| Coordinator | Workers |
+|-------------|---------|
+| sisyphus | explore, oracle, librarian, sisyphus-junior, multimodal-looker |
+| hephaestus | explore, sisyphus-junior |
+| atlas | explore, oracle, sisyphus-junior |
 
 ### Background Agents
 

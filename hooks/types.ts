@@ -52,4 +52,5 @@ export type OhMyCursorConfig = {
   }
   mcp_allowlist: string[]
   notifications: { enabled: boolean; sound: boolean }
+  orchestration: { mode: "native" | "subagent" }
 }

@@ -16,6 +16,7 @@ export const DEFAULT_CONFIG: OhMyCursorConfig = {
   experimental: { cloud_agents: false, webhooks: false, automations: false },
   mcp_allowlist: ["*"],
   notifications: { enabled: true, sound: false },
+  orchestration: { mode: "native" as "native" | "subagent" },
 }
 
 export function validateConfig(raw: unknown): OhMyCursorConfig {

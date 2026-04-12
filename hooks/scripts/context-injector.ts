@@ -57,6 +57,7 @@ export async function writeContextRule(
     state.activeAgents.length > 0
       ? `Active agents: ${state.activeAgents.join(", ")}`
       : "No active agents",
+    `Orchestration mode: ${config.orchestration.mode}`,
     "",
     state.recentTools.length > 0
       ? `Recent tool activity: ${state.recentTools.slice(-5).join(", ")}`

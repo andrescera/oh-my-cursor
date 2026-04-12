@@ -8,7 +8,7 @@ This document catalogs every native Cursor feature the plugin leverages.
 |---------|---------------|-----------|
 | Custom Agents | 11 agents with frontmatter config | `agents/*.md` |
 | Hook System | 18 hook events via daemon | `hooks/hooks.json` |
-| Slash Commands | 15 commands for orchestration | `commands/*.md` |
+| Slash Commands | 16 commands for orchestration | `commands/*.md` |
 | Rules (.mdc) | Always-apply and agent-requestable rules | `rules/*.mdc` |
 | Skills | 7 skills with SKILL.md format | `skills/*/SKILL.md` |
 | MCP Integration | Sidecar with 8 tools | `hooks/mcp-sidecar.ts` |
@@ -20,7 +20,7 @@ This document catalogs every native Cursor feature the plugin leverages.
 
 ## a. Agent System
 
-Custom agents defined via `.cursor/agents/*.md` with YAML frontmatter:
+Custom agents defined in `agents/*.md` (installed to `.cursor/agents/*.md`) with YAML frontmatter:
 
 - **name**: Agent identifier
 - **description**: One-line purpose
@@ -121,3 +121,58 @@ Progressive enhancement: falls back to text when Apps not supported.
 - Version, description, keywords
 - Directory references: agents, commands, skills, rules, hooks
 - `sandbox.json` network policy with additionalReadwritePaths
+
+## j. Native Mode Orchestration
+
+oh-my-cursor supports two orchestration modes, controlled by `orchestration.mode` in config (default: `"native"`):
+
+### Native Mode (default)
+
+The root thread adopts different personas based on Cursor's active mode:
+
+| Mode | Persona | Behavior |
+|------|---------|----------|
+| Plan | Prometheus | Interview, research dispatch (explore/metis), plan writing to `.cursor/plans/` |
+| Agent | Orchestrator/Atlas | Dispatch workers, verify results, coordinate plan execution |
+| Debug | Diagnostic specialist | Read-only investigation (UI-only entry) |
+| Ask | Oracle/Advisor | Read-only answers (UI-only entry) |
+
+**Flow: Plan → Agent transition**
+
+```
+/deep-plan → SwitchMode(plan) → Root becomes Prometheus
+  → Dispatches explore/metis for research
+  → Writes plan to .cursor/plans/
+  → User runs /start-work
+/start-work → Root adopts Atlas personality in Agent mode
+  → Reads plan, decomposes into waves
+  → Dispatches sisyphus-junior workers
+  → Verifies each task, marks checkboxes
+```
+
+Key benefits over subagent mode:
+- Root keeps full conversation context (no fresh instances)
+- User can iterate on plans directly (no re-dispatch)
+- Model selection controlled by user via UI
+
+### Subagent Mode (fallback)
+
+Set `orchestration.mode: "subagent"` in config. Commands dispatch dedicated subagents:
+- `/deep-plan` → `Task(prometheus)`
+- `/start-work` → `Task(atlas)`
+
+Useful for very large plans (50+ tasks) where context window may fill up.
+
+### Configuration
+
+The toggle is set in `~/.config/oh-my-cursor/config.jsonc` or `.cursor/oh-my-cursor.jsonc`:
+
+```jsonc
+{
+  "orchestration": {
+    "mode": "native"  // or "subagent"
+  }
+}
+```
+
+The mode is injected into `.cursor/rules/oh-my-cursor-context.mdc` by the hook daemon on session start.

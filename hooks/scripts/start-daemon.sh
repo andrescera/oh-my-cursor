@@ -10,6 +10,7 @@ PID_FILE="/tmp/oh-my-cursor-daemon.pid"
 PORT_FILE="/tmp/oh-my-cursor-daemon.port"
 MCP_PORT_FILE="/tmp/oh-my-cursor-sidecar.port"
 HEARTBEAT_FILE="/tmp/oh-my-cursor-heartbeat"
+RESTART_COUNT_FILE="/tmp/oh-my-cursor-restart-count"
 
 read_port_file() {
   local file="$1"
@@ -72,7 +73,34 @@ if ! $daemon_alive; then
   if [ -f "$PID_FILE" ] && kill -0 "$(cat "$PID_FILE")" 2>/dev/null; then
     wait_for_health "$ACTUAL_PORT" || echo "warning: daemon process alive but health check failed" >&2
   else
-    nohup bun run "$DAEMON_SCRIPT" >/tmp/oh-my-cursor-daemon.log 2>&1 &
+    # Background supervisor: restarts on non-zero exit (crashes); exit 0 = graceful shutdown (e.g. /shutdown).
+    nohup env DAEMON_SCRIPT="$DAEMON_SCRIPT" PID_FILE="$PID_FILE" RESTART_COUNT_FILE="$RESTART_COUNT_FILE" bash -c '
+      while true; do
+        rm -f "$PID_FILE"
+        bun run "$DAEMON_SCRIPT" >>/tmp/oh-my-cursor-daemon.log 2>&1 &
+        child=$!
+        wait "$child"
+        ec=$?
+        if [ "$ec" -eq 0 ]; then
+          exit 0
+        fi
+        now=$(date +%s)
+        printf "%s\n" "$now" >>"$RESTART_COUNT_FILE"
+        cutoff=$((now - 60))
+        recent=0
+        while IFS= read -r line || [ -n "$line" ]; do
+          [[ "$line" =~ ^[0-9]+$ ]] || continue
+          if [ "$line" -ge "$cutoff" ]; then
+            recent=$((recent + 1))
+          fi
+        done <"$RESTART_COUNT_FILE"
+        if [ "$recent" -ge 5 ]; then
+          echo "fatal: daemon crash loop detected (5 restarts in 60s), giving up" >&2
+          exit 1
+        fi
+        sleep 1
+      done
+    ' >/tmp/oh-my-cursor-daemon.log 2>&1 &
     if ! wait_for_health "$PORT"; then
       ACTUAL_PORT="$(read_port_file "$PORT_FILE" "$PORT")"
       if ! wait_for_health "$ACTUAL_PORT"; then

@@ -408,8 +408,8 @@ describe("hook daemon", () => {
         trigger: "auto",
         session_id: "sess-1",
       })
-      expect(result.additional_context).toBeDefined()
-      expect(String(result.additional_context).length).toBeGreaterThan(0)
+      expect(result.user_message).toBeDefined()
+      expect(String(result.user_message).length).toBeGreaterThan(0)
       expect(result.hookSpecificOutput?.hookEventName).toBe("PreCompact")
     })
 
@@ -419,8 +419,8 @@ describe("hook daemon", () => {
         trigger: "auto",
         conversation_id: "conv-compact",
       })
-      expect(result.additional_context).toBeDefined()
-      expect(String(result.additional_context).length).toBeGreaterThan(0)
+      expect(result.user_message).toBeDefined()
+      expect(String(result.user_message).length).toBeGreaterThan(0)
       expect(result.hookSpecificOutput?.hookEventName).toBe("PreCompact")
     })
   })

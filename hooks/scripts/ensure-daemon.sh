@@ -5,6 +5,7 @@ ROUTE="${1:?usage: ensure-daemon.sh /route}"
 PORT="${OH_MY_CURSOR_PORT:-47847}"
 PORT_FILE="/tmp/oh-my-cursor-daemon.port"
 HEARTBEAT_FILE="/tmp/oh-my-cursor-heartbeat"
+PID_FILE="/tmp/oh-my-cursor-daemon.pid"
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 
 input=$(cat)
@@ -43,8 +44,34 @@ elif curl -s --max-time 2 "http://localhost:${ACTUAL_PORT}/health" >/dev/null 2>
 fi
 
 if ! $daemon_alive; then
-  echo '{}' | bash "$SCRIPT_DIR/start-daemon.sh" >/dev/null 2>&1 || true
-  ACTUAL_PORT="$(read_port_file "$PORT_FILE" "$PORT")"
+  stale_killed=false
+  if [ -f "$PID_FILE" ]; then
+    stale_pid="$(cat "$PID_FILE" 2>/dev/null || echo "")"
+    if [[ "$stale_pid" =~ ^[0-9]+$ ]] && kill -0 "$stale_pid" 2>/dev/null; then
+      kill "$stale_pid" 2>/dev/null || true
+      stale_killed=true
+    fi
+    rm -f "$PID_FILE"
+  fi
+  if $stale_killed; then
+    # Existing supervisor will restart the daemon; avoid spawning a second supervisor.
+    for _ in {1..20}; do
+      sleep 0.5
+      ACTUAL_PORT="$(read_port_file "$PORT_FILE" "$PORT")"
+      if is_heartbeat_fresh; then
+        daemon_alive=true
+        break
+      fi
+      if curl -s --max-time 2 "http://localhost:${ACTUAL_PORT}/health" >/dev/null 2>&1; then
+        daemon_alive=true
+        break
+      fi
+    done
+  fi
+  if ! $daemon_alive; then
+    echo '{}' | bash "$SCRIPT_DIR/start-daemon.sh" >/dev/null 2>&1 || true
+    ACTUAL_PORT="$(read_port_file "$PORT_FILE" "$PORT")"
+  fi
 fi
 
 curl -s -X POST "http://localhost:${ACTUAL_PORT}${ROUTE}" \

@@ -7,6 +7,7 @@ TodoWrite([
   { id: "plan-explore", content: "Explore: dispatch Task(explore)", status: "pending" },
   { id: "plan-metis", content: "Gap analysis: dispatch Task(metis)", status: "pending" },
   { id: "plan-write", content: "Write plan to .cursor/plans/", status: "pending" },
+  { id: "plan-selfreview", content: "Self-review: classify gaps and present summary", status: "pending" },
   { id: "plan-review", content: "Review: offer optional Momus audit", status: "pending" },
   { id: "plan-handoff", content: "Hand off to user", status: "pending" },
 ])
@@ -32,6 +33,8 @@ Mark `plan-interview` as `in_progress`.
 
 Ask the user 1–3 scoping questions via **AskQuestion** to clarify the request. Focus on ambiguity, constraints, and desired outcomes. Do NOT skip this step — even well-defined requests benefit from confirming scope boundaries.
 
+For complex tasks or multi-turn interviews, continuously record decisions to `.cursor/drafts/{name}.md` using **Write**. Update after every meaningful user response. This is your backup memory beyond the context window. In Plan mode, use Write (full file replacement) since StrReplace is unavailable. For simple tasks, this is optional.
+
 Mark `plan-interview` as `completed` when done.
 
 ### Step 3 — Explore (parallel)
@@ -50,7 +53,7 @@ Once explore completes, dispatch `Task(subagent_type="metis")` with explore resu
 
 Mark `plan-metis` as `completed` when Metis returns.
 
-### Step 5 — Write the plan
+### Step 5 — Draft the plan
 
 Mark `plan-write` as `in_progress`.
 
@@ -66,26 +69,41 @@ Write the plan directly to `.cursor/plans/<name>.plan.md` using the **Write** to
 
 Mark `plan-write` as `completed` when the plan file is written.
 
-### Step 6 — Review (optional)
+### Step 6 — Self-review
+
+Mark `plan-selfreview` as `in_progress`.
+
+Read the plan file back. Classify any gaps found:
+
+- **CRITICAL** (business logic, tech stack, unclear requirement): ask user via **AskQuestion**. A plan with unresolved CRITICAL gaps must NOT proceed.
+- **MINOR** (missing file reference, obvious acceptance criteria): fix silently via **Write**.
+- **AMBIGUOUS** (error handling strategy, naming convention): apply a sensible default, disclose in summary.
+
+Present a summary to the user covering: key decisions, scope boundaries, guardrails, auto-resolved items, and defaults applied.
+
+Mark `plan-selfreview` as `completed` when all gaps are resolved and summary is presented.
+
+### Step 7 — Review (optional)
 
 Mark `plan-review` as `in_progress`.
 
 Ask the user via **AskQuestion**: *"Would you like a quality review of this plan? (Momus audit)"* with Yes/No options.
 
 - **Yes**: dispatch `Task(subagent_type="momus")` with the plan in CONTEXT. If Momus flags issues, incorporate feedback and update the plan file.
-- **No**: skip to Step 7.
+- **No**: skip to Step 8.
 
 Do NOT auto-dispatch Momus. Always ask first.
 
 Mark `plan-review` as `completed` when review is done or skipped.
 
-### Step 7 — Hand off
+### Step 8 — Hand off
 
 Mark `plan-handoff` as `in_progress`.
 
 Tell the user: *"Plan ready. Run `/start-work` or switch to Agent mode to begin execution."*
 
 Do NOT begin implementing. Do NOT switch to Agent mode.
+If a draft file exists at `.cursor/drafts/{name}.md`, it will be cleaned up when `/start-work` executes.
 
 Mark `plan-handoff` as `completed`.
 

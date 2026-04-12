@@ -1,4 +1,7 @@
-# Cloud Automation Templates
+# ⚠️ EXPERIMENTAL — Cloud Automation Templates
+
+> **This feature is EXPERIMENTAL.** All automations require `experimental.automations: true` in your oh-my-cursor config (`~/.config/oh-my-cursor/config.jsonc`). Cloud Agents API access and a `CURSOR_API_KEY` are also required.
+
 
 These templates describe how to configure [Cursor Cloud Agent Automations](https://cursor.com/docs/cloud-agent/automations.md) for common background workflows.
 

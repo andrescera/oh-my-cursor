@@ -10,7 +10,10 @@
     "subagentStop": [{ "command": "bash \"$HOME/.cursor/plugins/local/oh-my-cursor/hooks/scripts/ensure-daemon.sh\" /subagentStop", "loop_limit": null }],
     "beforeShellExecution": [{ "command": "bash \"$HOME/.cursor/plugins/local/oh-my-cursor/hooks/scripts/ensure-daemon.sh\" /beforeShellExecution", "matcher": "rm|curl|wget|docker|sudo", "failClosed": true }],
     "afterShellExecution": [{ "command": "bash \"$HOME/.cursor/plugins/local/oh-my-cursor/hooks/scripts/ensure-daemon.sh\" /afterShellExecution" }],
-    "beforeMCPExecution": [{ "command": "bash \"$HOME/.cursor/plugins/local/oh-my-cursor/hooks/scripts/ensure-daemon.sh\" /beforeMCPExecution", "failClosed": true }],
+    "beforeMCPExecution": [
+      { "command": "bash \"$HOME/.cursor/plugins/local/oh-my-cursor/hooks/scripts/ensure-daemon.sh\" /beforeMCPExecution", "failClosed": true },
+      { "type": "prompt", "prompt": "Review this MCP tool call for safety. The tool arguments are: $ARGUMENTS. If this could expose secrets, modify system files, or make unauthorized network requests, respond with DENY and explain why. Otherwise respond with APPROVE.", "failClosed": true }
+    ],
     "afterMCPExecution": [{ "command": "bash \"$HOME/.cursor/plugins/local/oh-my-cursor/hooks/scripts/ensure-daemon.sh\" /afterMCPExecution" }],
     "beforeReadFile": [{ "command": "bash \"$HOME/.cursor/plugins/local/oh-my-cursor/hooks/scripts/ensure-daemon.sh\" /beforeReadFile", "matcher": "Read" }],
     "afterFileEdit": [{ "command": "bash \"$HOME/.cursor/plugins/local/oh-my-cursor/hooks/scripts/ensure-daemon.sh\" /afterFileEdit", "matcher": "Write" }],

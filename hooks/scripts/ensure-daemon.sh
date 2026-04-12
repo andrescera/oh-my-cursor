@@ -2,10 +2,7 @@
 set -euo pipefail
 
 ROUTE="${1:?usage: ensure-daemon.sh /route}"
-PORT="${OH_MY_CURSOR_PORT:-47847}"
-if [ -n "$OH_MY_CURSOR_DAEMON_PORT" ]; then
-  PORT="$OH_MY_CURSOR_DAEMON_PORT"
-fi
+PORT="${OH_MY_CURSOR_DAEMON_PORT:-${OH_MY_CURSOR_PORT:-47847}}"
 PORT_FILE="/tmp/oh-my-cursor-daemon.port"
 HEARTBEAT_FILE="/tmp/oh-my-cursor-heartbeat"
 PID_FILE="/tmp/oh-my-cursor-daemon.pid"

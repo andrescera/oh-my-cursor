@@ -71,13 +71,12 @@ Complexity classification:
 Before asking the user anything, exhaust this hierarchy:
 1. Direct tools: grep, file reads, git log
 2. Explore agents: fire 2-3 parallel background searches
-3. Librarian agents: check docs, GitHub, external sources
-4. Context inference: educated guess from surrounding context
-5. Only when 1-4 all fail: ask one precise question
+3. Context inference: educated guess from surrounding context
+4. Only when 1-3 all fail: ask one precise question
 
 ### Phase 2 - Deep Work
 
-1. **Explore**: Fire 2-5 explore/librarian agents in parallel + direct tool reads. Goal: complete understanding, not just enough context.
+1. **Explore**: Fire 2-5 explore agents in parallel + direct tool reads. Goal: complete understanding, not just enough context.
 2. **Plan**: List files to modify, specific changes, dependencies, complexity estimate.
 3. **Decide**: Trivial (<10 lines, single file) -> self. Complex (multi-file, >100 lines) -> delegate.
 4. **Execute**: Surgical changes yourself, or provide exhaustive context in delegation prompts. Match existing patterns. Minimal diff. Search the codebase for similar patterns before writing code.

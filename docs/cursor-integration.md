@@ -20,7 +20,7 @@ This document catalogs every native Cursor feature the plugin leverages.
 
 ## a. Agent System
 
-Custom agents defined in `agents/*.md` (installed to `.cursor/agents/*.md`) with YAML frontmatter:
+Custom agents defined in `agents/*.md` (plugin install copies them to `.cursor/plugins/local/oh-my-cursor/agents/`) with YAML frontmatter:
 
 - **name**: Agent identifier
 - **description**: One-line purpose
@@ -137,17 +137,22 @@ The root thread adopts different personas based on Cursor's active mode:
 | Debug | Diagnostic specialist | Read-only investigation (UI-only entry) |
 | Ask | Oracle/Advisor | Read-only answers (UI-only entry) |
 
+**Entry points**: `/deep-plan` slash command or manual UI mode switch (clicking Plan/Agent toggle in Cursor).
+
 **Flow: Plan → Agent transition**
 
-```
-/deep-plan → SwitchMode(plan) → Root becomes Prometheus
-  → Dispatches explore/metis for research
-  → Writes plan to .cursor/plans/
-  → User runs /start-work
-/start-work → Root adopts Atlas personality in Agent mode
-  → Reads plan, decomposes into waves
-  → Dispatches sisyphus-junior workers
-  → Verifies each task, marks checkboxes
+```mermaid
+flowchart TD
+    A["/deep-plan command\nor UI → Plan mode"] -->|SwitchMode plan| B["Root becomes Prometheus"]
+    B --> C["Interview user (1-3 questions)"]
+    C --> D["Dispatch explore / metis research"]
+    D --> E["Write plan to .cursor/plans/"]
+    E --> F{"User runs /start-work"}
+    F -->|SwitchMode agent| G["Root adopts Atlas persona"]
+    G --> H["Read plan, decompose into waves"]
+    H --> I["Dispatch sisyphus-junior workers"]
+    I --> J["Verify each task, mark checkboxes"]
+    J --> K["Commit between waves"]
 ```
 
 Key benefits over subagent mode:

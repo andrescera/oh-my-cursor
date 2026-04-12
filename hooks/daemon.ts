@@ -270,10 +270,22 @@ const fetchHandler = async (req: Request) => {
       headers: { "Content-Type": "application/json" },
     })
   } catch (err) {
-    console.error(`[oh-my-cursor] Hook error on ${path}:`, err)
-    return new Response(JSON.stringify({}), {
-      headers: { "Content-Type": "application/json" },
+    const message = err instanceof Error ? err.message : String(err)
+    console.error(`[oh-my-cursor] Hook error on ${path}:`, err instanceof Error ? err.stack : err)
+    logEvent({
+      ts: new Date().toISOString(),
+      event: path,
+      sessionId: "",
+      action: "error",
+      error: message,
+      meta: err instanceof Error && err.stack ? { stack: err.stack } : undefined,
     })
+    return new Response(
+      JSON.stringify({ error: message, hook: path }),
+      {
+        headers: { "Content-Type": "application/json" },
+      },
+    )
   }
 }
 
@@ -318,5 +330,16 @@ persistenceInterval = setInterval(() => {
 
 process.on("SIGTERM", () => gracefulShutdown("SIGTERM"))
 process.on("SIGINT", () => gracefulShutdown("SIGINT"))
+
+process.on("unhandledRejection", (reason) => {
+  console.error("[oh-my-cursor] Unhandled rejection:", reason instanceof Error ? reason.stack : reason)
+  logEvent({
+    ts: new Date().toISOString(),
+    event: "/unhandledRejection",
+    sessionId: "",
+    action: "error",
+    error: reason instanceof Error ? reason.message : String(reason),
+  })
+})
 
 console.log(`[oh-my-cursor] Hook daemon ready on http://localhost:${actualPort}`)

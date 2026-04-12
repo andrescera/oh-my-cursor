@@ -16,6 +16,7 @@ import {
   STATUS_HTML,
 } from "./mcp-app"
 import { loadConfig } from "./config"
+import { cleanupStaleProcess } from "./process-guard"
 
 function getPluginRoot(): string {
   return resolve(import.meta.dir, "..")
@@ -86,6 +87,7 @@ function resolvePreferredMcpPortFromDaemonFile(fallbackMcpPort: number): number 
   return fallbackMcpPort
 }
 const MCP_PORT_FILE = "/tmp/oh-my-cursor-sidecar.port"
+const MCP_PID_FILE = "/tmp/oh-my-cursor-sidecar.pid"
 const MAX_PORT_ATTEMPTS = 11
 
 function isPortInUseError(err: unknown): boolean {
@@ -106,8 +108,8 @@ function removePortFile(): void {
   }
 }
 
-process.on("SIGTERM", () => { removePortFile(); process.exit(0) })
-process.on("SIGINT", () => { removePortFile(); process.exit(0) })
+process.on("SIGTERM", () => { removePortFile(); try { unlinkSync(MCP_PID_FILE) } catch {} process.exit(0) })
+process.on("SIGINT", () => { removePortFile(); try { unlinkSync(MCP_PID_FILE) } catch {} process.exit(0) })
 
 const TOOLS = [
   {
@@ -805,6 +807,8 @@ const mcpFetchHandler = async (req: Request) => {
   return new Response("Not found", { status: 404 })
 }
 
+cleanupStaleProcess(MCP_PID_FILE, MCP_PORT_FILE, "sidecar")
+
 let actualMcpPort = ENV_MCP_PORT ? parseInt(ENV_MCP_PORT) : DEFAULT_MCP_PORT
 const scanBaseMcpPort = ENV_MCP_PORT
   ? DEFAULT_MCP_PORT
@@ -842,6 +846,7 @@ if (ENV_MCP_PORT) {
 }
 
 writePortFile(actualMcpPort)
+writeFileSync(MCP_PID_FILE, String(process.pid), "utf-8")
 console.log(`[oh-my-cursor] MCP sidecar ready on http://localhost:${actualMcpPort}`)
 
 setInterval(async () => {

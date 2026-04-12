@@ -16,6 +16,7 @@ import { BackgroundTracker, createBackgroundTasksHandler } from "./handlers/back
 import { StatePersistence } from "./state-persistence"
 import { createHeartbeatHandler, startHeartbeatWriter, HEARTBEAT_FILE } from "./handlers/heartbeat"
 import { loadConfig } from "./config"
+import { cleanupStaleProcess } from "./process-guard"
 import type { HandlerMap } from "./types"
 
 const config = loadConfig()
@@ -34,42 +35,6 @@ const DEFAULT_PORT = config.daemon.port
 const PID_FILE = "/tmp/oh-my-cursor-daemon.pid"
 const PORT_FILE = "/tmp/oh-my-cursor-daemon.port"
 const MAX_PORT_ATTEMPTS = 11
-
-function isProcessAlive(pid: number): boolean {
-  try {
-    process.kill(pid, 0)
-    return true
-  } catch (err) {
-    if (err instanceof Error && "code" in err && (err as { code?: string }).code === "EPERM") {
-      return true
-    }
-    return false
-  }
-}
-
-function handleStaleProcess(): void {
-  if (!existsSync(PID_FILE)) return
-  try {
-    const pidStr = readFileSync(PID_FILE, "utf-8").trim()
-    const pid = parseInt(pidStr, 10)
-    if (isNaN(pid)) {
-      console.log("[oh-my-cursor] Removing invalid PID file")
-      unlinkSync(PID_FILE)
-      return
-    }
-    if (isProcessAlive(pid)) {
-      console.log(`[oh-my-cursor] Killing stale daemon process (PID ${pid})`)
-      try {
-        process.kill(pid, "SIGTERM")
-      } catch (killErr) {
-        console.error("[oh-my-cursor] Failed to kill stale process:", killErr instanceof Error ? killErr.message : String(killErr))
-      }
-    }
-    unlinkSync(PID_FILE)
-  } catch (readErr) {
-    console.error("[oh-my-cursor] Error handling stale PID file:", readErr instanceof Error ? readErr.message : String(readErr))
-  }
-}
 
 function writePidFile(): void {
   writeFileSync(PID_FILE, String(process.pid), "utf-8")
@@ -195,7 +160,7 @@ const handlers: HandlerMap = {
   },
 }
 
-handleStaleProcess()
+cleanupStaleProcess(PID_FILE, PORT_FILE, "daemon")
 
 const fetchHandler = async (req: Request) => {
   const url = new URL(req.url)

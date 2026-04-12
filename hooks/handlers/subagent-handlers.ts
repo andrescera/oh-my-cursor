@@ -3,6 +3,9 @@ import type { BackgroundTracker } from "./background-tracker"
 import { getOrCreateSession } from "../shared"
 import { writeContextRule } from "../scripts/context-injector"
 import { createEmptyTaskDetector } from "./empty-task-detector"
+import { loadConfig } from "../config"
+import { logEvent } from "../event-logger"
+import { resolve } from "node:path"
 
 export function createSubagentHandlers(
   _sessions: Map<string, SessionState>,
@@ -56,6 +59,25 @@ export function createSubagentHandlers(
 
       if (loopCount > 0) {
         console.log(`[oh-my-cursor] Subagent ${subagentType} stopped after ${loopCount} loops (status: ${status})`)
+      }
+
+      const isBackground = Boolean(input.is_background) || ["explore", "librarian"].includes(subagentType.toLowerCase())
+      if (isBackground) {
+        const config = loadConfig()
+        if (config.notifications.enabled) {
+          const scriptDir = resolve(import.meta.dir, "../scripts")
+          const notifyScript = resolve(scriptDir, "notify.sh")
+          try {
+            Bun.spawn(["bash", notifyScript, "oh-my-cursor", `Background task completed: ${subagentType}`])
+          } catch {}
+          logEvent({
+            ts: new Date().toISOString(),
+            event: "/subagentStop",
+            sessionId: convId,
+            agentType: subagentType,
+            action: "notify",
+          })
+        }
       }
 
       return emptyTaskDetector({

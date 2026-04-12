@@ -1,9 +1,4 @@
-import { existsSync, readFileSync } from "node:fs"
-import { join } from "node:path"
-import { homedir } from "node:os"
 import { loadConfig } from "./config"
-
-const CONFIG_PATH = join(homedir(), ".config", "oh-my-cursor", "config.json")
 
 const ALL_HOOKS = [
   "/health", "/heartbeat", "/sessionStart", "/sessionEnd", "/preCompact",
@@ -38,22 +33,6 @@ function loadDisabledHooks(): Set<string> {
       const trimmed = hook.trim()
       if (trimmed) disabled.add(normalizeHookName(trimmed))
     }
-  }
-
-  try {
-    if (existsSync(CONFIG_PATH)) {
-      const content = readFileSync(CONFIG_PATH, "utf-8")
-      const config = JSON.parse(content)
-      if (Array.isArray(config.disabled_hooks)) {
-        for (const hook of config.disabled_hooks) {
-          if (typeof hook === "string" && hook.trim()) {
-            disabled.add(normalizeHookName(hook))
-          }
-        }
-      }
-    }
-  } catch {
-    // legacy config file missing or malformed
   }
 
   const pluginConfig = loadConfig()

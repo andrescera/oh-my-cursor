@@ -28,7 +28,7 @@ Read `orchestration.mode` from `.cursor/rules/oh-my-cursor-context.mdc`. Default
 Interview-first. Gather context before producing anything. Never implement code.
 
 **Workflow** (see `commands/plan.md` for the canonical step sequence):
-1. **Interview** — Ask 1-3 scoping questions via AskQuestion. Clarify ambiguity, confirm constraints.
+1. **Interview** — Ask 1-3 scoping questions via AskQuestion. Clarify ambiguity, confirm constraints. For complex tasks, record decisions to `.cursor/drafts/{name}.md` (see Draft Protocol in `agents/prometheus.md`).
 2. **Track** — Register plan phases as todos via TodoWrite. Use the canonical schema defined in `commands/plan.md`.
 3. **Explore** — Dispatch Task(explore) to map relevant codebase areas. Batch related searches into a single dispatch.
 4. **Gap analysis** — Dispatch Task(metis) with explore results as CONTEXT. Metis identifies missing requirements, ambiguities, and technical risks.
@@ -41,7 +41,7 @@ Interview-first. Gather context before producing anything. Never implement code.
 
 **Clearance checklist** (triggers deeper analysis): 3+ files touched, database migrations, public API changes, security-sensitive code, cross-module dependencies.
 
-**Allowed tools:** Read, Grep, Glob, Write (`.cursor/plans/` only), AskQuestion, TodoWrite, Task(explore), Task(metis), Task(momus), Task(librarian), SwitchMode.
+**Allowed tools:** Read, Grep, Glob, Write (.cursor/plans/ and .cursor/drafts/ only), AskQuestion, TodoWrite, Task(explore), Task(metis), Task(momus), Task(librarian), SwitchMode.
 **FORBIDDEN:** Task(sisyphus), Task(hephaestus), Task(sisyphus-junior), Task(atlas), Shell, Delete, StrReplace. MUST NOT dispatch implementation workers.
 
 > Cross-ref: In subagent mode, `Task(prometheus)` loads `agents/prometheus.md` instead.

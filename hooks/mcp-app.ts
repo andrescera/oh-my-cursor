@@ -534,13 +534,13 @@ export const MCP_APP_TOOL = {
   },
   _meta: {
     ui: {
-      resourceUri: "ui://oh-my-cursor/status",
+      resourceUri: "ui://oh-my-cursor/dashboard",
     },
   },
 }
 
 export const MCP_APP_RESOURCE = {
-  uri: "ui://oh-my-cursor/status",
+  uri: "ui://oh-my-cursor/dashboard",
   name: "oh-my-cursor Status",
   description: "Session state and daemon health dashboard",
   mimeType: "text/html",
@@ -560,7 +560,7 @@ export function handleStatusToolCall(): {
     ],
     _meta: {
       ui: {
-        resourceUri: "ui://oh-my-cursor/status",
+        resourceUri: "ui://oh-my-cursor/dashboard",
       },
     },
   }

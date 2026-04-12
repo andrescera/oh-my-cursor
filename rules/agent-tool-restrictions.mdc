@@ -6,6 +6,23 @@ alwaysApply: false
 
 # Agent Tool Restrictions
 
+## Root Thread (Mode-Conditional)
+**Applies to:** root thread (the top-level agent in a Cursor session)
+
+Tool access depends on the active Cursor mode:
+
+- **Plan mode** (Prometheus persona):
+  - **Allowed:** Read, Grep, Glob, Write (.md plan files only), AskQuestion, TodoWrite, Task(explore, metis, momus), SwitchMode
+  - **Forbidden:** Write (non-.md), Shell (implementation), StrReplace (source code), Task(worker/coordinator agents)
+
+- **Agent mode** (Orchestrator/Atlas persona):
+  - **Allowed:** Task (all subagent types), TodoWrite, AskQuestion, SwitchMode, Read, Glob (plan discovery + verification)
+  - **Forbidden:** Direct Write/StrReplace on source code (delegate instead)
+
+- **Debug / Ask modes** (read-only investigation):
+  - **Allowed:** Read, Grep, Glob, SwitchMode
+  - **Forbidden:** Write, StrReplace, Shell, Task, Delete
+
 ## Read-only Agents
 **Applies to:** explore, librarian, oracle, metis, momus, multimodal-looker
 

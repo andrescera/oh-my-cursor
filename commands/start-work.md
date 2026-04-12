@@ -2,7 +2,7 @@ You MUST use the **Task** tool to dispatch agents. Do NOT perform plan execution
 
 ## Steps (you execute these tool calls)
 
-1. **Discover plans**: Use **Glob** (and **Read** as needed) on `.cursor/plans/**` and `.cursor/plans/**` to list plan files.
+1. **Discover plans**: Use **Glob** (and **Read** as needed) on `.cursor/plans/**` to list plan files.
 2. **Choose plan**: If exactly one plan, use it. If multiple, use **AskQuestion** so the user picks which plan to run.
 3. **Dispatch atlas**: Call **Task** with `subagent_type="atlas"`. Paste the **full** chosen plan file contents into the task prompt. Use the six-section brief below for that dispatch.
 

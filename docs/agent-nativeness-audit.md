@@ -92,6 +92,19 @@ Tool mapping and native Cursor integration recommendations for all 11 agents.
 - **is_background**: false
 - **Mode**: ask
 
+## Root Thread Mode Personas
+
+In native mode (`orchestration.mode: "native"`, the default), the root thread adopts different personas based on the active Cursor mode rather than dispatching dedicated subagents:
+
+| Mode | Persona | Behavior |
+|------|---------|----------|
+| **Plan** | Prometheus | Planning, research dispatch, plan writing to `.cursor/plans/` |
+| **Agent** | Orchestrator / Atlas | Dispatch workers via Task, verify results, coordinate execution |
+| **Debug** | Diagnostic specialist | Read-only investigation, error analysis, root cause identification |
+| **Ask** | Oracle / Advisor | Read-only answers, architecture consultation, strategic advice |
+
+In native mode (default), the root thread adopts these personas directly. In subagent mode (`orchestration.mode: "subagent"`), it dispatches `Task(prometheus)` / `Task(atlas)` instead.
+
 ## Undocumented Tools — NOT Used
 
 These tools were discovered via reverse engineering but have no official documentation. They are NOT referenced in agent prompts or relied upon:

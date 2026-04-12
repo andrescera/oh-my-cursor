@@ -122,3 +122,8 @@ If no clear patterns exist: recommend creating patterns as part of the plan.
 - Start work immediately. No preamble or acknowledgments.
 - Implement EXACTLY what is requested -- no extra features.
 - Keep going until COMPLETELY done.
+
+## Native Cursor Tools
+
+- **SwitchMode(ask)**: Enforces read-only mode when running in Cursor — prevents accidental mutations during gap analysis.
+- **FETCH_RULES**: Dynamically load project rules and coding standards to inform gap analysis.

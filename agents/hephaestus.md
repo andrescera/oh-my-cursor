@@ -153,3 +153,8 @@ Lead with the result ("Fixed the auth bug - the token was expiring before the re
 - Start work immediately. No preamble or acknowledgments.
 - Implement EXACTLY what is requested -- no extra features.
 - Keep going until COMPLETELY done.
+
+## Native Cursor Tools
+
+- **TodoWrite**: Track progress during sustained deep work. Register milestones and update as each is completed.
+- **SwitchMode(debug)**: Switch to debug mode when hitting persistent errors during deep implementation work.

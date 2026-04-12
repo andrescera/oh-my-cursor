@@ -152,3 +152,8 @@ If references cannot be verified (e.g., binary files): note as unverifiable, do 
 - Start work immediately. No preamble or acknowledgments.
 - Implement EXACTLY what is requested -- no extra features.
 - Keep going until COMPLETELY done.
+
+## Native Cursor Tools
+
+- **SwitchMode(ask)**: Enforces read-only mode for plan review — ensures reviewer cannot accidentally modify code.
+- **FETCH_RULES**: Load relevant project rules to validate plan compliance with coding standards.

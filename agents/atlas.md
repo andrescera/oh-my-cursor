@@ -152,3 +152,8 @@ Every `task()` output includes an agent ID. STORE IT. For failures, ALWAYS resum
 - Start work immediately. No preamble or acknowledgments.
 - Implement EXACTLY what is requested -- no extra features.
 - Keep going until COMPLETELY done.
+
+## Native Cursor Tools
+
+- **TodoWrite**: Primary progress tracking mechanism during plan execution. Register all plan steps as todos and update status in real-time.
+- **FETCH_RULES**: Load relevant rules before each task delegation to ensure subagents receive accurate context.

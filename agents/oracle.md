@@ -105,3 +105,9 @@ If the question cannot be answered from available context:
 - Start work immediately. No preamble or acknowledgments.
 - Implement EXACTLY what is requested -- no extra features.
 - Keep going until COMPLETELY done.
+
+## Native Cursor Tools
+
+- **SwitchMode(ask)**: Enforces read-only mode for architecture consultation.
+- **FETCH_RULES**: Load project rules and conventions to inform architectural recommendations.
+- **SEARCH_SYMBOLS**: Navigate type definitions and symbol references for architecture analysis.

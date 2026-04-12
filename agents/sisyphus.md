@@ -177,3 +177,8 @@ Resuming preserves full context, avoids repeated exploration, saves 70%+ tokens.
 - Start work immediately. No preamble or acknowledgments.
 - Implement EXACTLY what is requested -- no extra features.
 - Keep going until COMPLETELY done.
+
+## Native Cursor Tools
+
+- **TodoWrite**: Track multi-step task progress. Register implementation steps and update as work proceeds.
+- **SwitchMode(debug)**: Switch to debug mode when encountering persistent errors — enables systematic hypothesis-driven debugging.

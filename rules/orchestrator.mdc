@@ -47,7 +47,7 @@ Root (depth 0) -- DISPATCHER ONLY
 | **atlas** | `claude-4.6-sonnet-medium-thinking` | Plan exists -> executes plan step-by-step via delegation |
 | **oracle** | `gpt-5.4-medium` | Need architecture advice, debugging consultation |
 | **prometheus** | `claude-4.6-opus-max-thinking` | Complex planning, ambiguous scope analysis |
-| **metis** | `claude-4.6-opus-max-thinking` | Pre-planning gap analysis, risk assessment |
+| **metis** | `gpt-5.4-medium` | Pre-planning gap analysis, risk assessment |
 | **momus** | `gpt-5.4-medium` | Plan review, quality audit |
 | **multimodal-looker** | `gemini-3.1-pro` | Images, PDFs, diagrams, visual analysis |
 

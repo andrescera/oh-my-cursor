@@ -10,7 +10,7 @@ Call `SwitchMode(plan)`. You are now the Prometheus persona defined in `orchestr
 
 ### Step 2 — Interview
 
-Ask the user 1–3 scoping questions to clarify the request. Focus on ambiguity, constraints, and desired outcomes. Do NOT skip this step — even well-defined requests benefit from confirming scope boundaries.
+Ask the user 1–3 scoping questions via **AskQuestion** to clarify the request. Focus on ambiguity, constraints, and desired outcomes. Do NOT skip this step — even well-defined requests benefit from confirming scope boundaries.
 
 ### Step 3 — Explore (parallel)
 
@@ -34,41 +34,43 @@ Write the plan directly to `.cursor/plans/<name>.plan.md` using the **Write** to
 
 ### Step 6 — Review (optional)
 
-Ask the user: *"Would you like a quality review of this plan? (Momus audit)"*
+Ask the user via **AskQuestion**: *"Would you like a quality review of this plan? (Momus audit)"* with Yes/No options.
 
-If yes: dispatch `Task(subagent_type="momus")` with the plan in CONTEXT. If Momus rejects, fix the issues and resubmit until it passes.
+- **Yes**: dispatch `Task(subagent_type="momus")` with the plan in CONTEXT. If Momus flags issues, incorporate feedback and update the plan file.
+- **No**: skip to Step 7.
 
-If no: skip to Step 7.
+Do NOT auto-dispatch Momus. Always ask first.
 
-### Step 7 — Present and hand off
+### Step 7 — Hand off
 
-Present the plan summary. Tell the user to run `/start-work` to begin execution. Do NOT begin implementing.
+Tell the user: *"Plan ready. Run `/start-work` or switch to Agent mode to begin execution."*
+
+Do NOT begin implementing. Do NOT switch to Agent mode.
 
 ---
 
 ## Subagent mode (orchestration.mode = "subagent")
 
-Fallback when root cannot use SwitchMode. All work happens via Task dispatches.
+Fallback when root cannot adopt the Prometheus persona directly. All planning work happens via Task dispatches.
 
-### Phase 1 — Explore (parallel)
+### Phase 1 — Dispatch Prometheus
 
-Dispatch one or more `Task(subagent_type="explore", run_in_background=true)` agents to map relevant codebase areas. Use the six-section brief. Batch related searches into a single explore dispatch.
+Dispatch `Task(subagent_type="prometheus")` with the user's request and any available context using the six-section brief. Prometheus handles exploration, gap analysis, and plan writing internally.
 
-### Phase 2 — Gap analysis
+### Phase 2 — Review (optional)
 
-Once Phase 1 completes, dispatch `Task(subagent_type="metis")` with Phase 1 results in CONTEXT. Metis identifies missing requirements, ambiguities, and technical risks.
+After Prometheus returns, ask the user via **AskQuestion**: *"Would you like a quality review of this plan? (Momus audit)"* with Yes/No options.
 
-### Phase 3 — Strategic plan
+- **Yes**: dispatch `Task(subagent_type="momus")` with the plan from Phase 1 in CONTEXT. If Momus rejects, resume Prometheus to iterate.
+- **No**: skip to Phase 3.
 
-Dispatch `Task(subagent_type="prometheus")` with Phase 1 + Phase 2 results in CONTEXT. Prometheus writes the plan to `.cursor/plans/<name>.plan.md`.
+Do NOT auto-dispatch Momus. Always ask first.
 
-### Phase 4 — Plan review (optional)
+### Phase 3 — Hand off
 
-Ask the user: *"Would you like a quality review? (Momus audit)"*
+Tell the user: *"Plan ready. Run `/start-work` or switch to Agent mode to begin execution."*
 
-If yes: dispatch `Task(subagent_type="momus")` with the plan from Phase 3 in CONTEXT. If Momus rejects, resume Prometheus to iterate.
-
-Present the reviewed plan. Do NOT begin implementing until user confirms. Tell user to run `/start-work` to begin execution.
+Do NOT begin implementing.
 
 ---
 

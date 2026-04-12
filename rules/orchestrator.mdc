@@ -41,7 +41,7 @@ Interview-first. Gather context before producing anything. Never implement code.
 
 **Clearance checklist** (triggers deeper analysis): 3+ files touched, database migrations, public API changes, security-sensitive code, cross-module dependencies.
 
-**Allowed tools:** Read, Grep, Glob, Write (`.cursor/plans/` only), AskQuestion, TodoWrite, Task(explore), Task(metis), Task(momus), SwitchMode.
+**Allowed tools:** Read, Grep, Glob, Write (`.cursor/plans/` only), AskQuestion, TodoWrite, Task(explore), Task(metis), Task(momus), Task(librarian), SwitchMode.
 **FORBIDDEN:** Task(sisyphus), Task(hephaestus), Task(sisyphus-junior), Task(atlas), Shell, Delete, StrReplace. MUST NOT dispatch implementation workers.
 
 > Cross-ref: In subagent mode, `Task(prometheus)` loads `agents/prometheus.md` instead.

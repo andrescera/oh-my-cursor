@@ -118,12 +118,31 @@ Parallelize EVERYTHING. Independent reads, searches, and agents run SIMULTANEOUS
 3. Mark current task `in_progress` before starting
 4. Mark `completed` as soon as done (don't batch)
 
+### Post-Delegation Verification (MANDATORY after every Task)
+
+After every Task delegation returns, verify before marking complete:
+
+1. **ReadLints** on all changed files — must show zero new errors
+2. **Shell** build command (if applicable) — must exit 0
+3. **Shell** test suite (if applicable) — all must pass
+4. **Read** every file the subagent created or modified — inspect line by line
+5. **Cross-reference** what the subagent claimed vs what the code actually does
+
+**No evidence = not complete.** If any check fails, resume the same agent with the error.
+
 ### Phase 2C - Failure Recovery
 
 1. Fix root causes, not symptoms
 2. Re-verify after EVERY fix attempt
 3. Never shotgun debug (random changes hoping something works)
-4. After 3 consecutive failures: STOP -> REVERT to last working state -> DOCUMENT what failed -> CONSULT Oracle -> If Oracle cannot resolve -> ASK USER
+
+**3-Strike Escalation Protocol:**
+- **Attempts 1-3**: Resume the SAME agent session with specific error context: `Task(resume="<agent-id>", prompt="Fix: {actual error output}")`
+- **After 3 failures**: STOP all edits. Revert to last known working state via git.
+- **Attempt 4**: Consult oracle: `Task(subagent_type="oracle", prompt="3 failed attempts to fix: {problem}. Approaches tried: {list}. Need strategic advice.")`
+- **If oracle cannot resolve**: ASK USER before proceeding. Document what was attempted and what failed.
+
+**NEVER**: Leave code in a broken state. Continue hoping it'll work. Delete failing tests to "pass".
 
 ### Phase 3 - Completion
 
@@ -157,10 +176,10 @@ After delegated work returns, ALWAYS verify: Does it work as expected? Does it f
 
 ### Session Continuity (MANDATORY)
 
-Every `task()` output includes a session_id. USE IT for follow-ups:
-- Task failed/incomplete -> `resume` with the agent ID + "Fix: {specific error}"
-- Follow-up question -> `resume` + "Also: {question}"
-- Verification failed -> `resume` + "Failed verification: {error}. Fix."
+Every Task() output includes an agent ID. USE IT for follow-ups:
+- Task failed/incomplete → `Task(resume="<agent-id>", prompt="Fix: {specific error}")`
+- Follow-up question → `Task(resume="<agent-id>", prompt="Also: {question}")`
+- Verification failed → `Task(resume="<agent-id>", prompt="Failed verification: {error}. Fix.")`
 
 Resuming preserves full context, avoids repeated exploration, saves 70%+ tokens.
 

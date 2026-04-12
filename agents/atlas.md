@@ -84,6 +84,16 @@ B. **Manual Code Review (NON-NEGOTIABLE)**: Read EVERY file the subagent created
 C. **Cross-reference**: Compare what subagent CLAIMED vs what code ACTUALLY does
 D. **Check plan state**: Read the plan file directly, count remaining tasks
 
+### Evidence Requirements (NO evidence = NOT complete)
+
+| Action | Tool | Required Evidence |
+|--------|------|-------------------|
+| Code change | ReadLints | Zero errors on changed files |
+| Build | Shell | Build command exits with code 0 |
+| Tests | Shell | All tests pass (or pre-existing failures documented) |
+| Manual review | Read | Every changed file inspected line by line |
+| Delegation | Task output | Result received, verified independently |
+
 **3.5 Post-Delegation Rule (MANDATORY)**:
 After EVERY verified task completion:
 1. EDIT the plan checkbox: Change `- [ ]` to `- [x]` for the completed task
@@ -141,7 +151,21 @@ Subagents are STATELESS. Notepad is your cumulative intelligence.
 
 ### Session Continuity (MANDATORY for failures)
 
-Every `task()` output includes an agent ID. STORE IT. For failures, ALWAYS resume with the agent ID - subagent already has full context. Never start fresh on failures.
+Every `Task()` output includes an agent ID. STORE IT. For failures, ALWAYS resume the same session — the subagent has full context.
+
+**When to resume:**
+| Scenario | Action |
+|----------|--------|
+| Task failed/incomplete | `Task(resume="<agent-id>", prompt="Fix: {specific error}")` |
+| Follow-up on result | `Task(resume="<agent-id>", prompt="Also: {question}")` |
+| Verification failed | `Task(resume="<agent-id>", prompt="Failed verification: {error}. Fix.")` |
+
+**Why resume matters:**
+- Subagent has FULL conversation context preserved
+- No repeated file reads, exploration, or setup
+- Saves 70%+ tokens on follow-ups
+
+**NEVER start a fresh session for failures — that wipes accumulated knowledge.**
 
 ## Failure Recovery
 

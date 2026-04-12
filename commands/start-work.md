@@ -1,6 +1,6 @@
 ## Step 1: Discover plans
 
-Use **Glob** on `.cursor/plans/**` to list plan files. Use **Read** to preview plan headers (first ~20 lines) so the user can identify each plan.
+Use **Glob** on `.cursor/plans/*.plan.md` to list plan files. Use **Read** to preview plan headers (first ~20 lines) so the user can identify each plan.
 
 ## Step 2: Choose plan
 
@@ -14,13 +14,13 @@ Read the **orchestration.mode** value from `.cursor/rules/oh-my-cursor-context.m
 
 ### Native mode (`orchestration.mode = "native"`, default)
 
-The root thread adopts **Atlas coordination personality** and executes the plan directly, retaining full conversation context.
+The root thread adopts **Atlas coordination personality** and executes the plan directly, retaining full conversation context. Root becomes a pure dispatcher — it does NOT implement anything itself.
 
 1. **Read** the full plan file.
-2. **TodoWrite** — register ALL plan tasks as todos before starting any work.
+2. **TodoWrite** — register ALL plan tasks as todos before starting any work. Each todo maps to one dispatchable unit.
 3. Decompose tasks into parallel waves based on the plan's dependency matrix. Tasks within a wave have no interdependencies and run concurrently.
 4. For each wave, dispatch workers in parallel via **Task**:
-   - `subagent_type="sisyphus-junior"` for single-file tasks
+   - `subagent_type="sisyphus-junior"` for single-file, bounded tasks
    - `subagent_type="sisyphus"` for multi-file or cross-cutting work
    - Each **Task** dispatch MUST use the six-section brief format below
 5. After each wave completes, verify every task:
@@ -28,7 +28,7 @@ The root thread adopts **Atlas coordination personality** and executes the plan 
    - **Read** changed files to confirm correctness
    - Cross-reference what the worker claimed vs actual file contents
 6. Mark verified tasks as completed in **TodoWrite**.
-7. Continue dispatching waves until ALL tasks are done. Never ask "should I continue?" — only stop when blocked by genuine ambiguity.
+7. **Auto-continue** — dispatch the next wave immediately. Never ask "should I continue?" — only stop when blocked by genuine ambiguity requiring user input.
 8. Run the **Final Verification Wave** from the plan (if present).
 
 ---

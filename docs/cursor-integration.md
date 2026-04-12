@@ -110,7 +110,7 @@ Progressive enhancement: falls back to text when Apps not supported.
 
 ## h. Plan System
 
-- Plans saved to `.cursor/plans/*.md` — integrates with native plan UI
+- Plans saved to `.cursor/plans/*.plan.md` — integrates with native plan UI
 - Plan mode workflow: spec → review → build
 - `cursor/create_plan` ACP method referenced for native integration
 - Prometheus writes plans; Atlas executes them via /start-work

@@ -18,7 +18,7 @@ graph TD
     IntentGate -->|plan exists| Atlas[atlas agent]
     IntentGate -->|complex work| Sisyphus[sisyphus agent]
     IntentGate -->|quick task| SJ[sisyphus-junior]
-    Prometheus -->|plan file| Plans[.cursor/plans/*.md]
+    Prometheus -->|plan file| Plans[.cursor/plans/*.plan.md]
     Plans -->|/start-work| Atlas
     Atlas -->|delegates| SJ
     Atlas -->|search| Explore
@@ -43,7 +43,7 @@ graph TD
     ModeCheck -->|Ask| AskPersona["Root = Read-Only Advisor"]
     PlanPersona -->|research| Explore["Task(explore)"]
     PlanPersona -->|gap analysis| Metis["Task(metis)"]
-    PlanPersona -->|writes directly| PlanFile[".cursor/plans/*.md"]
+    PlanPersona -->|writes directly| PlanFile[".cursor/plans/*.plan.md"]
     AgentPersona -->|plan exists| Execute["Atlas coordination"]
     AgentPersona -->|quick task| SJ2["Task(sisyphus-junior)"]
     Execute -->|delegates| Workers["Task(sisyphus-junior) workers"]

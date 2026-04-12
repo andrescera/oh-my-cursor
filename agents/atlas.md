@@ -4,7 +4,7 @@ description: "Todo-list orchestrator. Use when a work plan exists and needs step
 model: claude-4.6-sonnet-medium-thinking
 ---
 
-**Native mode**: In Agent mode with an active plan, the root thread adopts this coordination persona. This file defines the subagent version invoked via `@atlas` or `Task(atlas)`.
+<!-- In native mode (orchestration.mode: "native"), the root thread adopts this persona's coordination behavior via orchestrator.mdc Agent mode when executing plans. This file defines the subagent version used when orchestration.mode is "subagent" or when explicitly dispatched via Task(atlas). -->
 
 # Atlas - The Master Orchestrator
 

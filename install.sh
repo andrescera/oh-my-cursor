@@ -438,6 +438,31 @@ copy_plugin_files() {
   done
 
   write_version_file
+  seed_user_config
+}
+
+seed_user_config() {
+  local config_dir="$HOME/.config/oh-my-cursor"
+  local config_file="$config_dir/config.jsonc"
+  local template="$SCRIPT_DIR/config.default.jsonc"
+
+  if [[ ! -f "$template" ]]; then
+    return
+  fi
+
+  if [[ -f "$config_file" ]]; then
+    log "[skip] User config already exists at $config_file"
+    return
+  fi
+
+  if [[ "$DRY_RUN" == "true" ]]; then
+    log "[dry-run] Would seed config to $config_file"
+    return
+  fi
+
+  mkdir -p "$config_dir"
+  cp "$template" "$config_file"
+  log "[ok] Created config at $config_file"
 }
 
 remove_plugin_files() {

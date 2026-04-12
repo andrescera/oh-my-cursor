@@ -1,0 +1,71 @@
+{
+  // oh-my-cursor configuration
+  // Location: ~/.config/oh-my-cursor/config.jsonc
+  // Project override: .cursor/oh-my-cursor.jsonc (takes precedence)
+
+  // Orchestration mode:
+  //   "native"   — Root thread adopts personas (Plan mode = Prometheus, Agent mode = Atlas).
+  //                Commands like /deep-plan use SwitchMode. Full conversation context is preserved.
+  //   "subagent" — Classic behavior. /deep-plan dispatches Task(prometheus), /start-work dispatches Task(atlas).
+  //                Better for very large plans (50+ tasks) where context window may fill up.
+  "orchestration": {
+    "mode": "native"
+  },
+
+  // Subagent dispatch limits per user turn
+  "subagent_limits": {
+    "explore": 6,
+    "worker": 8
+  },
+
+  // Hook daemon ports
+  "daemon": {
+    "port": 47847,
+    "mcp_port": 47848
+  },
+
+  // Context collector settings
+  "context_collector": {
+    "enabled": true,
+    "max_context_chars": 50000
+  },
+
+  // .mdc context file writer
+  "mdc_writer": {
+    "enabled": true,
+    "debounce_ms": 5000
+  },
+
+  // Compaction settings
+  "compaction": {
+    "prompt_enabled": true
+  },
+
+  // State persistence (session state across restarts)
+  "state_persistence": {
+    "enabled": true,
+    "path": "/tmp/oh-my-cursor-state.json"
+  },
+
+  // Notifications
+  "notifications": {
+    "enabled": true,
+    "sound": false
+  },
+
+  // Disable specific hooks by name (e.g. ["context-injector", "mdc-writer"])
+  "disabled_hooks": [],
+
+  // Disable specific agents (e.g. ["ralph", "boulder"])
+  "disabled_agents": [],
+
+  // MCP server allowlist ("*" = all)
+  "mcp_allowlist": ["*"],
+
+  // Experimental features
+  "experimental": {
+    "cloud_agents": false,
+    "webhooks": false,
+    "automations": false
+  }
+}

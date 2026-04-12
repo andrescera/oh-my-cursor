@@ -13,14 +13,15 @@ describe("thinking-block-validator", () => {
     const handler = createThinkingBlockValidator()
 
     describe("#when thought contains result tag", () => {
-      test("#then logs warning and returns empty", () => {
+      test("#then logs warning and returns additional_context", () => {
         const errorSpy = mock(() => {})
         const original = console.error
         console.error = errorSpy
 
         const result = handler({ thought: "Let me think... <result>42</result>" })
 
-        expect(result).toEqual({})
+        expect(result).toHaveProperty("additional_context")
+        expect(result.additional_context).toContain("Warning")
         expect(errorSpy).toHaveBeenCalledTimes(1)
         expect(errorSpy.mock.calls[0][0]).toContain("result/answer tags")
         console.error = original
@@ -28,13 +29,15 @@ describe("thinking-block-validator", () => {
     })
 
     describe("#when thought contains answer tag", () => {
-      test("#then logs warning", () => {
+      test("#then logs warning and returns additional_context", () => {
         const errorSpy = mock(() => {})
         const original = console.error
         console.error = errorSpy
 
-        handler({ thought: "<answer>the answer is 42</answer>" })
+        const result = handler({ thought: "<answer>the answer is 42</answer>" })
 
+        expect(result).toHaveProperty("additional_context")
+        expect(result.additional_context).toContain("Warning")
         expect(errorSpy).toHaveBeenCalledTimes(1)
         console.error = original
       })
@@ -46,8 +49,10 @@ describe("thinking-block-validator", () => {
         const original = console.error
         console.error = errorSpy
 
-        handler({ thought: "<Result>capitalized</Result>" })
+        const result = handler({ thought: "<Result>capitalized</Result>" })
 
+        expect(result).toHaveProperty("additional_context")
+        expect(result.additional_context).toContain("Warning")
         expect(errorSpy).toHaveBeenCalledTimes(1)
         console.error = original
       })
@@ -57,8 +62,10 @@ describe("thinking-block-validator", () => {
         const original = console.error
         console.error = errorSpy
 
-        handler({ thought: "<ANSWER>shouting</ANSWER>" })
+        const result = handler({ thought: "<ANSWER>shouting</ANSWER>" })
 
+        expect(result).toHaveProperty("additional_context")
+        expect(result.additional_context).toContain("Warning")
         expect(errorSpy).toHaveBeenCalledTimes(1)
         console.error = original
       })

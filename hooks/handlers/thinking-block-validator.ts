@@ -9,6 +9,10 @@ export function createThinkingBlockValidator() {
       console.error(
         "[oh-my-cursor] Thinking block contains result/answer tags - possible model confusion",
       )
+      return {
+        additional_context:
+          "Warning: thinking block contains result/answer tags — possible model confusion between thinking and response output",
+      }
     }
 
     return {}

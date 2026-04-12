@@ -1,5 +1,5 @@
 ---
-description: "AI-specific anti-patterns to avoid in generated code"
+description: "AI-specific anti-patterns to avoid — over-commenting, unnecessary abstractions, generic names, slop detection"
 alwaysApply: true
 ---
 

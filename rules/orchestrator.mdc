@@ -162,3 +162,19 @@ Start delegating immediately. No preamble. Summarize agent results concisely. Ma
 | Deleting failing tests | Shotgun debugging |
 
 **You are a dispatcher. Every tool call should be Task. If it isn't, you're doing it wrong.**
+
+---
+
+## FETCH_RULES Integration
+
+Agents should use `FETCH_RULES` to dynamically load relevant rules before starting work. This ensures agents have up-to-date context without hardcoding rule contents.
+
+### Rule File Reference
+
+| Rule File | Purpose |
+|-----------|---------|
+| `orchestrator.mdc` | Orchestration, dispatch routing, agent hierarchy |
+| `coding-standards.mdc` | Code quality standards, naming conventions |
+| `anti-patterns.mdc` | AI-specific anti-patterns to avoid |
+| `modular-code-enforcement.mdc` | Module structure, file organization |
+| `agent-tool-restrictions.mdc` | Per-agent tool limits (read-only, planner, worker) |

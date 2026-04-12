@@ -1,5 +1,5 @@
 ---
-description: "Core coding standards and anti-patterns enforced across all agents"
+description: "Core coding standards and naming conventions — enforces consistent code quality across all agents and files"
 alwaysApply: true
 ---
 

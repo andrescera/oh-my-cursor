@@ -7,7 +7,7 @@ import { COMPACTION_CONTEXT_PROMPT } from "../compaction-context-prompt"
 
 export function createSessionHandlers(
   sessions: Map<string, SessionState>,
-  _port: number,
+  port: number,
 ): HandlerMap {
   return {
     "/health": () => {
@@ -94,8 +94,17 @@ export function createSessionHandlers(
         "Follow the orchestrator rule for all task delegation.",
       ].join("\n")
 
+      const daemonPort = String(port)
+      const sidecarPort = String(port + 1)
+
       return {
         additional_context: contextStr,
+        env: {
+          OH_MY_CURSOR_SESSION_ID: convId,
+          OH_MY_CURSOR_PROJECT_DIR: projectDir,
+          OH_MY_CURSOR_DAEMON_PORT: daemonPort,
+          OH_MY_CURSOR_SIDECAR_PORT: sidecarPort,
+        },
         hookSpecificOutput: {
           hookEventName: "SessionStart",
           additionalContext: contextStr,

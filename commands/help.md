@@ -20,20 +20,40 @@ oh-my-cursor uses a **dispatcher root**: the main chat thread only delegates wor
 
 ## Slash commands
 
+### Orchestration
+
 | Command | Description |
 |---------|-------------|
-| `/briareus` | Split work into many tiny parallel tasks; dispatch multiple sisyphus-junior workers. |
-| `/cancel-ralph` | Stop the active Ralph loop (same idea as stopping continuation for Ralph). |
 | `/deep-plan` | Run prometheus plus explore and metis; write plan under `.cursor/plans/`; optional momus review. |
-| `/handoff` | Produce a handoff doc for a new session (explore plus sisyphus-junior synthesis). |
-| `/help` | This overview: agents, commands, skills, and usage patterns. |
-| `/init-deep` | Parallel explore passes to create or refresh root `AGENTS.md`. |
-| `/ralph-loop` | Continuation loop until `<promise>DONE</promise>` or cancel. |
+| `/start-work` | Atlas loads a plan from `.cursor/plans/` and executes it. |
+| `/briareus` | Split work into many tiny parallel tasks; dispatch multiple sisyphus-junior workers. |
 | `/refactor` | Sisyphus-led refactor with exploration, plan, incremental verify. |
-| `/remove-ai-slops` | Branch diff files cleaned in parallel with the ai-slop-remover skill. |
-| `/start-work` | Atlas loads a plan from `.cursor/plans/` or `.cursor/plans/` and executes it. |
-| `/stop-continuation` | Stop Ralph, ultrawork, and other continuation mechanisms. |
+| `/init-deep` | Parallel explore passes to create or refresh root `AGENTS.md`. |
+| `/handoff` | Produce a handoff doc for a new session (explore plus sisyphus-junior synthesis). |
+
+### Monitoring
+
+| Command | Description |
+|---------|-------------|
+| `/status` | System health: daemon uptime, sessions, tool calls, sidecar status. |
+| `/agents` | List all agents with models, roles, and capabilities. |
+| `/help` | This overview: agents, commands, skills, and usage patterns. |
+
+### Configuration
+
+| Command | Description |
+|---------|-------------|
+| `/config` | Display the current merged oh-my-cursor configuration. |
+
+### Continuation
+
+| Command | Description |
+|---------|-------------|
+| `/ralph-loop` | Continuation loop until `<promise>DONE</promise>` or cancel. |
 | `/ulw-loop` | Deep loop with oracle checks between milestones until DONE or cancel. |
+| `/cancel-ralph` | Stop the active Ralph loop. |
+| `/stop-continuation` | Stop Ralph, ultrawork, and other continuation mechanisms. |
+| `/remove-ai-slops` | Branch diff files cleaned in parallel with the ai-slop-remover skill. |
 
 ## Skills
 

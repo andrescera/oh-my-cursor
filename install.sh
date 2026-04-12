@@ -253,12 +253,14 @@ source_servers = source.get("mcpServers", {})
 if os.path.exists(target_path):
     with open(target_path) as f:
         raw = f.read()
-    # Strip JSONC single-line comments
-    cleaned = re.sub(r'//.*$', '', raw, flags=re.MULTILINE)
-    # Strip JSONC block comments
-    cleaned = re.sub(r'/\*.*?\*/', '', cleaned, flags=re.DOTALL)
-    cleaned = cleaned.strip()
-    target = json.loads(cleaned) if cleaned else {}
+    try:
+        target = json.loads(raw)
+    except json.JSONDecodeError:
+        # Fallback: strip JSONC comments outside of quoted strings
+        cleaned = re.sub(r'(?<!["\w:])//.*$', '', raw, flags=re.MULTILINE)
+        cleaned = re.sub(r'/\*.*?\*/', '', cleaned, flags=re.DOTALL)
+        cleaned = cleaned.strip()
+        target = json.loads(cleaned) if cleaned else {}
 else:
     target = {}
 
@@ -326,13 +328,15 @@ if not os.path.exists(target_path):
 with open(target_path) as f:
     raw = f.read()
 
-cleaned = re.sub(r'//.*$', '', raw, flags=re.MULTILINE)
-cleaned = re.sub(r'/\*.*?\*/', '', cleaned, flags=re.DOTALL)
-cleaned = cleaned.strip()
-if not cleaned:
-    sys.exit(0)
-
-data = json.loads(cleaned)
+try:
+    data = json.loads(raw)
+except json.JSONDecodeError:
+    cleaned = re.sub(r'(?<!["\w:])//.*$', '', raw, flags=re.MULTILINE)
+    cleaned = re.sub(r'/\*.*?\*/', '', cleaned, flags=re.DOTALL)
+    cleaned = cleaned.strip()
+    if not cleaned:
+        sys.exit(0)
+    data = json.loads(cleaned)
 servers = data.get("mcpServers", {})
 removed = []
 for key in keys_to_remove:

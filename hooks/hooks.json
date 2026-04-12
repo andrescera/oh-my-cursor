@@ -3,7 +3,7 @@
   "hooks": {
     "sessionStart": [{ "command": "bash \"$HOME/.cursor/plugins/local/oh-my-cursor/hooks/scripts/start-daemon.sh\"" }],
     "sessionEnd": [{ "command": "bash \"$HOME/.cursor/plugins/local/oh-my-cursor/hooks/scripts/ensure-daemon.sh\" /sessionEnd" }],
-    "preToolUse": [{ "command": "bash \"$HOME/.cursor/plugins/local/oh-my-cursor/hooks/scripts/ensure-daemon.sh\" /preToolUse", "matcher": "Shell|Write|Delete|Task" }],
+    "preToolUse": [{ "command": "bash \"$HOME/.cursor/plugins/local/oh-my-cursor/hooks/scripts/ensure-daemon.sh\" /preToolUse", "matcher": "Shell|Write|Delete" }],
     "postToolUse": [{ "command": "bash \"$HOME/.cursor/plugins/local/oh-my-cursor/hooks/scripts/ensure-daemon.sh\" /postToolUse" }],
     "postToolUseFailure": [{ "command": "bash \"$HOME/.cursor/plugins/local/oh-my-cursor/hooks/scripts/ensure-daemon.sh\" /postToolUseFailure", "matcher": "Shell|Write|Delete" }],
     "subagentStart": [{ "command": "bash \"$HOME/.cursor/plugins/local/oh-my-cursor/hooks/scripts/ensure-daemon.sh\" /subagentStart" }],

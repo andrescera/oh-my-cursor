@@ -1,0 +1,37 @@
+---
+description: "Per-agent tool restrictions — enforces read-only, planner, and worker boundaries"
+globs: ["agents/**/*.md"]
+alwaysApply: false
+---
+
+# Agent Tool Restrictions
+
+## Read-only Agents
+**Applies to:** explore, librarian, oracle, metis, momus, multimodal-looker
+
+These agents MUST NOT use mutation tools:
+- **Forbidden:** Write, Delete, Shell (mutating commands), StrReplace, EditNotebook
+- **Allowed:** Read, Grep, Glob, WebSearch, WebFetch, SwitchMode(ask), FETCH_RULES
+
+Violations indicate an agent is exceeding its role boundary.
+
+## Planner Agents
+**Applies to:** prometheus
+
+Planners produce only markdown plan files:
+- **Forbidden:** Write (non-.md files), Shell (implementation commands), StrReplace (source code)
+- **Allowed:** Write (.md plan files only), Read, Grep, Glob, AskQuestion, TodoWrite
+
+## Worker Agents
+**Applies to:** sisyphus-junior
+
+Leaf workers do NOT spawn sub-agents:
+- **Forbidden:** Task (sub-agent dispatch)
+- **Allowed:** All implementation tools (Read, Write, Shell, StrReplace, Grep, Glob, etc.)
+
+## Coordinator Agents
+**Applies to:** sisyphus, hephaestus, atlas
+
+Coordinators delegate and verify — they do NOT implement directly:
+- **Preferred:** Task (delegation), Read (verification), TodoWrite, Grep, Glob, ReadLints
+- **Minimized:** Direct Write/StrReplace (only for plan checkboxes and notepad files)

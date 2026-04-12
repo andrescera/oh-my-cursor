@@ -101,7 +101,7 @@ describe("mcp-sidecar", () => {
 
         expect(statusTool).toBeDefined()
         expect(statusTool._meta).toBeDefined()
-        expect(statusTool._meta.ui.resourceUri).toBe("ui://oh-my-cursor/status")
+        expect(statusTool._meta.ui.resourceUri).toBe("ui://oh-my-cursor/dashboard")
       })
 
       test("#then look_at tool requires 'goal' parameter", async () => {
@@ -137,7 +137,7 @@ describe("mcp-sidecar", () => {
         expect(resources.length).toBeGreaterThanOrEqual(1)
 
         const statusResource = resources.find(
-          (r: { uri: string }) => r.uri === "ui://oh-my-cursor/status",
+          (r: { uri: string }) => r.uri === "ui://oh-my-cursor/dashboard",
         )
         expect(statusResource).toBeDefined()
         expect(statusResource.mimeType).toBe("text/html")
@@ -149,12 +149,12 @@ describe("mcp-sidecar", () => {
     describe("#when reading the status resource", () => {
       test("#then returns HTML content", async () => {
         const result = await jsonrpc("resources/read", {
-          uri: "ui://oh-my-cursor/status",
+          uri: "ui://oh-my-cursor/dashboard",
         })
 
         expect(result.jsonrpc).toBe("2.0")
         expect(result.result.contents).toBeArray()
-        expect(result.result.contents[0].uri).toBe("ui://oh-my-cursor/status")
+        expect(result.result.contents[0].uri).toBe("ui://oh-my-cursor/dashboard")
         expect(result.result.contents[0].mimeType).toBe("text/html")
         expect(result.result.contents[0].text).toContain("<!DOCTYPE html>")
       })
@@ -173,7 +173,7 @@ describe("mcp-sidecar", () => {
         expect(result.result.content).toBeArray()
         expect(result.result.content[0].type).toBe("text")
         expect(result.result.content[0].text).toContain("dashboard")
-        expect(result.result._meta.ui.resourceUri).toBe("ui://oh-my-cursor/status")
+        expect(result.result._meta.ui.resourceUri).toBe("ui://oh-my-cursor/dashboard")
       })
     })
 

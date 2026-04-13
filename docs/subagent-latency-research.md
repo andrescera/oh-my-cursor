@@ -141,13 +141,13 @@ Models referenced by oh-my-cursor agent definitions in this repo (`agents/*.md` 
 | explore | `gemini-3-flash` |
 | librarian | `fast` (Task tool parameter; selects a smaller/faster model — not a row in the CLI model list) |
 | sisyphus-junior | `claude-4.6-sonnet-medium-thinking` |
-| sisyphus | `claude-4.6-opus-max-thinking` |
+| sisyphus | dynamic (`claude-4.6-sonnet-medium-thinking` / `claude-4.6-opus-max-thinking` by complexity) |
 | hephaestus | `gpt-5.4-high` |
 | atlas | `claude-4.6-sonnet-medium-thinking` |
-| oracle | `gpt-5.4-medium` |
+| oracle | `gpt-5.4-high` |
 | prometheus | `claude-4.6-opus-max-thinking` |
 | metis | `gpt-5.4-medium` |
-| momus | `gpt-5.4-medium` |
+| momus | `gpt-5.4-high` |
 | multimodal-looker | `gemini-3.1-pro` |
 
 **Note:** `fast` is a Task tool parameter (not in the `cursor agent models` list) that selects a smaller/faster model.

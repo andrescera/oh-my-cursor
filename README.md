@@ -101,14 +101,14 @@ You (root thread)
        ├── Intent Gate: what did the user ask?
        │
        ├── Task(explore) ──── Codebase search (gemini-3-flash, readonly, background)
-       ├── Task(librarian) ── External docs search (fast / latest Composer, readonly, background)
-       ├── Task(sisyphus) ─── Complex multi-file work (opus-max-thinking)
-       ├── Task(hephaestus) ─ Sustained deep work (gpt-5.4)
+       ├── Task(librarian) ── External docs search (fast, readonly, background)
+       ├── Task(sisyphus) ─── Complex multi-file work (dynamic: sonnet / opus by complexity)
+       ├── Task(hephaestus) ─ Sustained deep work (gpt-5.4-high)
        ├── Task(atlas) ────── Plan execution via delegation (sonnet-medium-thinking)
        ├── Task(prometheus) ─ Strategic planning (opus-max-thinking)
-       ├── Task(oracle) ───── Architecture consultation (gpt-5.4, readonly)
-       ├── Task(metis) ────── Pre-planning gap analysis (gpt-5.4, readonly)
-       ├── Task(momus) ────── Plan review (gpt-5.4, readonly)
+       ├── Task(oracle) ───── Architecture consultation (gpt-5.4-high, readonly)
+       ├── Task(metis) ────── Pre-planning gap analysis (gpt-5.4-medium, readonly)
+       ├── Task(momus) ────── Plan review (gpt-5.4-high, readonly)
        ├── Task(sisyphus-junior) ── Quick focused tasks (sonnet-medium-thinking)
        └── Task(multimodal-looker) ── Visual analysis (gemini-3.1-pro, readonly)
 ```
@@ -117,15 +117,15 @@ You (root thread)
 
 | Agent | Model | Role |
 |-------|-------|------|
-| **sisyphus** | claude-4.6-opus-max-thinking | Main orchestrator + deep worker |
+| **sisyphus** | dynamic (sonnet / opus by complexity) | Main orchestrator + deep worker |
 | **hephaestus** | gpt-5.4-high | Autonomous deep worker |
 | **atlas** | claude-4.6-sonnet-medium-thinking | Todo-list orchestrator |
 | **prometheus** | claude-4.6-opus-max-thinking | Strategic planner |
-| **oracle** | gpt-5.4-medium | Architecture consultant (readonly) |
+| **oracle** | gpt-5.4-high | Architecture consultant (readonly) |
 | **metis** | gpt-5.4-medium | Pre-planning analysis (readonly) |
-| **momus** | gpt-5.4-medium | Plan reviewer (readonly) |
+| **momus** | gpt-5.4-high | Plan reviewer (readonly) |
 | **explore** | gemini-3-flash | Codebase search (readonly, background) |
-| **librarian** | fast (latest Composer) | External docs search (readonly, background) |
+| **librarian** | fast | External docs search (readonly, background) |
 | **sisyphus-junior** | claude-4.6-sonnet-medium-thinking | Quick task executor |
 | **multimodal-looker** | gemini-3.1-pro | Visual file analysis (readonly) |
 

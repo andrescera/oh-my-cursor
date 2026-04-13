@@ -5,7 +5,7 @@ Tool mapping and native Cursor integration recommendations for all 11 agents.
 ## Agent Tool Mapping
 
 ### sisyphus (Coordinator)
-- **Model**: claude-4.6-opus-max-thinking
+- **Model**: dynamic (sonnet / opus by task complexity)
 - **Role**: Main coordinator for complex multi-file work
 - **Current Tools**: Task, Read, Write, Shell, StrReplace, Grep, Glob, TodoWrite
 - **Recommended Native Tools**: TodoWrite (progress tracking), SwitchMode(debug) on errors
@@ -37,7 +37,7 @@ Tool mapping and native Cursor integration recommendations for all 11 agents.
 - **Mode**: plan (invoked from plan mode)
 
 ### oracle (Specialist)
-- **Model**: gpt-5.4-medium
+- **Model**: gpt-5.4-high
 - **Role**: Architecture consultation — read-only
 - **Current Tools**: Read, Grep, Glob, WebSearch
 - **Recommended Native Tools**: SwitchMode(ask), FETCH_RULES, SEARCH_SYMBOLS
@@ -53,7 +53,7 @@ Tool mapping and native Cursor integration recommendations for all 11 agents.
 - **Mode**: ask
 
 ### momus (Reviewer)
-- **Model**: gpt-5.4-medium
+- **Model**: gpt-5.4-high
 - **Role**: Plan review and quality audit — read-only
 - **Current Tools**: Read, Grep, Glob
 - **Recommended Native Tools**: SwitchMode(ask), FETCH_RULES
@@ -69,7 +69,7 @@ Tool mapping and native Cursor integration recommendations for all 11 agents.
 - **Mode**: ask
 
 ### librarian (Specialist)
-- **Model**: fast (latest Composer)
+- **Model**: fast
 - **Role**: External doc lookup — read-only
 - **Current Tools**: WebSearch, WebFetch, Read
 - **Recommended Native Tools**: (standard tools sufficient)

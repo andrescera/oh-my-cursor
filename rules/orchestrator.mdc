@@ -30,7 +30,7 @@ Orchestration mode is injected via `additional_context` on session start. Defaul
 | **sisyphus** | `dynamic (see below)` | Complex multi-file work, architecture + implementation |
 | **hephaestus** | `gpt-5.4-high` | Sustained deep work on a single complex problem |
 | **atlas** | `claude-4.6-sonnet-medium-thinking` | Plan exists -> executes plan step-by-step via delegation |
-| **oracle** | `gpt-5.4-medium` | Need architecture advice, debugging consultation |
+| **oracle** | `gpt-5.4-high` | Need architecture advice, debugging consultation |
 | **prometheus** | `claude-4.6-opus-max-thinking` | Complex planning, ambiguous scope analysis |
 | **metis** | `gpt-5.4-medium` | Pre-planning gap analysis, risk assessment |
 | **momus** | `gpt-5.4-high` | Plan review, quality audit |
@@ -53,7 +53,7 @@ When a model is unavailable, Cursor falls back to the next available model:
 | sisyphus-junior | claude-4.6-sonnet-medium | Retry with fast |
 | sisyphus | claude-4.6-opus-max | Retry with sisyphus-junior |
 | hephaestus | gpt-5.4-high | Retry with sisyphus |
-| oracle | gpt-5.4-medium | Retry with sisyphus |
+| oracle | gpt-5.4-high | Retry with sisyphus |
 
 ## Hard Constraints
 

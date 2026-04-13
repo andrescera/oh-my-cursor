@@ -23,6 +23,15 @@ export function getOrCreateSession(conversationId: string): SessionState {
       errorCount: 0,
       lastCompactionEpoch: 0,
       compactionSnapshot: null,
+      activePlan: null,
+      todoStates: new Map(),
+      continuationCooldownUntil: null,
+      consecutiveContinuationFailures: 0,
+      lastTodoSnapshot: "",
+      momusIterations: 0,
+      composerMode: null,
+      subagentOutcomes: [],
+      subagentFailureCounts: {},
     })
   }
   return sessions.get(conversationId)!

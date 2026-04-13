@@ -9,7 +9,16 @@ export type BoulderState = {
   active: boolean
   failureCount: number
   lastContinuationAt: string | null
-  stagnationCount: number
+}
+
+export type SubagentOutcome = {
+  agentId: string
+  agentType: string
+  description: string
+  status: "completed" | "failed"
+  errorContext?: string
+  completedAt: string
+  durationMs?: number
 }
 
 export type SessionState = {
@@ -29,6 +38,15 @@ export type SessionState = {
   errorCount: number
   lastCompactionEpoch: number
   compactionSnapshot: unknown | null
+  activePlan: { path: string; phase: string; completedTasks: string[] } | null
+  todoStates: Map<string, "pending" | "in_progress" | "completed" | "cancelled">
+  continuationCooldownUntil: number | null
+  consecutiveContinuationFailures: number
+  lastTodoSnapshot: string
+  momusIterations: number
+  composerMode: string | null
+  subagentOutcomes: SubagentOutcome[]
+  subagentFailureCounts: Record<string, number>
 }
 
 export type HandlerFn = (input: Record<string, unknown>) => Record<string, unknown>
@@ -53,4 +71,7 @@ export type OhMyCursorConfig = {
   mcp_allowlist: string[]
   notifications: { enabled: boolean; sound: boolean }
   orchestration: { mode: "native" | "subagent" }
+  continuation: { cooldown_ms: number; max_failures: number; backoff_multiplier: number }
+  momus: { max_iterations: number }
+  model_routing: { retry_on_errors: number[]; max_retry_attempts: number }
 }

@@ -1,6 +1,25 @@
 import type { SessionState, HandlerMap } from "../types"
 import { getOrCreateSession } from "../shared"
 
+const slashCommands: Record<string, string> = {
+  "/plan": "[command:plan] Planning workflow. Follow commands/plan.md step sequence.",
+  "/start-work": "[command:start-work] Plan execution. Follow commands/start-work.md.",
+  "/status": "[command:status] Show current session status and active tasks.",
+  "/help": "[command:help] Show available commands.",
+  "/agents": "[command:agents] List available agent types and their purposes.",
+  "/config": "[command:config] Show or update oh-my-cursor configuration.",
+  "/refactor": "[command:refactor] Structured refactoring workflow.",
+  "/ulw-loop": "[command:ulw-loop] Ultrawork loop — deep sustained autonomous work.",
+  "/handoff": "[command:handoff] Hand off work to another agent or mode.",
+  "/briareus": "[command:briareus] Multi-agent parallel execution.",
+  "/remove-ai-slops": "[command:remove-ai-slops] Remove AI-generated code smells.",
+  "/init-deep": "[command:init-deep] Initialize deep work session.",
+  "/cloud-agents": "[command:cloud-agents] Cloud agent management.",
+}
+
+const UNKNOWN_SLASH_COMMAND_HINT =
+  "[command:unknown] Unknown command. Available: /plan, /start-work, /status, /help, /agents, /config, /refactor, /ulw-loop, /ralph-loop, /stop-continuation, /handoff, /briareus, /remove-ai-slops, /init-deep, /cloud-agents"
+
 export function createContinuationHandlers(
   _sessions: Map<string, SessionState>,
 ): HandlerMap {
@@ -179,6 +198,25 @@ export function createContinuationHandlers(
         session.ralphState = null
         session.boulderState = null
         additionalContext += "\n[stop] Continuation loops stopped. Returning to normal chat."
+      }
+
+      let matchedMappedSlashCommand = false
+      for (const [cmd, ctx] of Object.entries(slashCommands)) {
+        if (userMessage.startsWith(cmd)) {
+          additionalContext += "\n" + ctx
+          matchedMappedSlashCommand = true
+        }
+      }
+
+      if (
+        userMessage.startsWith("/") &&
+        !userMessage.startsWith("/ralph-loop") &&
+        !userMessage.startsWith("/ralph") &&
+        !userMessage.startsWith("/stop-continuation") &&
+        !userMessage.startsWith("/cancel-ralph") &&
+        !matchedMappedSlashCommand
+      ) {
+        additionalContext += "\n" + UNKNOWN_SLASH_COMMAND_HINT
       }
 
       if (additionalContext) {

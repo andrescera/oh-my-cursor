@@ -20,6 +20,15 @@ function makeSession(id: string, overrides: Partial<SessionState> = {}): Session
     errorCount: overrides.errorCount ?? 0,
     lastCompactionEpoch: 0,
     compactionSnapshot: null,
+    activePlan: null,
+    todoStates: new Map(),
+    continuationCooldownUntil: null,
+    consecutiveContinuationFailures: 0,
+    lastTodoSnapshot: "",
+    momusIterations: 0,
+    composerMode: null,
+    subagentOutcomes: [],
+    subagentFailureCounts: {},
   }
 }
 

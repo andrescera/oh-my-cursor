@@ -93,6 +93,15 @@ export function createToolGuardHandlers(
           session.dispatchCounts[agentKey] = (session.dispatchCounts[agentKey] || 0) + 1
           console.log(`[oh-my-cursor] Dispatch tracked via preToolUse: ${agentKey} (${session.dispatchCounts[agentKey]})`)
 
+          if (normalized === "momus") {
+            session.momusIterations++
+            if (session.momusIterations >= 3) {
+              return {
+                additional_context: "[momus-loop] Momus iteration limit (3) reached. Ask the user whether to continue reviewing or accept the current plan.",
+              }
+            }
+          }
+
           const count = session.dispatchCounts[agentKey]
           const limit =
             normalized === "explore"
@@ -189,6 +198,34 @@ export function createToolGuardHandlers(
       }
 
       session.toolCallCount++
+
+      if (["TodoWrite", "todowrite", "todo_write"].includes(toolName)) {
+        const todos = toolInput.todos as Array<{ id: string; content: string; status: string }> | undefined
+        const merge = toolInput.merge as boolean | undefined
+        if (todos && Array.isArray(todos)) {
+          if (merge === false) session.todoStates.clear()
+          for (const todo of todos) {
+            if (todo.id && todo.status) {
+              session.todoStates.set(todo.id, todo.status as any)
+            }
+          }
+          const sorted = Array.from(session.todoStates.entries()).sort((a, b) => a[0].localeCompare(b[0]))
+          session.lastTodoSnapshot = JSON.stringify(sorted)
+          for (const todo of todos) {
+            if (todo.id.startsWith("plan-") && todo.status === "in_progress") {
+              if (!session.activePlan) {
+                session.activePlan = { path: "", phase: todo.id, completedTasks: [] }
+              } else {
+                session.activePlan.phase = todo.id
+              }
+            }
+            if ((todo.id.includes("plan-write") || todo.id.includes("plan-draft")) && todo.status === "in_progress") {
+              session.momusIterations = 0
+            }
+          }
+        }
+      }
+
       if (session.toolCallCount >= 3 && !session.reminderInjected && !["task", "Task", "TodoWrite"].includes(toolName)) {
         session.reminderInjected = true
         contextCollector.register(convId, {

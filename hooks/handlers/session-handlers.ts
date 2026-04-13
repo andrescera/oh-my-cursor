@@ -151,6 +151,8 @@ export function createSessionHandlers(
       }
       session.injectedPaths.clear()
       session.reminderInjected = false
+      session.recentToolTrail = []
+      session.toolCallsSinceTaskDispatch = 0
 
       contextCollector.clear(convId)
 

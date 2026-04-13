@@ -59,6 +59,9 @@ export class StatePersistence {
             entry.subagentFailureCounts && typeof entry.subagentFailureCounts === "object"
               ? entry.subagentFailureCounts
               : {},
+          recentToolTrail: Array.isArray(entry.recentToolTrail) ? entry.recentToolTrail : [],
+          toolCallsSinceTaskDispatch:
+            typeof entry.toolCallsSinceTaskDispatch === "number" ? entry.toolCallsSinceTaskDispatch : 0,
         })
       }
       return sessions

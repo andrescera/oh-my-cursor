@@ -17,6 +17,8 @@ export function getOrCreateSession(conversationId: string): SessionState {
       pendingWriteArgs: new Map(),
       toolCallCount: 0,
       reminderInjected: false,
+      recentToolTrail: [],
+      toolCallsSinceTaskDispatch: 0,
       ralphState: null,
       boulderState: null,
       stoppedAt: null,
@@ -75,4 +77,36 @@ export function extractMeta(
   }
 
   return Object.keys(meta).length > 0 ? meta : undefined
+}
+
+export function parseTodoStates(toolInput: Record<string, unknown>): Map<string, string> {
+  const result = new Map<string, string>()
+  const todos = toolInput.todos as Array<{ id: string; status: string }> | undefined
+  if (!todos || !Array.isArray(todos)) return result
+  for (const todo of todos) {
+    if (todo.id && todo.status) result.set(todo.id, todo.status)
+  }
+  return result
+}
+
+export function hashTodoStates(states: Map<string, string>): string {
+  const sorted = Array.from(states.entries()).sort((a, b) => a[0].localeCompare(b[0]))
+  return JSON.stringify(sorted)
+}
+
+export function isInCooldown(session: SessionState): boolean {
+  return session.continuationCooldownUntil !== null && Date.now() < session.continuationCooldownUntil
+}
+
+export function setCooldown(session: SessionState, durationMs: number): void {
+  session.continuationCooldownUntil = Date.now() + durationMs
+}
+
+export function incrementContinuationFailure(session: SessionState): void {
+  session.consecutiveContinuationFailures++
+}
+
+export function resetContinuationFailure(session: SessionState): void {
+  session.consecutiveContinuationFailures = 0
+  session.continuationCooldownUntil = null
 }

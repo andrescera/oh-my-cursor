@@ -21,6 +21,12 @@ export type SubagentOutcome = {
   durationMs?: number
 }
 
+export type RecentToolTrailEntry = {
+  tool: string
+  path?: string
+  commandSnippet?: string
+}
+
 export type SessionState = {
   id: string
   startedAt: string
@@ -32,6 +38,8 @@ export type SessionState = {
   pendingWriteArgs: Map<string, unknown>
   toolCallCount: number
   reminderInjected: boolean
+  recentToolTrail: RecentToolTrailEntry[]
+  toolCallsSinceTaskDispatch: number
   ralphState: RalphLoopState | null
   boulderState: BoulderState | null
   stoppedAt: string | null

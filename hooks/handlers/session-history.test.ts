@@ -14,6 +14,8 @@ function makeSession(id: string, overrides: Partial<SessionState> = {}): Session
     pendingWriteArgs: new Map(),
     toolCallCount: overrides.toolCallCount ?? 0,
     reminderInjected: false,
+    recentToolTrail: [],
+    toolCallsSinceTaskDispatch: 0,
     ralphState: null,
     boulderState: null,
     stoppedAt: overrides.stoppedAt ?? null,

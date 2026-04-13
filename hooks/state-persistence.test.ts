@@ -18,6 +18,8 @@ function createTestSession(id: string): SessionState {
     pendingWriteArgs: new Map([["tool-1", { path: "test.ts" }]]),
     toolCallCount: 5,
     reminderInjected: false,
+    recentToolTrail: [],
+    toolCallsSinceTaskDispatch: 0,
     ralphState: null,
     boulderState: null,
     stoppedAt: null,

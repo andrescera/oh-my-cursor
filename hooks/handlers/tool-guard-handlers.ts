@@ -1,5 +1,5 @@
 import { readFileSync, existsSync } from "node:fs"
-import type { SessionState, HandlerMap } from "../types"
+import type { HandlerMap, RecentToolTrailEntry, SessionState } from "../types"
 import { getOrCreateSession, globalReadPaths } from "../shared"
 import { loadConfig } from "../config"
 import { createContextWindowMonitor } from "./context-window-monitor"
@@ -13,6 +13,71 @@ const WORKER_TYPES = new Set([
   "sisyphus", "sisyphus-junior", "hephaestus",
   "atlas", "oracle", "prometheus", "metis", "momus",
 ])
+
+const RECENT_TOOL_TRAIL_MAX = 15
+const SKILL_REMINDER_INTERVAL = 20
+
+const SHELL_TOOL_NAMES = new Set(["bash", "shell", "Shell", "Bash"])
+const READ_GREP_TOOL_NAMES = new Set(["read", "Read", "grep", "Grep"])
+const EDIT_TOOL_NAMES = new Set(["write", "Write", "str_replace", "StrReplace", "edit", "Edit"])
+const TASK_DELEGATION_TOOLS = new Set(["task", "Task", "agent", "Agent"])
+
+function pushRecentToolTrail(
+  session: SessionState,
+  toolName: string,
+  toolInput: Record<string, unknown>,
+): void {
+  const filePath = toolInput.file_path ?? toolInput.path
+  const path = typeof filePath === "string" ? filePath : undefined
+  const cmd = toolInput.command
+  const commandSnippet = typeof cmd === "string" ? cmd.slice(0, 240) : undefined
+  const entry: RecentToolTrailEntry = { tool: toolName, path, commandSnippet }
+  session.recentToolTrail.push(entry)
+  if (session.recentToolTrail.length > RECENT_TOOL_TRAIL_MAX) {
+    session.recentToolTrail.shift()
+  }
+}
+
+function buildSkillReminderContextLines(session: SessionState): string[] {
+  const lines: string[] = []
+  const everSubagentDispatched = Object.keys(session.dispatchCounts).some((k) => k.startsWith("subagent:"))
+
+  if (session.toolCallsSinceTaskDispatch >= 5) {
+    if (!everSubagentDispatched) {
+      lines.push(
+        "You have made 5+ tool calls without any Task(subagent) dispatch this session — consider Task(explore) or Task(sisyphus-junior) for delegation.",
+      )
+    } else {
+      lines.push(
+        "You have made 5+ tool calls since the last Task dispatch — consider Task(explore) or Task(sisyphus-junior) for parallel or specialized work.",
+      )
+    }
+  }
+
+  const trail = session.recentToolTrail
+  const gitShell = trail.some(
+    (e) => SHELL_TOOL_NAMES.has(e.tool) && e.commandSnippet && /\bgit\b/.test(e.commandSnippet),
+  )
+  if (gitShell) {
+    lines.push("Recent Shell activity includes git commands — consider the git-master skill.")
+  }
+
+  const recentWindow = trail.slice(-10)
+  const readGrepHits = recentWindow.filter((e) => READ_GREP_TOOL_NAMES.has(e.tool)).length
+  if (readGrepHits >= 4) {
+    lines.push("Heavy Read/Grep usage in recent tools — consider Task(explore) for broad codebase searches.")
+  }
+
+  const editedPaths = new Set<string>()
+  for (const e of recentWindow) {
+    if (EDIT_TOOL_NAMES.has(e.tool) && e.path) editedPaths.add(e.path)
+  }
+  if (editedPaths.size >= 3) {
+    lines.push("Edits across 3+ distinct files recently — consider Task(sisyphus-junior) for parallel multi-file edits.")
+  }
+
+  return lines
+}
 
 function clipAdditionalContext(text: string, maxChars: number): string {
   if (text.length <= maxChars) return text
@@ -144,6 +209,8 @@ export function createToolGuardHandlers(
         session.contextHistory = session.contextHistory.slice(-30)
       }
 
+      pushRecentToolTrail(session, toolName, toolInput)
+
       if (session.contextHistory.length % 10 === 0) {
         contextCollector.register(convId, {
           id: "session-activity",
@@ -199,6 +266,16 @@ export function createToolGuardHandlers(
 
       session.toolCallCount++
 
+      if (TASK_DELEGATION_TOOLS.has(toolName)) {
+        session.toolCallsSinceTaskDispatch = 0
+      } else {
+        session.toolCallsSinceTaskDispatch++
+      }
+
+      if (session.toolCallCount > 0 && session.toolCallCount % SKILL_REMINDER_INTERVAL === 0) {
+        session.reminderInjected = false
+      }
+
       if (["TodoWrite", "todowrite", "todo_write"].includes(toolName)) {
         const todos = toolInput.todos as Array<{ id: string; content: string; status: string }> | undefined
         const merge = toolInput.merge as boolean | undefined
@@ -226,12 +303,21 @@ export function createToolGuardHandlers(
         }
       }
 
-      if (session.toolCallCount >= 3 && !session.reminderInjected && !["task", "Task", "TodoWrite"].includes(toolName)) {
+      if (
+        session.toolCallCount >= 3 &&
+        !session.reminderInjected &&
+        !["task", "Task", "TodoWrite", "todowrite", "todo_write"].includes(toolName)
+      ) {
         session.reminderInjected = true
+        const base =
+          "[skill-reminder] You have access to skills and the Task tool for delegation. Consider using them for specialized work (git operations, browser automation, code review, etc.)."
+        const extras = buildSkillReminderContextLines(session)
+        const content =
+          extras.length > 0 ? `${base}\n${extras.map((line) => `[skill-reminder] ${line}`).join("\n")}` : base
         contextCollector.register(convId, {
           id: "skill-reminder",
           source: "skill-reminder",
-          content: "[skill-reminder] You have access to skills and the Task tool for delegation. Consider using them for specialized work (git operations, browser automation, code review, etc.).",
+          content,
           priority: "low",
         })
       }

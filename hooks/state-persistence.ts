@@ -47,6 +47,18 @@ export class StatePersistence {
           readPaths: new Set(entry.readPaths || []),
           injectedPaths: new Set(entry.injectedPaths || []),
           pendingWriteArgs: new Map(Object.entries(entry.pendingWriteArgs || {})),
+          todoStates: new Map(Object.entries(entry.todoStates || {})),
+          activePlan: entry.activePlan || null,
+          continuationCooldownUntil: entry.continuationCooldownUntil || null,
+          consecutiveContinuationFailures: entry.consecutiveContinuationFailures || 0,
+          lastTodoSnapshot: entry.lastTodoSnapshot || "",
+          momusIterations: entry.momusIterations || 0,
+          composerMode: entry.composerMode || null,
+          subagentOutcomes: Array.isArray(entry.subagentOutcomes) ? entry.subagentOutcomes : [],
+          subagentFailureCounts:
+            entry.subagentFailureCounts && typeof entry.subagentFailureCounts === "object"
+              ? entry.subagentFailureCounts
+              : {},
         })
       }
       return sessions
@@ -66,6 +78,7 @@ export class StatePersistence {
         readPaths: Array.from(session.readPaths),
         injectedPaths: Array.from(session.injectedPaths),
         pendingWriteArgs: Object.fromEntries(session.pendingWriteArgs),
+        todoStates: Object.fromEntries(session.todoStates),
       }))
 
       const tmpPath = this.filePath + ".tmp"

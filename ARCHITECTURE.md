@@ -42,7 +42,9 @@ graph TD
     ModeCheck -->|Debug| DebugPersona["Root = Diagnostic Specialist"]
     ModeCheck -->|Ask| AskPersona["Root = Read-Only Advisor"]
     PlanPersona -->|research| Explore["Task(explore)"]
+    PlanPersona -->|external docs| Lib["Task(librarian)"]
     PlanPersona -->|gap analysis| Metis["Task(metis)"]
+    PlanPersona -->|plan review| Momus["Task(momus)"]
     PlanPersona -->|writes directly| PlanFile[".cursor/plans/*.plan.md"]
     AgentPersona -->|plan exists| Execute["Atlas coordination"]
     AgentPersona -->|quick task| SJ2["Task(sisyphus-junior)"]
@@ -102,18 +104,19 @@ graph LR
 | Tier | Agents | Can Spawn Sub-agents | Can Edit Code |
 |------|--------|---------------------|---------------|
 | Coordinator | sisyphus, hephaestus, atlas | Yes (see per-agent lists) | Via delegation only |
-| Planner | prometheus | No | Never (markdown only) |
+| Planner | prometheus | Yes in native mode (explore, librarian, metis, momus) | Never (markdown only) |
 | Reviewer | metis, momus | No | Never (read-only) |
 | Worker | sisyphus-junior | No | Yes (leaf executor) |
 | Specialist | explore, librarian, oracle, multimodal-looker | No | Never (read-only) |
 
-### Coordinator Worker Lists
+### Dispatch Worker Lists
 
-| Coordinator | Workers |
-|-------------|---------|
+| Agent | Workers |
+|-------|---------|
 | sisyphus | explore, oracle, librarian, sisyphus-junior, multimodal-looker |
 | hephaestus | explore, sisyphus-junior |
 | atlas | explore, oracle, sisyphus-junior |
+| prometheus (native) | explore, librarian, metis, momus |
 
 ### Background Agents
 

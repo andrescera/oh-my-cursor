@@ -19,7 +19,7 @@ export const DEFAULT_CONFIG: OhMyCursorConfig = {
   orchestration: { mode: "native" as "native" | "subagent" },
   continuation: { cooldown_ms: 5000, max_failures: 5, backoff_multiplier: 2 },
   momus: { max_iterations: 3 },
-  model_routing: { retry_on_errors: [], max_retry_attempts: 2 },
+  model_routing: { retry_on_errors: [429, 500, 502, 503, 504], max_retry_attempts: 3 },
 }
 
 export function validateConfig(raw: unknown): OhMyCursorConfig {

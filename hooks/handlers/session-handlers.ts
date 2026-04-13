@@ -3,6 +3,8 @@ import { getOrCreateSession } from "../shared"
 import { loadConfig } from "../config"
 import { contextCollector } from "../context-collector"
 import { COMPACTION_CONTEXT_PROMPT } from "../compaction-context-prompt"
+import { cleanupSafetySession } from "./safety-handlers"
+import { cleanupToolGuardSession } from "./tool-guard-handlers"
 
 export function createSessionHandlers(
   sessions: Map<string, SessionState>,
@@ -117,6 +119,9 @@ export function createSessionHandlers(
 
     "/sessionEnd": (input) => {
       const convId = (input.conversation_id as string) || (input.session_id as string) || "unknown"
+      contextCollector.clear(convId)
+      cleanupSafetySession(convId)
+      cleanupToolGuardSession(convId)
       sessions.delete(convId)
 
       return {}

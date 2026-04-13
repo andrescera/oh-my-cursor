@@ -87,10 +87,15 @@ function clipAdditionalContext(text: string, maxChars: number): string {
   )
 }
 
+const sessionTokens = new Map<string, number>()
+
+export function cleanupToolGuardSession(convId: string): void {
+  sessionTokens.delete(convId)
+}
+
 export function createToolGuardHandlers(
   _sessions: Map<string, SessionState>,
 ): HandlerMap {
-  const sessionTokens = new Map<string, number>()
   const config = loadConfig()
   const contextWindowMonitor = createContextWindowMonitor(sessionTokens)
   const commentChecker = createCommentChecker()

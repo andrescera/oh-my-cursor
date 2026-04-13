@@ -32,10 +32,9 @@ const PRIORITY_ORDER: Record<ContextPriority, number> = {
 
 const CONTEXT_SEPARATOR = "\n\n---\n\n"
 
-let registrationCounter = 0
-
 export class ContextCollector {
   private sessions: Map<string, Map<string, ContextEntry>> = new Map()
+  private sessionCounters: Map<string, number> = new Map()
 
   register(sessionId: string, options: RegisterContextOptions): void {
     if (!this.sessions.has(sessionId)) {
@@ -44,12 +43,15 @@ export class ContextCollector {
     const sessionMap = this.sessions.get(sessionId)!
     const key = `${options.source}:${options.id}`
 
+    const counter = (this.sessionCounters.get(sessionId) ?? 0) + 1
+    this.sessionCounters.set(sessionId, counter)
+
     const entry: ContextEntry = {
       id: options.id,
       source: options.source,
       content: options.content,
       priority: options.priority ?? "normal",
-      registrationOrder: ++registrationCounter,
+      registrationOrder: counter,
       metadata: options.metadata,
     }
 
@@ -81,10 +83,12 @@ export class ContextCollector {
 
   clear(sessionId: string): void {
     this.sessions.delete(sessionId)
+    this.sessionCounters.delete(sessionId)
   }
 
   clearAll(): void {
     this.sessions.clear()
+    this.sessionCounters.clear()
   }
 
   private sortEntries(entries: ContextEntry[]): ContextEntry[] {

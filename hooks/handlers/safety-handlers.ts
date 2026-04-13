@@ -2,12 +2,24 @@ import type { HandlerMap } from "../types"
 import { createThinkingBlockValidator } from "./thinking-block-validator"
 import { loadConfig } from "../config"
 
+const shellFailureCounts = new Map<string, number>()
+const fileEditCounts = new Map<string, number>()
+const mcpCallCounts = new Map<string, number>()
+const responseCount = new Map<string, number>()
+
+export function cleanupSafetySession(convId: string): void {
+  shellFailureCounts.delete(convId)
+  responseCount.delete(convId)
+  for (const key of fileEditCounts.keys()) {
+    if (key.startsWith(convId + ":")) fileEditCounts.delete(key)
+  }
+  for (const key of mcpCallCounts.keys()) {
+    if (key.startsWith("mcp:" + convId + ":")) mcpCallCounts.delete(key)
+  }
+}
+
 export function createSafetyHandlers(): HandlerMap {
   const thinkingBlockValidator = createThinkingBlockValidator()
-  const shellFailureCounts = new Map<string, number>()
-  const fileEditCounts = new Map<string, number>()
-  const mcpCallCounts = new Map<string, number>()
-  const responseCount = new Map<string, number>()
 
   return {
     "/beforeShellExecution": (input) => {

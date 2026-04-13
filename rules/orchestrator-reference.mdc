@@ -173,7 +173,17 @@ Plan (Plan mode or Prometheus) → Explore → Execute (sisyphus/atlas) → Done
 
 When a dispatch returns Completed: record result, inject into next phase context, move on. Do NOT re-dispatch for the same scope.
 
-## Delegation Prompt (MANDATORY 6-section format)
+## Delegation Prompt Formats
+
+### Compact brief (explore, librarian, metis, momus — read-only/lightweight agents)
+
+```
+TASK: <objective + expected output in one line>
+CONSTRAINTS: <what to do and not do, combined>
+CONTEXT: <file paths, prior results, scope>
+```
+
+### Full brief (sisyphus, sisyphus-junior, hephaestus, atlas, prometheus — implementation/coordination agents)
 
 ```
 1. TASK: Atomic, specific goal
@@ -183,6 +193,13 @@ When a dispatch returns Completed: record result, inject into next phase context
 5. MUST NOT DO: Forbidden actions
 6. CONTEXT: File paths, patterns, prior phase results
 ```
+
+### Boilerplate reduction
+
+- Do NOT include "Do not modify any files" for agents dispatched with `readonly: true` — the platform enforces it
+- Do NOT include "REQUIRED TOOLS: Read, Grep, Glob" for explore agents — they only have read tools
+- Do NOT repeat constraints already encoded in the subagent_type (e.g., explore is always read-only)
+- Focus prompts on WHAT to find/do and WHERE, not on restating platform defaults
 
 ## Verification & Failure
 

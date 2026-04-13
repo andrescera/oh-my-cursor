@@ -3,6 +3,7 @@ import type { BackgroundTracker } from "./background-tracker"
 import { getOrCreateSession } from "../shared"
 import { writeContextRule } from "../scripts/context-injector"
 import { createEmptyTaskDetector } from "./empty-task-detector"
+import { contextCollector } from "../context-collector"
 import { loadConfig } from "../config"
 import { logEvent } from "../event-logger"
 import { resolve } from "node:path"
@@ -92,6 +93,39 @@ export function createSubagentHandlers(
         session.subagentFailureCounts[typeKey] = 0
       } else {
         session.subagentFailureCounts[typeKey] = (session.subagentFailureCounts[typeKey] || 0) + 1
+      }
+
+      if ((session.subagentFailureCounts[typeKey] || 0) >= 3) {
+        const fc = session.subagentFailureCounts[typeKey] || 0
+        console.warn(
+          `[oh-my-cursor/unstable-agent-babysitter] Agent type '${typeKey}' has failed ${fc} times consecutively. Consider using a different agent type or model.`,
+        )
+        contextCollector.register(convId, {
+          id: "unstable-agent",
+          source: "unstable-agent-babysitter",
+          content: `[unstable-agent] Agent type '${typeKey}' has failed ${fc} times consecutively. Consider using a different agent type or model.`,
+          priority: "critical",
+        })
+      }
+
+      const outputLooksLikeError = /(?:\berror\b|exception|traceback|Error:|\bfailed?\b)/i.test(
+        `${output}\n${summary}`,
+      )
+      if (
+        duration_ms !== undefined &&
+        duration_ms < 2000 &&
+        !isSuccess &&
+        outputLooksLikeError
+      ) {
+        console.warn(
+          `[oh-my-cursor/unstable-agent-babysitter] Agent ${typeKey} completed in ${duration_ms}ms with failure status. This may indicate a model or configuration issue.`,
+        )
+        contextCollector.register(convId, {
+          id: "fast-failure",
+          source: "unstable-agent-babysitter",
+          content: `[fast-failure] Agent ${typeKey} completed in ${duration_ms}ms with failure status. This may indicate a model or configuration issue.`,
+          priority: "high",
+        })
       }
 
       if (!stopHookActive) {

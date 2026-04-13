@@ -1,6 +1,6 @@
 import { readFileSync, existsSync } from "node:fs"
 import type { HandlerMap, RecentToolTrailEntry, SessionState } from "../types"
-import { getOrCreateSession } from "../shared"
+import { getOrCreateSession, resolveConversationId } from "../shared"
 import { loadConfig } from "../config"
 import { createContextWindowMonitor } from "./context-window-monitor"
 import { createCommentChecker } from "./comment-checker"
@@ -105,7 +105,7 @@ export function createToolGuardHandlers(
   return {
     "/preToolUse": (input) => {
       const toolName = (input.tool_name as string) || ""
-      const convId = (input.conversation_id as string) || (input.session_id as string) || "unknown"
+      const convId = resolveConversationId(input)
       const session = getOrCreateSession(convId)
       const toolInput = (input.tool_input as Record<string, unknown>) || {}
 
@@ -186,7 +186,7 @@ export function createToolGuardHandlers(
     "/postToolUse": (input) => {
       const toolName = (input.tool_name as string) || ""
       const output = JSON.stringify(input.tool_response || input.output || "")
-      const convId = (input.conversation_id as string) || (input.session_id as string) || "unknown"
+      const convId = resolveConversationId(input)
       const session = getOrCreateSession(convId)
       const toolInput = (input.tool_input as Record<string, unknown>) || {}
 
@@ -390,7 +390,7 @@ export function createToolGuardHandlers(
     "/postToolUseFailure": (input) => {
       const toolName = (input.tool_name as string) || ""
       const errorMessage = (input.error as string) || (input.error_message as string) || ((input.tool_response as Record<string, unknown>)?.error as string) || ""
-      const convId = (input.conversation_id as string) || (input.session_id as string) || "unknown"
+      const convId = resolveConversationId(input)
       const session = getOrCreateSession(convId)
 
       session.errorCount++

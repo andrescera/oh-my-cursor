@@ -1,5 +1,5 @@
 import type { SessionState, HandlerMap } from "../types"
-import { getOrCreateSession } from "../shared"
+import { getOrCreateSession, resolveConversationId } from "../shared"
 import { loadConfig } from "../config"
 import { contextCollector } from "../context-collector"
 import { COMPACTION_CONTEXT_PROMPT } from "../compaction-context-prompt"
@@ -65,7 +65,7 @@ export function createSessionHandlers(
     },
 
     "/sessionStart": (input) => {
-      const convId = (input.conversation_id as string) || (input.session_id as string) || "unknown"
+      const convId = resolveConversationId(input)
       const session = getOrCreateSession(convId)
       const projectDir = ((input.workspace_roots as string[])?.[0]) || (input.cwd as string) || process.cwd()
 
@@ -118,7 +118,7 @@ export function createSessionHandlers(
     },
 
     "/sessionEnd": (input) => {
-      const convId = (input.conversation_id as string) || (input.session_id as string) || "unknown"
+      const convId = resolveConversationId(input)
       contextCollector.clear(convId)
       cleanupSafetySession(convId)
       cleanupToolGuardSession(convId)
@@ -128,7 +128,7 @@ export function createSessionHandlers(
     },
 
     "/preCompact": (input) => {
-      const convId = (input.conversation_id as string) || (input.session_id as string) || "unknown"
+      const convId = resolveConversationId(input)
       const session = getOrCreateSession(convId)
 
       session.lastCompactionEpoch++

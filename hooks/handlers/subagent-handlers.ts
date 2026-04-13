@@ -1,6 +1,6 @@
 import type { SessionState, HandlerMap } from "../types"
 import type { BackgroundTracker } from "./background-tracker"
-import { getOrCreateSession } from "../shared"
+import { getOrCreateSession, resolveConversationId } from "../shared"
 import { createEmptyTaskDetector } from "./empty-task-detector"
 import { contextCollector } from "../context-collector"
 import { loadConfig } from "../config"
@@ -18,7 +18,7 @@ export function createSubagentHandlers(
       const agentType = (input.agent_type as string) || (input.subagent_type as string) || "unknown"
       const agentId = (input.agent_id as string) || agentType + "-" + Date.now()
       const description = (input.description as string) || ""
-      const convId = (input.conversation_id as string) || (input.session_id as string) || "unknown"
+      const convId = resolveConversationId(input)
       tracker.track(agentId, agentType, description, convId)
       const session = getOrCreateSession(convId)
 
@@ -46,7 +46,7 @@ export function createSubagentHandlers(
       const status = (input.status as string) || ""
       const stopHookActive = Boolean(input.stop_hook_active)
       const loopCount = (input.loop_count as number) || 0
-      const convId = (input.conversation_id as string) || (input.session_id as string) || "unknown"
+      const convId = resolveConversationId(input)
       const session = getOrCreateSession(convId)
 
       const summary = (input.summary as string) || ""

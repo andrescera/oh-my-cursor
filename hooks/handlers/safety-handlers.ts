@@ -1,4 +1,5 @@
 import type { HandlerMap } from "../types"
+import { resolveConversationId } from "../shared"
 import { createThinkingBlockValidator } from "./thinking-block-validator"
 import { loadConfig } from "../config"
 
@@ -54,7 +55,7 @@ export function createSafetyHandlers(): HandlerMap {
 
     "/afterShellExecution": (input) => {
       const exitCode = (input.exit_code as number) ?? (input.exitCode as number) ?? 0
-      const convId = (input.conversation_id as string) || (input.session_id as string) || "unknown"
+      const convId = resolveConversationId(input)
 
       if (exitCode === 0) {
         shellFailureCounts.delete(convId)
@@ -102,7 +103,7 @@ export function createSafetyHandlers(): HandlerMap {
 
     "/afterFileEdit": (input) => {
       const filePath = (input.file_path as string) || (input.filePath as string) || ""
-      const convId = (input.conversation_id as string) || (input.session_id as string) || "unknown"
+      const convId = resolveConversationId(input)
 
       if (!filePath) return {}
 
@@ -136,7 +137,7 @@ export function createSafetyHandlers(): HandlerMap {
 
     "/afterMCPExecution": (input) => {
       const serverName = (input.mcp_server_name as string) || (input.serverName as string) || ""
-      const convId = (input.conversation_id as string) || (input.session_id as string) || "unknown"
+      const convId = resolveConversationId(input)
 
       const key = `mcp:${convId}:${serverName}`
       mcpCallCounts.set(key, (mcpCallCounts.get(key) || 0) + 1)
@@ -145,7 +146,7 @@ export function createSafetyHandlers(): HandlerMap {
     },
 
     "/afterAgentResponse": (input) => {
-      const convId = (input.conversation_id as string) || (input.session_id as string) || "unknown"
+      const convId = resolveConversationId(input)
 
       const count = (responseCount.get(convId) || 0) + 1
       responseCount.set(convId, count)

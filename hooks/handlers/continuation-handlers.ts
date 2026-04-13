@@ -1,5 +1,5 @@
 import type { SessionState, HandlerMap } from "../types"
-import { getOrCreateSession } from "../shared"
+import { getOrCreateSession, resolveConversationId } from "../shared"
 
 const slashCommands: Record<string, string> = {
   "/plan": "[command:plan] Planning workflow. Follow commands/plan.md step sequence.",
@@ -27,7 +27,7 @@ export function createContinuationHandlers(
     "/stop": (input) => {
       const status = (input.status as string) || ""
       const stopHookActive = Boolean(input.stop_hook_active)
-      const convId = (input.conversation_id as string) || (input.session_id as string) || "unknown"
+      const convId = resolveConversationId(input)
       const session = getOrCreateSession(convId)
 
       if (session.stoppedAt || stopHookActive || (status && status !== "completed")) {
@@ -134,7 +134,7 @@ export function createContinuationHandlers(
 
     "/beforeSubmitPrompt": (input) => {
       const userMessage = (input.prompt as string) || (input.user_message as string) || ""
-      const convId = (input.conversation_id as string) || (input.session_id as string) || "unknown"
+      const convId = resolveConversationId(input)
       const session = getOrCreateSession(convId)
 
       let additionalContext = [

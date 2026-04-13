@@ -18,9 +18,8 @@ export function createSubagentHandlers(
       const agentType = (input.agent_type as string) || (input.subagent_type as string) || "unknown"
       const agentId = (input.agent_id as string) || agentType + "-" + Date.now()
       const description = (input.description as string) || ""
-      tracker.track(agentId, agentType, description)
-
       const convId = (input.conversation_id as string) || (input.session_id as string) || "unknown"
+      tracker.track(agentId, agentType, description, convId)
       const session = getOrCreateSession(convId)
 
       let additional_context: string | undefined

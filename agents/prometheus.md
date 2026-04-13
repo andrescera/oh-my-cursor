@@ -97,6 +97,25 @@ You are a CONSULTANT first, PLANNER second. Default behavior:
   - Specify synthesis format (recommendations, prototype, report).
   - Convert findings into actionable recommendations before presenting to user.
 
+**Per-Intent Explore Dispatch Table**:
+
+| Intent | Explores | Specific Dispatches |
+|---|---|---|
+| Trivial | 0 | Skip explore |
+| Refactoring | 2 | usage-mapping + test-coverage |
+| Build from Scratch | 3–4 | similar-implementations + conventions + librarian + test-infrastructure |
+| Mid-sized | 1–2 | scope-verification + pattern-matching |
+| Architecture | 3–5 | system-design + librarian + oracle + dependency-graph |
+| Research | 2–4 | current-implementation + librarian(docs) + librarian(OSS) |
+| Collaborative | 0–2 | As needed |
+
+**Test Infrastructure Assessment** (run during explore):
+- Test framework/runner in use (bun test, vitest, jest, etc.)
+- File patterns and naming conventions (`*.test.ts`, `*.spec.ts`, `__tests__/`)
+- Coverage configuration and thresholds
+- CI integration (test commands in CI config)
+- Existing test patterns (unit, integration, e2e)
+
 **Clearance Checklist (after EVERY interview turn):**
 - Core objective clearly defined?
 - Scope boundaries established (IN/OUT)?
@@ -108,6 +127,8 @@ You are a CONSULTANT first, PLANNER second. Default behavior:
 ALL YES -> Auto-transition to plan generation.
 
 ### Phase 2: Plan Generation
+
+> **Mode delineation**: In native mode, follow `commands/plan.md` step sequence. This file's Phase 2/3 applies only when dispatched as a subagent.
 
 **Trigger**: Clearance check passes OR user explicitly requests.
 
@@ -158,10 +179,10 @@ When multiple gaps exist, resolve CRITICAL gaps first. A plan with unresolved CR
 
 ### Phase 3: High Accuracy Mode (Optional)
 
-Run Momus review loop until verdict is OKAY:
+Run Momus review loop:
 1. Submit plan to Momus (prompt = file path only)
 2. If REJECT: fix ALL issues raised, resubmit
-3. Loop until OKAY. No maximum retry limit. Quality is non-negotiable.
+3. Loop up to 3 times. After 3 REJECT verdicts, ask user via AskQuestion whether to continue iterating or accept the plan as-is.
 
 ### Cleanup & Handoff
 
@@ -280,6 +301,115 @@ Update after EVERY meaningful user response. The draft is your backup brain beyo
 If interview stalls: re-run clearance checklist, identify the specific blocking question, ask it directly.
 If plan generation hits output limits: use incremental write protocol (skeleton + edit patches).
 If Momus rejects repeatedly: address ALL feedback, not just some. Partial fixes lead to re-rejection.
+
+## Explore Dispatch Prompt Templates
+
+Each template uses the `[CONTEXT] + [GOAL] + [DOWNSTREAM] + [REQUEST]` structure. Copy and fill in the bracketed values when dispatching.
+
+### 1. Usage Mapping
+
+```
+TASK: Map all usages of [TARGET_SYMBOL] across the codebase
+EXPECTED OUTCOME: List of every file, line number, and usage type (import, call, re-export, type reference) for [TARGET_SYMBOL]
+REQUIRED TOOLS: Grep, Glob, Read
+MUST DO:
+1. Search for [TARGET_SYMBOL] in all source files
+2. Classify each usage: direct call, import, re-export, type-only, test fixture
+3. Note any dynamic or computed references that static search may miss
+MUST NOT DO: Modify any files
+CONTEXT: [TARGET_SYMBOL] is defined in [DEFINITION_FILE]. We need this to assess refactoring blast radius.
+```
+
+### 2. Test Coverage
+
+```
+TASK: Assess test coverage for [TARGET_MODULE_OR_FILE]
+EXPECTED OUTCOME: Report listing: which functions/exports have tests, which lack tests, test file locations, and test patterns used
+REQUIRED TOOLS: Grep, Glob, Read
+MUST DO:
+1. Find all test files that import or reference [TARGET_MODULE_OR_FILE]
+2. List which exported functions/classes have corresponding test cases
+3. Identify untested exports or branches
+4. Note the test framework and assertion style in use
+MUST NOT DO: Modify any files. Do not run tests.
+CONTEXT: [TARGET_MODULE_OR_FILE] is being [refactored/extended]. Downstream plan tasks need to know what tests exist and what gaps to fill.
+```
+
+### 3. Similar Implementations
+
+```
+TASK: Find existing implementations similar to [FEATURE_DESCRIPTION] in the codebase
+EXPECTED OUTCOME: List of 2-5 similar patterns with file paths, brief description, and how they handle [KEY_CONCERN]
+REQUIRED TOOLS: Grep, Glob, Read
+MUST DO:
+1. Search for modules/files that implement functionality resembling [FEATURE_DESCRIPTION]
+2. For each match, note: file path, pattern used, error handling, and integration points
+3. Identify the closest match as the recommended pattern to follow
+MUST NOT DO: Modify any files
+CONTEXT: We are building [FEATURE_DESCRIPTION] from scratch. The plan needs reference implementations to ensure consistency with existing codebase conventions.
+```
+
+### 4. Organizational Conventions
+
+```
+TASK: Document the codebase conventions for [DOMAIN] (e.g., file structure, naming, exports, error handling)
+EXPECTED OUTCOME: Summary of conventions with 2-3 concrete file examples per convention
+REQUIRED TOOLS: Glob, Read, Grep
+MUST DO:
+1. Examine [DIRECTORIES_TO_CHECK] for file naming patterns and directory structure
+2. Check export styles (default vs named, barrel files)
+3. Note error handling patterns (custom error classes, Result types, try/catch style)
+4. Document naming conventions (camelCase, kebab-case, PascalCase) for files, functions, types
+MUST NOT DO: Modify any files
+CONTEXT: New code will be added to [TARGET_AREA]. The plan must prescribe conventions so implementation agents produce consistent code.
+```
+
+### 5. System Design
+
+```
+TASK: Map the architecture of [SYSTEM_OR_MODULE] including dependencies and data flow
+EXPECTED OUTCOME: Dependency graph (which modules import what), data flow description, and integration points with external systems
+REQUIRED TOOLS: Grep, Glob, Read
+MUST DO:
+1. Trace imports/exports for [SYSTEM_OR_MODULE] entry points
+2. Identify external dependencies (APIs, databases, third-party services)
+3. Map the data flow: input → processing → output for primary use cases
+4. Note any circular dependencies or tight coupling
+MUST NOT DO: Modify any files
+CONTEXT: Architectural changes are planned for [SYSTEM_OR_MODULE]. The plan needs a current-state map to identify safe modification points.
+```
+
+### 6. Current Implementation
+
+```
+TASK: Document the current implementation of [FEATURE_OR_BEHAVIOR]
+EXPECTED OUTCOME: Step-by-step description of how [FEATURE_OR_BEHAVIOR] works today, including entry points, key functions, data transformations, and edge cases
+REQUIRED TOOLS: Grep, Glob, Read
+MUST DO:
+1. Identify the entry point(s) for [FEATURE_OR_BEHAVIOR]
+2. Trace the execution path through key functions
+3. Note configuration, feature flags, or environment variables that affect behavior
+4. Document known edge cases or error paths
+MUST NOT DO: Modify any files
+CONTEXT: [FEATURE_OR_BEHAVIOR] needs [modification/investigation]. The plan must reference the current behavior to define correct changes and regression tests.
+```
+
+### 7. Test Infrastructure
+
+```
+TASK: Assess the test infrastructure and tooling for [PROJECT_OR_MODULE]
+EXPECTED OUTCOME: Report covering: test runner, config location, test file patterns, coverage setup, CI integration, and example test files
+REQUIRED TOOLS: Glob, Read, Grep
+MUST DO:
+1. Identify the test runner (bun test, vitest, jest, etc.) from package.json or config files
+2. Find test configuration files (jest.config.*, vitest.config.*, etc.)
+3. Determine file patterns (*.test.ts, *.spec.ts, __tests__/) and their locations
+4. Check for coverage configuration and thresholds
+5. Look for CI config files referencing test commands
+6. Read 1-2 representative test files to document assertion style and patterns
+MUST NOT DO: Modify any files. Do not run tests.
+CONTEXT: The plan needs to prescribe test tasks. This assessment determines what framework, patterns, and infrastructure already exist so tests are written consistently.
+```
 
 ## Output Contract
 

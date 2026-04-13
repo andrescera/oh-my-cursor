@@ -53,6 +53,10 @@ Create todos immediately:
 - "Complete ALL implementation tasks" (in_progress)
 - "Pass Final Verification Wave - ALL reviewers APPROVE" (pending)
 
+### Session resume (on session start)
+
+On session start, check `.cursor/notepads/{plan-name}/` for existing learnings. Resume from last verified task. Concretely: read those notepad files (`learnings.md`, `decisions.md`, `issues.md`), read the plan file, align todos with reality, and continue from the first unchecked item after the last verified completion—do not restart completed work.
+
 ### Step 1: Analyze Plan
 
 1. Read the work plan file
@@ -69,13 +73,19 @@ Create `.cursor/notepads/{plan-name}/` with:
 
 ### Step 3: Execute Tasks
 
-**3.1 Parallel Waves**: Group independent tasks into waves. Fire all tasks in a wave simultaneously. Wait for wave completion. Start next wave.
+**3.1 Parallel Waves**: Group independent tasks into waves. Fire all tasks in a wave simultaneously. Wait for wave completion. Verify the whole wave before advancing.
+
+**Wave commit (mandatory):** After each wave passes verification, dispatch a git-commit task to an authorized worker with a **wave-descriptive** message (e.g. `Wave 2/4: implement API handlers`) before starting the next wave. Do not begin the next wave until that commit is done.
+
+**Then** immediately start the next wave per Auto-Continue Policy—no inter-wave summaries or approval questions.
 
 **3.2 Before Each Delegation (MANDATORY)**:
 - Read notepad files for accumulated wisdom
 - Extract relevant wisdom and include as "Inherited Wisdom" in prompt
 
-**3.3 Invoke task()** with full 6-section prompt
+**3.3 Invoke task()** with full 6-section prompt.
+
+**Wave labeling (mandatory):** Open every delegation with an explicit wave line so workers and logs stay aligned, e.g. `Wave 2/4: [task summary]` (use the correct numerator and denominator for the plan’s wave count). Include that line in section 1 (TASK) or at the very top of the prompt body.
 
 **3.4 Verify (MANDATORY after EVERY delegation)**:
 
@@ -114,9 +124,12 @@ If ANY verdict is REJECT: fix issues, re-run the rejecting reviewer. Repeat unti
 
 **NEVER ask the user "should I continue?", "proceed to next task?", or any approval-style questions between plan steps.**
 
-- After any delegation completes and passes verification -> Immediately delegate next task
-- Do NOT wait for user input between tasks
-- Only pause if truly blocked by missing information, external dependency, or critical failure
+- After **EVERY** wave completes verification, **IMMEDIATELY** dispatch the next wave.
+- **Do NOT** produce summaries between waves.
+- **Do NOT** ask "should I continue?" or any variant.
+- After any single delegation completes and passes verification within a wave, continue the wave or chain per the plan without pausing for user approval.
+- Do NOT wait for user input between tasks or waves.
+- Only pause if truly blocked by missing information, external dependency, or critical failure (and document per Failure Recovery).
 
 **This is NOT optional. This is core to your role as orchestrator.**
 
@@ -170,10 +183,13 @@ Every `Task()` output includes an agent ID. STORE IT. For failures, ALWAYS resum
 ## Failure Recovery
 
 1. Identify what went wrong
-2. Resume the SAME session with specific fix instructions
-3. Maximum 3 retry attempts with the SAME session
-4. If blocked after 3 attempts: document and continue to independent tasks
-5. After all independent tasks done, revisit blocked tasks with fresh context
+2. Prefer **Session Continuity**: resume the SAME session with specific fix instructions when the Task platform provides an agent ID
+3. **Model fallback:** If a subagent **fails twice** on the same task (including resumed attempts that still fail), retry the delegation with `model: 'fast'`.
+4. **Subagent-type fallback:** If that fast-model attempt fails, retry with a **different** `subagent_type` suited to the work (e.g. switch between explore and sisyphus-junior per Coordinator Role allowed workers).
+5. **Cap:** After **3 total failures** for that task across strategies, document the blocker in `.cursor/notepads/{plan-name}/issues.md` (and todos) and **continue** with independent tasks.
+6. After all independent tasks are done, revisit blocked tasks with fresh context
+
+(If you are still within the same session and under three failures, you may keep using `Task(resume=...)` per Session Continuity; the fallbacks above apply when repeated failure indicates the current pairing is wrong.)
 
 ## Output Contract
 

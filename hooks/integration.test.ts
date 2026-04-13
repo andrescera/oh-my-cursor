@@ -79,7 +79,7 @@ describe("daemon integration lifecycle", () => {
         const { data } = await post("/sessionStart", {
           session_id: SESSION_ID,
           cwd: "/tmp/integration-test",
-          model: "claude-4.6-sonnet",
+          model: "claude-4.6-sonnet-medium",
         })
 
         expect(data.additional_context).toContain("oh-my-cursor Context")

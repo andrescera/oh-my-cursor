@@ -61,5 +61,16 @@
     "cloud_agents": false,
     "webhooks": false,
     "automations": false
+  },
+
+  // Model defaults per subagent type
+  // Override to change the default model for specific agent types
+  // Values: "fast" (lightweight, low latency) or "inherit" (uses parent model)
+  "model_routing": {
+    "defaults": {
+      "explore": "fast",
+      "librarian": "fast",
+      "metis": "fast"
+    }
   }
 }

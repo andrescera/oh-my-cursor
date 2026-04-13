@@ -53,7 +53,7 @@ describe("hook daemon", () => {
       const result = await post("/sessionStart", {
         session_id: "sess-1",
         cwd: "/project",
-        model: "claude-4.6-sonnet",
+        model: "claude-4.6-sonnet-medium",
       })
       expect(result.hookSpecificOutput.additionalContext).toContain("oh-my-cursor Context")
       expect(result.hookSpecificOutput.additionalContext).toContain("sess-1")

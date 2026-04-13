@@ -81,5 +81,9 @@ export type OhMyCursorConfig = {
   orchestration: { mode: "native" | "subagent" }
   continuation: { cooldown_ms: number; max_failures: number; backoff_multiplier: number }
   momus: { max_iterations: number }
-  model_routing: { retry_on_errors: number[]; max_retry_attempts: number }
+  model_routing: {
+    retry_on_errors: number[]
+    max_retry_attempts: number
+    defaults: Record<string, string>
+  }
 }

@@ -130,6 +130,30 @@ Findings below come from **this research pass** over Cursor docs, changelogs, fo
 
 ---
 
+## Verified Model IDs
+
+Ground-truth list from `cursor agent models` CLI output (2026-04-13).
+
+Models referenced by oh-my-cursor agent definitions in this repo (`agents/*.md` and orchestration rules):
+
+| Agent | Verified model ID |
+| --- | --- |
+| explore | `gemini-3-flash` |
+| librarian | `fast` (Task tool parameter; selects a smaller/faster model — not a row in the CLI model list) |
+| sisyphus-junior | `claude-4.6-sonnet-medium-thinking` |
+| sisyphus | `claude-4.6-opus-max-thinking` |
+| hephaestus | `gpt-5.4-high` |
+| atlas | `claude-4.6-sonnet-medium-thinking` |
+| oracle | `gpt-5.4-medium` |
+| prometheus | `claude-4.6-opus-max-thinking` |
+| metis | `gpt-5.4-medium` |
+| momus | `gpt-5.4-medium` |
+| multimodal-looker | `gemini-3.1-pro` |
+
+**Note:** `fast` is a Task tool parameter (not in the `cursor agent models` list) that selects a smaller/faster model.
+
+---
+
 ## 8. Open Questions
 
 These remain **unanswered in public Cursor documentation** reviewed for this note:
@@ -139,6 +163,57 @@ These remain **unanswered in public Cursor documentation** reviewed for this not
 3. Whether **`subagent_type`** (beyond model choice and prompts) implies **different cold-start** or scheduling paths.
 4. Exact **queue depth** or **scheduler** behavior for very high parallel Task counts (e.g. **>12**).
 5. Whether Cursor applies **internal rate limiters** to IDE Task/subagent concurrency (distinct from provider TPM/RPM).
+
+---
+
+## MCP Server Audit
+
+**Scope:** MCP servers present in the current Cursor configuration for this workspace, as reflected by on-disk tool descriptors under `/home/andres/.cursor/projects/mnt-development-oh-my-openagent/mcps/`. **Action:** disable duplicates in Cursor MCP settings only if you accept the trade-offs below; this note does not change any configuration.
+
+### Per-server summary
+
+| Server | Role | Cached tools (this workspace) | Needed? |
+| --- | --- | --- | --- |
+| `plugin-oh-my-cursor-websearch` | Exa web search | `web_search_exa` | **Yes** (keep one web search stack) |
+| `user-websearch` | Same Exa web search | `web_search_exa` | **Redundant** if plugin copy enabled |
+| `plugin-oh-my-cursor-grep_app` | grep.app GitHub code search | `searchGitHub` | **Yes** (keep one grep.app stack) |
+| `user-grep_app` | Same grep.app | `searchGitHub` | **Redundant** if plugin copy enabled |
+| `plugin-oh-my-cursor-context7` | Context7 docs | `query-docs`, `resolve-library-id` | **Yes** (keep one Context7 stack) |
+| `user-context7` | Same Context7 | `query-docs`, `resolve-library-id` | **Redundant** if plugin copy enabled |
+| `user-oh-my-cursor` | oh-my-cursor plugin MCP bundle | *(no `tools/*.json` in cache; server status errored at capture time)* | Treat as **duplicate** of plugin copy if both are wired to the same capabilities |
+| `plugin-oh-my-cursor-oh-my-cursor` | oh-my-cursor (plugin-managed) | *(same — no tool JSON in cache; errored)* | **Prefer** as the managed entry when the local oh-my-cursor extension supplies MCP |
+| `user-notion` | Notion | `mcp_auth` | **Yes** if you use Notion MCP; **no** overlap with rows above |
+| `user-eamodio.gitlens-extension-GitKraken` | GitLens / GitKraken (git, PRs, issues, …) | 23 tools (e.g. `git_status`, `git_log_or_diff`, `pull_request_*`, `issues_*`, `gitlens_*`) | **Yes** if you rely on GitKraken/GitLens from the editor; **no** duplicate of the oh-my-cursor / web / grep / Context7 rows |
+
+### Verified duplicate pairs (tool overlap)
+
+Descriptors use **identical tool names and schemas** for:
+
+- **Web search:** `plugin-oh-my-cursor-websearch` ↔ `user-websearch` — both expose `web_search_exa` with the same argument schema (plugin copy additionally tags `plugin` / `marketplace` in JSON metadata only).
+- **grep.app:** `plugin-oh-my-cursor-grep_app` ↔ `user-grep_app` — both expose `searchGitHub` with matching descriptions/schemas.
+- **Context7:** `plugin-oh-my-cursor-context7` ↔ `user-context7` — both expose `query-docs` and `resolve-library-id`.
+
+**oh-my-cursor pair:** `user-oh-my-cursor` and `plugin-oh-my-cursor-oh-my-cursor` are **naming-level duplicates** (same product surface). This workspace’s cached folders contained **no** `tools/*.json` for either (only `SERVER_METADATA.json` / `STATUS.md`), and `STATUS.md` reported an MCP error — so tool-by-tool equivalence was not re-verified from files. Recommendation still follows product intent: **one** oh-my-cursor MCP connection.
+
+### Recommendations (reduce context without losing capability)
+
+| Pair | Keep | Disable (if redundant) |
+| --- | --- | --- |
+| Web search | `plugin-oh-my-cursor-websearch` | `user-websearch` |
+| grep.app | `plugin-oh-my-cursor-grep_app` | `user-grep_app` |
+| Context7 | `plugin-oh-my-cursor-context7` | `user-context7` |
+| oh-my-cursor | `plugin-oh-my-cursor-oh-my-cursor` | `user-oh-my-cursor` |
+
+**Caveats:** If a `user-*` server uses different env, auth, or endpoints than the plugin-managed copy, disabling it without checking those settings could drop access. Prefer comparing MCP server definitions in Cursor Settings before toggling.
+
+### Estimated impact on tool-definition context
+
+Illustrative order-of-magnitude (not a measured token count for this project):
+
+- **Assumption:** ~10 MCP servers × ~5 tools each ≈ **~50** tool definitions visible to the parent and, per Cursor docs, **inherited by subagents** (see §3).
+- **Removing four duplicate `user-*` servers** that mirror plugin servers ≈ **4 × ~5 ≈ ~20** fewer tool definitions ≈ **~20%** reduction in that MCP-tool surface (scales linearly if your real tool counts differ).
+
+For **this** descriptor snapshot, the four clear duplicates contribute **at least** **1 + 1 + 2 = 4** named tools from `user-websearch`, `user-grep_app`, and `user-context7`; the oh-my-cursor pair’s contribution is unknown until the server exposes tools successfully.
 
 ---
 

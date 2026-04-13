@@ -105,23 +105,6 @@ export function createToolGuardHandlers(
       const session = getOrCreateSession(convId)
       const toolInput = (input.tool_input as Record<string, unknown>) || {}
 
-      if (["write", "Write", "str_replace", "StrReplace", "edit", "Edit", "delete", "Delete"].includes(toolName)) {
-        const filePath = (toolInput.file_path || toolInput.path) as string
-        if (filePath && filePath.includes("oh-my-cursor-context.mdc")) {
-          const reason = "Protected file: oh-my-cursor-context.mdc is managed by the oh-my-cursor daemon and must not be modified directly."
-          return {
-            permission: "deny",
-            userMessage: reason,
-            agentMessage: reason,
-            hookSpecificOutput: {
-              hookEventName: "PreToolUse",
-              permissionDecision: "deny",
-              permissionDecisionReason: reason,
-            },
-          }
-        }
-      }
-
       if (["write", "Write", "str_replace", "StrReplace", "edit", "Edit", "apply_patch", "ApplyPatch"].includes(toolName)) {
         const isEditOperation = Boolean(toolInput.old_string)
         const filePath = (toolInput.file_path || toolInput.path) as string

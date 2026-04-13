@@ -13,7 +13,7 @@ TodoWrite([
 ])
 ```
 
-Execute the workflow matching the current `orchestration.mode` (check `.cursor/rules/oh-my-cursor-context.mdc`). Default is `native`.
+Execute the workflow matching the current `orchestration.mode` (injected via `additional_context` on session start). Default is `native`.
 
 ---
 

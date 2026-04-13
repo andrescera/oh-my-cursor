@@ -71,7 +71,6 @@ export type OhMyCursorConfig = {
   daemon: { port: number; mcp_port: number }
   context_collector: { enabled: boolean; max_context_chars: number }
   compaction: { prompt_enabled: boolean; user_message_template?: string }
-  mdc_writer: { debounce_ms: number; enabled: boolean }
   experimental: {
     cloud_agents: boolean
     webhooks: boolean

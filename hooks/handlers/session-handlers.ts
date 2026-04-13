@@ -1,7 +1,6 @@
 import type { SessionState, HandlerMap } from "../types"
 import { getOrCreateSession } from "../shared"
 import { loadConfig } from "../config"
-import { writeContextRule, clearContextRule } from "../scripts/context-injector"
 import { contextCollector } from "../context-collector"
 import { COMPACTION_CONTEXT_PROMPT } from "../compaction-context-prompt"
 
@@ -71,27 +70,6 @@ export function createSessionHandlers(
       session.env.OH_MY_CURSOR_SESSION_ID = convId
       session.env.OH_MY_CURSOR_PROJECT_DIR = projectDir
 
-      writeContextRule(projectDir, {
-        sessionId: convId,
-        projectDir,
-        activeAgents: [],
-        recentTools: [],
-        lastUpdated: new Date().toISOString(),
-        toolCallCount: 0,
-        errorCount: 0,
-        compactionEpoch: 0,
-        dispatchSummary: {},
-        activePlan: session.activePlan,
-        continuationState:
-          session.continuationCooldownUntil !== null || session.consecutiveContinuationFailures > 0
-            ? {
-                cooldownUntil: session.continuationCooldownUntil,
-                failures: session.consecutiveContinuationFailures,
-              }
-            : undefined,
-        momusIterations: session.momusIterations,
-      }).catch((err) => console.error("[oh-my-cursor] Failed to write context rule:", err))
-
       const contextStr = [
         "## oh-my-cursor Context",
         "",
@@ -141,9 +119,6 @@ export function createSessionHandlers(
       const convId = (input.conversation_id as string) || (input.session_id as string) || "unknown"
       sessions.delete(convId)
 
-      const projectDir = ((input.workspace_roots as string[])?.[0]) || (input.cwd as string) || process.cwd()
-      clearContextRule(projectDir).catch((err) => console.error("[oh-my-cursor] Failed to clear context rule:", err))
-
       return {}
     },
 
@@ -164,28 +139,6 @@ export function createSessionHandlers(
       session.toolCallsSinceTaskDispatch = 0
 
       contextCollector.clear(convId)
-
-      const projectDir = session.env.OH_MY_CURSOR_PROJECT_DIR || process.cwd()
-      writeContextRule(projectDir, {
-        sessionId: convId,
-        projectDir,
-        activeAgents: Object.keys(session.dispatchCounts).filter(k => k.startsWith("subagent:")),
-        recentTools: session.contextHistory.slice(-5).map(e => e.split(" ").pop() || ""),
-        lastUpdated: new Date().toISOString(),
-        toolCallCount: session.toolCallCount,
-        errorCount: session.errorCount,
-        compactionEpoch: session.lastCompactionEpoch,
-        dispatchSummary: session.dispatchCounts,
-        activePlan: session.activePlan,
-        continuationState:
-          session.continuationCooldownUntil !== null || session.consecutiveContinuationFailures > 0
-            ? {
-                cooldownUntil: session.continuationCooldownUntil,
-                failures: session.consecutiveContinuationFailures,
-              }
-            : undefined,
-        momusIterations: session.momusIterations,
-      }).catch((err) => console.error("[oh-my-cursor] Failed to write context rule:", err))
 
       const config = loadConfig()
       if (config.compaction.prompt_enabled) {

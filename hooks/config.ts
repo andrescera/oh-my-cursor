@@ -12,7 +12,6 @@ export const DEFAULT_CONFIG: OhMyCursorConfig = {
   daemon: { port: 47847, mcp_port: 47848 },
   context_collector: { enabled: true, max_context_chars: 50000 },
   compaction: { prompt_enabled: true },
-  mdc_writer: { debounce_ms: 5000, enabled: true },
   experimental: { cloud_agents: false, webhooks: false, automations: false },
   mcp_allowlist: ["*"],
   notifications: { enabled: true, sound: false },

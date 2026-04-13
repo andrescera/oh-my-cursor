@@ -1,7 +1,6 @@
 import type { SessionState, HandlerMap } from "../types"
 import type { BackgroundTracker } from "./background-tracker"
 import { getOrCreateSession } from "../shared"
-import { writeContextRule } from "../scripts/context-injector"
 import { createEmptyTaskDetector } from "./empty-task-detector"
 import { contextCollector } from "../context-collector"
 import { loadConfig } from "../config"
@@ -34,28 +33,6 @@ export function createSubagentHandlers(
           break
         }
       }
-
-      const projectDir = session.env.OH_MY_CURSOR_PROJECT_DIR || process.cwd()
-      writeContextRule(projectDir, {
-        sessionId: convId,
-        projectDir,
-        activeAgents: Object.keys(session.dispatchCounts).filter(k => k.startsWith("subagent:")),
-        recentTools: session.contextHistory.slice(-5).map(e => e.split(" ").pop() || ""),
-        lastUpdated: new Date().toISOString(),
-        toolCallCount: session.toolCallCount,
-        errorCount: session.errorCount,
-        compactionEpoch: session.lastCompactionEpoch,
-        dispatchSummary: session.dispatchCounts,
-        activePlan: session.activePlan,
-        continuationState:
-          session.continuationCooldownUntil !== null || session.consecutiveContinuationFailures > 0
-            ? {
-                cooldownUntil: session.continuationCooldownUntil,
-                failures: session.consecutiveContinuationFailures,
-              }
-            : undefined,
-        momusIterations: session.momusIterations,
-      }).catch((err) => console.error("[oh-my-cursor] Failed to update context rule:", err))
 
       return additional_context ? { additional_context } : {}
     },

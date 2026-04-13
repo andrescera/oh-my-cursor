@@ -34,6 +34,14 @@ if (restored) {
   }
 }
 
+try {
+  const mdcPath = join(process.cwd(), ".cursor", "rules", "oh-my-cursor-context.mdc")
+  if (existsSync(mdcPath)) {
+    unlinkSync(mdcPath)
+    console.log("[oh-my-cursor] Cleaned up stale oh-my-cursor-context.mdc")
+  }
+} catch {}
+
 const ENV_PORT = process.env.OH_MY_CURSOR_PORT
 const DEFAULT_PORT = config.daemon.port
 const PID_FILE = "/tmp/oh-my-cursor-daemon.pid"

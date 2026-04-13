@@ -180,4 +180,4 @@ The toggle is set in `~/.config/oh-my-cursor/config.jsonc` or `.cursor/oh-my-cur
 }
 ```
 
-The mode is injected into `.cursor/rules/oh-my-cursor-context.mdc` by the hook daemon on session start.
+The mode is injected via `additional_context` by the hook daemon on session start.

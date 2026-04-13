@@ -30,12 +30,6 @@
     "max_context_chars": 50000
   },
 
-  // .mdc context file writer
-  "mdc_writer": {
-    "enabled": true,
-    "debounce_ms": 5000
-  },
-
   // Compaction settings
   "compaction": {
     "prompt_enabled": true

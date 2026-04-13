@@ -25,7 +25,7 @@ After the plan is chosen:
    - **`currentWave`**: integer wave index (`0` at a fresh start; restore or reset to match **Resume** / **Start fresh**)
 3. As execution proceeds, **update** the same file after each verified wave: advance **`currentWave`**, append completed items to **`completedTasks`**, and keep **`path`** accurate.
 
-Read the **orchestration.mode** value from `.cursor/rules/oh-my-cursor-context.mdc`. Default is `"native"` if not set.
+Read the **orchestration.mode** value from the session's `additional_context` (injected on session start). Default is `"native"` if not set.
 
 ---
 

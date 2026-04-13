@@ -1,7 +1,6 @@
 import { describe, test, expect, beforeEach, afterEach } from "bun:test"
 import { existsSync, unlinkSync, writeFileSync } from "node:fs"
 import { StatePersistence } from "./state-persistence"
-import { globalReadPaths } from "./shared"
 import type { SessionState } from "./types"
 
 const TEST_PATH = "/tmp/oh-my-cursor-state-test.json"
@@ -35,6 +34,7 @@ function createTestSession(id: string): SessionState {
     composerMode: null,
     subagentOutcomes: [],
     subagentFailureCounts: {},
+    delegateRetryState: {},
   }
 }
 
@@ -140,38 +140,21 @@ describe("StatePersistence", () => {
   })
 
   describe("#given persisted sessions with readPaths", () => {
-    describe("#when loaded and iterated to rebuild globalReadPaths", () => {
-      test("#then globalReadPaths contains all persisted paths", () => {
-        // given
-        const persistence = new StatePersistence(TEST_PATH, 60000)
-        const sessions = new Map<string, SessionState>()
-        const sess1 = createTestSession("rebuild-1")
-        sess1.readPaths = new Set(["/src/app.ts", "/src/utils.ts"])
-        const sess2 = createTestSession("rebuild-2")
-        sess2.readPaths = new Set(["/src/utils.ts", "/src/index.ts"])
-        sessions.set("rebuild-1", sess1)
-        sessions.set("rebuild-2", sess2)
+    test("#then readPaths are preserved per session after round-trip", () => {
+      const persistence = new StatePersistence(TEST_PATH, 60000)
+      const testSessions = new Map<string, SessionState>()
+      const sess1 = createTestSession("persist-1")
+      sess1.readPaths = new Set(["/src/app.ts", "/src/utils.ts"])
+      testSessions.set("persist-1", sess1)
 
-        persistence.forceFlush(sessions)
-        const restored = persistence.load()
+      persistence.forceFlush(testSessions)
+      const restored = persistence.load()
 
-        // when - simulate daemon startup rebuild
-        globalReadPaths.clear()
-        for (const [, state] of restored!) {
-          for (const p of state.readPaths) {
-            globalReadPaths.add(p)
-          }
-        }
-
-        // then
-        expect(globalReadPaths.has("/src/app.ts")).toBe(true)
-        expect(globalReadPaths.has("/src/utils.ts")).toBe(true)
-        expect(globalReadPaths.has("/src/index.ts")).toBe(true)
-        expect(globalReadPaths.size).toBeGreaterThanOrEqual(3)
-
-        // cleanup
-        globalReadPaths.clear()
-      })
+      expect(restored).not.toBeNull()
+      const restoredSess = restored!.get("persist-1")
+      expect(restoredSess).toBeDefined()
+      expect(restoredSess!.readPaths.has("/src/app.ts")).toBe(true)
+      expect(restoredSess!.readPaths.has("/src/utils.ts")).toBe(true)
     })
   })
 })

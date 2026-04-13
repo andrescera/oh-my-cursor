@@ -68,6 +68,7 @@ Slash commands via `commands/*.md` organized by category:
 - **Monitoring**: /status, /agents, /help
 - **Configuration**: /config
 - **Continuation**: /ralph-loop, /ulw-loop, /cancel-ralph, /stop-continuation, /remove-ai-slops
+- **Experimental**: /cloud-agents
 
 ## d. Rules
 
@@ -77,7 +78,7 @@ Slash commands via `commands/*.md` organized by category:
 - **globs**: File pattern matching for conditional loading
 - **FETCH_RULES**: Dynamic rule loading based on description matching
 
-Rule files: orchestrator, coding-standards, anti-patterns, modular-code-enforcement, agent-tool-restrictions.
+Rule files: orchestrator, orchestrator-reference, coding-standards, anti-patterns, modular-code-enforcement, agent-tool-restrictions.
 
 ## e. Skills
 

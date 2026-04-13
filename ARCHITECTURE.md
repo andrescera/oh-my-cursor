@@ -127,9 +127,10 @@ graph LR
 | Tier | Value | Hooks | Purpose |
 |------|-------|-------|---------|
 | SESSION | 0 | sessionStart, sessionEnd, preCompact, subagentStart, subagentStop | Session lifecycle |
-| TOOL_GUARD | 1 | preToolUse, postToolUse, beforeShellExecution, beforeReadFile, etc. | Tool safety |
+| TOOL_GUARD | 1 | preToolUse, postToolUse, postToolUseFailure, beforeShellExecution, afterShellExecution, beforeMCPExecution, afterMCPExecution, beforeReadFile, afterFileEdit | Tool safety and tracking |
 | TRANSFORM | 2 | afterAgentResponse, afterAgentThought | Response transformation |
 | CONTINUATION | 3 | stop, beforeSubmitPrompt | Continuation loops |
+| SKILL | 4 | (skill-embedded MCP lifecycle) | Skill server management |
 
 ### Safety Hooks
 

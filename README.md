@@ -1,6 +1,6 @@
 # oh-my-cursor
 
-Multi-agent orchestration for Cursor IDE. Ported from [oh-my-openagent](https://github.com/anomalyco/opencode).
+Multi-agent orchestration for Cursor IDE. Ported from [oh-my-openagent](https://github.com/code-yeongyu/oh-my-openagent).
 
 11 specialized agents, persistent hook daemon, dynamic context injection, continuation loops, and a lightweight MCP sidecar -- all running natively in Cursor.
 
@@ -80,7 +80,7 @@ From PowerShell in the repo root:
 | Component | Count | Description |
 |-----------|-------|-------------|
 | Agents | 11 + protocol | Specialized subagents with model routing |
-| Rules | 4 | Orchestrator + coding standards |
+| Rules | 6 | Orchestrator, orchestrator reference, coding standards, anti-patterns, tool restrictions, modular enforcement |
 | Commands | 16 | Slash commands (/plan, /ulw-loop, /refactor, /ralph-loop, etc.) |
 | Skills | 7 | Domain expertise (git, frontend, browser, review, playwright) |
 | Hooks | 1 daemon | Persistent Bun HTTP server; 30+ hook handlers in daemon |
@@ -144,15 +144,9 @@ Agents also discover and use any MCP servers you have configured in Cursor (e.g.
 
 ## Worktrees
 
-oh-my-cursor supports git worktrees for isolated parallel execution via the `best-of-n-runner` agent.
+`best-of-n-runner` is Cursor's built-in `subagent_type` for parallel solution attempts in separate git worktrees — not a custom agent file shipped by oh-my-cursor.
 
-**How it works:**
-- Each `best-of-n-runner` gets its own git worktree and branch
-- Worktree configuration is in `worktrees.json`
-- Cursor's built-in worktree support handles directory isolation
-
-**Configuration:**
-The `worktrees.json` file defines worktree settings. The `best-of-n-runner` agent automatically creates and manages worktrees when dispatched for parallel solution attempts.
+`worktrees.json` defines the setup steps for those worktrees. Cursor isolates each attempt in its own directory and branch.
 
 ## Slash Commands
 
@@ -182,7 +176,7 @@ All hooks run through a persistent Bun HTTP server (clooks pattern) for zero sub
 **Features:**
 - Session state tracking (in-memory)
 - Ralph loop auto-continuation (loop_limit: null)
-- Subagent dispatch limits (max 5 explore, max 8 workers)
+- Subagent dispatch limits (max 6 explore, max 8 workers)
 - Dynamic .mdc context injection
 - Dangerous command blocking
 - Sensitive file access guards
@@ -228,7 +222,7 @@ All hooks run through a persistent Bun HTTP server (clooks pattern) for zero sub
 
 ### Status Dashboard
 
-The sidecar includes an interactive HTML dashboard rendered inline in the Cursor conversation via the MCP Apps spec (`ui://oh-my-cursor/status`). It has 4 tabs:
+The sidecar includes an interactive HTML dashboard rendered inline in the Cursor conversation via the MCP Apps spec (`ui://oh-my-cursor/dashboard`). It has 4 tabs:
 
 - **Status** -- Session ID, daemon connectivity, uptime, tool call counts, explore/worker dispatch counters, Ralph loop status, and recent errors.
 - **Hooks** -- Lists all enabled and disabled hook handlers with live configuration from the daemon.
@@ -269,7 +263,6 @@ oh-my-cursor includes comprehensive architecture and integration documentation:
 | [docs/cursor-integration.md](docs/cursor-integration.md) | Every native Cursor feature the plugin uses |
 | [docs/agent-nativeness-audit.md](docs/agent-nativeness-audit.md) | Agent-to-native-tool mapping and recommendations |
 | [CONTRIBUTING.md](CONTRIBUTING.md) | Development setup and contribution guidelines |
-| [DEEPLINKS.md](DEEPLINKS.md) | Cursor deeplink reference |
 
 See [ARCHITECTURE.md](ARCHITECTURE.md) for detailed diagrams and data flow documentation.
 

@@ -5,7 +5,10 @@ import { createEmptyTaskDetector } from "./empty-task-detector"
 import { contextCollector } from "../context-collector"
 import { loadConfig } from "../config"
 import { logEvent } from "../event-logger"
+import { appendFileSync } from "node:fs"
 import { resolve } from "node:path"
+
+const SUBAGENT_TIMING_LOG = "/tmp/oh-my-cursor-timing.jsonl"
 
 export function createSubagentHandlers(
   _sessions: Map<string, SessionState>,
@@ -15,6 +18,7 @@ export function createSubagentHandlers(
 
   return {
     "/subagentStart": (input) => {
+      const entryMs = Date.now()
       const agentType = (input.agent_type as string) || (input.subagent_type as string) || "unknown"
       const agentId = (input.agent_id as string) || agentType + "-" + Date.now()
       const description = (input.description as string) || ""
@@ -33,10 +37,30 @@ export function createSubagentHandlers(
         }
       }
 
+      const exitMs = Date.now()
+      try {
+        appendFileSync(
+          SUBAGENT_TIMING_LOG,
+          JSON.stringify({
+            event: "subagentStart",
+            agentType,
+            agentId,
+            entryMs,
+            exitMs,
+            durationMs: exitMs - entryMs,
+            hadAdditionalContext: Boolean(additional_context),
+            timestamp: new Date(exitMs).toISOString(),
+          }) + "\n",
+        )
+      } catch {
+        void 0
+      }
+
       return additional_context ? { additional_context } : {}
     },
 
     "/subagentStop": (input) => {
+      const entryMs = Date.now()
       const agentId = (input.agent_id as string) || ""
       if (agentId) {
         tracker.complete(agentId)
@@ -139,6 +163,26 @@ export function createSubagentHandlers(
             action: "notify",
           })
         }
+      }
+
+      const exitMs = Date.now()
+      try {
+        appendFileSync(
+          SUBAGENT_TIMING_LOG,
+          JSON.stringify({
+            event: "subagentStop",
+            agentType: typeKey,
+            agentId,
+            entryMs,
+            exitMs,
+            durationMs: exitMs - entryMs,
+            subagentDurationMs: duration_ms,
+            status,
+            timestamp: new Date(exitMs).toISOString(),
+          }) + "\n",
+        )
+      } catch {
+        void 0
       }
 
       return emptyTaskDetector({

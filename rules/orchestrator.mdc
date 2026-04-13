@@ -34,12 +34,35 @@ Interview-first. Gather context before producing anything. Never implement code.
 4. **Gap analysis** — Dispatch Task(metis) with explore results as CONTEXT. Metis identifies missing requirements, ambiguities, and technical risks.
 5. **Draft** — Write the plan to `.cursor/plans/<name>.plan.md`. Include: objective, file list, dependency order, acceptance criteria, parallel execution waves. Follow the template in `agents/prometheus.md`.
 6. **Self-review** — Classify gaps: CRITICAL (ask user via AskQuestion), MINOR (fix silently), AMBIGUOUS (apply default, disclose in summary).
-7. **Review (optional)** — Ask user via AskQuestion: "Want a Momus review?" If yes, dispatch Task(momus) with plan contents, incorporate feedback.
+7. **Review (optional)** — Ask user via AskQuestion: "Want a Momus review?" If yes, dispatch Task(momus) with plan contents, incorporate feedback. **Momus loop**: auto-loops up to 3 rejections (revise plan → re-submit to Momus). After 3 rejections, surface blockers to user via AskQuestion.
 8. **Handoff** — Tell user to switch to Agent mode and run `/start-work` to execute.
 
 > For the full plan template, interview strategies, and gap classification details, see `agents/prometheus.md`.
 
-**Clearance checklist** (triggers deeper analysis): 3+ files touched, database migrations, public API changes, security-sensitive code, cross-module dependencies.
+**Clearance checklist** — ALL YES → auto-transition to plan generation without user prompt:
+
+| # | Gate | YES means |
+|---|------|-----------|
+| 1 | Scope bounded? | All affected files/modules identified |
+| 2 | Requirements unambiguous? | No open questions remain after interview |
+| 3 | Dependencies mapped? | Cross-module and external deps catalogued |
+| 4 | Risk assessed? | Security, migrations, public API impact reviewed |
+| 5 | Explore complete? | Codebase context gathered, no blind spots |
+| 6 | Acceptance criteria defined? | Each deliverable has a verifiable condition |
+
+> **Auto-transition rule:** When every gate is YES, advance directly to plan generation (step 5) without prompting the user. If any gate is NO, resolve it first via interview or explore.
+
+### Intent Classification
+
+| Intent | Explore Dispatches | Planning Depth | Example |
+|--------|-------------------|----------------|---------|
+| **Trivial** | 0 | None — skip to handoff | Typo fix, comment edit |
+| **Simple** | 1 | Lightweight — checklist only | Rename a function, add a flag |
+| **Moderate** | 1–2 | Standard — full clearance checklist | New endpoint, add validation |
+| **Complex** | 2–3 | Full — clearance + Metis gap analysis | Multi-file feature, new module |
+| **Architectural** | 3–5 | Full + Momus review mandatory | Schema migration, API redesign |
+| **Exploratory** | 3–5 | Discovery-first — interview heavy | "Make it faster", unclear scope |
+| **Collaborative** | 1–2 | Iterative — user co-designs | UX flow, config DSL design |
 
 **Allowed tools:** Read, Grep, Glob, Write (.cursor/plans/ and .cursor/drafts/ only), AskQuestion, TodoWrite, Task(explore), Task(metis), Task(momus), Task(librarian), SwitchMode.
 **FORBIDDEN:** Task(sisyphus), Task(hephaestus), Task(sisyphus-junior), Task(atlas), Shell, Delete, StrReplace. MUST NOT dispatch implementation workers.
@@ -107,6 +130,8 @@ Root (depth 0) -- mode-conditional persona
 ```
 
 ## Agent Routing
+
+> **Model names are ASPIRATIONAL.** The Task tool only accepts `model: 'fast'` or inherits the parent model. The Model column below is a definition-time signal for intended capability tier, not a runtime parameter.
 
 | Agent | Model | Fire When |
 |-------|-------|-----------|

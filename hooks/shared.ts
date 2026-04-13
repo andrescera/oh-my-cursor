@@ -3,8 +3,6 @@ import type { SessionState } from "./types"
 
 export const sessions = new Map<string, SessionState>()
 
-export const globalReadPaths = new Set<string>()
-
 export function getOrCreateSession(conversationId: string): SessionState {
   if (!sessions.has(conversationId)) {
     sessions.set(conversationId, {

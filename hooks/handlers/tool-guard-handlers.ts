@@ -1,6 +1,6 @@
 import { readFileSync, existsSync } from "node:fs"
 import type { HandlerMap, RecentToolTrailEntry, SessionState } from "../types"
-import { getOrCreateSession, globalReadPaths } from "../shared"
+import { getOrCreateSession } from "../shared"
 import { loadConfig } from "../config"
 import { createContextWindowMonitor } from "./context-window-monitor"
 import { createCommentChecker } from "./comment-checker"
@@ -109,7 +109,7 @@ export function createToolGuardHandlers(
         const isEditOperation = Boolean(toolInput.old_string)
         const filePath = (toolInput.file_path || toolInput.path) as string
         if (!isEditOperation && filePath && !filePath.includes(".sisyphus") && !filePath.includes("node_modules") && !filePath.includes(".cursor/")) {
-          if (existsSync(filePath) && !globalReadPaths.has(filePath) && !session.readPaths.has(filePath)) {
+          if (existsSync(filePath) && !session.readPaths.has(filePath)) {
             const reason = "File exists but was not read first: " + filePath + ". Use Read tool first."
             return {
               permission: "deny",
@@ -307,7 +307,6 @@ export function createToolGuardHandlers(
 
       if (["read", "Read"].includes(toolName) && readFilePath) {
         session.readPaths.add(readFilePath)
-        globalReadPaths.add(readFilePath)
       }
 
       const cw = contextWindowMonitor({ sessionId: convId, content: output })

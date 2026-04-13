@@ -49,6 +49,18 @@ When asked about your identity, process, or methodology, answer from this defini
 
 ## Execution Loop
 
+## Keyword Mode Awareness
+
+The hook system detects keywords and injects mode context. Adapt when you see:
+| Mode | Trigger | Behavior |
+|------|---------|----------|
+| `[mode:ultrawork]` | 'ultrawork', 'ulw' | Deep sustained autonomous work until `<promise>DONE</promise>` |
+| `[mode:analysis]` | 'analyze', 'investigate', 'examine', 'research' | Evidence-first, cite files/lines |
+| `[mode:search]` | 'search', 'find', 'where is', 'how does' | Explore-heavy, batch searches |
+| `[mode:think]` | 'think', 'think harder', 'think deeply' | Extended reasoning, step by step |
+| `[mode:plan]` | '/plan' | Prometheus active, plan only |
+| `[mode:agent+plan]` | Active plan | Atlas coordination, follow plan phases |
+
 ### Phase 0 - Intent Gate (EVERY message)
 
 Before classifying the task, identify what the user actually wants. Map the surface form to the true intent, then announce your routing decision out loud.

@@ -1,98 +1,27 @@
 # oh-my-cursor
 
-Multi-agent orchestration for Cursor IDE. Ported from [oh-my-openagent](https://github.com/code-yeongyu/oh-my-openagent).
-
-11 specialized agents, persistent hook daemon, dynamic context injection, continuation loops, and a lightweight MCP sidecar -- all running natively in Cursor.
+Multi-agent orchestration for Cursor IDE. Fork of [oh-my-openagent](https://github.com/code-yeongyu/oh-my-openagent).
 
 ## Quick Start
 
-### Prerequisites
-
-- **bun** — required (hook daemon and MCP sidecar)
-- **python3** or **jq** — recommended for JSON merge operations during install
-
-### Install (Linux / macOS)
-
-User scope (applies to all Cursor projects):
+Prerequisites: **bun** (required), **python3** or **jq** (recommended for JSON merge during install).
 
 ```bash
 bash install.sh
-# or
-./install.sh
 ```
 
-If oh-my-cursor is already installed, re-running `./install.sh` detects the existing install, backs up the current plugin directory, and performs an update.
+See [INSTALL.md](INSTALL.md) for all options, Windows, and AI-assisted install.
 
-Current project only:
+## What It Does
 
-```bash
-./install.sh --project
-```
+11 specialized agents with dynamic model routing, dispatched through a single orchestrator rule. The root thread's persona changes based on Cursor's mode:
 
-Preview changes without writing files:
+- **Plan Mode** -- Root becomes Prometheus (strategic planner)
+- **Agent Mode** -- Root becomes Orchestrator/Atlas (dispatch and verify)
+- **Debug Mode** -- Root becomes diagnostic specialist (read-only)
+- **Ask Mode** -- Root becomes Oracle/Advisor (read-only)
 
-```bash
-./install.sh --dry-run
-```
-
-Overwrite an existing plugin install:
-
-```bash
-./install.sh --force
-```
-
-Remove the plugin and clean up Cursor-side files:
-
-```bash
-./install.sh --uninstall
-```
-
-Print installer version:
-
-```bash
-./install.sh --version
-```
-
-Check whether a newer release is available:
-
-```bash
-./install.sh --check-update
-```
-
-**MCP config:** `mcp.json` is merged into your existing Cursor MCP configuration — it is not replaced wholesale, so your other servers stay intact.
-
-### Install (Windows)
-
-From PowerShell in the repo root:
-
-```powershell
-.\install.ps1                          # user scope
-.\install.ps1 -Scope project           # current project only
-.\install.ps1 -DryRun                  # preview
-.\install.ps1 -Force                   # overwrite existing plugin dir
-.\install.ps1 -Uninstall               # remove plugin + cleanup
-.\install.ps1 -Version                 # print installed version
-.\install.ps1 -CheckUpdate             # check for updates
-```
-
-## What Gets Installed
-
-| Component | Count | Description |
-|-----------|-------|-------------|
-| Agents | 11 + protocol | Specialized subagents with model routing |
-| Rules | 6 | Orchestrator, orchestrator reference, coding standards, anti-patterns, tool restrictions, modular enforcement |
-| Commands | 16 | Slash commands (/plan, /ulw-loop, /refactor, /ralph-loop, etc.) |
-| Skills | 7 | Domain expertise (git, frontend, browser, review, playwright) |
-| Hooks | 1 daemon | Persistent Bun HTTP server; 30+ hook handlers in daemon |
-| MCP | 4 servers | websearch, context7, grep_app + sidecar |
-
-## Architecture
-
-Mode-Based Routing:
-  Plan Mode  → Root = Prometheus persona (research, plan writing)
-  Agent Mode → Root = Orchestrator/Atlas (dispatch, verify, coordinate)
-  Debug Mode → Root = Diagnostic specialist (read-only)
-  Ask Mode   → Root = Oracle/Advisor (read-only)
+Agent dispatch tree:
 
 ```
 You (root thread)
@@ -113,6 +42,12 @@ You (root thread)
        └── Task(multimodal-looker) ── Visual analysis (gemini-3.1-pro, readonly)
 ```
 
+A persistent **hook daemon** (Bun HTTP server) handles 18 hook events through 30+ handlers -- session tracking, context injection, dangerous command blocking, dispatch limits, and continuation control. Zero subprocess overhead per event.
+
+An **MCP sidecar** adds 8 tools not in Cursor's built-in set (visual file analysis, persistent tmux sessions, dispatch stats, transcript search, daemon logs, session log, status dashboard).
+
+Three **continuation loops**: Ralph (self-referential until done), Ultrawork/ULW (with Oracle verification gate), and Boulder (state-based todo tracking with backoff and stagnation detection).
+
 ## Agents
 
 | Agent | Model | Role |
@@ -129,33 +64,14 @@ You (root thread)
 | **sisyphus-junior** | claude-4.6-sonnet-medium-thinking | Quick task executor |
 | **multimodal-looker** | gemini-3.1-pro | Visual file analysis (readonly) |
 
-## MCP Integration
-
-oh-my-cursor ships with 3 remote MCP servers and 1 local sidecar, configured in `mcp.json`:
-
-| Server | Capabilities |
-|--------|-------------|
-| websearch | Web search via Exa/Tavily |
-| context7 | Library documentation lookup |
-| grep_app | Code search across repositories |
-| oh-my-cursor | Local sidecar with 8 tools (see [MCP Sidecar](#mcp-sidecar)) |
-
-Agents also discover and use any MCP servers you have configured in Cursor (e.g., Linear, Notion, GitKraken) via `CallMcpTool`.
-
-## Worktrees
-
-`best-of-n-runner` is Cursor's built-in `subagent_type` for parallel solution attempts in separate git worktrees — not a custom agent file shipped by oh-my-cursor.
-
-`worktrees.json` defines the setup steps for those worktrees. Cursor isolates each attempt in its own directory and branch.
-
-## Slash Commands
+## Commands
 
 | Command | Description |
 |---------|-------------|
 | `/plan` | Create a strategic work plan with Prometheus |
 | `/start-work` | Execute an existing plan with Atlas |
 | `/refactor` | Intelligent refactoring with LSP + AST-grep |
-| `/briareus` | Massive parallelism: decompose into micro-tasks and run many sisyphus-junior workers at once |
+| `/briareus` | Massive parallelism: decompose into micro-tasks and run many workers at once |
 | `/init-deep` | Generate hierarchical AGENTS.md files |
 | `/ralph-loop` | Self-referential loop until task completion |
 | `/ulw-loop` | Ultrawork loop with Oracle verification gate |
@@ -169,107 +85,47 @@ Agents also discover and use any MCP servers you have configured in Cursor (e.g.
 | `/config` | Display the current merged oh-my-cursor configuration |
 | `/cloud-agents` | Dispatch and manage agents via cloud API (experimental) |
 
-## Hook Daemon
+## Coverage and Limitations
 
-All hooks run through a persistent Bun HTTP server (clooks pattern) for zero subprocess overhead.
-
-**Features:**
-- Session state tracking (in-memory)
-- Ralph loop auto-continuation (loop_limit: null)
-- Subagent dispatch limits (max 6 explore, max 8 workers)
-- Dynamic .mdc context injection
-- Dangerous command blocking
-- Sensitive file access guards
-- Long thinking block logging
-
-**Start manually:** `bun run hooks/daemon.ts`
-**Auto-start:** The daemon launches automatically on first `sessionStart` via `hooks/scripts/start-daemon.sh`
-
-## Flow Improvements (v2)
-
-- **Auto-Continuation:** Plan flow auto-advances between steps. Boulder continuation uses state-based todo tracking with cooldown, exponential backoff, and stagnation detection.
-- **Momus Review Loop:** Plans auto-reviewed up to 3 times. After 3 rejections, asks user.
-- **Adaptive Explore Dispatch:** 0 explores for trivial, 2-6+ for complex. 7 prompt templates.
-- **Keyword Modes:** ultrawork, analyze, search, think — detected and injected as context.
-- **Session State Persistence:** Active plans tracked in `.cursor/state/active-plan.json`.
-- **Error Classification:** Rate limit, model unavailable, timeout, generic — with specific recovery advice.
-- **Unstable Agent Detection:** 3+ consecutive failures trigger warnings and fallback suggestions.
-
-## Configuration
-
-```jsonc
-{
-  "continuation": { "cooldown_ms": 5000, "max_failures": 5, "backoff_multiplier": 2 },
-  "momus": { "max_iterations": 3 },
-  "model_routing": { "retry_on_errors": [429, 500, 502, 503, 504], "max_retry_attempts": 3 }
-}
-```
-
-## MCP Sidecar
-
-8 tools not available in Cursor's built-in tool set, served via a local MCP server on `localhost:47848`:
-
-| Tool | Description | Key Parameters |
-|------|-------------|----------------|
-| `look_at` | Visual file analysis for images, PDFs, and diagrams that can't be read as plain text | `file_path`, `goal` |
-| `interactive_bash` | Persistent tmux session for long-running or interactive commands with state across calls | `command`, `session_name` |
-| `skill_mcp` | Manage skill-embedded MCP servers (start, stop, list, status) | `action`, `skill_name` |
-| `get_dispatch_stats` | Current session dispatch statistics -- explore/worker counts, tool calls, active agents | -- |
-| `session_transcripts` | List recent agent transcripts or search within them for specific content | `action` (list/search), `query`, `limit` |
-| `daemon_logs` | View recent oh-my-cursor daemon log output for debugging hook behavior | `lines` |
-| `session_log` | Query the session event log -- recent events, summaries, filtered search, or export path | `action` (recent/summary/search/export), `event_filter`, `action_filter` |
-| `oh_my_cursor_status` | Interactive status dashboard (MCP App) showing daemon health, hooks, background tasks, and event log | -- |
-
-### Status Dashboard
-
-The sidecar includes an interactive HTML dashboard rendered inline in the Cursor conversation via the MCP Apps spec (`ui://oh-my-cursor/dashboard`). It has 4 tabs:
-
-- **Status** -- Session ID, daemon connectivity, uptime, tool call counts, explore/worker dispatch counters, Ralph loop status, and recent errors.
-- **Hooks** -- Lists all enabled and disabled hook handlers with live configuration from the daemon.
-- **Background** -- Active background tasks with model, name, and status.
-- **Event Log** -- Filterable real-time event stream (all / tools / dispatches / errors / denies) with expandable JSON detail per event, JSONL export, and clipboard copy.
-
-The dashboard auto-refreshes every 5 seconds and pulls data from the daemon's `/health`, `/config`, `/backgroundTasks`, and `/session-log` endpoints.
-
-**Start:** `bun run hooks/mcp-sidecar.ts`
-
-## Coverage vs OpenCode
-
-This plugin achieves ~92-95% of oh-my-openagent's functionality using Cursor's native APIs.
-
-| Area | Coverage (approx.) |
-|------|---------------------|
-| Agents | ~98% |
-| Tools | ~65% |
+| Area | Coverage |
+|------|----------|
+| Agents | ~95% |
+| Tools | ~70% |
 | Hooks | ~85% |
 | Skills | ~95% |
 | Commands | ~95% |
 | MCPs | ~100% |
-| Context injection | ~90% |
-| Continuation / loops | ~95% |
-| **Overall** | **~92-95%** |
+| Context injection | ~85% |
+| Continuation | ~90% |
 
-**What works natively:** Agents, model routing with thinking variants, sub-agent orchestration, background agents, skills, commands, rules, context injection, continuation loops, session management via ACP, Cloud Agent automations.
+### Known Limitations
 
-**Irreducible gap (~5-8%):** Provider-level config, fine-grained per-request effort control, session tree opacity, programmatic model switching mid-session.
+- No provider-level config -- API keys and endpoints managed by Cursor
+- No per-request effort/thinking control from hooks
+- Session tree opaque -- cannot inspect sibling subagent state
+- No programmatic model switching mid-session
+- Hook latency -- shell-to-HTTP-to-daemon bridge adds ~50-200ms per hook event
+- Context window pressure -- MCP tool definitions consume tokens proportional to server count
+- Subagent parallelism -- Cursor controls scheduling; instructions suggest counts but don't guarantee them
+
+## Configuration
+
+Two-layer JSONC: `~/.config/oh-my-cursor/config.jsonc` (user) and `.cursor/oh-my-cursor.jsonc` (project). Project config merges over user config.
+
+See `config.default.jsonc` for all options. Run `/config` to view the active merged config.
 
 ## Documentation
 
-oh-my-cursor includes comprehensive architecture and integration documentation:
-
 | Document | Description |
 |----------|-------------|
-| [ARCHITECTURE.md](ARCHITECTURE.md) | System architecture with mermaid flow diagrams |
-| [docs/cursor-integration.md](docs/cursor-integration.md) | Every native Cursor feature the plugin uses |
-| [docs/agent-nativeness-audit.md](docs/agent-nativeness-audit.md) | Agent-to-native-tool mapping and recommendations |
+| [INSTALL.md](INSTALL.md) | Install, update, uninstall, AI-assisted install |
+| [ARCHITECTURE.md](ARCHITECTURE.md) | System architecture, flows, and mermaid diagrams |
+| [docs/cursor-features.md](docs/cursor-features.md) | Native Cursor features used by the plugin |
 | [CONTRIBUTING.md](CONTRIBUTING.md) | Development setup and contribution guidelines |
-
-See [ARCHITECTURE.md](ARCHITECTURE.md) for detailed diagrams and data flow documentation.
 
 ## Credits
 
-Ported from [oh-my-openagent](https://github.com/code-yeongyu/oh-my-openagent) (OpenCode plugin by YeonGyu Kim).
+Fork of [oh-my-openagent](https://github.com/code-yeongyu/oh-my-openagent) by YeonGyu Kim.
 
-## License
+SUL-1.0. See [LICENSE.md](LICENSE.md).
 
-Sustainable Use License 1.0 (SUL-1.0). See [LICENSE.md](LICENSE.md) for full text.

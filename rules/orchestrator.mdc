@@ -27,14 +27,16 @@ Orchestration mode is injected via `additional_context` on session start. Defaul
 | **explore** | `gemini-3-flash` | Any search, exploration, "how does X work", docs lookup |
 | **librarian** | `fast` | External docs, library APIs, OSS code search |
 | **sisyphus-junior** | `claude-4.6-sonnet-medium-thinking` | Simple single-file changes, quick focused tasks |
-| **sisyphus** | `claude-4.6-opus-max-thinking` | Complex multi-file work, architecture + implementation |
+| **sisyphus** | `dynamic (see below)` | Complex multi-file work, architecture + implementation |
 | **hephaestus** | `gpt-5.4-high` | Sustained deep work on a single complex problem |
 | **atlas** | `claude-4.6-sonnet-medium-thinking` | Plan exists -> executes plan step-by-step via delegation |
 | **oracle** | `gpt-5.4-medium` | Need architecture advice, debugging consultation |
 | **prometheus** | `claude-4.6-opus-max-thinking` | Complex planning, ambiguous scope analysis |
 | **metis** | `gpt-5.4-medium` | Pre-planning gap analysis, risk assessment |
-| **momus** | `gpt-5.4-medium` | Plan review, quality audit |
+| **momus** | `gpt-5.4-high` | Plan review, quality audit |
 | **multimodal-looker** | `gemini-3.1-pro` | Images, PDFs, diagrams, visual analysis |
+
+**Sisyphus model:** Dynamic based on task complexity. Simple coordination uses `claude-4.6-sonnet-medium-thinking`; complex multi-file architecture uses `claude-4.6-opus-max-thinking`. Dispatchers should override the model per task.
 
 ## Model Fallback
 

@@ -191,6 +191,26 @@ All hooks run through a persistent Bun HTTP server (clooks pattern) for zero sub
 **Start manually:** `bun run hooks/daemon.ts`
 **Auto-start:** The daemon launches automatically on first `sessionStart` via `hooks/scripts/start-daemon.sh`
 
+## Flow Improvements (v2)
+
+- **Auto-Continuation:** Plan flow auto-advances between steps. Boulder continuation uses state-based todo tracking with cooldown, exponential backoff, and stagnation detection.
+- **Momus Review Loop:** Plans auto-reviewed up to 3 times. After 3 rejections, asks user.
+- **Adaptive Explore Dispatch:** 0 explores for trivial, 2-6+ for complex. 7 prompt templates.
+- **Keyword Modes:** ultrawork, analyze, search, think — detected and injected as context.
+- **Session State Persistence:** Active plans tracked in `.cursor/state/active-plan.json`.
+- **Error Classification:** Rate limit, model unavailable, timeout, generic — with specific recovery advice.
+- **Unstable Agent Detection:** 3+ consecutive failures trigger warnings and fallback suggestions.
+
+## Configuration
+
+```jsonc
+{
+  "continuation": { "cooldown_ms": 5000, "max_failures": 5, "backoff_multiplier": 2 },
+  "momus": { "max_iterations": 3 },
+  "model_routing": { "retry_on_errors": [429, 500, 502, 503, 504], "max_retry_attempts": 3 }
+}
+```
+
 ## MCP Sidecar
 
 8 tools not available in Cursor's built-in tool set, served via a local MCP server on `localhost:47848`:

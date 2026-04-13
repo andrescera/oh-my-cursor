@@ -6,7 +6,24 @@ Use **Glob** on `.cursor/plans/*.plan.md` to list plan files. Use **Read** to pr
 
 If exactly one plan exists, use it. If multiple plans exist, use **AskQuestion** so the user picks which plan to run.
 
+## Step 2.5: Resume detection
+
+After the plan is chosen:
+
+- Use **Read** on `.cursor/state/active-plan.json`. If the file is missing or unreadable, continue to Step 3.
+- If the file exists, use **AskQuestion** to offer **Resume** (continue from saved `completedTasks` / `currentWave`) versus **Start fresh** (discard prior state for this run). If **`path`** in the file does not match the chosen plan, treat state as stale: default to **Start fresh** or confirm overwrite via **AskQuestion** before proceeding.
+
 ## Step 3: Execute plan
+
+**Active plan state** — At the start of Step 3 (before reading orchestration mode):
+
+1. Ensure `.cursor/state/` exists (create the directory if needed).
+2. Create or update `.cursor/state/active-plan.json` with:
+   - **`path`**: path to the chosen plan file (workspace-relative or absolute, consistent across the run)
+   - **`startedAt`**: ISO 8601 timestamp (set to now on **Start fresh**; preserve when **Resume**)
+   - **`completedTasks`**: array of completed task or todo identifiers (`[]` on **Start fresh**; restore from file on **Resume**)
+   - **`currentWave`**: integer wave index (`0` at a fresh start; restore or reset to match **Resume** / **Start fresh**)
+3. As execution proceeds, **update** the same file after each verified wave: advance **`currentWave`**, append completed items to **`completedTasks`**, and keep **`path`** accurate.
 
 Read the **orchestration.mode** value from `.cursor/rules/oh-my-cursor-context.mdc`. Default is `"native"` if not set.
 
@@ -17,7 +34,7 @@ Read the **orchestration.mode** value from `.cursor/rules/oh-my-cursor-context.m
 The root thread adopts **Atlas coordination personality** and executes the plan directly, retaining full conversation context. Root becomes a pure dispatcher — it does NOT implement anything itself.
 
 1. **Read** the full plan file.
-2. **TodoWrite** — register ALL plan tasks as todos before starting any work. Each todo maps to one dispatchable unit.
+2. **Task breakdown** — Decompose every plan task into granular sub-steps and register **ALL** of them as todos via **TodoWrite** **before** starting any implementation or dispatch work. Do not begin waves or **Task** dispatches until every sub-step is registered.
 3. Decompose tasks into parallel waves based on the plan's dependency matrix. Tasks within a wave have no interdependencies and run concurrently.
 4. For each wave, dispatch workers in parallel via **Task**:
    - `subagent_type="sisyphus-junior"` for single-file, bounded tasks
@@ -27,7 +44,7 @@ The root thread adopts **Atlas coordination personality** and executes the plan 
    - **ReadLints** on changed files — must be clean
    - **Read** changed files to confirm correctness
    - Cross-reference what the worker claimed vs actual file contents
-6. Mark verified tasks as completed in **TodoWrite**.
+6. Mark verified tasks as completed in **TodoWrite**. Persist progress in **`active-plan.json`** ( **`currentWave`**, **`completedTasks`** ).
 7. **Auto-continue** — dispatch the next wave immediately. Never ask "should I continue?" — only stop when blocked by genuine ambiguity requiring user input.
 8. Run the **Final Verification Wave** from the plan (if present).
 

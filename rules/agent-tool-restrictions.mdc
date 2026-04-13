@@ -3,6 +3,24 @@ description: "Per-agent tool restrictions — enforces read-only, planner, and w
 alwaysApply: true
 ---
 
+## Enforcement Model
+
+| Enforcement | Mechanism | Examples |
+| --- | --- | --- |
+| Hook-enforced | preToolUse deny | Protected files, read-before-write, dispatch limits |
+| Advisory | Rules/context injection | Mode tool restrictions, role boundaries |
+| Prompt-enforced | LLM-evaluated hooks | MCP safety checks |
+
+## Model Routing
+
+Frontmatter model names are definition-time signals. At runtime, Task only accepts `model: 'fast'` or inherits parent.
+
+| Tier | Signal | Runtime |
+| --- | --- | --- |
+| Lightweight | fast, gemini-3-flash | model: 'fast' |
+| Standard | claude-4.6-sonnet-*, gpt-5.4-medium | Inherit (omit) |
+| Heavy | claude-4.6-opus-*, gpt-5.4-high | Inherit (omit) |
+
 # Agent Tool Restrictions
 
 ## Root Thread (Mode-Conditional)
@@ -27,7 +45,7 @@ Tool access depends on the active Cursor mode:
 
 These agents MUST NOT use mutation tools:
 - **Forbidden:** Write, Delete, Shell (mutating commands), StrReplace, EditNotebook
-- **Allowed:** Read, Grep, Glob, WebSearch, WebFetch, SwitchMode(ask), FETCH_RULES
+- **Allowed:** Read, Grep, Glob, WebSearch, WebFetch, SwitchMode(ask), FETCH_RULES, CallMcpTool, FetchMcpResource
 
 Violations indicate an agent is exceeding its role boundary.
 

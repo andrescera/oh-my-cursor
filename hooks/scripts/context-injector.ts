@@ -17,6 +17,9 @@ interface ContextState {
   errorCount?: number
   compactionEpoch?: number
   dispatchSummary?: Record<string, number>
+  activePlan?: { path: string; phase: string; completedTasks: string[] } | null
+  continuationState?: { cooldownUntil: number | null; failures: number } | null
+  momusIterations?: number
 }
 
 async function ensureDir(dirPath: string): Promise<void> {
@@ -41,6 +44,20 @@ export async function writeContextRule(
   const rulesDir = join(projectDir, ".cursor", "rules")
   await ensureDir(rulesDir)
 
+  const planContinuationLines: string[] = []
+  if (state.activePlan) {
+    planContinuationLines.push(
+      `Active plan: ${state.activePlan.path} | Phase: ${state.activePlan.phase} | Completed: ${state.activePlan.completedTasks.length} tasks`,
+    )
+  }
+  if (state.continuationState && state.continuationState.failures > 0) {
+    planContinuationLines.push(`Continuation: ${state.continuationState.failures} stagnation failures`)
+  }
+  if (state.momusIterations !== undefined && state.momusIterations > 0) {
+    planContinuationLines.push(`Momus iterations: ${state.momusIterations}/3`)
+  }
+  const planContinuationBlock = planContinuationLines.length > 0 ? [...planContinuationLines, ""] : []
+
   const content = [
     "---",
     'description: "oh-my-cursor dynamic context (auto-updated by hook daemon)"',
@@ -59,6 +76,7 @@ export async function writeContextRule(
       : "No active agents",
     `Orchestration mode: ${config.orchestration.mode}`,
     "",
+    ...planContinuationBlock,
     state.recentTools.length > 0
       ? `Recent tool activity: ${state.recentTools.slice(-5).join(", ")}`
       : "",

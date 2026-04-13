@@ -46,6 +46,15 @@ export function createSubagentHandlers(
         errorCount: session.errorCount,
         compactionEpoch: session.lastCompactionEpoch,
         dispatchSummary: session.dispatchCounts,
+        activePlan: session.activePlan,
+        continuationState:
+          session.continuationCooldownUntil !== null || session.consecutiveContinuationFailures > 0
+            ? {
+                cooldownUntil: session.continuationCooldownUntil,
+                failures: session.consecutiveContinuationFailures,
+              }
+            : undefined,
+        momusIterations: session.momusIterations,
       }).catch((err) => console.error("[oh-my-cursor] Failed to update context rule:", err))
 
       return additional_context ? { additional_context } : {}

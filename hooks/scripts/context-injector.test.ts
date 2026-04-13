@@ -142,6 +142,50 @@ describe("context-injector", () => {
       })
     })
 
+    describe("#when plan, continuation, and momus fields are set", () => {
+      test("#then includes those lines after Active Session State header block", async () => {
+        const dir = makeTmpDir()
+
+        await writeContextRule(dir, {
+          sessionId: "sess-plan",
+          projectDir: dir,
+          activeAgents: [],
+          recentTools: [],
+          lastUpdated: "2026-04-06T00:00:00.000Z",
+          activePlan: {
+            path: ".cursor/plans/foo.md",
+            phase: "implement",
+            completedTasks: ["a", "b"],
+          },
+          continuationState: { cooldownUntil: null, failures: 2 },
+          momusIterations: 1,
+        })
+
+        const content = readFileSync(join(dir, CONTEXT_FILE), "utf-8")
+        expect(content).toContain(
+          "Active plan: .cursor/plans/foo.md | Phase: implement | Completed: 2 tasks",
+        )
+        expect(content).toContain("Continuation: 2 stagnation failures")
+        expect(content).toContain("Momus iterations: 1/3")
+      })
+
+      test("#then omits continuation line when failures are 0", async () => {
+        const dir = makeTmpDir()
+
+        await writeContextRule(dir, {
+          sessionId: "sess-no-cont",
+          projectDir: dir,
+          activeAgents: [],
+          recentTools: [],
+          lastUpdated: "2026-04-06T00:00:00.000Z",
+          continuationState: { cooldownUntil: 1_700_000_000_000, failures: 0 },
+        })
+
+        const content = readFileSync(join(dir, CONTEXT_FILE), "utf-8")
+        expect(content).not.toContain("Continuation:")
+      })
+    })
+
     describe("#when writing includes orchestration reminders", () => {
       test("#then contains standard reminder lines", async () => {
         const dir = makeTmpDir()
@@ -156,7 +200,7 @@ describe("context-injector", () => {
 
         const content = readFileSync(join(dir, CONTEXT_FILE), "utf-8")
         expect(content).toContain("## Orchestration Reminders")
-        expect(content).toContain("Follow the orchestrator rule for all delegation")
+        expect(content).toContain("Batch related searches into single explore dispatches")
         expect(content).toContain("6-section task brief format")
         expect(content).toContain("Executors self-verify before reporting done")
       })

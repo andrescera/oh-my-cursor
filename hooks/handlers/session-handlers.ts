@@ -81,6 +81,15 @@ export function createSessionHandlers(
         errorCount: 0,
         compactionEpoch: 0,
         dispatchSummary: {},
+        activePlan: session.activePlan,
+        continuationState:
+          session.continuationCooldownUntil !== null || session.consecutiveContinuationFailures > 0
+            ? {
+                cooldownUntil: session.continuationCooldownUntil,
+                failures: session.consecutiveContinuationFailures,
+              }
+            : undefined,
+        momusIterations: session.momusIterations,
       }).catch((err) => console.error("[oh-my-cursor] Failed to write context rule:", err))
 
       const contextStr = [
@@ -167,6 +176,15 @@ export function createSessionHandlers(
         errorCount: session.errorCount,
         compactionEpoch: session.lastCompactionEpoch,
         dispatchSummary: session.dispatchCounts,
+        activePlan: session.activePlan,
+        continuationState:
+          session.continuationCooldownUntil !== null || session.consecutiveContinuationFailures > 0
+            ? {
+                cooldownUntil: session.continuationCooldownUntil,
+                failures: session.consecutiveContinuationFailures,
+              }
+            : undefined,
+        momusIterations: session.momusIterations,
       }).catch((err) => console.error("[oh-my-cursor] Failed to write context rule:", err))
 
       const config = loadConfig()

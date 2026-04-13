@@ -1,3 +1,4 @@
+import * as crypto from "node:crypto"
 import type { SessionState } from "./types"
 
 export const sessions = new Map<string, SessionState>()
@@ -34,6 +35,7 @@ export function getOrCreateSession(conversationId: string): SessionState {
       composerMode: null,
       subagentOutcomes: [],
       subagentFailureCounts: {},
+      delegateRetryState: {},
     })
   }
   return sessions.get(conversationId)!
@@ -42,6 +44,10 @@ export function getOrCreateSession(conversationId: string): SessionState {
 export function parseInput(body: unknown): Record<string, unknown> {
   if (typeof body === "string") return JSON.parse(body)
   return body as Record<string, unknown>
+}
+
+export function resolveConversationId(input: Record<string, unknown>): string {
+  return (input.conversation_id as string) || (input.session_id as string) || crypto.randomUUID()
 }
 
 export function extractMeta(

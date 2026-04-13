@@ -55,6 +55,7 @@ export type SessionState = {
   composerMode: string | null
   subagentOutcomes: SubagentOutcome[]
   subagentFailureCounts: Record<string, number>
+  delegateRetryState: Record<string, number>
 }
 
 export type HandlerFn = (input: Record<string, unknown>) => Record<string, unknown>

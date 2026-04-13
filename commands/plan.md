@@ -27,6 +27,8 @@ Mark `plan-switchmode` as `in_progress`. Call `SwitchMode(plan)`. You are now th
 
 Mark `plan-switchmode` as `completed` when Plan mode is active.
 
+**AUTO-CONTINUE**: After completing this step, IMMEDIATELY proceed to Step 2 without waiting for user input. Only stop if genuinely blocked by missing information.
+
 ### Step 2 — Interview
 
 Mark `plan-interview` as `in_progress`.
@@ -35,15 +37,40 @@ Ask the user 1–3 scoping questions via **AskQuestion** to clarify the request.
 
 For complex tasks or multi-turn interviews, continuously record decisions to `.cursor/drafts/{name}.md` using **Write**. Update after every meaningful user response. This is your backup memory beyond the context window. In Plan mode, use Write (full file replacement) since StrReplace is unavailable. For simple tasks, this is optional.
 
-Mark `plan-interview` as `completed` when done.
+**Clearance checklist** — evaluate after every interview turn. Auto-transition to Step 3 when ALL items pass:
+
+- [ ] Core objective clearly defined?
+- [ ] Scope boundaries established (IN/OUT)?
+- [ ] No critical ambiguities remaining?
+- [ ] Technical approach decided?
+- [ ] Test strategy confirmed?
+- [ ] No blocking questions outstanding?
+
+When all items pass, mark `plan-interview` as `completed` and proceed. If any item fails, continue interviewing until it passes or the user explicitly defers it.
+
+**AUTO-CONTINUE**: After completing this step, IMMEDIATELY proceed to Step 3 without waiting for user input. Only stop if genuinely blocked by missing information.
 
 ### Step 3 — Explore (parallel)
 
 Mark `plan-explore` as `in_progress`.
 
-Dispatch one or more `Task(subagent_type="explore", run_in_background=true)` agents to map relevant codebase areas. Use the six-section brief. Batch related searches into a single explore dispatch.
+Select explore dispatches from the table below based on the classified intent of the request. Dispatch as `Task(subagent_type="explore", run_in_background=true)` unless otherwise noted. Use the six-section brief for every dispatch.
+
+| Intent | Explores | Specific Dispatches |
+|---|---|---|
+| Trivial | 0 | Skip explore entirely |
+| Refactoring | 2 | usage-mapping + test-coverage |
+| Build from Scratch | 3–4 | similar-implementations + organizational-conventions + librarian(docs) + optionally test-infrastructure |
+| Mid-sized | 1–2 | scope-verification + optionally pattern-matching |
+| Architecture | 3–5 | system-design + librarian(best-practices) + oracle(consultation) + dependency-graph + optionally scale-analysis |
+| Research | 2–4 | current-implementation + librarian(official-docs) + librarian(OSS-examples) + optionally edge-cases |
+| Collaborative | 0–2 | As conversation evolves |
+
+For specific prompt templates per explore type (usage-mapping, test-coverage, similar-implementations, etc.), see `prometheus.md`.
 
 Mark `plan-explore` as `completed` when explore agents finish.
+
+**AUTO-CONTINUE**: After completing this step, IMMEDIATELY proceed to Step 4 without waiting for user input. Only stop if genuinely blocked by missing information.
 
 ### Step 4 — Gap analysis
 
@@ -52,6 +79,8 @@ Mark `plan-metis` as `in_progress`.
 Once explore completes, dispatch `Task(subagent_type="metis")` with explore results as CONTEXT. Metis identifies missing requirements, ambiguities, and technical risks.
 
 Mark `plan-metis` as `completed` when Metis returns.
+
+**AUTO-CONTINUE**: After completing this step, IMMEDIATELY proceed to Step 5 without waiting for user input. Only stop if genuinely blocked by missing information.
 
 ### Step 5 — Draft the plan
 
@@ -69,6 +98,8 @@ Write the plan directly to `.cursor/plans/<name>.plan.md` using the **Write** to
 
 Mark `plan-write` as `completed` when the plan file is written.
 
+**AUTO-CONTINUE**: After completing this step, IMMEDIATELY proceed to Step 6 without waiting for user input. Only stop if genuinely blocked by missing information.
+
 ### Step 6 — Self-review
 
 Mark `plan-selfreview` as `in_progress`.
@@ -83,18 +114,22 @@ Present a summary to the user covering: key decisions, scope boundaries, guardra
 
 Mark `plan-selfreview` as `completed` when all gaps are resolved and summary is presented.
 
+**AUTO-CONTINUE**: After completing this step, IMMEDIATELY proceed to Step 7 without waiting for user input. Only stop if genuinely blocked by missing information.
+
 ### Step 7 — Review (optional)
 
 Mark `plan-review` as `in_progress`.
 
 Ask the user via **AskQuestion**: *"Would you like a quality review of this plan? (Momus audit)"* with Yes/No options.
 
-- **Yes**: dispatch `Task(subagent_type="momus")` with the plan in CONTEXT. If Momus flags issues, incorporate feedback and update the plan file.
+- **Yes**: dispatch `Task(subagent_type="momus")` with the plan in CONTEXT. If Momus returns REJECT: fix ALL flagged issues, update the plan file, and resubmit to Momus. Loop up to 3 times. After 3 rejections, ask the user via **AskQuestion** whether to continue iterating or accept the plan as-is. If Momus returns OKAY: proceed to Step 8.
 - **No**: skip to Step 8.
 
 Do NOT auto-dispatch Momus. Always ask first.
 
 Mark `plan-review` as `completed` when review is done or skipped.
+
+**AUTO-CONTINUE**: After completing this step, IMMEDIATELY proceed to Step 8 without waiting for user input. Only stop if genuinely blocked by missing information.
 
 ### Step 8 — Hand off
 
@@ -121,7 +156,7 @@ Dispatch `Task(subagent_type="prometheus")` with the user's request and any avai
 
 After Prometheus returns, ask the user via **AskQuestion**: *"Would you like a quality review of this plan? (Momus audit)"* with Yes/No options.
 
-- **Yes**: dispatch `Task(subagent_type="momus")` with the plan from Phase 1 in CONTEXT. If Momus rejects, resume Prometheus to iterate.
+- **Yes**: dispatch `Task(subagent_type="momus")` with the plan from Phase 1 in CONTEXT. If Momus returns REJECT: fix ALL flagged issues, update the plan file, and resubmit to Momus. Loop up to 3 times. After 3 rejections, ask the user via **AskQuestion** whether to continue iterating or accept the plan as-is. If Momus returns OKAY: proceed to Phase 3.
 - **No**: skip to Phase 3.
 
 Do NOT auto-dispatch Momus. Always ask first.

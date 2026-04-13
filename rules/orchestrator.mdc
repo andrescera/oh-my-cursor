@@ -39,30 +39,28 @@ Interview-first. Gather context before producing anything. Never implement code.
 
 > For the full plan template, interview strategies, and gap classification details, see `agents/prometheus.md`.
 
-**Clearance checklist** — ALL YES → auto-transition to plan generation without user prompt:
+**Clearance checklist** — evaluate after every interview turn. ALL YES → auto-transition to plan generation without user prompt:
 
-| # | Gate | YES means |
-|---|------|-----------|
-| 1 | Scope bounded? | All affected files/modules identified |
-| 2 | Requirements unambiguous? | No open questions remain after interview |
-| 3 | Dependencies mapped? | Cross-module and external deps catalogued |
-| 4 | Risk assessed? | Security, migrations, public API impact reviewed |
-| 5 | Explore complete? | Codebase context gathered, no blind spots |
-| 6 | Acceptance criteria defined? | Each deliverable has a verifiable condition |
+- [ ] Core objective clearly defined?
+- [ ] Scope boundaries established (IN/OUT)?
+- [ ] No critical ambiguities remaining?
+- [ ] Technical approach decided?
+- [ ] Test strategy confirmed?
+- [ ] No blocking questions outstanding?
 
-> **Auto-transition rule:** When every gate is YES, advance directly to plan generation (step 5) without prompting the user. If any gate is NO, resolve it first via interview or explore.
+> **Auto-transition rule:** When every item is YES, advance directly to plan generation without prompting the user. If any item is NO, resolve it first via interview or explore.
 
 ### Intent Classification
 
 | Intent | Explore Dispatches | Planning Depth | Example |
 |--------|-------------------|----------------|---------|
-| **Trivial** | 0 | None — skip to handoff | Typo fix, comment edit |
-| **Simple** | 1 | Lightweight — checklist only | Rename a function, add a flag |
-| **Moderate** | 1–2 | Standard — full clearance checklist | New endpoint, add validation |
-| **Complex** | 2–3 | Full — clearance + Metis gap analysis | Multi-file feature, new module |
-| **Architectural** | 3–5 | Full + Momus review mandatory | Schema migration, API redesign |
-| **Exploratory** | 3–5 | Discovery-first — interview heavy | "Make it faster", unclear scope |
-| **Collaborative** | 1–2 | Iterative — user co-designs | UX flow, config DSL design |
+| **Trivial** | 0 | None — skip explore | Typo fix, comment edit |
+| **Refactoring** | 2 | Safety — usage + tests | usage-mapping + test-coverage |
+| **Build from Scratch** | 3–4 | Discovery — patterns + docs + conventions | New module, greenfield feature |
+| **Mid-sized** | 1–2 | Standard — full clearance checklist | New endpoint, scoped feature |
+| **Architecture** | 3–5 | Full — clearance + Metis; Momus often required | Schema migration, API redesign |
+| **Research** | 2–4 | Investigation-first — exit criteria | Unknown approach, compare options |
+| **Collaborative** | 0–2 | Iterative — user co-designs | UX flow, config DSL design |
 
 **Allowed tools:** Read, Grep, Glob, Write (.cursor/plans/ and .cursor/drafts/ only), AskQuestion, TodoWrite, Task(explore), Task(metis), Task(momus), Task(librarian), SwitchMode.
 **FORBIDDEN:** Task(sisyphus), Task(hephaestus), Task(sisyphus-junior), Task(atlas), Shell, Delete, StrReplace. MUST NOT dispatch implementation workers.

@@ -159,4 +159,27 @@ Sessions are tracked in-memory with periodic persistence to `/tmp/oh-my-cursor-s
 - **Ultrawork Loop**: Deep work with oracle check-ins via `/ulw-loop`
 - **Boulder State**: Automatic retry on tool failures with stagnation detection
 
-See [docs/cursor-integration.md](docs/cursor-integration.md) for native Cursor feature details.
+## System Behaviors
+
+### Auto-Continuation
+Plan flow auto-advances between steps without asking "should I continue?" Boulder continuation uses state-based todo tracking with cooldown (default 5000ms), exponential backoff, and stagnation detection.
+
+### Momus Review Loop
+Plans are auto-reviewed by Momus up to 3 times. After 3 rejections, the user is asked whether to continue iterating or accept the plan as-is.
+
+### Adaptive Explore Dispatch
+Explore dispatch count scales with task complexity: 0 for trivial tasks, 2 for mid-sized, 3-5+ for architecture or research. 7 prompt templates cover different explore intents (usage-mapping, test-coverage, similar-implementations, etc.).
+
+### Keyword Modes
+Detected keywords inject mode context: ultrawork, analyze, search, think. Sisyphus and other coordinators adjust their behavior based on the active keyword mode.
+
+### Session State
+Active plans tracked in `.cursor/state/active-plan.json`. Enables resume detection on `/start-work` and progress persistence across session boundaries.
+
+### Error Classification
+Hook daemon classifies errors into: rate limit (429), model unavailable (502/503), timeout, and generic. Each category has specific recovery advice injected into the conversation.
+
+### Unstable Agent Detection
+3+ consecutive failures from the same agent type trigger a warning and suggest fallback options (different model, different agent, manual intervention).
+
+See [docs/cursor-features.md](docs/cursor-features.md) for native Cursor feature details.

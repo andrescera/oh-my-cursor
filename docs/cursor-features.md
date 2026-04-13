@@ -1,6 +1,6 @@
 # Cursor Integration — Native Features Used by oh-my-cursor
 
-This document catalogs every native Cursor feature the plugin leverages.
+Catalog of native Cursor IDE features used by oh-my-cursor.
 
 ## Summary Table
 

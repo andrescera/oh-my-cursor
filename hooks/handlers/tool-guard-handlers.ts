@@ -91,12 +91,11 @@ export function createToolGuardHandlers(
   _sessions: Map<string, SessionState>,
 ): HandlerMap {
   const sessionTokens = new Map<string, number>()
-  const failureCounts = new Map<string, number>()
   const config = loadConfig()
   const contextWindowMonitor = createContextWindowMonitor(sessionTokens)
   const commentChecker = createCommentChecker()
   const toolOutputTruncator = createToolOutputTruncator()
-  const delegateTaskRetry = createDelegateTaskRetry(failureCounts)
+  const delegateTaskRetry = createDelegateTaskRetry()
 
   return {
     "/preToolUse": (input) => {
@@ -344,10 +343,13 @@ export function createToolGuardHandlers(
       }
 
       if (["task", "Task"].includes(toolName)) {
-        const dr = delegateTaskRetry({
-          tool_input: toolInput as { subagent_type?: string; description?: string },
-          output,
-        })
+        const dr = delegateTaskRetry(
+          {
+            tool_input: toolInput as { subagent_type?: string; description?: string },
+            output,
+          },
+          session.delegateRetryState,
+        )
         if (dr.additional_context) {
           contextCollector.register(convId, {
             id: "delegate-retry",

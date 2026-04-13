@@ -58,8 +58,11 @@ function extractAgentType(input: PostToolUseInput): string {
   return input.tool_input?.subagent_type ?? input.tool_input?.description ?? "unknown"
 }
 
-export function createDelegateTaskRetry(failureCounts: Map<string, number>) {
-  return function handlePostToolUse(input: PostToolUseInput): RetryResult {
+export function createDelegateTaskRetry() {
+  return function handlePostToolUse(
+    input: PostToolUseInput,
+    delegateRetryState: Record<string, number>,
+  ): RetryResult {
     const output = input.output ?? ""
     if (!output) {
       return {}
@@ -73,17 +76,17 @@ export function createDelegateTaskRetry(failureCounts: Map<string, number>) {
     const agentType = extractAgentType(input)
     const enc = encodeErrorType(errorType)
 
-    const lastEnc = failureCounts.get(`omi.lastErr.${agentType}`) ?? 0
+    const lastEnc = delegateRetryState[`omi.lastErr.${agentType}`] ?? 0
     const typeStreak =
-      lastEnc === enc ? (failureCounts.get(`omi.typeStreak.${agentType}`) ?? 0) + 1 : 1
-    failureCounts.set(`omi.lastErr.${agentType}`, enc)
-    failureCounts.set(`omi.typeStreak.${agentType}`, typeStreak)
+      lastEnc === enc ? (delegateRetryState[`omi.typeStreak.${agentType}`] ?? 0) + 1 : 1
+    delegateRetryState[`omi.lastErr.${agentType}`] = enc
+    delegateRetryState[`omi.typeStreak.${agentType}`] = typeStreak
 
-    const errTypeTotal = (failureCounts.get(`omi.errType.${agentType}.${errorType}`) ?? 0) + 1
-    failureCounts.set(`omi.errType.${agentType}.${errorType}`, errTypeTotal)
+    const errTypeTotal = (delegateRetryState[`omi.errType.${agentType}.${errorType}`] ?? 0) + 1
+    delegateRetryState[`omi.errType.${agentType}.${errorType}`] = errTypeTotal
 
-    const agentTotal = (failureCounts.get(agentType) ?? 0) + 1
-    failureCounts.set(agentType, agentTotal)
+    const agentTotal = (delegateRetryState[agentType] ?? 0) + 1
+    delegateRetryState[agentType] = agentTotal
 
     const parts: string[] = [adviceForErrorType(errorType)]
 

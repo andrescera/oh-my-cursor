@@ -120,13 +120,13 @@ export function createToolGuardHandlers(
         const filePath = rawWritePath ? resolve(rawWritePath) : ""
         if (!isEditOperation && filePath && !filePath.includes(".sisyphus") && !filePath.includes("node_modules") && !filePath.includes(".cursor/")) {
           if (existsSync(filePath) && !conversation.readPaths.has(filePath)) {
-            console.log(`[oh-my-cursor][read-guard] WARN write without read: "${filePath}" | conversation: ${convId}`)
-            contextCollector.register(convId, {
-              id: "read-before-write",
-              source: "read-before-write",
-              content: `[read-before-write] Writing to "${filePath}" without reading it first. Consider reading the file to verify current contents before overwriting.`,
-              priority: "normal",
-            })
+            console.log(`[oh-my-cursor][read-guard] DENY write without read: "${filePath}" | conversation: ${convId}`)
+            const reason = `[read-before-write] File "${filePath}" was not read first. Read the file before overwriting it to preserve existing content.`
+            return {
+              permission: "deny",
+              userMessage: reason,
+              agentMessage: reason,
+            }
           }
         }
       }
@@ -190,9 +190,11 @@ export function createToolGuardHandlers(
                 ? config.subagent_limits.worker
                 : 0
           if (limit > 0) {
-            const activeCount = tracker
+            const trackerCount = tracker
               .getActiveTasksForConversation(convId)
               .filter((t) => t.agentType === normalized).length
+            const thisTurnCount = conversation.dispatchCountsThisTurn[agentKey] || 0
+            const activeCount = Math.max(trackerCount, thisTurnCount)
             if (activeCount >= limit) {
               const label = normalized === "explore" ? "Explore" : "Worker"
               const reason = `[dispatch-limit] ${label} concurrent limit reached (${activeCount}/${limit}). Consider consolidating ${normalized === "explore" ? "searches" : "tasks"}.`
@@ -275,7 +277,7 @@ export function createToolGuardHandlers(
         const filePath = readFilePath
         let dir = filePath.substring(0, filePath.lastIndexOf("/"))
 
-        let projectRoot = process.cwd()
+        let projectRoot = dir
         let searchDir = dir
         while (searchDir && searchDir !== "/") {
           if (existsSync(searchDir + "/.git") || existsSync(searchDir + "/package.json")) {

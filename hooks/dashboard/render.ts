@@ -1514,7 +1514,7 @@ export function renderDashboardHTML(daemonPort: number): string {
             : null}
           <div class="header">
             <div class="header-title">
-              oh-my-cursor
+              oh-my-cursor Status
               <span class="header-badge">v2</span>
             </div>
           </div>

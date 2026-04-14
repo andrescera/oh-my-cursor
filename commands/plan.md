@@ -60,7 +60,7 @@ Task(subagent_type="metis", prompt=`Review this planning session:
 
 Skipping Metis is a hard constraint violation. Mark completed. Proceed immediately.
 
-5. **Write plan** -- Mark `plan-write` in_progress. Write plan to `.cursor/plans/<name>.plan.md` using CreatePlan or Write. Must include: TL;DR, problem analysis, implementation tasks in parallel waves, dependency matrix (mandatory for 3+ tasks), per-task acceptance criteria, QA scenarios, commit strategy, final verification wave. Mark completed.
+5. **Write plan** -- Mark `plan-write` in_progress. Write plan to `.cursor/plans/<name>.plan.md` using Write. Must include: TL;DR, problem analysis, implementation tasks in parallel waves, dependency matrix (mandatory for 3+ tasks), per-task acceptance criteria, QA scenarios, commit strategy, final verification wave. Mark completed.
 
 **DO NOT stop after writing the plan. Steps 6-9 are MANDATORY. Auto-continue immediately.**
 

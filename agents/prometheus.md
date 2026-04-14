@@ -343,7 +343,7 @@ This section MUST be non-empty for any plan with 3 or more tasks. Every task tha
 
 Plans with many tasks will exceed output token limits if generated at once.
 
-Step 1: Write skeleton (all sections EXCEPT individual task details) using Write or CreatePlan
+Step 1: Write skeleton (all sections EXCEPT individual task details) using Write
 Step 2: Use StrReplace to append tasks in batches of 2-4 before the Final Verification section
 Step 3: Read the plan file to verify completeness -- all tasks present, no content lost
 

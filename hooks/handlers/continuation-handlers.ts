@@ -2,6 +2,7 @@ import type { SessionState, HandlerMap } from "../types"
 import { getOrCreateSession, resolveConversationId } from "../shared"
 import { loadConfig } from "../config"
 import { resolve } from "node:path"
+import { existsSync } from "node:fs"
 
 function sendOsNotification(title: string, message: string, urgency: "low" | "normal" | "critical") {
   const config = loadConfig()
@@ -148,6 +149,8 @@ export function createContinuationHandlers(
         hasIncompleteTodos = true
       }
 
+      console.log(`[oh-my-cursor][/stop] session=${convId} | composerMode=${session.composerMode} | activePlan=${!!session.activePlan} | todoStates.size=${session.todoStates.size} | hasIncompleteTodos=${hasIncompleteTodos} | boulderActive=${session.boulderState?.active ?? "null"} | todos=${JSON.stringify([...session.todoStates.entries()])}`)
+
       if (hasIncompleteTodos) {
         if (!session.boulderState) {
           session.boulderState = { active: true, failureCount: 0, lastContinuationAt: null }
@@ -215,6 +218,23 @@ export function createContinuationHandlers(
 
       if (session.todoStates.size > 0) {
         sendOsNotification("Plan Complete", "All tasks finished", "normal")
+      }
+
+      if (session.activePlan && !hasIncompleteTodos) {
+        if (!session.boulderState) {
+          session.boulderState = { active: true, failureCount: 0, lastContinuationAt: null }
+        }
+        if (session.boulderState.active) {
+          session.boulderState.lastContinuationAt = new Date().toISOString()
+          const message = "Continue executing plan: " + session.activePlan.path +
+            ". Current phase: " + (session.activePlan.phase || "unknown") +
+            ". Do not stop until all plan tasks are complete. Use TodoWrite to track progress."
+          return {
+            followup_message: message,
+            decision: "block",
+            reason: message,
+          }
+        }
       }
 
       return {}
@@ -322,6 +342,43 @@ export function createContinuationHandlers(
         session.composerMode = "agent"
         for (const phaseId of PLAN_PHASE_IDS) {
           session.todoStates.delete(phaseId)
+        }
+
+        if (!session.activePlan) {
+          const projectDir = process.env.OH_MY_CURSOR_PROJECT_DIR || process.cwd()
+          const stateFile = resolve(projectDir, ".cursor/state/active-plan.json")
+          try {
+            if (existsSync(stateFile)) {
+              const state = JSON.parse(Bun.file(stateFile).textSync())
+              if (state.path) {
+                session.activePlan = {
+                  path: state.path,
+                  phase: state.currentWave ? `wave-${state.currentWave}` : "wave-0",
+                  completedTasks: state.completedTasks || [],
+                }
+              }
+            }
+          } catch { /* state file missing or corrupt, continue without */ }
+
+          if (!session.activePlan) {
+            try {
+              const plansDir = resolve(projectDir, ".cursor/plans")
+              if (existsSync(plansDir)) {
+                const { readdirSync, statSync } = require("node:fs")
+                const plans = readdirSync(plansDir)
+                  .filter((f: string) => f.endsWith(".plan.md"))
+                  .map((f: string) => ({ name: f, mtime: statSync(resolve(plansDir, f)).mtimeMs }))
+                  .sort((a: { mtime: number }, b: { mtime: number }) => b.mtime - a.mtime)
+                if (plans.length > 0) {
+                  session.activePlan = {
+                    path: resolve(plansDir, plans[0].name),
+                    phase: "wave-0",
+                    completedTasks: [],
+                  }
+                }
+              }
+            } catch { /* plans dir scan failed, continue without */ }
+          }
         }
 
         const ap = session.activePlan

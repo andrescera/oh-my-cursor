@@ -157,8 +157,8 @@ export function createContinuationHandlers(
         }
         if (session.composerMode === "plan") {
           const phases = [
-            "plan-switchmode", "plan-interview", "plan-explore", "plan-metis",
-            "plan-write", "plan-selfreview", "plan-review", "plan-handoff",
+            "plan-switchmode", "plan-draft", "plan-interview", "plan-explore", "plan-metis",
+            "plan-write", "plan-selfreview", "plan-summary", "plan-review", "plan-handoff",
           ]
           const nextPhase = phases.find(p => {
             const s = session.todoStates.get(p)

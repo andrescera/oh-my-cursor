@@ -336,8 +336,11 @@ const fetchHandler = async (req: Request) => {
     let sessionSnapshotTimer: ReturnType<typeof setInterval> | null = null
     let sendFn: ((entry: EventEntry) => void) | null = null
 
+    let streamController: ReadableStreamDefaultController | null = null
+
     const stream = new ReadableStream({
       start(controller) {
+        streamController = controller
         activeStreams.add(controller)
         sendFn = (entry: EventEntry) => {
           try {
@@ -387,7 +390,7 @@ const fetchHandler = async (req: Request) => {
         if (sendFn) offEvent(sendFn)
         if (keepaliveTimer) clearInterval(keepaliveTimer)
         if (sessionSnapshotTimer) clearInterval(sessionSnapshotTimer)
-        activeStreams.delete(controller)
+        if (streamController) activeStreams.delete(streamController)
       },
     })
     return new Response(stream, {
@@ -404,8 +407,11 @@ const fetchHandler = async (req: Request) => {
     const encoder = new TextEncoder()
     let interval: ReturnType<typeof setInterval> | null = null
 
+    let sessStreamController: ReadableStreamDefaultController | null = null
+
     const stream = new ReadableStream({
       start(controller) {
+        sessStreamController = controller
         activeStreams.add(controller)
         controller.enqueue(encoder.encode(`retry: 3000\n: ok\n\n`))
         interval = setInterval(() => {
@@ -428,7 +434,7 @@ const fetchHandler = async (req: Request) => {
       },
       cancel() {
         if (interval) clearInterval(interval)
-        activeStreams.delete(controller)
+        if (sessStreamController) activeStreams.delete(sessStreamController)
       },
     })
     return new Response(stream, {

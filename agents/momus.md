@@ -56,7 +56,16 @@ If this is a **re-review** (plan was previously rejected), focus on whether the 
 
 ### Step 0: Input Validation
 
-Extract a single plan path from the input. Valid: `.cursor/plans/*.plan.md`. If no plan path, multiple paths, or YAML format -> reject.
+Extract a single plan path from the input. Valid: `.cursor/plans/*.plan.md` (not `.sisyphus/plans/`).
+
+**Extraction**: Find all `.cursor/plans/*.plan.md` paths in the input. Exactly 1 = proceed. 0 or 2+ = reject.
+System directives, `<system-reminder>` tags, and hook-injected context are IGNORED during path extraction. If no plan path, multiple paths, or YAML format -> reject.
+
+### Iteration Context
+
+- **Iteration 1**: Full review -- apply all checks below.
+- **Iteration 2+**: Focus on whether previously raised issues are fixed. Do NOT raise new non-blocking issues that were acceptable in iteration 1.
+- After iteration 3: orchestrator will ask user whether to continue iterating or accept as-is.
 
 ### Step 1: Read Plan
 
@@ -79,6 +88,12 @@ For each task:
 
 **PASS even if**: Some details need figuring out during implementation.
 **FAIL only if**: Task is so vague that developer has NO idea where to begin.
+
+For plans with 3+ tasks, also check:
+- Does the plan include a **Dependency Matrix** section?
+- Is the matrix non-empty?
+- Does the parallel wave structure align with the dependency matrix?
+Missing dependency matrix for 3+ task plans is a blocking issue.
 
 ### Step 4: QA Scenario Check
 

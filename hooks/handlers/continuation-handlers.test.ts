@@ -265,14 +265,16 @@ describe("createContinuationHandlers", () => {
         expect(result.followup_message).toContain("plan-selfreview")
       })
 
-      it("SKIP_AGENTS still blocks agent type plan regardless of composerMode", () => {
+      it("allows agent type plan when composerMode is plan and todos are pending", () => {
         const session = getOrCreateSession(convId)
         session.composerMode = "plan"
         session.todoStates.set("plan-write", "pending")
 
-        const result = handlers["/stop"](baseStopInput(convId, { agent_type: "plan" }))
+        const result = handlers["/stop"](baseStopInput(convId, { agent_type: "plan" })) as {
+          followup_message?: string
+        }
 
-        expect(result).toEqual({})
+        expect(result.followup_message).toContain("Prometheus planning workflow")
       })
     })
 

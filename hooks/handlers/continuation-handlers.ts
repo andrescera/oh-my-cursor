@@ -44,13 +44,15 @@ const UNKNOWN_SLASH_COMMAND_HINT =
   "[command:unknown] Unknown command. Available: /plan, /start-work, /status, /help, /agents, /config, /refactor, /ulw-loop, /ralph-loop, /stop-continuation, /handoff, /briareus, /remove-ai-slops, /init-deep, /cloud-agents"
 
 function detectPlanMode(input: Record<string, unknown>, session: SessionState, userMessage: string): boolean {
-  if (session.composerMode === "plan") return true
+  const inputMode = (input.mode as string) || (input.composer_mode as string) || (input.composerMode as string) || ""
+  if (inputMode && inputMode !== "plan") return false
+
+  if (inputMode === "plan") return true
 
   const lowerMsg = userMessage.toLowerCase().trimStart()
   if (lowerMsg.startsWith("/plan")) return true
 
-  const inputMode = (input.mode as string) || (input.composer_mode as string) || (input.composerMode as string) || ""
-  if (inputMode === "plan") return true
+  if (session.composerMode === "plan") return true
 
   const cursorCommands = (input.cursor_commands as string) || (input.system_instructions as string) || ""
   if (cursorCommands.toLowerCase().includes("/plan") || cursorCommands.toLowerCase().includes("plan mode")) return true
@@ -61,14 +63,6 @@ function detectPlanMode(input: Record<string, unknown>, session: SessionState, u
 
   if (session.contextHistory.some(e => /plan-switchmode|plan-draft|plan-interview|plan-explore|plan-metis|plan-write/i.test(e))) return true
 
-  return false
-}
-
-function hasIncompletePlanTodos(session: SessionState): boolean {
-  for (const phaseId of PLAN_PHASE_IDS) {
-    const status = session.todoStates.get(phaseId)
-    if (status === "pending" || status === "in_progress") return true
-  }
   return false
 }
 

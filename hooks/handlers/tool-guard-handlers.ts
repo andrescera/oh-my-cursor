@@ -120,17 +120,13 @@ export function createToolGuardHandlers(
         const filePath = rawWritePath ? resolve(rawWritePath) : ""
         if (!isEditOperation && filePath && !filePath.includes(".sisyphus") && !filePath.includes("node_modules") && !filePath.includes(".cursor/")) {
           if (existsSync(filePath) && !session.readPaths.has(filePath)) {
-            const reason = "File exists but was not read first: " + filePath + ". Use Read tool first."
-            return {
-              permission: "deny",
-              userMessage: reason,
-              agentMessage: reason,
-              hookSpecificOutput: {
-                hookEventName: "PreToolUse",
-                permissionDecision: "deny",
-                permissionDecisionReason: reason,
-              },
-            }
+            console.log(`[oh-my-cursor][read-guard] WARN write without read: "${filePath}" | session: ${convId}`)
+            contextCollector.register(convId, {
+              id: "read-before-write",
+              source: "read-before-write",
+              content: `[read-before-write] Writing to "${filePath}" without reading it first. Consider reading the file to verify current contents before overwriting.`,
+              priority: "normal",
+            })
           }
         }
       }
@@ -380,7 +376,9 @@ export function createToolGuardHandlers(
       }
 
       if (["read", "Read"].includes(toolName) && readFilePath) {
-        session.readPaths.add(resolve(readFilePath))
+        const resolved = resolve(readFilePath)
+        session.readPaths.add(resolved)
+        console.log(`[oh-my-cursor][read-guard] Tracked read: "${resolved}" (raw: "${readFilePath}") | session: ${convId}`)
       }
 
       const cw = contextWindowMonitor({ sessionId: convId, content: output })

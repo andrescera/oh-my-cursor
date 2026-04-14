@@ -2,7 +2,8 @@ import { renderDashboardHTML } from "./dashboard/render"
 
 const DAEMON_PORT = process.env.OH_MY_CURSOR_PORT || "47847"
 
-export const STATUS_HTML = renderDashboardHTML(parseInt(DAEMON_PORT))
+const parsedPort = parseInt(DAEMON_PORT)
+export const STATUS_HTML = renderDashboardHTML(Number.isNaN(parsedPort) ? 47847 : parsedPort)
 
 export const MCP_APP_TOOL = {
   name: "oh_my_cursor_status",

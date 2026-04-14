@@ -6,7 +6,7 @@ import { STATUS_HTML } from "./mcp-app"
 import { logEvent, getEvents, getSessionSummary, getLogPath, clearLog, onEvent, offEvent } from "./event-logger"
 import type { EventEntry } from "./event-logger"
 import { sessions, parseInput, extractMeta } from "./shared"
-import { isHookEnabled, getHookConfig } from "./hook-config"
+import { isHookEnabled, getHookConfig, resetHookConfigCache } from "./hook-config"
 import { createSessionHandlers } from "./handlers/session-handlers"
 import { createToolGuardHandlers } from "./handlers/tool-guard-handlers"
 import { createContinuationHandlers } from "./handlers/continuation-handlers"
@@ -196,7 +196,8 @@ const fetchHandler = async (req: Request) => {
   }
 
   if (path === "/session-log") {
-    const limit = parseInt(url.searchParams.get("limit") || "100")
+    const rawLimit = parseInt(url.searchParams.get("limit") || "100")
+    const limit = Number.isNaN(rawLimit) || rawLimit < 1 ? 100 : rawLimit
     const sessionId = url.searchParams.get("session") || undefined
     const event = url.searchParams.get("event") || undefined
     const action = url.searchParams.get("action") || undefined
@@ -255,6 +256,7 @@ const fetchHandler = async (req: Request) => {
       writeFileSync(tmpPath, JSON.stringify(result.data, null, 2), "utf-8")
       renameSync(tmpPath, configPath)
       resetConfigCache()
+      resetHookConfigCache()
       return new Response(JSON.stringify({ status: "saved", path: configPath }), {
         headers: { "Content-Type": "application/json" },
       })
@@ -470,8 +472,15 @@ const fetchHandler = async (req: Request) => {
     })
   }
 
+  if (req.method !== "POST") {
+    return new Response(JSON.stringify({ error: "Method not allowed", allowed: "POST" }), {
+      status: 405,
+      headers: { "Content-Type": "application/json", "Allow": "POST" },
+    })
+  }
+
   try {
-    const body = req.method === "POST" ? await req.json() : {}
+    const body = await req.json()
     const parsed = parseInput(body)
     const result = handler(parsed)
 
@@ -514,7 +523,8 @@ const fetchHandler = async (req: Request) => {
   }
 }
 
-let actualPort = ENV_PORT ? parseInt(ENV_PORT) : DEFAULT_PORT
+const envPort = ENV_PORT ? parseInt(ENV_PORT) : NaN
+let actualPort = Number.isNaN(envPort) ? DEFAULT_PORT : envPort
 
 if (ENV_PORT) {
   console.log(`[oh-my-cursor] Hook daemon starting on port ${actualPort} (env override)...`)

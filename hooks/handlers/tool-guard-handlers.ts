@@ -332,9 +332,11 @@ export function createToolGuardHandlers(
         const merge = toolInput.merge as boolean | undefined
         if (todos && Array.isArray(todos)) {
           if (merge === false) session.todoStates.clear()
+          const validStatuses = new Set(["pending", "in_progress", "completed", "cancelled"])
           for (const todo of todos) {
-            if (todo.id && todo.status) {
-              session.todoStates.set(todo.id, todo.status as any)
+            if (todo.id && typeof todo.id === "string" && typeof todo.status === "string") {
+              const normalized = validStatuses.has(todo.status) ? todo.status as "pending" | "in_progress" | "completed" | "cancelled" : "pending"
+              session.todoStates.set(todo.id, normalized)
             }
           }
           const sorted = Array.from(session.todoStates.entries()).sort((a, b) => a[0].localeCompare(b[0]))

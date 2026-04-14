@@ -41,8 +41,19 @@ export function getOrCreateSession(conversationId: string): SessionState {
 }
 
 export function parseInput(body: unknown): Record<string, unknown> {
-  if (typeof body === "string") return JSON.parse(body)
-  return body as Record<string, unknown>
+  if (body === null || body === undefined) return {}
+  if (typeof body === "string") {
+    try {
+      const parsed = JSON.parse(body)
+      if (typeof parsed === "object" && parsed !== null && !Array.isArray(parsed)) return parsed
+      return {}
+    } catch {
+      return {}
+    }
+  }
+  if (Array.isArray(body)) return {}
+  if (typeof body === "object") return body as Record<string, unknown>
+  return {}
 }
 
 export function resolveConversationId(input: Record<string, unknown>): string {

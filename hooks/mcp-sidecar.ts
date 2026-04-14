@@ -414,7 +414,7 @@ async function handleToolCall(
     }
 
     case "get_dispatch_stats": {
-      const port = process.env.OH_MY_CURSOR_PORT || "47847"
+      const port = process.env.OH_MY_CURSOR_DAEMON_PORT || process.env.OH_MY_CURSOR_PORT || "47847"
       const url = `http://localhost:${port}/health`
       try {
         const res = await fetch(url, { signal: AbortSignal.timeout(8000) })
@@ -595,7 +595,7 @@ async function handleToolCall(
 
     case "session_log": {
       const action = args.action as string
-      const port = process.env.OH_MY_CURSOR_PORT || "47847"
+      const port = process.env.OH_MY_CURSOR_DAEMON_PORT || process.env.OH_MY_CURSOR_PORT || "47847"
 
       if (action === "export") {
         try {

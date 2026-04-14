@@ -1,6 +1,7 @@
 import { existsSync, readFileSync, writeFileSync, renameSync, unlinkSync, mkdirSync } from "node:fs"
 import { dirname } from "node:path"
 import type { SessionState } from "./types"
+import { SessionStateSchema } from "./schemas/session"
 
 const DEFAULT_PATH = "/tmp/oh-my-cursor-state.json"
 const DEFAULT_DEBOUNCE_MS = 5000
@@ -42,27 +43,24 @@ export class StatePersistence {
 
       const sessions = new Map<string, SessionState>()
       for (const entry of data) {
-        sessions.set(entry.id, {
-          ...entry,
-          readPaths: new Set(entry.readPaths || []),
-          injectedPaths: new Set(entry.injectedPaths || []),
-          pendingWriteArgs: new Map(Object.entries(entry.pendingWriteArgs || {})),
-          todoStates: new Map(Object.entries(entry.todoStates || {})),
-          activePlan: entry.activePlan || null,
-          continuationCooldownUntil: entry.continuationCooldownUntil || null,
-          consecutiveContinuationFailures: entry.consecutiveContinuationFailures || 0,
-          lastTodoSnapshot: entry.lastTodoSnapshot || "",
-          momusIterations: entry.momusIterations || 0,
-          composerMode: entry.composerMode || null,
-          subagentOutcomes: Array.isArray(entry.subagentOutcomes) ? entry.subagentOutcomes : [],
-          subagentFailureCounts:
-            entry.subagentFailureCounts && typeof entry.subagentFailureCounts === "object"
-              ? entry.subagentFailureCounts
-              : {},
-          recentToolTrail: Array.isArray(entry.recentToolTrail) ? entry.recentToolTrail : [],
-          toolCallsSinceTaskDispatch:
-            typeof entry.toolCallsSinceTaskDispatch === "number" ? entry.toolCallsSinceTaskDispatch : 0,
-        })
+        // Provide defaults for nullable fields added after initial persistence (backward compat)
+        const result = SessionStateSchema.safeParse({ abortDetectedAt: null, delegateRetryState: {}, ...entry })
+        if (result.success) {
+          const validated = result.data
+          sessions.set(validated.id, {
+            ...validated,
+            readPaths: new Set(validated.readPaths),
+            injectedPaths: new Set(validated.injectedPaths),
+            pendingWriteArgs: new Map(Object.entries(validated.pendingWriteArgs)),
+            todoStates: new Map(Object.entries(validated.todoStates)),
+          })
+        } else {
+          console.warn(
+            "[oh-my-cursor] Skipping invalid persisted session entry:",
+            entry.id || "unknown",
+            result.error.issues.map((i) => i.message).join(", "),
+          )
+        }
       }
       return sessions
     } catch (err) {

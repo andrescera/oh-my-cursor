@@ -63,28 +63,4 @@ export type HandlerFn = (input: Record<string, unknown>) => Record<string, unkno
 
 export type HandlerMap = Record<string, HandlerFn>
 
-export type OhMyCursorConfig = {
-  version: number
-  disabled_hooks: string[]
-  disabled_agents: string[]
-  subagent_limits: { explore: number; worker: number }
-  state_persistence: { enabled: boolean; path: string }
-  daemon: { port: number; mcp_port: number }
-  context_collector: { enabled: boolean; max_context_chars: number }
-  compaction: { prompt_enabled: boolean; user_message_template?: string }
-  experimental: {
-    cloud_agents: boolean
-    webhooks: boolean
-    automations: boolean
-  }
-  mcp_allowlist: string[]
-  notifications: { enabled: boolean; sound: boolean }
-  orchestration: { mode: "native" | "subagent" }
-  continuation: { cooldown_ms: number; max_failures: number; backoff_multiplier: number }
-  momus: { max_iterations: number }
-  model_routing: {
-    retry_on_errors: number[]
-    max_retry_attempts: number
-    defaults: Record<string, string>
-  }
-}
+export type { OhMyCursorConfig } from "./schemas/config"

@@ -1,5 +1,5 @@
 import { existsSync, mkdirSync, appendFileSync, readdirSync, statSync, unlinkSync } from "node:fs"
-import { resolve, dirname, join } from "node:path"
+import { join } from "node:path"
 
 export type EventEntry = {
   ts: string
@@ -45,9 +45,7 @@ const FLUSH_DELAY = 500
 const MAX_FILE_LINES = 10_000
 const FILE_TRIM_TO = 5_000
 
-const logDir = process.env.OH_MY_CURSOR_PROJECT_DIR
-  ? resolve(process.env.OH_MY_CURSOR_PROJECT_DIR, ".cursor/hooks/state")
-  : "/tmp"
+const logDir = join(process.env.HOME ?? "/tmp", ".cursor", "oh-my-cursor", "logs")
 
 function getLogPathForConversation(sessionId?: string): string {
   if (sessionId) return join(logDir, `session-log-${sessionId}.jsonl`)

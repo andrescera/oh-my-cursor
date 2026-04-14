@@ -42,11 +42,11 @@ You (root thread)
        └── Task(multimodal-looker) ── Visual analysis (gemini-3.1-pro, readonly)
 ```
 
-A persistent **hook daemon** (Bun HTTP server) handles 18 hook events through 30+ handlers -- session tracking, context injection, dangerous command blocking, dispatch limits, and continuation control. Zero subprocess overhead per event.
+A persistent **hook daemon** (Bun HTTP server) handles 18 hook events through 30+ handlers -- session tracking, context injection, dangerous command blocking, dispatch limits, and continuation control. Minimal per-event overhead (shell script to persistent daemon).
 
 An **MCP sidecar** adds 8 tools not in Cursor's built-in set (visual file analysis, persistent tmux sessions, dispatch stats, transcript search, daemon logs, session log, status dashboard).
 
-Three **continuation loops**: Ralph (self-referential until done), Ultrawork/ULW (with Oracle verification gate), and Boulder (state-based todo tracking with backoff and stagnation detection).
+Three **continuation loops**: Ralph (self-referential until done), Ultrawork/ULW (with Oracle verification gate), and Boulder (continuation with backoff and stagnation detection — effectiveness depends on Cursor's hook coverage for TodoWrite; see [sharp edges](docs/cursor/19-known-sharp-edges.md)).
 
 ## Agents
 
@@ -85,18 +85,9 @@ Three **continuation loops**: Ralph (self-referential until done), Ultrawork/ULW
 | `/config` | Display the current merged oh-my-cursor configuration |
 | `/cloud-agents` | Dispatch and manage agents via cloud API (experimental) |
 
-## Coverage and Limitations
+## Coverage
 
-| Area | Coverage |
-|------|----------|
-| Agents | ~95% |
-| Tools | ~70% |
-| Hooks | ~85% |
-| Skills | ~95% |
-| Commands | ~95% |
-| MCPs | ~100% |
-| Context injection | ~85% |
-| Continuation | ~90% |
+See [Known Limitations](#known-limitations) below and the [adoption matrix](docs/cursor/18-adoption-matrix.md) for detailed feature coverage. For Cursor-specific hook and tool constraints, see [Known Sharp Edges](docs/cursor/19-known-sharp-edges.md).
 
 ### Known Limitations
 
@@ -107,6 +98,7 @@ Three **continuation loops**: Ralph (self-referential until done), Ultrawork/ULW
 - Hook latency -- shell-to-HTTP-to-daemon bridge adds ~50-200ms per hook event
 - Context window pressure -- MCP tool definitions consume tokens proportional to server count
 - Subagent parallelism -- Cursor controls scheduling; instructions suggest counts but don't guarantee them
+- Hook tool coverage -- not all Cursor tools fire hook events. See [Known Sharp Edges](docs/cursor/19-known-sharp-edges.md#hook-tool-coverage) for the full list.
 
 ## Configuration
 
@@ -122,6 +114,8 @@ See `config.default.jsonc` for all options. Run `/config` to view the active mer
 | [ARCHITECTURE.md](ARCHITECTURE.md) | System architecture, flows, and mermaid diagrams |
 | [docs/cursor-features.md](docs/cursor-features.md) | Native Cursor features used by the plugin |
 | [CONTRIBUTING.md](CONTRIBUTING.md) | Development setup and contribution guidelines |
+| [docs/cursor/19-known-sharp-edges.md](docs/cursor/19-known-sharp-edges.md) | Operational gotchas and Cursor-specific constraints |
+| [docs/cursor/18-adoption-matrix.md](docs/cursor/18-adoption-matrix.md) | Feature-by-feature adoption status |
 
 ## Credits
 

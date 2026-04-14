@@ -32,7 +32,7 @@ graph TD
 
 ### Mode-Based Routing (Native Mode)
 
-Cursor's native mode system drives top-level routing: **Plan mode** activates the Prometheus persona (research + plan writing), while **Agent mode** activates the Orchestrator/Atlas persona (dispatch, verify, coordinate). Debug and Ask modes are read-only.
+Cursor's native mode system drives top-level routing: (Mode is detected via `detectPlanMode()` heuristics — hook payloads do not include a mode field. See [sharp edges](docs/cursor/19-known-sharp-edges.md#composer-mode-not-in-hook-payloads).) **Plan mode** activates the Prometheus persona (research + plan writing), while **Agent mode** activates the Orchestrator/Atlas persona (dispatch, verify, coordinate). Debug and Ask modes are read-only.
 
 ```mermaid
 graph TD
@@ -137,7 +137,7 @@ graph LR
 
 ### Safety Hooks
 
-- `beforeShellExecution`: `failClosed: true` — blocks dangerous shell commands
+- `beforeShellExecution`: `failClosed: true` — blocks dangerous shell commands (Note: malformed JSON in hook payloads has been reported to bypass fail-closed behavior. See [sharp edges](docs/cursor/19-known-sharp-edges.md#hooks).)
 - `beforeMCPExecution`: `failClosed: true` — blocks unauthorized MCP servers
 
 ## MCP Integration
@@ -160,12 +160,12 @@ Conversations are tracked in-memory with periodic persistence to `/tmp/oh-my-cur
 
 - **Ralph Loop**: Iterative task completion via `/ralph-loop` command
 - **Ultrawork Loop**: Deep work with oracle check-ins via `/ulw-loop`
-- **Boulder State**: Automatic retry on tool failures with stagnation detection
+- **Boulder State**: Continuation with backoff and stagnation detection. Effectiveness depends on Cursor's hook coverage — see [sharp edges](docs/cursor/19-known-sharp-edges.md#hook-tool-coverage).
 
 ## System Behaviors
 
 ### Auto-Continuation
-Plan flow auto-advances between steps without asking "should I continue?" Boulder continuation uses state-based todo tracking with cooldown (default 5000ms), exponential backoff, and stagnation detection.
+Plan flow auto-advances between steps without asking "should I continue?" Boulder continuation uses activity-based detection with cooldown (default 5000ms), exponential backoff, and stagnation detection.
 
 ### Momus Review Loop
 Plans are auto-reviewed by Momus up to 3 times. After 3 rejections, the user is asked whether to continue iterating or accept the plan as-is.
@@ -185,7 +185,10 @@ Hook daemon classifies errors into: rate limit (429), model unavailable (502/503
 ### Unstable Agent Detection
 3+ consecutive failures from the same agent type trigger a warning and suggest fallback options (different model, different agent, manual intervention).
 
-See [docs/cursor-features.md](docs/cursor-features.md) for native Cursor feature details.
+## See also
+
+- [Known Sharp Edges](docs/cursor/19-known-sharp-edges.md) — operational gotchas and Cursor constraints
+- [docs/cursor-features.md](docs/cursor-features.md) — native Cursor feature details
 
 ## Terminology
 

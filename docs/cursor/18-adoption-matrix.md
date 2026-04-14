@@ -7,7 +7,7 @@
 | Feature | Surface | Evidence | Status | Notes |
 |---------|---------|----------|--------|-------|
 | Custom Agents (`.cursor/agents/`) | IDE | [official-doc] | Using | 11 agent definitions |
-| Agent Hooks (18 events) | IDE | [official-doc] | Using | Via daemon + `hooks/hooks.json` |
+| Agent Hooks (18 events) | IDE | [official-doc] | Using | Via daemon + `hooks/hooks.json`. Only 7/16 tools fire postToolUse — see [sharp edges](19-known-sharp-edges.md#hook-tool-coverage) |
 | Tab Hooks (`beforeTabFileRead`, `afterTabFileEdit`) | IDE | [official-doc] | Not Using | Could Use |
 | Hooks auto-reload | IDE | [official-doc] | Using | Edits to hook config reload without restart |
 | Multi-root workspace hooks | IDE | [changelog] | Using | Behavior fixed 3.0-era; plugin ships project hooks |
@@ -31,14 +31,14 @@
 | `permissions.json` | IDE | [official-doc] | Not Using | Could Use |
 | SwitchMode tool | IDE | [official-doc] | Using | Plan / Agent / Ask |
 | AskQuestion tool | IDE | [official-doc] | Using | Prometheus |
-| TodoWrite tool | IDE | [official-doc] | Using | Atlas, coordinators |
+| TodoWrite tool | IDE | [official-doc] | Using | Atlas, coordinators. **Caveat:** postToolUse does not fire for TodoWrite (verified). preToolUse status unconfirmed. Hook-dependent todo tracking may be limited. |
 | GenerateImage tool | IDE | [official-doc] | Using | multimodal-looker |
 | FETCH_RULES tool | IDE | [official-doc] | Using | Metis, Momus, Oracle, Atlas |
 | SEARCH_SYMBOLS tool | IDE | [official-doc] | Using | Oracle |
 | Task tool (subagents) | IDE | [official-doc] | Using | Coordinator dispatch |
 | Nested subagents | IDE | [changelog] | Using | Supported 2.5+ |
 | Background Task (`run_in_background`) | IDE | [official-doc] | Using | explore, librarian |
-| Plan System (`.cursor/plans/`, plan UI) | IDE | [official-doc] | Using | Prometheus / Atlas |
+| Plan System (`.cursor/plans/`, plan UI) | IDE | [official-doc] | Using | Prometheus / Atlas. **Caveat:** CreatePlan has non-deterministic file placement and does not fire hooks. Use Write instead — see [sharp edges](19-known-sharp-edges.md#plans) |
 | Plan default location (`~/.cursor/plans/`) | IDE | [official-doc] | N/A | Product default for new plans; this repo also stores plans under `.cursor/plans/` when saved to workspace |
 | Plugin System (`.cursor-plugin/`) | IDE | [official-doc] | Using | `plugin.json` + `sandbox.json` |
 | Agents Window | IDE | [changelog] | Not Using | Could Use |
@@ -68,7 +68,7 @@
 | Bugbot / Bugbot MCP | IDE | [changelog] | Not Using | Enterprise |
 | Cloud agents (no MCP) | IDE | [official-doc] | N/A | Documented limitation |
 | skill_mcp (sidecar) | IDE | [repro-local] | Using | Loads SKILL.md into agent context |
-| Native orchestration (`orchestration.mode: native`) | IDE | [repro-local] | Using | Root persona by Cursor mode |
+| Native orchestration (`orchestration.mode: native`) | IDE | [repro-local] | Using | Root persona by Cursor mode. **Caveat:** Mode detected via heuristics, not hook payloads. activePlan lifecycle has known gaps — see [sharp edges](19-known-sharp-edges.md) |
 
 ---
 

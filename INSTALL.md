@@ -82,3 +82,5 @@ Two-layer JSONC config, merged in order: defaults → user → project.
 - Project config: `.cursor/oh-my-cursor.jsonc`
 
 See `config.default.jsonc` for all options, or run `/config` in Cursor to view the active merged config.
+
+See [Known Sharp Edges](docs/cursor/19-known-sharp-edges.md) for Cursor-specific operational constraints.

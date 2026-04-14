@@ -1,6 +1,11 @@
 import type { SessionState, HandlerMap } from "../types"
 import { getOrCreateSession, resolveConversationId } from "../shared"
 
+const ABORT_WINDOW_MS = 3000
+const CONTINUATION_COOLDOWN_BASE_MS = 30000
+const MAX_CONSECUTIVE_FAILURES = 5
+const SKIP_AGENTS = new Set(["prometheus", "compaction", "plan"])
+
 const slashCommands: Record<string, string> = {
   "/plan": "[command:plan] Planning workflow. Follow commands/plan.md step sequence.",
   "/start-work": "[command:start-work] Plan execution. Follow commands/start-work.md.",
@@ -30,7 +35,21 @@ export function createContinuationHandlers(
       const convId = resolveConversationId(input)
       const session = getOrCreateSession(convId)
 
+      const isAbort = status === "aborted" || Boolean(input.aborted) || Boolean(input.abort_signal)
+      if (isAbort) {
+        session.abortDetectedAt = Date.now()
+      }
+
       if (session.stoppedAt || stopHookActive || (status && status !== "completed")) {
+        return {}
+      }
+
+      if (session.abortDetectedAt && Date.now() - session.abortDetectedAt < ABORT_WINDOW_MS) {
+        return {}
+      }
+
+      const agentType = (input.agent_type as string) || (input.agentType as string) || ""
+      if (SKIP_AGENTS.has(agentType) || session.composerMode === "plan") {
         return {}
       }
 
@@ -99,13 +118,13 @@ export function createContinuationHandlers(
           session.lastTodoSnapshot = snapshot
         }
 
-        if (session.consecutiveContinuationFailures >= 5) {
+        if (session.consecutiveContinuationFailures >= MAX_CONSECUTIVE_FAILURES) {
           session.boulderState.active = false
           return {}
         }
 
-        if (session.consecutiveContinuationFailures >= 3) {
-          const backoffMs = 5000 * Math.pow(2, session.consecutiveContinuationFailures)
+        if (session.consecutiveContinuationFailures > 0) {
+          const backoffMs = CONTINUATION_COOLDOWN_BASE_MS * Math.pow(2, session.consecutiveContinuationFailures)
           session.continuationCooldownUntil = Date.now() + backoffMs
         }
 
@@ -119,7 +138,7 @@ export function createContinuationHandlers(
             ". Complete remaining todos before moving on."
         }
         if (session.consecutiveContinuationFailures > 0) {
-          message += " (stagnation detected: attempt " + (session.consecutiveContinuationFailures + 1) + "/5)"
+          message += " (stagnation detected: attempt " + (session.consecutiveContinuationFailures + 1) + "/" + MAX_CONSECUTIVE_FAILURES + ")"
         }
 
         return {
@@ -170,19 +189,32 @@ export function createContinuationHandlers(
       }
 
       if (/\b(analyze|investigate|examine|research)\b/i.test(userMessage)) {
-        additionalContext += "\n[mode:analysis] Analysis mode detected. Gather evidence before conclusions. Cite specific files and line numbers. Structure findings systematically."
+        additionalContext +=
+          "\n[mode:analysis] Deep analysis mode. Gather evidence systematically before drawing conclusions. Use multiple explore agents for different angles. Cite specific code references."
       }
 
       if (/\b(search|find|where is|how does)\b/i.test(userMessage)) {
-        additionalContext += "\n[mode:search] Search mode detected. Use explore agents for broad searches. Batch related searches. Report file paths and line numbers."
+        additionalContext +=
+          "\n[mode:search] Parallel search mode. Fire Task(explore) agents for codebase searches. Batch related queries. Report file paths and line numbers. Cross-reference findings."
       }
 
       if (lowerMsg.includes("ultrawork") || lowerMsg.includes("ulw")) {
-        additionalContext += "\n[mode:ultrawork] Deep sustained work mode. Work autonomously until fully complete. Use the ralph-loop pattern: iterate, verify, continue until <promise>DONE</promise>."
+        if (session.composerMode === "plan") {
+          additionalContext +=
+            "\n[mode:ultrawork-filtered] Ultrawork keyword detected but Plan mode is active. Focus on planning, not execution."
+        } else {
+          additionalContext +=
+            "\n[mode:ultrawork] Deep sustained autonomous work mode active. Work relentlessly until fully complete. Use parallel agents aggressively — fire explore/librarian for context, delegate via Task for implementation. Do not stop mid-task. Do not ask permission between steps. Self-verify with ReadLints and tests. When fully done, output <promise>DONE</promise>."
+        }
       }
 
-      if (/\bthink\b|\bthink harder\b|\bthink deeply\b/i.test(userMessage)) {
-        additionalContext += "\n[mode:think] Extended reasoning requested. Take extra time to analyze, consider edge cases, and reason step by step before acting."
+      if (
+        /\breason\s+through\b|\bthink\s+step\s+by\s+step\b|\bthink\s+harder\b|\bthink\s+deeply\b|\bthink\b/i.test(
+          userMessage,
+        )
+      ) {
+        additionalContext +=
+          "\n[mode:think] Extended reasoning requested. Take extra time for step-by-step analysis. Consider edge cases, failure modes, and alternative approaches before acting."
       }
 
       if (userMessage.startsWith("/ralph-loop") || userMessage.startsWith("/ralph")) {
@@ -209,6 +241,29 @@ export function createContinuationHandlers(
         if (userMessage.startsWith(cmd)) {
           additionalContext += "\n" + ctx
           matchedMappedSlashCommand = true
+        }
+      }
+
+      if (userMessage.startsWith("/start-work")) {
+        const ap = session.activePlan
+        if (ap && ap.completedTasks.length > 0) {
+          const phaseLabel = ap.phase || "(none)"
+          additionalContext +=
+            "\n[start-work:resume] Resuming plan: " +
+            ap.path +
+            ". Completed tasks: " +
+            ap.completedTasks.join(", ") +
+            ". Current phase: " +
+            phaseLabel +
+            ". Continue from where you left off — do not redo completed tasks."
+        } else if (ap) {
+          additionalContext +=
+            "\n[start-work:fresh] Starting plan: " +
+            ap.path +
+            ". No tasks completed yet. Begin from Wave 1."
+        } else {
+          additionalContext +=
+            "\n[start-work:discover] No active plan in session. Read .cursor/plans/ to find the most recent plan, then begin execution."
         }
       }
 

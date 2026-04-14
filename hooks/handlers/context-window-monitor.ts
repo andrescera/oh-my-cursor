@@ -1,6 +1,11 @@
-const MAX_TOKENS = 200_000
-const WARN_THRESHOLD = 0.8
+export const ESTIMATED_CONTEXT_LIMIT = 200_000
+export const PREEMPTIVE_WARNING_THRESHOLD = 0.8
 const CHARS_PER_TOKEN = 4
+
+export type ContextWindowSessionEntry = {
+  tokens: number
+  preemptiveWarningEmitted: boolean
+}
 
 type PostToolUseInput = {
   sessionId: string
@@ -11,23 +16,33 @@ type MonitorResult = {
   additional_context?: string
 }
 
-export function createContextWindowMonitor(sessionTokens: Map<string, number>) {
+function getEntry(
+  sessionTokens: Map<string, ContextWindowSessionEntry>,
+  sessionId: string,
+): ContextWindowSessionEntry {
+  return sessionTokens.get(sessionId) ?? { tokens: 0, preemptiveWarningEmitted: false }
+}
+
+export function createContextWindowMonitor(sessionTokens: Map<string, ContextWindowSessionEntry>) {
   return function handlePostToolUse(input: PostToolUseInput): MonitorResult {
     const { sessionId, content } = input
     const contentChars = content?.length ?? 0
-    const current = sessionTokens.get(sessionId) ?? 0
-    const newTotal = current + Math.ceil(contentChars / CHARS_PER_TOKEN)
-    sessionTokens.set(sessionId, newTotal)
+    const entry = getEntry(sessionTokens, sessionId)
+    const newTotal = entry.tokens + Math.ceil(contentChars / CHARS_PER_TOKEN)
+    const threshold = ESTIMATED_CONTEXT_LIMIT * PREEMPTIVE_WARNING_THRESHOLD
 
-    const percent = Math.round((newTotal / MAX_TOKENS) * 100)
-    const threshold = MAX_TOKENS * WARN_THRESHOLD
-
-    if (newTotal >= threshold) {
-      const tokensK = Math.round(newTotal / 1000)
+    if (newTotal >= threshold && !entry.preemptiveWarningEmitted) {
+      const percentage = Math.round((newTotal / ESTIMATED_CONTEXT_LIMIT) * 100)
+      sessionTokens.set(sessionId, { tokens: newTotal, preemptiveWarningEmitted: true })
       return {
-        additional_context: `WARNING: Context window is approximately ${percent}% full (~${tokensK}k tokens). Consider using /compact or /handoff to preserve important context.`,
+        additional_context: `[context-window-warning] Estimated token usage at ${percentage}% of context limit. Consider running /summarize to compact the session before hitting the hard limit.`,
       }
     }
+
+    sessionTokens.set(sessionId, {
+      tokens: newTotal,
+      preemptiveWarningEmitted: entry.preemptiveWarningEmitted,
+    })
 
     return {}
   }

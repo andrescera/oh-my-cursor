@@ -1,5 +1,6 @@
 import type { SessionState, HandlerMap } from "../types"
 import type { BackgroundTracker } from "./background-tracker"
+import type { WisdomTracker } from "./wisdom-tracker"
 import { getOrCreateSession, resolveConversationId } from "../shared"
 import { createEmptyTaskDetector } from "./empty-task-detector"
 import { contextCollector } from "../context-collector"
@@ -13,6 +14,7 @@ const SUBAGENT_TIMING_LOG = "/tmp/oh-my-cursor-timing.jsonl"
 export function createSubagentHandlers(
   _sessions: Map<string, SessionState>,
   tracker: BackgroundTracker,
+  wisdom: WisdomTracker,
 ): HandlerMap {
   const emptyTaskDetector = createEmptyTaskDetector()
 
@@ -34,6 +36,15 @@ export function createSubagentHandlers(
           const errorContext = o.errorContext || ""
           additional_context = `[task-resume-info] Previous ${agentType} dispatch failed: ${errorContext}. Avoid repeating the same mistake.`
           break
+        }
+      }
+
+      if (session.activePlan) {
+        const wisdomContext = wisdom.formatForInjection(session.activePlan.path)
+        if (wisdomContext) {
+          additional_context = additional_context
+            ? `${additional_context}\n\n${wisdomContext}`
+            : wisdomContext
         }
       }
 
@@ -97,6 +108,13 @@ export function createSubagentHandlers(
       })
       if (session.subagentOutcomes.length > 20) {
         session.subagentOutcomes = session.subagentOutcomes.slice(-20)
+      }
+      if (isSuccess && session.activePlan && output) {
+        wisdom.addLearning(session.activePlan.path, {
+          source: typeKey,
+          learning: output.slice(-200).trim(),
+          timestamp: new Date().toISOString(),
+        })
       }
       if (isSuccess) {
         session.subagentFailureCounts[typeKey] = 0

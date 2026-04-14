@@ -398,5 +398,49 @@ describe("createContinuationHandlers", () => {
       expect(result.additional_context).toContain("[mode:agent+plan]")
       expect(result.additional_context).toContain("/p.md")
     })
+
+    it("injects [start-work:discover] when /start-work and no activePlan", () => {
+      const session = getOrCreateSession(convId)
+      session.activePlan = null
+
+      const result = handlers["/beforeSubmitPrompt"]({
+        prompt: "/start-work",
+        conversation_id: convId,
+      }) as { additional_context?: string }
+
+      expect(result.additional_context).toContain("[start-work:discover]")
+      expect(result.additional_context).toContain("[command:start-work]")
+    })
+
+    it("injects [start-work:fresh] when /start-work and activePlan with no completed tasks", () => {
+      const session = getOrCreateSession(convId)
+      session.activePlan = { path: "plans/a.plan.md", phase: "Wave 0", completedTasks: [] }
+
+      const result = handlers["/beforeSubmitPrompt"]({
+        prompt: "/start-work",
+        conversation_id: convId,
+      }) as { additional_context?: string }
+
+      expect(result.additional_context).toContain("[start-work:fresh]")
+      expect(result.additional_context).toContain("plans/a.plan.md")
+    })
+
+    it("injects [start-work:resume] when /start-work and activePlan has completed tasks", () => {
+      const session = getOrCreateSession(convId)
+      session.activePlan = {
+        path: "plans/b.plan.md",
+        phase: "Wave 2",
+        completedTasks: ["t1", "t2"],
+      }
+
+      const result = handlers["/beforeSubmitPrompt"]({
+        prompt: "/start-work",
+        conversation_id: convId,
+      }) as { additional_context?: string }
+
+      expect(result.additional_context).toContain("[start-work:resume]")
+      expect(result.additional_context).toContain("t1, t2")
+      expect(result.additional_context).toContain("Wave 2")
+    })
   })
 })

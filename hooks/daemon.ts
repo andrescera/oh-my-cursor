@@ -13,6 +13,7 @@ import { createSafetyHandlers } from "./handlers/safety-handlers"
 import { createSubagentHandlers } from "./handlers/subagent-handlers"
 import { createSessionHistoryHandler } from "./handlers/session-history"
 import { BackgroundTracker, createBackgroundTasksHandler } from "./handlers/background-tracker"
+import { WisdomTracker } from "./handlers/wisdom-tracker"
 import { StatePersistence } from "./state-persistence"
 import { createHeartbeatHandler, startHeartbeatWriter, HEARTBEAT_FILE } from "./handlers/heartbeat"
 import { loadConfig } from "./config"
@@ -22,6 +23,7 @@ import type { HandlerMap } from "./types"
 
 const config = loadConfig()
 const tracker = new BackgroundTracker()
+const wisdomTracker = new WisdomTracker()
 const persistence = new StatePersistence(config.state_persistence.path)
 
 const restored = persistence.load()
@@ -135,7 +137,7 @@ const handlers: HandlerMap = {
   ...createToolGuardHandlers(sessions, tracker),
   ...createContinuationHandlers(sessions),
   ...createSafetyHandlers(),
-  ...createSubagentHandlers(sessions, tracker),
+  ...createSubagentHandlers(sessions, tracker, wisdomTracker),
   "/sessionHistory": createSessionHistoryHandler(sessions),
   "/backgroundTasks": createBackgroundTasksHandler(tracker),
   "/heartbeat": createHeartbeatHandler(startTime),

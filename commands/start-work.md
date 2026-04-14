@@ -1,3 +1,15 @@
+## Session resume (before-submit hook)
+
+When you run `/start-work`, the hook inspects in-memory session state (`activePlan`). It injects one of three hints so execution matches reality after a crash or new tab:
+
+| Tag | When | What to do |
+|-----|------|------------|
+| `[start-work:resume]` | `activePlan` exists and `completedTasks` is non-empty | Resume that plan path; skip redoing listed tasks; continue from the saved phase. |
+| `[start-work:fresh]` | `activePlan` exists but `completedTasks` is empty | Same plan path is active; start at Wave 1 (or Step 3 fresh) without assuming prior wave completion. |
+| `[start-work:discover]` | No `activePlan` in session | No loaded plan in memory — use **Glob** / **Read** on `.cursor/plans/` (and optionally `.cursor/state/active-plan.json`) to choose a plan, then proceed with Step 2 onward. |
+
+Persistent progress still lives in `.cursor/state/active-plan.json`; the hook’s session snapshot is what drives immediate resume vs discover until the agent reloads state from disk.
+
 ## Step 1: Discover plans
 
 Use **Glob** on `.cursor/plans/*.plan.md` to list plan files. Use **Read** to preview plan headers (first ~20 lines) so the user can identify each plan.

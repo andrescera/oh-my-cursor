@@ -6,6 +6,31 @@ import { COMPACTION_CONTEXT_PROMPT } from "../compaction-context-prompt"
 import { cleanupSafetySession } from "./safety-handlers"
 import { cleanupToolGuardSession } from "./tool-guard-handlers"
 
+function buildCompactionTodoPreservation(session: SessionState): string {
+  const lines: string[] = [
+    "[todo-preservation] Preserved todo states from before compaction:",
+  ]
+  for (const [id, status] of [...session.todoStates.entries()].sort(([a], [b]) => a.localeCompare(b))) {
+    lines.push("- " + id + ": " + status)
+  }
+  if (session.activePlan) {
+    const p = session.activePlan
+    let planLine =
+      "[active-plan] path: " +
+      p.path +
+      " | phase: " +
+      p.phase
+    if (p.completedTasks.length > 0) {
+      planLine += " | completedTasks: " + p.completedTasks.join(", ")
+    }
+    lines.push(planLine)
+  }
+  if (session.composerMode) {
+    lines.push("[composer-mode] " + session.composerMode)
+  }
+  return lines.join("\n")
+}
+
 export function createSessionHandlers(
   sessions: Map<string, SessionState>,
   port: number,
@@ -168,6 +193,13 @@ export function createSessionHandlers(
           id: "session-snapshot",
           source: "session-snapshot",
           content: snapshotLines.join("\n"),
+          priority: "high",
+        })
+
+        contextCollector.register(convId, {
+          id: "todo-preservation",
+          source: "compaction-todo-preserver",
+          content: buildCompactionTodoPreservation(session),
           priority: "high",
         })
       }

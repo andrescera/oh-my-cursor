@@ -3,7 +3,7 @@ import type { HandlerMap, RecentToolTrailEntry, SessionState } from "../types"
 import type { BackgroundTracker } from "./background-tracker"
 import { getOrCreateSession, resolveConversationId } from "../shared"
 import { loadConfig } from "../config"
-import { createContextWindowMonitor } from "./context-window-monitor"
+import { createContextWindowMonitor, type ContextWindowSessionEntry } from "./context-window-monitor"
 import { createCommentChecker } from "./comment-checker"
 import { createToolOutputTruncator } from "./tool-output-truncator"
 import { createDelegateTaskRetry } from "./delegate-task-retry"
@@ -90,7 +90,7 @@ function clipAdditionalContext(text: string, maxChars: number): string {
   )
 }
 
-const sessionTokens = new Map<string, number>()
+const sessionTokens = new Map<string, ContextWindowSessionEntry>()
 
 export function cleanupToolGuardSession(convId: string): void {
   sessionTokens.delete(convId)
@@ -270,22 +270,45 @@ export function createToolGuardHandlers(
       const readFilePath = (toolInput.file_path as string) || (toolInput.path as string) || (input.file_path as string) || (input.path as string)
       if (["read", "Read"].includes(toolName) && readFilePath) {
         const filePath = readFilePath
-        const dir = filePath.substring(0, filePath.lastIndexOf("/"))
-        const agentsPath = dir + "/AGENTS.md"
-        if (!session.injectedPaths.has(agentsPath)) {
-          try {
-            const content = readFileSync(agentsPath, "utf-8")
-            if (content) {
-              session.injectedPaths.add(agentsPath)
-              const snippet = content.length > 2000 ? content.slice(0, 2000) + "\n...[truncated]" : content
-              contextCollector.register(convId, {
-                id: `agents-${agentsPath}`,
-                source: "directory-context",
-                content: "[directory-context] AGENTS.md found at " + agentsPath + ":\n" + snippet,
-                priority: "normal",
-              })
-            }
-          } catch { /* AGENTS.md is optional */ }
+        let dir = filePath.substring(0, filePath.lastIndexOf("/"))
+
+        let projectRoot = process.cwd()
+        let searchDir = dir
+        while (searchDir && searchDir !== "/") {
+          if (existsSync(searchDir + "/.git") || existsSync(searchDir + "/package.json")) {
+            projectRoot = searchDir
+            break
+          }
+          searchDir = searchDir.substring(0, searchDir.lastIndexOf("/")) || "/"
+        }
+
+        let injectedCount = 0
+        const MAX_AGENTS_PER_READ = 5
+        let current = dir
+        while (current.length >= projectRoot.length && injectedCount < MAX_AGENTS_PER_READ) {
+          if (current.includes("/node_modules/") || current.includes("/.git/")) {
+            current = current.substring(0, current.lastIndexOf("/")) || ""
+            continue
+          }
+          const agentsPath = current + "/AGENTS.md"
+          if (!session.injectedPaths.has(agentsPath)) {
+            try {
+              const content = readFileSync(agentsPath, "utf-8")
+              if (content) {
+                session.injectedPaths.add(agentsPath)
+                const snippet = content.length > 2000 ? content.slice(0, 2000) + "\n...[truncated]" : content
+                contextCollector.register(convId, {
+                  id: `agents-${agentsPath}`,
+                  source: "directory-context",
+                  content: "[directory-context] AGENTS.md found at " + agentsPath + ":\n" + snippet,
+                  priority: "normal",
+                })
+                injectedCount++
+              }
+            } catch { /* AGENTS.md is optional */ }
+          }
+          if (current === projectRoot) break
+          current = current.substring(0, current.lastIndexOf("/")) || ""
         }
       }
 

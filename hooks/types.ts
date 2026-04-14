@@ -53,6 +53,7 @@ export type SessionState = {
   lastTodoSnapshot: string
   momusIterations: number
   composerMode: string | null
+  abortDetectedAt: number | null
   subagentOutcomes: SubagentOutcome[]
   subagentFailureCounts: Record<string, number>
   delegateRetryState: Record<string, number>

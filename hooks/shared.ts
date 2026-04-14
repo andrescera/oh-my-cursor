@@ -31,6 +31,7 @@ export function getOrCreateSession(conversationId: string): SessionState {
       lastTodoSnapshot: "",
       momusIterations: 0,
       composerMode: null,
+      abortDetectedAt: null,
       subagentOutcomes: [],
       subagentFailureCounts: {},
       delegateRetryState: {},

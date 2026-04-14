@@ -437,6 +437,34 @@ describe("hook daemon", () => {
       expect(String(result.user_message).length).toBeGreaterThan(0)
       expect(result.hookSpecificOutput?.hookEventName).toBe("PreCompact")
     })
+
+    test("injects preserved todo states, active plan, and composer mode into compaction context", async () => {
+      const sid = "sess-precompact-todo-preserve"
+      await post("/sessionStart", { session_id: sid })
+      await post("/beforeSubmitPrompt", {
+        session_id: sid,
+        prompt: "/plan outline work",
+      })
+      await post("/postToolUse", {
+        session_id: sid,
+        tool_name: "TodoWrite",
+        tool_input: {
+          merge: false,
+          todos: [
+            { id: "plan-phase1", content: "phase", status: "in_progress" },
+            { id: "task-1", content: "do thing", status: "pending" },
+          ],
+        },
+      })
+      const result = await post("/preCompact", { trigger: "auto", session_id: sid })
+      const msg = String(result.user_message)
+      expect(msg).toContain("[todo-preservation] Preserved todo states from before compaction:")
+      expect(msg).toContain("- plan-phase1: in_progress")
+      expect(msg).toContain("- task-1: pending")
+      expect(msg).toContain("[active-plan]")
+      expect(msg).toContain("plan-phase1")
+      expect(msg).toContain("[composer-mode] plan")
+    })
   })
 
   describe("/beforeSubmitPrompt", () => {

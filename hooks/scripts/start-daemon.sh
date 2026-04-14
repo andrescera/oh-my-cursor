@@ -30,15 +30,15 @@ is_heartbeat_fresh() {
   if [ ! -f "$HEARTBEAT_FILE" ]; then
     return 1
   fi
-  local ts
-  ts="$(cat "$HEARTBEAT_FILE" 2>/dev/null || echo "0")"
-  if ! [[ "$ts" =~ ^[0-9]+$ ]]; then
+  local ts_ms
+  ts_ms="$(cat "$HEARTBEAT_FILE" 2>/dev/null || echo "0")"
+  if ! [[ "$ts_ms" =~ ^[0-9]+$ ]]; then
     return 1
   fi
-  local now_ms
-  now_ms="$(date +%s%3N 2>/dev/null || echo "0")"
-  local age_ms=$(( now_ms - ts ))
-  if (( age_ms < 60000 )); then
+  local now_s ts_s
+  now_s="$(date +%s)"
+  ts_s=$((ts_ms / 1000))
+  if (( (now_s - ts_s) < 60 )); then
     return 0
   fi
   return 1
@@ -46,16 +46,12 @@ is_heartbeat_fresh() {
 
 wait_for_health() {
   local port="$1"
-  local delay=0.1
-  local elapsed=0
-  local max=5
-  while (( $(echo "$elapsed < $max" | bc -l) )); do
-    if curl -s "http://localhost:${port}/health" >/dev/null 2>&1; then
+  local delays=(0.1 0.2 0.4 0.8 1.6)
+  for delay in "${delays[@]}"; do
+    if curl -sf "http://localhost:${port}/health" >/dev/null 2>&1; then
       return 0
     fi
     sleep "$delay"
-    elapsed=$(echo "$elapsed + $delay" | bc -l)
-    delay=$(echo "$delay * 2" | bc -l)
   done
   return 1
 }

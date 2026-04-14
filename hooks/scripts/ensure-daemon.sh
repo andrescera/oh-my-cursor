@@ -26,12 +26,13 @@ read_port_file() {
 
 is_heartbeat_fresh() {
   [ -f "$HEARTBEAT_FILE" ] || return 1
-  local ts
-  ts="$(cat "$HEARTBEAT_FILE" 2>/dev/null || echo "0")"
-  [[ "$ts" =~ ^[0-9]+$ ]] || return 1
-  local now_ms
-  now_ms="$(date +%s%3N 2>/dev/null || echo "0")"
-  (( (now_ms - ts) < 60000 ))
+  local ts_ms
+  ts_ms="$(cat "$HEARTBEAT_FILE" 2>/dev/null || echo "0")"
+  [[ "$ts_ms" =~ ^[0-9]+$ ]] || return 1
+  local now_s ts_s
+  now_s="$(date +%s)"
+  ts_s=$((ts_ms / 1000))
+  (( (now_s - ts_s) < 60 ))
 }
 
 ACTUAL_PORT="$(read_port_file "$PORT_FILE" "$PORT")"
@@ -75,20 +76,19 @@ if ! $daemon_alive; then
 fi
 
 RETRY_COUNT="${OH_MY_CURSOR_RETRY_COUNT:-3}"
-RETRY_DELAY=0.5
 TOTAL_TIMEOUT=2
+RETRY_DELAYS=(0.5 1 2)
 
 response=""
 attempt=0
 while (( attempt < RETRY_COUNT )); do
-  response=$(curl -s --max-time "$TOTAL_TIMEOUT" -X POST "http://localhost:${ACTUAL_PORT}${ROUTE}" \
+  response=$(curl -sf --max-time "$TOTAL_TIMEOUT" -X POST "http://localhost:${ACTUAL_PORT}${ROUTE}" \
     -H 'Content-Type: application/json' \
     -d "$input" 2>/dev/null) && break
   attempt=$((attempt + 1))
   if (( attempt < RETRY_COUNT )); then
     echo "warning: daemon request failed (attempt $attempt/$RETRY_COUNT), retrying..." >&2
-    sleep "$RETRY_DELAY"
-    RETRY_DELAY=$(echo "$RETRY_DELAY * 2" | bc -l)
+    sleep "${RETRY_DELAYS[$((attempt - 1))]:-2}"
   fi
 done
 

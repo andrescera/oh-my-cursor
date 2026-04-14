@@ -1,0 +1,7 @@
+{
+  "name": "oh-my-cursor-hooks",
+  "private": true,
+  "dependencies": {
+    "zod": "^4.3.6"
+  }
+}

@@ -68,12 +68,12 @@ sequenceDiagram
     S->>D: Health polling every 30s
 ```
 
-## Session Lifecycle
+## Conversation Lifecycle
 
 ```mermaid
 stateDiagram-v2
-    [*] --> SessionStart: sessionStart hook
-    SessionStart --> Active: env vars set
+    [*] --> ConversationStart: sessionStart hook
+    ConversationStart --> Active: env vars set
     Active --> ToolUse: preToolUse
     ToolUse --> Active: postToolUse
     Active --> Compaction: preCompact via /summarize
@@ -129,7 +129,7 @@ graph LR
 
 | Tier | Value | Hooks | Purpose |
 |------|-------|-------|---------|
-| SESSION | 0 | sessionStart, sessionEnd, preCompact, subagentStart, subagentStop | Session lifecycle |
+| SESSION | 0 | sessionStart, sessionEnd, preCompact, subagentStart, subagentStop | Conversation lifecycle |
 | TOOL_GUARD | 1 | preToolUse, postToolUse, postToolUseFailure, beforeShellExecution, afterShellExecution, beforeMCPExecution, afterMCPExecution, beforeReadFile, afterFileEdit | Tool safety and tracking |
 | TRANSFORM | 2 | afterAgentResponse, afterAgentThought | Response transformation |
 | CONTINUATION | 3 | stop, beforeSubmitPrompt | Continuation loops |
@@ -152,9 +152,9 @@ Two-layer config with JSONC format:
 
 Merge order: defaults → user → project. Config cached 30s.
 
-## Session Management
+## Conversation Management
 
-Sessions are tracked in-memory with periodic persistence to `/tmp/oh-my-cursor-state.json`. Each session tracks: tool calls, dispatch counts, Ralph/Boulder loop state, compaction epochs, and error counts.
+Conversations are tracked in-memory with periodic persistence to `/tmp/oh-my-cursor-state.json`. Each conversation tracks: tool calls, dispatch counts, Ralph/Boulder loop state, compaction epochs, and error counts.
 
 ## Continuation Loops
 
@@ -176,8 +176,8 @@ Explore dispatch count scales with task complexity: 0 for trivial tasks, 2 for m
 ### Keyword Modes
 Detected keywords inject mode context: ultrawork, analyze, search, think. Sisyphus and other coordinators adjust their behavior based on the active keyword mode.
 
-### Session State
-Active plans tracked in `.cursor/state/active-plan.json`. Enables resume detection on `/start-work` and progress persistence across session boundaries.
+### Conversation State
+Active plans tracked in `.cursor/state/active-plan.json`. Enables resume detection on `/start-work` and progress persistence across conversation boundaries.
 
 ### Error Classification
 Hook daemon classifies errors into: rate limit (429), model unavailable (502/503), timeout, and generic. Each category has specific recovery advice injected into the conversation.
@@ -186,3 +186,10 @@ Hook daemon classifies errors into: rate limit (429), model unavailable (502/503
 3+ consecutive failures from the same agent type trigger a warning and suggest fallback options (different model, different agent, manual intervention).
 
 See [docs/cursor-features.md](docs/cursor-features.md) for native Cursor feature details.
+
+## Terminology
+
+- **conversation**: One chat tab/thread in Cursor, keyed by `conversationId`
+- **daemon session**: The daemon process lifetime (startup to shutdown)
+- **EventEntry.sessionId**: Legacy wire format name for `conversationId` in JSONL log files
+

@@ -28,6 +28,17 @@ export type SessionSummary = {
   denies: Array<{ ts: string; tool: string; reason: string }>
 }
 
+type EventCallback = (entry: EventEntry) => void
+const listeners: Set<EventCallback> = new Set()
+
+export function onEvent(cb: EventCallback): void {
+  listeners.add(cb)
+}
+
+export function offEvent(cb: EventCallback): void {
+  listeners.delete(cb)
+}
+
 const MAX_BUFFER = 10_000
 const TRIM_TO = 5_000
 const FLUSH_DELAY = 500
@@ -100,6 +111,11 @@ export function logEvent(entry: EventEntry): void {
   buffer.push(entry)
   if (buffer.length > MAX_BUFFER) buffer = buffer.slice(-TRIM_TO)
   pending.push(entry)
+  for (const cb of listeners) {
+    try {
+      cb(entry)
+    } catch {}
+  }
   scheduleFlush()
 }
 

@@ -3,7 +3,8 @@ import { readFileSync, writeFileSync, unlinkSync, existsSync } from "node:fs"
 import { homedir } from "node:os"
 import { join } from "node:path"
 import { STATUS_HTML } from "./mcp-app"
-import { logEvent, getEvents, getSessionSummary, getLogPath, clearLog } from "./event-logger"
+import { logEvent, getEvents, getSessionSummary, getLogPath, clearLog, onEvent, offEvent } from "./event-logger"
+import type { EventEntry } from "./event-logger"
 import { sessions, parseInput, extractMeta } from "./shared"
 import { isHookEnabled, getHookConfig } from "./hook-config"
 import { createSessionHandlers } from "./handlers/session-handlers"
@@ -177,6 +178,13 @@ const fetchHandler = async (req: Request) => {
   const url = new URL(req.url)
   const path = url.pathname
 
+  if (path === "/dashboard-v2") {
+    const { renderDashboardHTML } = await import("./dashboard/render")
+    return new Response(renderDashboardHTML(actualPort), {
+      headers: { "Content-Type": "text/html" },
+    })
+  }
+
   if (path === "/dashboard") {
     return new Response(STATUS_HTML, {
       headers: { "Content-Type": "text/html" },
@@ -282,6 +290,61 @@ const fetchHandler = async (req: Request) => {
         headers: { "Content-Type": "application/json" },
       })
     }
+  }
+
+  if (path === "/events/stream") {
+    const stream = new ReadableStream({
+      start(controller) {
+        const send = (entry: EventEntry) => {
+          try {
+            controller.enqueue(new TextEncoder().encode(`data: ${JSON.stringify(entry)}\n\n`))
+          } catch { offEvent(send) }
+        }
+        onEvent(send)
+        controller.enqueue(new TextEncoder().encode(`: keepalive\n\n`))
+      },
+      cancel() {
+        // cleanup happens via the try/catch in send
+      },
+    })
+    return new Response(stream, {
+      headers: {
+        "Content-Type": "text/event-stream",
+        "Cache-Control": "no-cache",
+        "Connection": "keep-alive",
+        "Access-Control-Allow-Origin": "*",
+      },
+    })
+  }
+
+  if (path === "/sessions/stream") {
+    const stream = new ReadableStream({
+      start(controller) {
+        const encoder = new TextEncoder()
+        const interval = setInterval(() => {
+          try {
+            const sessionData = Array.from(sessions.entries()).map(([id, s]) => ({
+              id,
+              startedAt: s.startedAt,
+              toolCallCount: s.toolCallCount,
+              errorCount: s.errorCount,
+              composerMode: s.composerMode,
+              dispatchCounts: s.dispatchCounts,
+            }))
+            controller.enqueue(encoder.encode(`data: ${JSON.stringify(sessionData)}\n\n`))
+          } catch { clearInterval(interval) }
+        }, 2000)
+        controller.enqueue(encoder.encode(`: keepalive\n\n`))
+      },
+    })
+    return new Response(stream, {
+      headers: {
+        "Content-Type": "text/event-stream",
+        "Cache-Control": "no-cache",
+        "Connection": "keep-alive",
+        "Access-Control-Allow-Origin": "*",
+      },
+    })
   }
 
   const handler = handlers[path]

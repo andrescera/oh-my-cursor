@@ -410,7 +410,7 @@ export function renderDashboardHTML(daemonPort: number): string {
   <script type="module">
     import * as preact      from 'https://esm.sh/preact@10.25.4';
     import * as preactHooks from 'https://esm.sh/preact@10.25.4/hooks';
-    import htm              from 'https://esm.sh/htm@3.1.1/preact';
+    import htm              from 'https://esm.sh/htm@3.1.1';
 
     const { h, render, Fragment } = preact;
     const { useState, useEffect, useCallback, useRef } = preactHooks;

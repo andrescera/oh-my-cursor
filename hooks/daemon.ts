@@ -489,6 +489,9 @@ const fetchHandler = async (req: Request) => {
   try {
     const body = req.method === "POST" ? await req.json() : {}
     const parsed = parseInput(body)
+    if (path !== "/health" && path !== "/heartbeat" && path !== "/status") {
+      console.log(`[oh-my-cursor][daemon] ${path} | inputKeys=${Object.keys(parsed).join(",")}`)
+    }
     const result = handler(parsed)
 
     if (path !== "/health" && path !== "/heartbeat" && path !== "/status") {

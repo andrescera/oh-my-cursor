@@ -46,12 +46,22 @@ const UNKNOWN_SLASH_COMMAND_HINT =
 
 function detectPlanMode(input: Record<string, unknown>, conversation: ConversationState, userMessage: string): boolean {
   const inputMode = (input.mode as string) || (input.composer_mode as string) || (input.composerMode as string) || ""
-  if (inputMode && inputMode !== "plan") return false
+  if (inputMode && inputMode !== "plan") {
+    console.log(`[oh-my-cursor][detectPlanMode] branch=inputModeBlocks | inputMode="${inputMode}" | RESULT=false`)
+    return false
+  }
 
-  if (inputMode === "plan") return true
+  if (inputMode === "plan") {
+    console.log(`[oh-my-cursor][detectPlanMode] branch=inputModePlan | RESULT=true`)
+    return true
+  }
 
   const lowerMsg = userMessage.toLowerCase().trimStart()
-  if (lowerMsg.startsWith("/plan")) return true
+  const cursorCommands = (input.cursor_commands as string) || (input.system_instructions as string) || ""
+  if (lowerMsg.startsWith("/plan")) {
+    console.log(`[oh-my-cursor][detectPlanMode] branch=msgStartsPlan | RESULT=true`)
+    return true
+  }
 
   const planTodosPresent = PLAN_PHASE_IDS.some((id) => conversation.todoStates.has(id))
   if (planTodosPresent) {
@@ -59,20 +69,35 @@ function detectPlanMode(input: Record<string, unknown>, conversation: Conversati
       const status = conversation.todoStates.get(id)
       return !status || status === "completed" || status === "cancelled"
     })
-    if (allDone) return false
+    if (allDone) {
+      console.log(`[oh-my-cursor][detectPlanMode] branch=planTodosAllDone | RESULT=false`)
+      return false
+    }
   }
 
-  if (conversation.composerMode === "plan") return true
+  if (conversation.composerMode === "plan") {
+    console.log(`[oh-my-cursor][detectPlanMode] branch=composerModeSticky | RESULT=true`)
+    return true
+  }
 
-  const cursorCommands = (input.cursor_commands as string) || (input.system_instructions as string) || ""
-  if (cursorCommands.toLowerCase().includes("/plan") || cursorCommands.toLowerCase().includes("plan mode")) return true
+  if (cursorCommands.toLowerCase().includes("/plan") || cursorCommands.toLowerCase().includes("plan mode")) {
+    console.log(`[oh-my-cursor][detectPlanMode] branch=cursorCommandsPlan | RESULT=true`)
+    return true
+  }
 
   for (const phaseId of PLAN_PHASE_IDS) {
-    if (conversation.todoStates.has(phaseId)) return true
+    if (conversation.todoStates.has(phaseId)) {
+      console.log(`[oh-my-cursor][detectPlanMode] branch=planPhaseTodo | phaseId=${phaseId} | RESULT=true`)
+      return true
+    }
   }
 
-  if (conversation.contextHistory.some(e => /plan-switchmode|plan-draft|plan-interview|plan-explore|plan-metis|plan-write/i.test(e))) return true
+  if (conversation.contextHistory.some(e => /plan-switchmode|plan-draft|plan-interview|plan-explore|plan-metis|plan-write/i.test(e))) {
+    console.log(`[oh-my-cursor][detectPlanMode] branch=contextHistoryMatch | RESULT=true`)
+    return true
+  }
 
+  console.log(`[oh-my-cursor][detectPlanMode] inputMode="${inputMode}" | msgStartsPlan=${lowerMsg.startsWith("/plan")} | composerModeSticky=${conversation.composerMode === "plan"} | cursorCommandsPlan=${cursorCommands.toLowerCase().includes("/plan")} | planTodosPresent=${planTodosPresent} | contextHistoryMatch=${conversation.contextHistory.some(e => /plan-switchmode|plan-draft|plan-interview|plan-explore|plan-metis|plan-write/i.test(e))} | RESULT=false`)
   return false
 }
 
@@ -92,15 +117,18 @@ export function createContinuationHandlers(
       }
 
       if (conversation.stoppedAt || stopHookActive || (status && status !== "completed")) {
+        console.log(`[oh-my-cursor][/stop] RESULT=noop reason=stoppedOrHookOrStatus`)
         return {}
       }
 
       if (conversation.abortDetectedAt && Date.now() - conversation.abortDetectedAt < ABORT_WINDOW_MS) {
+        console.log(`[oh-my-cursor][/stop] RESULT=noop reason=abortWindow`)
         return {}
       }
 
       const agentType = (input.agent_type as string) || (input.agentType as string) || ""
       if (SKIP_AGENTS.has(agentType)) {
+        console.log(`[oh-my-cursor][/stop] RESULT=noop reason=skipAgent`)
         return {}
       }
 
@@ -110,16 +138,19 @@ export function createContinuationHandlers(
 
         if (contextStr.includes("<promise>DONE</promise>") || contextStr.includes("DONE")) {
           conversation.ralphState = null
+          console.log(`[oh-my-cursor][/stop] RESULT=noop reason=ralphDone`)
           return {}
         }
 
         ralph.iteration++
         if (ralph.maxIterations > 0 && ralph.iteration >= ralph.maxIterations) {
           conversation.ralphState = null
+          console.log(`[oh-my-cursor][/stop] RESULT=noop reason=ralphMaxIter`)
           return {}
         }
 
         const message = "Continue working. Iteration " + ralph.iteration + "/" + (ralph.maxIterations || "unlimited") + ". When fully done, output <promise>DONE</promise>."
+        console.log(`[oh-my-cursor][/stop] RESULT=continue msg="${message.slice(0, 80)}"`)
         return {
           followup_message: message,
           decision: "block",
@@ -130,10 +161,12 @@ export function createContinuationHandlers(
       const loopCount = typeof input.loop_count === "number" ? input.loop_count : 0
       if (loopCount > 10) {
         if (conversation.boulderState) conversation.boulderState.active = false
+        console.log(`[oh-my-cursor][/stop] RESULT=noop reason=loopLimit`)
         return {}
       }
 
       if (conversation.continuationCooldownUntil && Date.now() < conversation.continuationCooldownUntil) {
+        console.log(`[oh-my-cursor][/stop] RESULT=noop reason=cooldown`)
         return {}
       }
 
@@ -157,6 +190,7 @@ export function createContinuationHandlers(
         }
 
         if (!conversation.boulderState.active) {
+          console.log(`[oh-my-cursor][/stop] RESULT=noop reason=boulderInactive`)
           return {}
         }
 
@@ -178,6 +212,7 @@ export function createContinuationHandlers(
             "Max continuation failures reached. Manual intervention needed.",
             "critical",
           )
+          console.log(`[oh-my-cursor][/stop] RESULT=noop reason=maxFailures`)
           return {}
         }
 
@@ -209,6 +244,7 @@ export function createContinuationHandlers(
           message += " (stagnation detected: attempt " + (conversation.consecutiveContinuationFailures + 1) + "/" + MAX_CONSECUTIVE_FAILURES + ")"
         }
 
+        console.log(`[oh-my-cursor][/stop] RESULT=continue msg="${message.slice(0, 80)}"`)
         return {
           followup_message: message,
           decision: "block",
@@ -229,6 +265,7 @@ export function createContinuationHandlers(
           const message = "Continue executing plan: " + conversation.activePlan.path +
             ". Current phase: " + (conversation.activePlan.phase || "unknown") +
             ". Do not stop until all plan tasks are complete. Use TodoWrite to track progress."
+          console.log(`[oh-my-cursor][/stop] RESULT=continue msg="${message.slice(0, 80)}"`)
           return {
             followup_message: message,
             decision: "block",
@@ -237,6 +274,7 @@ export function createContinuationHandlers(
         }
       }
 
+      console.log(`[oh-my-cursor][/stop] RESULT=noop reason=default`)
       return {}
     },
 
@@ -250,6 +288,8 @@ export function createContinuationHandlers(
         "[oh-my-cursor] FORBIDDEN per mode: Plan(Shell,Delete,StrReplace,impl-Tasks) Agent(direct Write/Shell) Debug/Ask(Write,Shell,Task)",
         "[oh-my-cursor] Agent mode: NEVER edit directly, delegate ALL via Task",
       ].join("\n")
+
+      console.log(`[oh-my-cursor][beforeSubmitPrompt] convId=${convId} | inputKeys=${Object.keys(input).join(",")} | hasMode=${!!input.mode} | hasComposerMode=${!!input.composerMode} | hasCursorCommands=${!!input.cursor_commands} | hasSystemInstructions=${!!input.system_instructions} | msgLen=${userMessage.length} | msgHead=${userMessage.slice(0, 50)}`)
 
       if (conversation.stoppedAt) {
         conversation.stoppedAt = null
@@ -269,6 +309,8 @@ export function createContinuationHandlers(
       } else if (inputMode) {
         conversation.composerMode = inputMode
       }
+
+      console.log(`[oh-my-cursor][beforeSubmitPrompt] isPlanMode=${isPlanMode} | isAgentMode=${isAgentMode} | composerModeAfter=${conversation.composerMode}`)
 
       if (conversation.composerMode === "plan") {
         additionalContext += "\n[mode:plan] Prometheus planning mode active." +

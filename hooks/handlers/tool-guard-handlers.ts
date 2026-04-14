@@ -113,6 +113,7 @@ export function createToolGuardHandlers(
       const convId = resolveConversationId(input)
       const conversation = getOrCreateConversation(convId)
       const toolInput = (input.tool_input as Record<string, unknown>) || {}
+      console.log(`[oh-my-cursor][preToolUse] convId=${convId} | tool=${toolName} | composerMode=${conversation.composerMode} | toolCallCount=${conversation.toolCallCount}`)
 
       if (["write", "Write", "str_replace", "StrReplace", "edit", "Edit", "apply_patch", "ApplyPatch"].includes(toolName)) {
         const isEditOperation = Boolean(toolInput.old_string)
@@ -195,6 +196,7 @@ export function createToolGuardHandlers(
               .filter((t) => t.agentType === normalized).length
             const thisTurnCount = conversation.dispatchCountsThisTurn[agentKey] || 0
             const activeCount = Math.max(trackerCount, thisTurnCount)
+            console.log(`[oh-my-cursor][preToolUse:task] agentType=${normalized} | mode=${currentMode} | active=${activeCount}/${limit} | DECISION=${activeCount >= limit ? "deny" : "allow"}`)
             if (activeCount >= limit) {
               const label = normalized === "explore" ? "Explore" : "Worker"
               const reason = `[dispatch-limit] ${label} concurrent limit reached (${activeCount}/${limit}). Consider consolidating ${normalized === "explore" ? "searches" : "tasks"}.`
@@ -382,6 +384,8 @@ export function createToolGuardHandlers(
         conversation.readPaths.add(resolved)
         console.log(`[oh-my-cursor][read-guard] Tracked read: "${resolved}" (raw: "${readFilePath}") | conversation: ${convId}`)
       }
+
+      console.log(`[oh-my-cursor][postToolUse] convId=${convId} | tool=${toolName} | toolCallCount=${conversation.toolCallCount} | readTracked=${["read", "Read"].includes(toolName) && readFilePath ? resolve(readFilePath) : "n/a"}`)
 
       const cw = contextWindowMonitor({ conversationId: convId, content: output })
       if (cw.additional_context) {

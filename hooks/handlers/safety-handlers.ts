@@ -147,6 +147,7 @@ export function createSafetyHandlers(): HandlerMap {
 
     "/afterAgentResponse": (input) => {
       const convId = resolveConversationId(input)
+      console.log(`[oh-my-cursor][afterAgentResponse] convId=${convId} | inputKeys=${Object.keys(input).join(",")} | hasResponse=${!!input.response} | responseLen=${typeof input.response === "string" ? input.response.length : 0}`)
 
       const count = (responseCount.get(convId) || 0) + 1
       responseCount.set(convId, count)

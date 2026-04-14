@@ -6,9 +6,9 @@ When you run `/start-work`, the hook inspects in-memory session state (`activePl
 |-----|------|------------|
 | `[start-work:resume]` | `activePlan` exists and `completedTasks` is non-empty | Resume that plan path; skip redoing listed tasks; continue from the saved phase. |
 | `[start-work:fresh]` | `activePlan` exists but `completedTasks` is empty | Same plan path is active; start at Wave 1 (or Step 3 fresh) without assuming prior wave completion. |
-| `[start-work:discover]` | No `activePlan` in session | No loaded plan in memory — use **Glob** / **Read** on `.cursor/plans/` (and optionally `.cursor/state/active-plan.json`) to choose a plan, then proceed with Step 2 onward. |
+| `[start-work:discover]` | No `activePlan` in session | No loaded plan in memory — use **Glob** / **Read** on `.cursor/plans/` (and optionally `.cursor/state/active-plan-{conversationId}.json`, falling back to `active-plan.json`) to choose a plan, then proceed with Step 2 onward. |
 
-Persistent progress still lives in `.cursor/state/active-plan.json`; the hook’s session snapshot is what drives immediate resume vs discover until the agent reloads state from disk.
+Persistent progress lives in `.cursor/state/active-plan-{conversationId}.json` per conversation (**`conversationId`** from the oh-my-cursor session context). If the per-conversation file does not exist, falls back to `.cursor/state/active-plan.json`. The hook’s session snapshot is what drives immediate resume vs discover until the agent reloads state from disk.
 
 ## Step 1: Discover plans
 
@@ -22,20 +22,24 @@ If exactly one plan exists, use it. If multiple plans exist, use **AskQuestion**
 
 After the plan is chosen:
 
-- Use **Read** on `.cursor/state/active-plan.json`. If the file is missing or unreadable, continue to Step 3.
+- Use **Read** on `.cursor/state/active-plan-{conversationId}.json` first (**`conversationId`** from session context). If missing or unreadable, **Read** `.cursor/state/active-plan.json`. If neither file is usable, continue to Step 3.
 - If the file exists, use **AskQuestion** to offer **Resume** (continue from saved `completedTasks` / `currentWave`) versus **Start fresh** (discard prior state for this run). If **`path`** in the file does not match the chosen plan, treat state as stale: default to **Start fresh** or confirm overwrite via **AskQuestion** before proceeding.
 
 ## Step 3: Execute plan
 
 **Active plan state** — At the start of Step 3 (before reading orchestration mode):
 
+Before registering execution todos, call TodoWrite with `merge: false` to clear all plan-phase todos from the previous planning session. This prevents stale plan-phase todos from contaminating the execution phase.
+
 1. Ensure `.cursor/state/` exists (create the directory if needed).
-2. Create or update `.cursor/state/active-plan.json` with:
+2. Create or update `.cursor/state/active-plan-{conversationId}.json` (**`conversationId`** from the oh-my-cursor session context) with:
    - **`path`**: path to the chosen plan file (workspace-relative or absolute, consistent across the run)
    - **`startedAt`**: ISO 8601 timestamp (set to now on **Start fresh**; preserve when **Resume**)
    - **`completedTasks`**: array of completed task or todo identifiers (`[]` on **Start fresh**; restore from file on **Resume**)
    - **`currentWave`**: integer wave index (`0` at a fresh start; restore or reset to match **Resume** / **Start fresh**)
 3. As execution proceeds, **update** the same file after each verified wave: advance **`currentWave`**, append completed items to **`completedTasks`**, and keep **`path`** accurate.
+
+If the per-conversation file does not exist yet, the hook loads `.cursor/state/active-plan.json` for resume hints; prefer writing the per-conversation file so parallel chats do not overwrite each other’s progress.
 
 Read the **orchestration.mode** value from the session's `additional_context` (injected on session start). Default is `"native"` if not set.
 
@@ -57,7 +61,7 @@ The root thread adopts **Atlas coordination personality** and executes the plan 
    - **ReadLints** on changed files — must be clean
    - **Read** changed files to confirm correctness
    - Cross-reference what the worker claimed vs actual file contents
-6. Mark verified tasks as completed in **TodoWrite**. Persist progress in **`active-plan.json`** ( **`currentWave`**, **`completedTasks`** ).
+6. Mark verified tasks as completed in **TodoWrite**. Persist progress in the active plan state file from Step 3 (**`currentWave`**, **`completedTasks`** ).
 6.5. **Wave commit (mandatory)** — After each wave passes verification, commit with a wave-descriptive message (e.g. `feat(wave-2): implement API handlers`) before starting the next wave. Do not begin the next wave until that commit is done.
 7. **Auto-continue** — dispatch the next wave immediately. Never ask "should I continue?" — only stop when blocked by genuine ambiguity requiring user input.
 8. Run the **Final Verification Wave** from the plan (if present).

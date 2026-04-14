@@ -430,26 +430,13 @@ export function renderDashboardHTML(daemonPort: number): string {
 
     /** @typedef {'connected' | 'reconnecting' | 'offline'} SseStatus */
 
-    let sseBrokenCount = 0;
-    let sseOfflineTimer = null;
-    /** @type {SseStatus} */
     let sseStatusValue = 'connected';
     const sseStatusListeners = new Set();
+    let sseOfflineTimer = null;
 
     function emitSseStatus(/** @type {SseStatus} */ s) {
       sseStatusValue = s;
       sseStatusListeners.forEach(fn => fn(s));
-    }
-
-    function recalculateSseStatus() {
-      clearTimeout(sseOfflineTimer);
-      sseOfflineTimer = null;
-      if (sseBrokenCount > 0) {
-        emitSseStatus('reconnecting');
-        sseOfflineTimer = setTimeout(() => emitSseStatus('offline'), 15000);
-      } else {
-        emitSseStatus('connected');
-      }
     }
 
     /** @param {(s: SseStatus) => void} fn */
@@ -459,34 +446,59 @@ export function renderDashboardHTML(daemonPort: number): string {
       return () => sseStatusListeners.delete(fn);
     }
 
-    /** @returns {() => void} */
-    function attachSseMonitor(es) {
-      let broken = false;
-      const onOpen = () => {
-        if (broken) {
-          broken = false;
-          sseBrokenCount = Math.max(0, sseBrokenCount - 1);
-          recalculateSseStatus();
-        }
+    const sseSubscribers = new Set();
+    let sseInstance = null;
+    let sseReconnectTimer = null;
+    let sseBackoff = 1000;
+    const SSE_MAX_BACKOFF = 30000;
+
+    function sseConnect() {
+      if (sseInstance) { try { sseInstance.close(); } catch {} }
+      clearTimeout(sseReconnectTimer);
+      clearTimeout(sseOfflineTimer);
+
+      const es = new EventSource(\`\${BASE}/events/stream\`);
+      sseInstance = es;
+
+      es.onopen = () => {
+        sseBackoff = 1000;
+        clearTimeout(sseOfflineTimer);
+        emitSseStatus('connected');
       };
-      const onError = () => {
-        if (!broken) {
-          broken = true;
-          sseBrokenCount += 1;
-          recalculateSseStatus();
-        }
+
+      es.onmessage = (evt) => {
+        let parsed;
+        try { parsed = JSON.parse(evt.data); } catch { return; }
+        for (const fn of sseSubscribers) { try { fn(parsed); } catch {} }
       };
-      es.addEventListener('open', onOpen);
-      es.addEventListener('error', onError);
-      return () => {
-        es.removeEventListener('open', onOpen);
-        es.removeEventListener('error', onError);
-        if (broken) {
-          broken = false;
-          sseBrokenCount = Math.max(0, sseBrokenCount - 1);
-          recalculateSseStatus();
-        }
+
+      es.addEventListener('session-snapshot', (evt) => {
+        let parsed;
+        try { parsed = JSON.parse(evt.data); } catch { return; }
+        const wrapped = { type: 'session-snapshot', data: parsed };
+        for (const fn of sseSubscribers) { try { fn(wrapped); } catch {} }
+      });
+
+      es.addEventListener('shutdown', () => {
+        try { es.close(); } catch {}
+        sseBackoff = 1000;
+        sseReconnectTimer = setTimeout(sseConnect, 500);
+      });
+
+      es.onerror = () => {
+        try { es.close(); } catch {}
+        emitSseStatus('reconnecting');
+        sseOfflineTimer = setTimeout(() => emitSseStatus('offline'), 15000);
+        const jitter = Math.random() * 500;
+        sseReconnectTimer = setTimeout(sseConnect, sseBackoff + jitter);
+        sseBackoff = Math.min(sseBackoff * 2, SSE_MAX_BACKOFF);
       };
+    }
+
+    function sseSubscribe(fn) {
+      sseSubscribers.add(fn);
+      if (sseSubscribers.size === 1 && !sseInstance) sseConnect();
+      return () => sseSubscribers.delete(fn);
     }
 
     // ── Shared helpers ──────────────────────────────────────────────────────
@@ -549,54 +561,26 @@ export function renderDashboardHTML(daemonPort: number): string {
       }, []);
 
       useEffect(() => {
-        let es;
-        let retryTimer;
-        let detachMonitor = () => {};
-
-        function connect() {
-          detachMonitor();
-          if (es) {
-            try { es.close(); } catch {}
+        const unsub = sseSubscribe((event) => {
+          if (event.type === 'session-snapshot') return;
+          setSseOn(true);
+          if (event.action === 'health' && event.data) {
+            setStats(event.data);
+            setOffline(false);
           }
-          es = new EventSource(\`\${BASE}/events/stream\`);
-          detachMonitor = attachSseMonitor(es);
-
-          es.onopen = () => setSseOn(true);
-
-          es.onmessage = (evt) => {
-            let event;
-            try { event = JSON.parse(evt.data); } catch { return; }
-
-            if (event.action === 'health' && event.data) {
-              setStats(event.data);
-              setOffline(false);
-            }
-            if (event.action === 'tool_call' || event.action === 'toolCall') {
-              setStats(prev => prev ? { ...prev, toolCalls: (prev.toolCalls || 0) + 1 } : prev);
-            }
-            if (event.action === 'error' || event.error || event.action === '/postToolUseFailure') {
-              const entry = {
-                ts: event.ts || Date.now(),
-                hook: event.event || event.action || 'error',
-                msg: (event.error || event.message || 'Error').slice(0, 80),
-              };
-              setErrors(prev => [entry, ...prev].slice(0, 5));
-            }
-          };
-
-          es.onerror = () => {
-            setSseOn(false);
-            try { es.close(); } catch {}
-            retryTimer = setTimeout(connect, 3000);
-          };
-        }
-
-        connect();
-        return () => {
-          clearTimeout(retryTimer);
-          detachMonitor();
-          if (es) try { es.close(); } catch {}
-        };
+          if (event.action === 'tool_call' || event.action === 'toolCall') {
+            setStats(prev => prev ? { ...prev, toolCalls: (prev.toolCalls || 0) + 1 } : prev);
+          }
+          if (event.action === 'error' || event.error || event.action === '/postToolUseFailure') {
+            const entry = {
+              ts: event.ts || Date.now(),
+              hook: event.event || event.action || 'error',
+              msg: (event.error || event.message || 'Error').slice(0, 80),
+            };
+            setErrors(prev => [entry, ...prev].slice(0, 5));
+          }
+        });
+        return unsub;
       }, []);
 
       if (loading) return html\`<\${Placeholder} text="Loading health..." />\`;
@@ -704,42 +688,35 @@ export function renderDashboardHTML(daemonPort: number): string {
 
       useEffect(() => {
         let mounted = true;
-        let es = null;
-        let detachMonitor = () => {};
 
         fetch(\`\${BASE}/backgroundTasks\`)
           .then(r => { if (!r.ok) throw new Error(\`HTTP \${r.status}\`); return r.json(); })
           .then(d => { if (mounted) setTasks(d.tasks || []); })
           .catch(e => { if (mounted) setLoadErr(e.message); });
 
-        es = new EventSource(\`\${BASE}/events/stream\`);
-        detachMonitor = attachSseMonitor(es);
-        es.onmessage = (evt) => {
-          try {
-            const msg = JSON.parse(evt.data);
-            if (msg.event === '/subagentStart') {
-              const task = msg.body ?? msg.data ?? msg;
-              setTasks(prev => {
-                if (!prev) return [{ ...task, status: 'running' }];
-                if (prev.find(t => t.agentId === task.agentId)) return prev;
-                return [...prev, { ...task, status: 'running' }];
-              });
-            } else if (msg.event === '/subagentStop') {
-              const payload = msg.body ?? msg.data ?? msg;
-              setTasks(prev => prev
-                ? prev.map(t => t.agentId === payload.agentId
-                    ? { ...t, status: payload.error ? 'failed' : 'completed', elapsedMs: payload.elapsedMs ?? t.elapsedMs }
-                    : t)
-                : prev
-              );
-            }
-          } catch {}
-        };
+        const unsub = sseSubscribe((msg) => {
+          if (msg.type === 'session-snapshot') return;
+          if (msg.event === '/subagentStart') {
+            const task = msg.body ?? msg.data ?? msg;
+            setTasks(prev => {
+              if (!prev) return [{ ...task, status: 'running' }];
+              if (prev.find(t => t.agentId === task.agentId)) return prev;
+              return [...prev, { ...task, status: 'running' }];
+            });
+          } else if (msg.event === '/subagentStop') {
+            const payload = msg.body ?? msg.data ?? msg;
+            setTasks(prev => prev
+              ? prev.map(t => t.agentId === payload.agentId
+                  ? { ...t, status: payload.error ? 'failed' : 'completed', elapsedMs: payload.elapsedMs ?? t.elapsedMs }
+                  : t)
+              : prev
+            );
+          }
+        });
 
         return () => {
           mounted = false;
-          detachMonitor();
-          if (es) es.close();
+          unsub();
         };
       }, []);
 
@@ -831,34 +808,25 @@ export function renderDashboardHTML(daemonPort: number): string {
       const scrollRef = useRef(null);
       const atBottom  = useRef(true);
 
-      // Fetch initial log then open SSE — chained to avoid duplicates during load
       useEffect(() => {
         const seen = new Set();
-        let es;
-        let detachMonitor = () => {};
+        let unsub = () => {};
         fetch(\`\${BASE}/session-log?limit=200\`)
           .then(r => r.json())
           .then(data => {
             data.forEach(e => seen.add(eventKey(e)));
             setEvents(data);
-            es = new EventSource(\`\${BASE}/events/stream\`);
-            detachMonitor = attachSseMonitor(es);
-            es.onmessage = msg => {
-              try {
-                const ev = JSON.parse(msg.data);
-                const k  = eventKey(ev);
-                if (seen.has(k)) return;
-                seen.add(k);
-                setEvents(prev => [...prev, ev]);
-              } catch {}
-            };
+            unsub = sseSubscribe((ev) => {
+              if (ev.type === 'session-snapshot') return;
+              const k = eventKey(ev);
+              if (seen.has(k)) return;
+              seen.add(k);
+              setEvents(prev => [...prev, ev]);
+            });
           })
           .catch(() => {})
           .finally(() => setLogReady(true));
-        return () => {
-          detachMonitor();
-          if (es) es.close();
-        };
+        return () => unsub();
       }, []);
 
       // Track whether user is at the bottom of the scroll container
@@ -1273,8 +1241,6 @@ export function renderDashboardHTML(daemonPort: number): string {
       const [expandedKeys, setExpanded] = useState(new Set());
 
       useEffect(() => {
-        let es;
-        let detachMonitor = () => {};
         let cancelled = false;
 
         fetch(\`\${BASE}/sessions\`)
@@ -1282,22 +1248,18 @@ export function renderDashboardHTML(daemonPort: number): string {
           .then(data => {
             if (cancelled) return;
             setRows(Array.isArray(data) ? data : []);
-            es = new EventSource(\`\${BASE}/sessions/stream\`);
-            detachMonitor = attachSseMonitor(es);
-            es.onmessage = evt => {
-              try {
-                const snap = JSON.parse(evt.data);
-                if (!Array.isArray(snap)) return;
-                setRows(prev => mergeSessionSnapshots(prev, snap));
-              } catch {}
-            };
           })
           .catch(e => { if (!cancelled) setLoadErr(e.message); });
 
+        const unsub = sseSubscribe((msg) => {
+          if (msg.type === 'session-snapshot' && Array.isArray(msg.data)) {
+            setRows(prev => mergeSessionSnapshots(prev, msg.data));
+          }
+        });
+
         return () => {
           cancelled = true;
-          detachMonitor();
-          if (es) es.close();
+          unsub();
         };
       }, []);
 
@@ -1370,8 +1332,6 @@ export function renderDashboardHTML(daemonPort: number): string {
 
       useEffect(() => {
         let cancelled = false;
-        let es = null;
-        let detachSse = () => {};
 
         fetch(\`\${BASE}/backgroundTasks\`)
           .then(r => { if (!r.ok) throw new Error(\`HTTP \${r.status}\`); return r.json(); })
@@ -1392,90 +1352,85 @@ export function renderDashboardHTML(daemonPort: number): string {
           .catch(e => { if (!cancelled) setLoadErr(e.message); })
           .finally(() => { if (!cancelled) setReady(true); });
 
-        es = new EventSource(\`\${BASE}/events/stream\`);
-        detachSse = attachSseMonitor(es);
-        es.onmessage = (evt) => {
-          try {
-            const msg = JSON.parse(evt.data);
-            if (msg.event === '/subagentStart') {
-              const p = ssePayloadFromEvent(msg);
-              const agentId = normalizeAgentId(p.agent_id)
-                || ('pending-' + (msg.ts || new Date().toISOString()) + '-' + Math.random().toString(36).slice(2, 9));
-              const agentType = (p.agent_type || msg.agentType || 'unknown').toLowerCase();
-              const description = p.description || '';
-              const startTime = msg.ts ? new Date(msg.ts).getTime() : Date.now();
-              setRunning(prev => {
-                if (prev.some(a => a.agentId === agentId)) return prev;
-                return [...prev, {
-                  agentId,
-                  conversationId: msg.sessionId || '',
-                  agentType,
-                  description,
-                  startTime,
-                  elapsedMs: 0,
-                  status: 'running',
-                }];
-              });
-            } else if (msg.event === '/subagentStop') {
-              const p = ssePayloadFromEvent(msg);
-              const agentId = normalizeAgentId(p.agent_id);
-              const agentType = (p.agent_type || msg.agentType || '').toLowerCase() || 'unknown';
-              const rawStatus = (p.status || '').toLowerCase();
-              const failed = rawStatus === 'error' || rawStatus === 'failed' || Boolean(msg.error);
-              const doneStatus = failed ? 'failed' : 'completed';
-              const finalMs = typeof p.duration_ms === 'number' ? p.duration_ms : (typeof msg.durationMs === 'number' ? msg.durationMs : undefined);
+        const unsub = sseSubscribe((msg) => {
+          if (msg.type === 'session-snapshot') return;
+          if (msg.event === '/subagentStart') {
+            const p = ssePayloadFromEvent(msg);
+            const agentId = normalizeAgentId(p.agent_id)
+              || ('pending-' + (msg.ts || new Date().toISOString()) + '-' + Math.random().toString(36).slice(2, 9));
+            const agentType = (p.agent_type || msg.agentType || 'unknown').toLowerCase();
+            const description = p.description || '';
+            const startTime = msg.ts ? new Date(msg.ts).getTime() : Date.now();
+            setRunning(prev => {
+              if (prev.some(a => a.agentId === agentId)) return prev;
+              return [...prev, {
+                agentId,
+                conversationId: msg.sessionId || '',
+                agentType,
+                description,
+                startTime,
+                elapsedMs: 0,
+                status: 'running',
+              }];
+            });
+          } else if (msg.event === '/subagentStop') {
+            const p = ssePayloadFromEvent(msg);
+            const agentId = normalizeAgentId(p.agent_id);
+            const agentType = (p.agent_type || msg.agentType || '').toLowerCase() || 'unknown';
+            const rawStatus = (p.status || '').toLowerCase();
+            const failed = rawStatus === 'error' || rawStatus === 'failed' || Boolean(msg.error);
+            const doneStatus = failed ? 'failed' : 'completed';
+            const finalMs = typeof p.duration_ms === 'number' ? p.duration_ms : (typeof msg.durationMs === 'number' ? msg.durationMs : undefined);
 
-              setRunning(prev => {
-                let matchIdx = -1;
-                if (agentId) matchIdx = prev.findIndex(a => a.agentId === agentId);
-                if (matchIdx < 0 && agentType && agentType !== 'unknown') {
-                  let oldest = Infinity;
-                  const norm = agentType.toLowerCase();
-                  for (let i = 0; i < prev.length; i++) {
-                    if (prev[i].agentType.toLowerCase() !== norm) continue;
-                    const st = prev[i].startTime || 0;
-                    if (st < oldest) { oldest = st; matchIdx = i; }
-                  }
+            setRunning(prev => {
+              let matchIdx = -1;
+              if (agentId) matchIdx = prev.findIndex(a => a.agentId === agentId);
+              if (matchIdx < 0 && agentType && agentType !== 'unknown') {
+                let oldest = Infinity;
+                const norm = agentType.toLowerCase();
+                for (let i = 0; i < prev.length; i++) {
+                  if (prev[i].agentType.toLowerCase() !== norm) continue;
+                  const st = prev[i].startTime || 0;
+                  if (st < oldest) { oldest = st; matchIdx = i; }
                 }
-                if (matchIdx < 0) {
-                  const elapsedFinal = finalMs != null ? finalMs : 0;
-                  const histEntry = {
-                    agentId: agentId || ('stop-' + (msg.ts || Date.now()) + '-' + Math.random().toString(36).slice(2, 7)),
-                    agentType,
-                    description: p.description || '',
-                    startTime: msg.ts && finalMs != null ? new Date(msg.ts).getTime() - finalMs : Date.now() - elapsedFinal,
-                    elapsedMs: elapsedFinal,
-                    status: doneStatus,
-                    completedAt: Date.now(),
-                  };
-                  setHistory(h => [histEntry, ...h].slice(0, AG_HISTORY_MAX));
-                  return prev;
-                }
-                const ended = prev[matchIdx];
-                const nextRunning = prev.filter((_, i) => i !== matchIdx);
-                const elapsedFinal = finalMs != null
-                  ? finalMs
-                  : (ended.startTime ? Date.now() - new Date(ended.startTime).getTime() : (ended.elapsedMs || 0));
+              }
+              if (matchIdx < 0) {
+                const elapsedFinal = finalMs != null ? finalMs : 0;
                 const histEntry = {
-                  agentId: ended.agentId,
-                  agentType: ended.agentType,
-                  description: ended.description || p.description || '',
-                  startTime: ended.startTime,
+                  agentId: agentId || ('stop-' + (msg.ts || Date.now()) + '-' + Math.random().toString(36).slice(2, 7)),
+                  agentType,
+                  description: p.description || '',
+                  startTime: msg.ts && finalMs != null ? new Date(msg.ts).getTime() - finalMs : Date.now() - elapsedFinal,
                   elapsedMs: elapsedFinal,
                   status: doneStatus,
                   completedAt: Date.now(),
                 };
                 setHistory(h => [histEntry, ...h].slice(0, AG_HISTORY_MAX));
-                return nextRunning;
-              });
-            }
-          } catch {}
-        };
+                return prev;
+              }
+              const ended = prev[matchIdx];
+              const nextRunning = prev.filter((_, i) => i !== matchIdx);
+              const elapsedFinal = finalMs != null
+                ? finalMs
+                : (ended.startTime ? Date.now() - new Date(ended.startTime).getTime() : (ended.elapsedMs || 0));
+              const histEntry = {
+                agentId: ended.agentId,
+                agentType: ended.agentType,
+                description: ended.description || p.description || '',
+                startTime: ended.startTime,
+                elapsedMs: elapsedFinal,
+                status: doneStatus,
+                completedAt: Date.now(),
+              };
+              setHistory(h => [histEntry, ...h].slice(0, AG_HISTORY_MAX));
+              return nextRunning;
+            });
+          }
+        });
 
         return () => {
           cancelled = true;
-          detachSse();
-          if (es) es.close();
+          unsub();
         };
       }, []);
 

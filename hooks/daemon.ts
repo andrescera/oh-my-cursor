@@ -100,6 +100,7 @@ let server: Server | null = null
 let isShuttingDown = false
 let heartbeatInterval: ReturnType<typeof setInterval> | null = null
 let persistenceInterval: ReturnType<typeof setInterval> | null = null
+const activeStreams = new Set<ReadableStreamDefaultController>()
 
 function gracefulShutdown(reason: string): void {
   if (isShuttingDown) return
@@ -117,16 +118,25 @@ function gracefulShutdown(reason: string): void {
     persistenceInterval = null
   }
 
-  persistence.forceFlush(sessions)
+  const encoder = new TextEncoder()
+  for (const controller of activeStreams) {
+    try {
+      controller.enqueue(encoder.encode(`event: shutdown\ndata: {}\n\n`))
+      controller.close()
+    } catch {}
+  }
+  activeStreams.clear()
 
-  removePidFile()
-  removePortFile()
-  removeHeartbeatFile()
+  persistence.forceFlush(sessions)
 
   if (server) {
     server.stop(true)
     console.log("[oh-my-cursor] HTTP server closed")
   }
+
+  removePidFile()
+  removePortFile()
+  removeHeartbeatFile()
 
   console.log("[oh-my-cursor] Shutdown complete")
   process.exit(0)
@@ -321,32 +331,61 @@ const fetchHandler = async (req: Request) => {
   if (path === "/events/stream") {
     const encoder = new TextEncoder()
     let keepaliveTimer: ReturnType<typeof setInterval> | null = null
+    let sessionSnapshotTimer: ReturnType<typeof setInterval> | null = null
     let sendFn: ((entry: EventEntry) => void) | null = null
 
     const stream = new ReadableStream({
       start(controller) {
+        activeStreams.add(controller)
         sendFn = (entry: EventEntry) => {
           try {
             controller.enqueue(encoder.encode(`data: ${JSON.stringify(entry)}\n\n`))
           } catch {
             if (sendFn) offEvent(sendFn)
             if (keepaliveTimer) clearInterval(keepaliveTimer)
+            if (sessionSnapshotTimer) clearInterval(sessionSnapshotTimer)
+            activeStreams.delete(controller)
+            controller.close()
           }
         }
         onEvent(sendFn)
-        controller.enqueue(encoder.encode(`: ok\n\n`))
+        controller.enqueue(encoder.encode(`retry: 3000\n: ok\n\n`))
         keepaliveTimer = setInterval(() => {
           try {
             controller.enqueue(encoder.encode(`: ping\n\n`))
           } catch {
             if (sendFn) offEvent(sendFn)
             if (keepaliveTimer) clearInterval(keepaliveTimer)
+            if (sessionSnapshotTimer) clearInterval(sessionSnapshotTimer)
+            activeStreams.delete(controller)
+            controller.close()
           }
         }, 15_000)
+        sessionSnapshotTimer = setInterval(() => {
+          try {
+            const snapshot = Array.from(sessions.entries()).map(([id, s]) => ({
+              id,
+              startedAt: s.startedAt,
+              toolCallCount: s.toolCallCount,
+              errorCount: s.errorCount,
+              composerMode: s.composerMode,
+              dispatchCounts: s.dispatchCounts,
+            }))
+            controller.enqueue(encoder.encode(`event: session-snapshot\ndata: ${JSON.stringify(snapshot)}\n\n`))
+          } catch {
+            if (sendFn) offEvent(sendFn)
+            if (keepaliveTimer) clearInterval(keepaliveTimer)
+            if (sessionSnapshotTimer) clearInterval(sessionSnapshotTimer)
+            activeStreams.delete(controller)
+            controller.close()
+          }
+        }, 2_000)
       },
       cancel() {
         if (sendFn) offEvent(sendFn)
         if (keepaliveTimer) clearInterval(keepaliveTimer)
+        if (sessionSnapshotTimer) clearInterval(sessionSnapshotTimer)
+        activeStreams.delete(controller)
       },
     })
     return new Response(stream, {
@@ -365,7 +404,8 @@ const fetchHandler = async (req: Request) => {
 
     const stream = new ReadableStream({
       start(controller) {
-        controller.enqueue(encoder.encode(`: ok\n\n`))
+        activeStreams.add(controller)
+        controller.enqueue(encoder.encode(`retry: 3000\n: ok\n\n`))
         interval = setInterval(() => {
           try {
             const sessionData = Array.from(sessions.entries()).map(([id, s]) => ({
@@ -379,11 +419,14 @@ const fetchHandler = async (req: Request) => {
             controller.enqueue(encoder.encode(`data: ${JSON.stringify(sessionData)}\n\n`))
           } catch {
             if (interval) clearInterval(interval)
+            activeStreams.delete(controller)
+            controller.close()
           }
         }, 2000)
       },
       cancel() {
         if (interval) clearInterval(interval)
+        activeStreams.delete(controller)
       },
     })
     return new Response(stream, {

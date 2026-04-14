@@ -386,7 +386,19 @@ async function handleToolCall(
         }
       }
 
-      const skillPath = join(getPluginRoot(), "skills", skillName, "SKILL.md")
+      const skillsDir = join(getPluginRoot(), "skills")
+      const skillPath = join(skillsDir, skillName, "SKILL.md")
+      const resolvedPath = require("node:path").resolve(skillPath)
+      if (!resolvedPath.startsWith(require("node:path").resolve(skillsDir))) {
+        return {
+          content: [
+            {
+              type: "text",
+              text: "Invalid skill name: path traversal detected.",
+            },
+          ],
+        }
+      }
       if (!existsSync(skillPath)) {
         return {
           content: [
@@ -721,7 +733,16 @@ const mcpFetchHandler = async (req: Request) => {
   const url = new URL(req.url)
 
   if (url.pathname === "/mcp" && req.method === "POST") {
-    const body = await req.json()
+    let body: Record<string, unknown>
+    try {
+      body = await req.json()
+    } catch {
+      return Response.json({
+        jsonrpc: "2.0",
+        id: null,
+        error: { code: -32700, message: "Parse error" },
+      })
+    }
 
     if (body.method === "initialize") {
       return Response.json({

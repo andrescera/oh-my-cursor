@@ -173,16 +173,15 @@ start_daemon() {
   echo '{}' | "$starter"
   local port
   port="$(cat /tmp/oh-my-cursor-daemon.port 2>/dev/null || echo "$DEFAULT_DAEMON_PORT")"
-  local delay=0.2
-  local elapsed=0
-  while (( $(echo "$elapsed < 8" | bc -l 2>/dev/null || echo 0) )); do
-    if curl -s "http://localhost:${port}/health" &>/dev/null; then
+  local attempt=0
+  local max_attempts=8
+  while (( attempt < max_attempts )); do
+    if curl -s --max-time 2 "http://localhost:${port}/health" &>/dev/null; then
       log "Daemon healthy on port $port"
       return 0
     fi
-    sleep "$delay"
-    elapsed=$(echo "$elapsed + $delay" | bc -l 2>/dev/null || echo 9)
-    delay=$(echo "$delay * 2" | bc -l 2>/dev/null || echo 1)
+    sleep 1
+    attempt=$((attempt + 1))
   done
   warn "Daemon did not become healthy within 8s — check /tmp/oh-my-cursor-daemon.log"
   return 1

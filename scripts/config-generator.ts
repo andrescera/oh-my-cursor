@@ -89,8 +89,10 @@ const MODEL_MAP: Record<string, string> = {
 }
 
 function mapModel(openCodeModel: string): string {
-  for (const [key, value] of Object.entries(MODEL_MAP)) {
-    if (openCodeModel.includes(key)) return value
+  if (MODEL_MAP[openCodeModel]) return MODEL_MAP[openCodeModel]
+  const sortedKeys = Object.keys(MODEL_MAP).sort((a, b) => b.length - a.length)
+  for (const key of sortedKeys) {
+    if (openCodeModel.includes(key)) return MODEL_MAP[key]
   }
   return openCodeModel
 }
@@ -161,7 +163,7 @@ async function generatePlugin(configPath: string, outputDir: string): Promise<vo
       version: 1,
       hooks: {
         stop: [{
-          command: "curl -s -X POST http://localhost:47847/stop -H 'Content-Type: application/json' -d \"$(cat)\"",
+          command: "curl -s -X POST http://localhost:${OH_MY_CURSOR_DAEMON_PORT:-47847}/stop -H 'Content-Type: application/json' -d \"$(cat)\"",
           loop_limit: config.ralph_loop.max_iterations,
         }],
       },

@@ -33,18 +33,18 @@ const PRIORITY_ORDER: Record<ContextPriority, number> = {
 const CONTEXT_SEPARATOR = "\n\n---\n\n"
 
 export class ContextCollector {
-  private sessions: Map<string, Map<string, ContextEntry>> = new Map()
-  private sessionCounters: Map<string, number> = new Map()
+  private conversations: Map<string, Map<string, ContextEntry>> = new Map()
+  private conversationCounters: Map<string, number> = new Map()
 
-  register(sessionId: string, options: RegisterContextOptions): void {
-    if (!this.sessions.has(sessionId)) {
-      this.sessions.set(sessionId, new Map())
+  register(conversationId: string, options: RegisterContextOptions): void {
+    if (!this.conversations.has(conversationId)) {
+      this.conversations.set(conversationId, new Map())
     }
-    const sessionMap = this.sessions.get(sessionId)!
+    const conversationMap = this.conversations.get(conversationId)!
     const key = `${options.source}:${options.id}`
 
-    const counter = (this.sessionCounters.get(sessionId) ?? 0) + 1
-    this.sessionCounters.set(sessionId, counter)
+    const counter = (this.conversationCounters.get(conversationId) ?? 0) + 1
+    this.conversationCounters.set(conversationId, counter)
 
     const entry: ContextEntry = {
       id: options.id,
@@ -55,40 +55,40 @@ export class ContextCollector {
       metadata: options.metadata,
     }
 
-    sessionMap.set(key, entry)
+    conversationMap.set(key, entry)
   }
 
-  getPending(sessionId: string): PendingContext {
-    const sessionMap = this.sessions.get(sessionId)
-    if (!sessionMap || sessionMap.size === 0) {
+  getPending(conversationId: string): PendingContext {
+    const conversationMap = this.conversations.get(conversationId)
+    if (!conversationMap || conversationMap.size === 0) {
       return { merged: "", entries: [], hasContent: false }
     }
 
-    const entries = this.sortEntries([...sessionMap.values()])
+    const entries = this.sortEntries([...conversationMap.values()])
     const merged = entries.map((e) => e.content).join(CONTEXT_SEPARATOR)
 
     return { merged, entries, hasContent: entries.length > 0 }
   }
 
-  consume(sessionId: string): PendingContext {
-    const pending = this.getPending(sessionId)
-    this.clear(sessionId)
+  consume(conversationId: string): PendingContext {
+    const pending = this.getPending(conversationId)
+    this.clear(conversationId)
     return pending
   }
 
-  hasPending(sessionId: string): boolean {
-    const sessionMap = this.sessions.get(sessionId)
-    return sessionMap !== undefined && sessionMap.size > 0
+  hasPending(conversationId: string): boolean {
+    const conversationMap = this.conversations.get(conversationId)
+    return conversationMap !== undefined && conversationMap.size > 0
   }
 
-  clear(sessionId: string): void {
-    this.sessions.delete(sessionId)
-    this.sessionCounters.delete(sessionId)
+  clear(conversationId: string): void {
+    this.conversations.delete(conversationId)
+    this.conversationCounters.delete(conversationId)
   }
 
   clearAll(): void {
-    this.sessions.clear()
-    this.sessionCounters.clear()
+    this.conversations.clear()
+    this.conversationCounters.clear()
   }
 
   private sortEntries(entries: ContextEntry[]): ContextEntry[] {

@@ -10,7 +10,7 @@ describe("ContextCollector", () => {
 
   describe("#given a fresh collector", () => {
     describe("#when hasPending is checked", () => {
-      test("#then returns false for unknown session", () => {
+      test("#then returns false for unknown conversation", () => {
         expect(collector.hasPending("unknown")).toBe(false)
       })
     })
@@ -181,9 +181,9 @@ describe("ContextCollector", () => {
     })
   })
 
-  describe("#given multiple sessions", () => {
-    describe("#when entries are registered for different sessions", () => {
-      test("#then sessions are isolated", () => {
+  describe("#given multiple conversations", () => {
+    describe("#when entries are registered for different conversations", () => {
+      test("#then conversations are isolated", () => {
         collector.register("s1", { id: "a", source: "src", content: "s1-content" })
         collector.register("s2", { id: "b", source: "src", content: "s2-content" })
 
@@ -197,8 +197,8 @@ describe("ContextCollector", () => {
       })
     })
 
-    describe("#when clear is called for one session", () => {
-      test("#then other sessions are unaffected", () => {
+    describe("#when clear is called for one conversation", () => {
+      test("#then other conversations are unaffected", () => {
         collector.register("s1", { id: "a", source: "src", content: "s1" })
         collector.register("s2", { id: "b", source: "src", content: "s2" })
 
@@ -210,7 +210,7 @@ describe("ContextCollector", () => {
     })
 
     describe("#when clearAll is called", () => {
-      test("#then all sessions are cleared", () => {
+      test("#then all conversations are cleared", () => {
         collector.register("s1", { id: "a", source: "src", content: "s1" })
         collector.register("s2", { id: "b", source: "src", content: "s2" })
 

@@ -1,10 +1,10 @@
 import { readFileSync, existsSync } from "node:fs"
 import { resolve } from "node:path"
-import type { HandlerMap, RecentToolTrailEntry, SessionState } from "../types"
+import type { HandlerMap, RecentToolTrailEntry, ConversationState } from "../types"
 import type { BackgroundTracker } from "./background-tracker"
-import { getOrCreateSession, resolveConversationId } from "../shared"
+import { getOrCreateConversation, resolveConversationId } from "../shared"
 import { loadConfig } from "../config"
-import { createContextWindowMonitor, type ContextWindowSessionEntry } from "./context-window-monitor"
+import { createContextWindowMonitor, type ContextWindowConversationEntry } from "./context-window-monitor"
 import { createCommentChecker } from "./comment-checker"
 import { createToolOutputTruncator } from "./tool-output-truncator"
 import { createDelegateTaskRetry } from "./delegate-task-retry"
@@ -27,7 +27,7 @@ const EDIT_TOOL_NAMES = new Set(["write", "Write", "str_replace", "StrReplace", 
 const TASK_DELEGATION_TOOLS = new Set(["task", "Task", "agent", "Agent"])
 
 function pushRecentToolTrail(
-  session: SessionState,
+  conversation: ConversationState,
   toolName: string,
   toolInput: Record<string, unknown>,
 ): void {
@@ -36,17 +36,17 @@ function pushRecentToolTrail(
   const cmd = toolInput.command
   const commandSnippet = typeof cmd === "string" ? cmd.slice(0, 240) : undefined
   const entry: RecentToolTrailEntry = { tool: toolName, path, commandSnippet }
-  session.recentToolTrail.push(entry)
-  if (session.recentToolTrail.length > RECENT_TOOL_TRAIL_MAX) {
-    session.recentToolTrail.shift()
+  conversation.recentToolTrail.push(entry)
+  if (conversation.recentToolTrail.length > RECENT_TOOL_TRAIL_MAX) {
+    conversation.recentToolTrail.shift()
   }
 }
 
-function buildSkillReminderContextLines(session: SessionState): string[] {
+function buildSkillReminderContextLines(conversation: ConversationState): string[] {
   const lines: string[] = []
-  const everSubagentDispatched = Object.keys(session.dispatchCounts).some((k) => k.startsWith("subagent:"))
+  const everSubagentDispatched = Object.keys(conversation.dispatchCounts).some((k) => k.startsWith("subagent:"))
 
-  if (session.toolCallsSinceTaskDispatch >= 5) {
+  if (conversation.toolCallsSinceTaskDispatch >= 5) {
     if (!everSubagentDispatched) {
       lines.push(
         "You have made 5+ tool calls without any Task(subagent) dispatch this session — consider Task(explore) or Task(sisyphus-junior) for delegation.",
@@ -58,7 +58,7 @@ function buildSkillReminderContextLines(session: SessionState): string[] {
     }
   }
 
-  const trail = session.recentToolTrail
+  const trail = conversation.recentToolTrail
   const gitShell = trail.some(
     (e) => SHELL_TOOL_NAMES.has(e.tool) && e.commandSnippet && /\bgit\b/.test(e.commandSnippet),
   )
@@ -91,18 +91,18 @@ function clipAdditionalContext(text: string, maxChars: number): string {
   )
 }
 
-const sessionTokens = new Map<string, ContextWindowSessionEntry>()
+const conversationTokens = new Map<string, ContextWindowConversationEntry>()
 
-export function cleanupToolGuardSession(convId: string): void {
-  sessionTokens.delete(convId)
+export function cleanupToolGuardConversation(convId: string): void {
+  conversationTokens.delete(convId)
 }
 
 export function createToolGuardHandlers(
-  _sessions: Map<string, SessionState>,
+  _conversations: Map<string, ConversationState>,
   tracker: BackgroundTracker,
 ): HandlerMap {
   const config = loadConfig()
-  const contextWindowMonitor = createContextWindowMonitor(sessionTokens)
+  const contextWindowMonitor = createContextWindowMonitor(conversationTokens)
   const commentChecker = createCommentChecker()
   const toolOutputTruncator = createToolOutputTruncator()
   const delegateTaskRetry = createDelegateTaskRetry()
@@ -111,7 +111,7 @@ export function createToolGuardHandlers(
     "/preToolUse": (input) => {
       const toolName = (input.tool_name as string) || ""
       const convId = resolveConversationId(input)
-      const session = getOrCreateSession(convId)
+      const conversation = getOrCreateConversation(convId)
       const toolInput = (input.tool_input as Record<string, unknown>) || {}
 
       if (["write", "Write", "str_replace", "StrReplace", "edit", "Edit", "apply_patch", "ApplyPatch"].includes(toolName)) {
@@ -119,8 +119,8 @@ export function createToolGuardHandlers(
         const rawWritePath = (toolInput.file_path || toolInput.path) as string
         const filePath = rawWritePath ? resolve(rawWritePath) : ""
         if (!isEditOperation && filePath && !filePath.includes(".sisyphus") && !filePath.includes("node_modules") && !filePath.includes(".cursor/")) {
-          if (existsSync(filePath) && !session.readPaths.has(filePath)) {
-            console.log(`[oh-my-cursor][read-guard] WARN write without read: "${filePath}" | session: ${convId}`)
+          if (existsSync(filePath) && !conversation.readPaths.has(filePath)) {
+            console.log(`[oh-my-cursor][read-guard] WARN write without read: "${filePath}" | conversation: ${convId}`)
             contextCollector.register(convId, {
               id: "read-before-write",
               source: "read-before-write",
@@ -132,7 +132,7 @@ export function createToolGuardHandlers(
       }
 
       if (["write", "Write", "str_replace", "StrReplace", "edit", "Edit"].includes(toolName) && input.tool_use_id) {
-        session.pendingWriteArgs.set(input.tool_use_id as string, {
+        conversation.pendingWriteArgs.set(input.tool_use_id as string, {
           tool: toolName,
           path: toolInput.file_path || toolInput.path,
           content: toolInput.new_string || toolInput.content || toolInput.contents,
@@ -143,7 +143,7 @@ export function createToolGuardHandlers(
         const agentType = (toolInput.subagent_type as string) || (toolInput.agent_type as string) || ""
         if (agentType) {
           const normalized = agentType.toLowerCase().replace("generalpurpose", "general-purpose")
-          const currentMode = (input.mode as string) || (input.composerMode as string) || session.composerMode
+          const currentMode = (input.mode as string) || (input.composerMode as string) || conversation.composerMode
 
           if (currentMode === "ask") {
             const reason = "[mode-guard] Task dispatches are not allowed in Ask mode."
@@ -176,7 +176,7 @@ export function createToolGuardHandlers(
           const agentKey = `subagent:${normalized}`
 
           if (normalized === "momus") {
-            if (session.momusIterations >= 3) {
+            if (conversation.momusIterations >= 3) {
               return {
                 additional_context: "[momus-loop] Momus iteration limit (3) reached. Ask the user whether to continue reviewing or accept the current plan.",
               }
@@ -191,7 +191,7 @@ export function createToolGuardHandlers(
                 : 0
           if (limit > 0) {
             const activeCount = tracker
-              .getActiveTasksForSession(convId)
+              .getActiveTasksForConversation(convId)
               .filter((t) => t.agentType === normalized).length
             if (activeCount >= limit) {
               const label = normalized === "explore" ? "Explore" : "Worker"
@@ -209,17 +209,17 @@ export function createToolGuardHandlers(
             }
           }
 
-          session.dispatchCounts[agentKey] = (session.dispatchCounts[agentKey] || 0) + 1
-          session.dispatchCountsThisTurn[agentKey] = (session.dispatchCountsThisTurn[agentKey] || 0) + 1
-          console.log(`[oh-my-cursor] Dispatch tracked via preToolUse: ${agentKey} (${session.dispatchCounts[agentKey]})`)
+          conversation.dispatchCounts[agentKey] = (conversation.dispatchCounts[agentKey] || 0) + 1
+          conversation.dispatchCountsThisTurn[agentKey] = (conversation.dispatchCountsThisTurn[agentKey] || 0) + 1
+          console.log(`[oh-my-cursor] Dispatch tracked via preToolUse: ${agentKey} (${conversation.dispatchCounts[agentKey]})`)
           if (normalized === "momus") {
-            session.momusIterations++
+            conversation.momusIterations++
           }
         }
       }
 
-      session.dispatchCounts[toolName] = (session.dispatchCounts[toolName] || 0) + 1
-      session.dispatchCountsThisTurn[toolName] = (session.dispatchCountsThisTurn[toolName] || 0) + 1
+      conversation.dispatchCounts[toolName] = (conversation.dispatchCounts[toolName] || 0) + 1
+      conversation.dispatchCountsThisTurn[toolName] = (conversation.dispatchCountsThisTurn[toolName] || 0) + 1
 
       return {}
     },
@@ -228,22 +228,22 @@ export function createToolGuardHandlers(
       const toolName = (input.tool_name as string) || ""
       const output = JSON.stringify(input.tool_response || input.output || "")
       const convId = resolveConversationId(input)
-      const session = getOrCreateSession(convId)
+      const conversation = getOrCreateConversation(convId)
       const toolInput = (input.tool_input as Record<string, unknown>) || {}
 
       const contextNote = `[${new Date().toISOString()}] ${toolName} completed`
-      session.contextHistory.push(contextNote)
-      if (session.contextHistory.length > 50) {
-        session.contextHistory = session.contextHistory.slice(-30)
+      conversation.contextHistory.push(contextNote)
+      if (conversation.contextHistory.length > 50) {
+        conversation.contextHistory = conversation.contextHistory.slice(-30)
       }
 
-      pushRecentToolTrail(session, toolName, toolInput)
+      pushRecentToolTrail(conversation, toolName, toolInput)
 
-      if (session.contextHistory.length % 10 === 0) {
+      if (conversation.contextHistory.length % 10 === 0) {
         contextCollector.register(convId, {
-          id: "session-activity",
-          source: "session-activity",
-          content: `[oh-my-cursor] Session activity: ${session.contextHistory.length} tool calls this session.`,
+          id: "conversation-activity",
+          source: "conversation-activity",
+          content: `[oh-my-cursor] Session activity: ${conversation.contextHistory.length} tool calls this session.`,
           priority: "low",
         })
       }
@@ -294,11 +294,11 @@ export function createToolGuardHandlers(
             continue
           }
           const agentsPath = current + "/AGENTS.md"
-          if (!session.injectedPaths.has(agentsPath)) {
+          if (!conversation.injectedPaths.has(agentsPath)) {
             try {
               const content = readFileSync(agentsPath, "utf-8")
               if (content) {
-                session.injectedPaths.add(agentsPath)
+                conversation.injectedPaths.add(agentsPath)
                 const snippet = content.length > 2000 ? content.slice(0, 2000) + "\n...[truncated]" : content
                 contextCollector.register(convId, {
                   id: `agents-${agentsPath}`,
@@ -315,56 +315,56 @@ export function createToolGuardHandlers(
         }
       }
 
-      session.toolCallCount++
+      conversation.toolCallCount++
 
       if (TASK_DELEGATION_TOOLS.has(toolName)) {
-        session.toolCallsSinceTaskDispatch = 0
+        conversation.toolCallsSinceTaskDispatch = 0
       } else {
-        session.toolCallsSinceTaskDispatch++
+        conversation.toolCallsSinceTaskDispatch++
       }
 
-      if (session.toolCallCount > 0 && session.toolCallCount % SKILL_REMINDER_INTERVAL === 0) {
-        session.reminderInjected = false
+      if (conversation.toolCallCount > 0 && conversation.toolCallCount % SKILL_REMINDER_INTERVAL === 0) {
+        conversation.reminderInjected = false
       }
 
       if (["TodoWrite", "todowrite", "todo_write"].includes(toolName)) {
         const todos = toolInput.todos as Array<{ id: string; content: string; status: string }> | undefined
         const merge = toolInput.merge as boolean | undefined
         if (todos && Array.isArray(todos)) {
-          if (merge === false) session.todoStates.clear()
+          if (merge === false) conversation.todoStates.clear()
           const validStatuses = new Set(["pending", "in_progress", "completed", "cancelled"])
           for (const todo of todos) {
             if (todo.id && typeof todo.id === "string" && typeof todo.status === "string") {
               const normalized = validStatuses.has(todo.status) ? todo.status as "pending" | "in_progress" | "completed" | "cancelled" : "pending"
-              session.todoStates.set(todo.id, normalized)
+              conversation.todoStates.set(todo.id, normalized)
             }
           }
-          const sorted = Array.from(session.todoStates.entries()).sort((a, b) => a[0].localeCompare(b[0]))
-          session.lastTodoSnapshot = JSON.stringify(sorted)
+          const sorted = Array.from(conversation.todoStates.entries()).sort((a, b) => a[0].localeCompare(b[0]))
+          conversation.lastTodoSnapshot = JSON.stringify(sorted)
           for (const todo of todos) {
             if (todo.id.startsWith("plan-") && todo.status === "in_progress") {
-              if (!session.activePlan) {
-                session.activePlan = { path: "", phase: todo.id, completedTasks: [] }
+              if (!conversation.activePlan) {
+                conversation.activePlan = { path: "", phase: todo.id, completedTasks: [] }
               } else {
-                session.activePlan.phase = todo.id
+                conversation.activePlan.phase = todo.id
               }
             }
             if ((todo.id.includes("plan-write") || todo.id.includes("plan-draft")) && todo.status === "in_progress") {
-              session.momusIterations = 0
+              conversation.momusIterations = 0
             }
           }
         }
       }
 
       if (
-        session.toolCallCount >= 3 &&
-        !session.reminderInjected &&
+        conversation.toolCallCount >= 3 &&
+        !conversation.reminderInjected &&
         !["task", "Task", "TodoWrite", "todowrite", "todo_write"].includes(toolName)
       ) {
-        session.reminderInjected = true
+        conversation.reminderInjected = true
         const base =
           "[skill-reminder] You have access to skills and the Task tool for delegation. Consider using them for specialized work (git operations, browser automation, code review, etc.)."
-        const extras = buildSkillReminderContextLines(session)
+        const extras = buildSkillReminderContextLines(conversation)
         const content =
           extras.length > 0 ? `${base}\n${extras.map((line) => `[skill-reminder] ${line}`).join("\n")}` : base
         contextCollector.register(convId, {
@@ -377,11 +377,11 @@ export function createToolGuardHandlers(
 
       if (["read", "Read"].includes(toolName) && readFilePath) {
         const resolved = resolve(readFilePath)
-        session.readPaths.add(resolved)
-        console.log(`[oh-my-cursor][read-guard] Tracked read: "${resolved}" (raw: "${readFilePath}") | session: ${convId}`)
+        conversation.readPaths.add(resolved)
+        console.log(`[oh-my-cursor][read-guard] Tracked read: "${resolved}" (raw: "${readFilePath}") | conversation: ${convId}`)
       }
 
-      const cw = contextWindowMonitor({ sessionId: convId, content: output })
+      const cw = contextWindowMonitor({ conversationId: convId, content: output })
       if (cw.additional_context) {
         contextCollector.register(convId, {
           id: "context-window",
@@ -421,7 +421,7 @@ export function createToolGuardHandlers(
             tool_input: toolInput as { subagent_type?: string; description?: string },
             output,
           },
-          session.delegateRetryState,
+          conversation.delegateRetryState,
         )
         if (dr.additional_context) {
           contextCollector.register(convId, {
@@ -459,9 +459,9 @@ export function createToolGuardHandlers(
       const toolName = (input.tool_name as string) || ""
       const errorMessage = (input.error as string) || (input.error_message as string) || ((input.tool_response as Record<string, unknown>)?.error as string) || ""
       const convId = resolveConversationId(input)
-      const session = getOrCreateSession(convId)
+      const conversation = getOrCreateConversation(convId)
 
-      session.errorCount++
+      conversation.errorCount++
       console.error("[oh-my-cursor] Tool failure:", toolName, errorMessage)
 
       if (!config.context_collector.enabled) {
@@ -483,8 +483,8 @@ export function createToolGuardHandlers(
       if (guidance) {
         contextCollector.register(convId, {
           id: "recovery-guidance",
-          source: "session-recovery",
-          content: "[session-recovery] " + guidance,
+          source: "conversation-recovery",
+          content: "[conversation-recovery] " + guidance,
           priority: "critical",
         })
       }

@@ -67,7 +67,7 @@ describe("daemon integration lifecycle", () => {
         expect(status).toBe(200)
         expect(data.status).toBe("ok")
         expect(typeof data.uptime).toBe("number")
-        expect(typeof data.sessions).toBe("number")
+        expect(typeof data.conversations).toBe("number")
         expect(typeof data.toolCalls).toBe("number")
       })
     })
@@ -217,7 +217,7 @@ describe("daemon integration lifecycle", () => {
         const { status, data } = await post("/sessionHistory")
 
         expect(status).toBe(200)
-        expect(data.sessions).toBeDefined()
+        expect(data.conversations).toBeDefined()
       })
     })
   })
@@ -256,7 +256,7 @@ describe("daemon integration lifecycle", () => {
           session_id: SESSION_ID,
         })
 
-        expect(data.additional_context).toContain("session-recovery")
+        expect(data.additional_context).toContain("conversation-recovery")
         expect(data.additional_context).toContain("Rate limit")
         expect(data.hookSpecificOutput.hookEventName).toBe("PostToolUseFailure")
       })
@@ -308,7 +308,7 @@ describe("daemon integration lifecycle", () => {
     describe("#when POST /sessionEnd is called", () => {
       test("#then it cleans up and returns empty", async () => {
         const healthBefore = await get("/health")
-        const sessionsBefore = healthBefore.data.sessions
+        const conversationsBefore = healthBefore.data.conversations
 
         const { data } = await post("/sessionEnd", {
           session_id: SESSION_ID,
@@ -317,7 +317,7 @@ describe("daemon integration lifecycle", () => {
         expect(Object.keys(data).length).toBe(0)
 
         const healthAfter = await get("/health")
-        expect(healthAfter.data.sessions).toBe(sessionsBefore - 1)
+        expect(healthAfter.data.conversations).toBe(conversationsBefore - 1)
       })
     })
   })

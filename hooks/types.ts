@@ -27,7 +27,7 @@ export type RecentToolTrailEntry = {
   commandSnippet?: string
 }
 
-export type SessionState = {
+export type ConversationState = {
   id: string
   startedAt: string
   env: Record<string, string>

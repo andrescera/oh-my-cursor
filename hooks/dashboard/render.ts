@@ -472,10 +472,10 @@ export function renderDashboardHTML(daemonPort: number): string {
         for (const fn of sseSubscribers) { try { fn(parsed); } catch {} }
       };
 
-      es.addEventListener('session-snapshot', (evt) => {
+      es.addEventListener('conversation-snapshot', (evt) => {
         let parsed;
         try { parsed = JSON.parse(evt.data); } catch { return; }
-        const wrapped = { type: 'session-snapshot', data: parsed };
+        const wrapped = { type: 'conversation-snapshot', data: parsed };
         for (const fn of sseSubscribers) { try { fn(wrapped); } catch {} }
       });
 
@@ -562,7 +562,7 @@ export function renderDashboardHTML(daemonPort: number): string {
 
       useEffect(() => {
         const unsub = sseSubscribe((event) => {
-          if (event.type === 'session-snapshot') return;
+          if (event.type === 'conversation-snapshot') return;
           setSseOn(true);
           if (event.action === 'health' && event.data) {
             setStats(event.data);
@@ -590,10 +590,10 @@ export function renderDashboardHTML(daemonPort: number): string {
 
       return html\`
         <div class="card">
-          <\${Stat} label="Session"         value=\${stats?.currentSessionId || '--'} />
+          <\${Stat} label="Session"         value=\${stats?.currentConversationId || '--'} />
           <\${Stat} label="Daemon"          value=\${'Connected' + (sseOn ? ' ●' : '')} valueClass="status-ok" />
           <\${Stat} label="Uptime"          value=\${uptime} />
-          <\${Stat} label="Active Sessions" value=\${stats?.sessions ?? '--'} />
+          <\${Stat} label="Active Sessions" value=\${stats?.conversations ?? '--'} />
         </div>
         <div class="card">
           <\${Stat} label="Tool Calls"         value=\${stats?.toolCalls ?? 0} />
@@ -695,7 +695,7 @@ export function renderDashboardHTML(daemonPort: number): string {
           .catch(e => { if (mounted) setLoadErr(e.message); });
 
         const unsub = sseSubscribe((msg) => {
-          if (msg.type === 'session-snapshot') return;
+          if (msg.type === 'conversation-snapshot') return;
           if (msg.event === '/subagentStart') {
             const task = msg.body ?? msg.data ?? msg;
             setTasks(prev => {
@@ -817,7 +817,7 @@ export function renderDashboardHTML(daemonPort: number): string {
             data.forEach(e => seen.add(eventKey(e)));
             setEvents(data);
             unsub = sseSubscribe((ev) => {
-              if (ev.type === 'session-snapshot') return;
+              if (ev.type === 'conversation-snapshot') return;
               const k = eventKey(ev);
               if (seen.has(k)) return;
               seen.add(k);
@@ -1252,7 +1252,7 @@ export function renderDashboardHTML(daemonPort: number): string {
           .catch(e => { if (!cancelled) setLoadErr(e.message); });
 
         const unsub = sseSubscribe((msg) => {
-          if (msg.type === 'session-snapshot' && Array.isArray(msg.data)) {
+          if (msg.type === 'conversation-snapshot' && Array.isArray(msg.data)) {
             setRows(prev => mergeSessionSnapshots(prev, msg.data));
           }
         });
@@ -1353,7 +1353,7 @@ export function renderDashboardHTML(daemonPort: number): string {
           .finally(() => { if (!cancelled) setReady(true); });
 
         const unsub = sseSubscribe((msg) => {
-          if (msg.type === 'session-snapshot') return;
+          if (msg.type === 'conversation-snapshot') return;
           if (msg.event === '/subagentStart') {
             const p = ssePayloadFromEvent(msg);
             const agentId = normalizeAgentId(p.agent_id)

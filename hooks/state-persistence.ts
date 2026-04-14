@@ -1,7 +1,7 @@
 import { existsSync, readFileSync, writeFileSync, renameSync, unlinkSync, mkdirSync } from "node:fs"
 import { dirname } from "node:path"
-import type { SessionState } from "./types"
-import { SessionStateSchema } from "./schemas/session"
+import type { ConversationState } from "./types"
+import { ConversationStateSchema } from "./schemas/conversation"
 
 const DEFAULT_PATH = "/tmp/oh-my-cursor-state.json"
 const DEFAULT_DEBOUNCE_MS = 5000
@@ -16,23 +16,23 @@ export class StatePersistence {
     this.debounceMs = debounceMs
   }
 
-  save(sessions: Map<string, SessionState>): void {
+  save(conversations: Map<string, ConversationState>): void {
     if (this.debounceTimer) return
     this.debounceTimer = setTimeout(() => {
       this.debounceTimer = null
-      this.writeToDisk(sessions)
+      this.writeToDisk(conversations)
     }, this.debounceMs)
   }
 
-  forceFlush(sessions: Map<string, SessionState>): void {
+  forceFlush(conversations: Map<string, ConversationState>): void {
     if (this.debounceTimer) {
       clearTimeout(this.debounceTimer)
       this.debounceTimer = null
     }
-    this.writeToDisk(sessions)
+    this.writeToDisk(conversations)
   }
 
-  load(): Map<string, SessionState> | null {
+  load(): Map<string, ConversationState> | null {
     try {
       if (!existsSync(this.filePath)) return null
       const text = readFileSync(this.filePath, "utf-8")
@@ -41,13 +41,13 @@ export class StatePersistence {
       const data = JSON.parse(text)
       if (!Array.isArray(data)) return null
 
-      const sessions = new Map<string, SessionState>()
+      const conversations = new Map<string, ConversationState>()
       for (const entry of data) {
         // Provide defaults for nullable fields added after initial persistence (backward compat)
-        const result = SessionStateSchema.safeParse({ abortDetectedAt: null, delegateRetryState: {}, ...entry })
+        const result = ConversationStateSchema.safeParse({ abortDetectedAt: null, delegateRetryState: {}, ...entry })
         if (result.success) {
           const validated = result.data
-          sessions.set(validated.id, {
+          conversations.set(validated.id, {
             ...validated,
             readPaths: new Set(validated.readPaths),
             injectedPaths: new Set(validated.injectedPaths),
@@ -56,30 +56,30 @@ export class StatePersistence {
           })
         } else {
           console.warn(
-            "[oh-my-cursor] Skipping invalid persisted session entry:",
+            "[oh-my-cursor] Skipping invalid persisted conversation entry:",
             entry.id || "unknown",
             result.error.issues.map((i) => i.message).join(", "),
           )
         }
       }
-      return sessions
+      return conversations
     } catch (err) {
       console.error("[oh-my-cursor] Failed to load persisted state:", err instanceof Error ? err.message : String(err))
       return null
     }
   }
 
-  private writeToDisk(sessions: Map<string, SessionState>): void {
+  private writeToDisk(conversations: Map<string, ConversationState>): void {
     try {
       const dir = dirname(this.filePath)
       if (!existsSync(dir)) mkdirSync(dir, { recursive: true })
 
-      const serialized = Array.from(sessions.values()).map((session) => ({
-        ...session,
-        readPaths: Array.from(session.readPaths),
-        injectedPaths: Array.from(session.injectedPaths),
-        pendingWriteArgs: Object.fromEntries(session.pendingWriteArgs),
-        todoStates: Object.fromEntries(session.todoStates),
+      const serialized = Array.from(conversations.values()).map((conversation) => ({
+        ...conversation,
+        readPaths: Array.from(conversation.readPaths),
+        injectedPaths: Array.from(conversation.injectedPaths),
+        pendingWriteArgs: Object.fromEntries(conversation.pendingWriteArgs),
+        todoStates: Object.fromEntries(conversation.todoStates),
       }))
 
       const tmpPath = this.filePath + ".tmp"

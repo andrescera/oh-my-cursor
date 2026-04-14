@@ -1,15 +1,15 @@
 import { z } from "zod"
-import { EventEntrySchema, SessionSummarySchema } from "./events"
+import { EventEntrySchema, ConversationSummarySchema } from "./events"
 
 export const HealthResponseSchema = z.object({
   status: z.string(),
-  sessions: z.number(),
+  conversations: z.number(),
   uptime: z.number(),
   toolCalls: z.number(),
   exploreCounts: z.number(),
   workerCounts: z.number(),
   ralphActive: z.boolean(),
-  currentSessionId: z.string(),
+  currentConversationId: z.string(),
   allDispatchCounts: z.record(z.string(), z.number()),
 })
 export type HealthResponse = z.infer<typeof HealthResponseSchema>
@@ -32,7 +32,7 @@ export const StatusResponseSchema = z.object({
     user: z.string(),
     project: z.string(),
   }),
-  activeSessions: z.number(),
+  activeConversations: z.number(),
   startTime: z.string(),
 })
 export type StatusResponse = z.infer<typeof StatusResponseSchema>
@@ -58,8 +58,8 @@ export const BackgroundTasksResponseSchema = z.object({
 })
 export type BackgroundTasksResponse = z.infer<typeof BackgroundTasksResponseSchema>
 
-export const SessionLogResponseSchema = z.array(EventEntrySchema)
-export type SessionLogResponse = z.infer<typeof SessionLogResponseSchema>
+export const ConversationLogResponseSchema = z.array(EventEntrySchema)
+export type ConversationLogResponse = z.infer<typeof ConversationLogResponseSchema>
 
-export const SessionSummaryResponseSchema = SessionSummarySchema
-export type SessionSummaryResponse = z.infer<typeof SessionSummaryResponseSchema>
+export const ConversationSummaryResponseSchema = ConversationSummarySchema
+export type ConversationSummaryResponse = z.infer<typeof ConversationSummaryResponseSchema>

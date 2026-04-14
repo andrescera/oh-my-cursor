@@ -1,11 +1,11 @@
 import { describe, test, expect, beforeEach, afterEach } from "bun:test"
 import { existsSync, unlinkSync, writeFileSync } from "node:fs"
 import { StatePersistence } from "./state-persistence"
-import type { SessionState } from "./types"
+import type { ConversationState } from "./types"
 
 const TEST_PATH = "/tmp/oh-my-cursor-state-test.json"
 
-function createTestSession(id: string): SessionState {
+function createTestConversation(id: string): ConversationState {
   return {
     id,
     startedAt: new Date().toISOString(),
@@ -49,17 +49,17 @@ describe("StatePersistence", () => {
   beforeEach(cleanup)
   afterEach(cleanup)
 
-  describe("#given a sessions map with data", () => {
+  describe("#given a conversations map with data", () => {
     describe("#when forceFlush is called and then load", () => {
       test("#then the loaded data matches the original", () => {
         // given
         const persistence = new StatePersistence(TEST_PATH, 60000)
-        const sessions = new Map<string, SessionState>()
-        sessions.set("sess-1", createTestSession("sess-1"))
-        sessions.set("sess-2", createTestSession("sess-2"))
+        const conversations = new Map<string, ConversationState>()
+        conversations.set("sess-1", createTestConversation("sess-1"))
+        conversations.set("sess-2", createTestConversation("sess-2"))
 
         // when
-        persistence.forceFlush(sessions)
+        persistence.forceFlush(conversations)
         const loaded = persistence.load()
 
         // then
@@ -68,15 +68,15 @@ describe("StatePersistence", () => {
         expect(loaded!.has("sess-1")).toBe(true)
         expect(loaded!.has("sess-2")).toBe(true)
 
-        const sess1 = loaded!.get("sess-1")!
-        expect(sess1.id).toBe("sess-1")
-        expect(sess1.toolCallCount).toBe(5)
-        expect(sess1.readPaths).toBeInstanceOf(Set)
-        expect(sess1.readPaths.has("file1.ts")).toBe(true)
-        expect(sess1.injectedPaths).toBeInstanceOf(Set)
-        expect(sess1.injectedPaths.has("agents.md")).toBe(true)
-        expect(sess1.pendingWriteArgs).toBeInstanceOf(Map)
-        expect(sess1.pendingWriteArgs.has("tool-1")).toBe(true)
+        const conv1 = loaded!.get("sess-1")!
+        expect(conv1.id).toBe("sess-1")
+        expect(conv1.toolCallCount).toBe(5)
+        expect(conv1.readPaths).toBeInstanceOf(Set)
+        expect(conv1.readPaths.has("file1.ts")).toBe(true)
+        expect(conv1.injectedPaths).toBeInstanceOf(Set)
+        expect(conv1.injectedPaths.has("agents.md")).toBe(true)
+        expect(conv1.pendingWriteArgs).toBeInstanceOf(Map)
+        expect(conv1.pendingWriteArgs.has("tool-1")).toBe(true)
       })
     })
   })
@@ -96,11 +96,11 @@ describe("StatePersistence", () => {
       test("#then the file is not yet written", () => {
         // given
         const persistence = new StatePersistence(TEST_PATH, 60000)
-        const sessions = new Map<string, SessionState>()
-        sessions.set("sess-1", createTestSession("sess-1"))
+        const conversations = new Map<string, ConversationState>()
+        conversations.set("sess-1", createTestConversation("sess-1"))
 
         // when
-        persistence.save(sessions)
+        persistence.save(conversations)
 
         // then
         expect(existsSync(TEST_PATH)).toBe(false)
@@ -140,22 +140,22 @@ describe("StatePersistence", () => {
     })
   })
 
-  describe("#given persisted sessions with readPaths", () => {
-    test("#then readPaths are preserved per session after round-trip", () => {
+  describe("#given persisted conversations with readPaths", () => {
+    test("#then readPaths are preserved per conversation after round-trip", () => {
       const persistence = new StatePersistence(TEST_PATH, 60000)
-      const testSessions = new Map<string, SessionState>()
-      const sess1 = createTestSession("persist-1")
-      sess1.readPaths = new Set(["/src/app.ts", "/src/utils.ts"])
-      testSessions.set("persist-1", sess1)
+      const testConversations = new Map<string, ConversationState>()
+      const conv1 = createTestConversation("persist-1")
+      conv1.readPaths = new Set(["/src/app.ts", "/src/utils.ts"])
+      testConversations.set("persist-1", conv1)
 
-      persistence.forceFlush(testSessions)
+      persistence.forceFlush(testConversations)
       const restored = persistence.load()
 
       expect(restored).not.toBeNull()
-      const restoredSess = restored!.get("persist-1")
-      expect(restoredSess).toBeDefined()
-      expect(restoredSess!.readPaths.has("/src/app.ts")).toBe(true)
-      expect(restoredSess!.readPaths.has("/src/utils.ts")).toBe(true)
+      const restoredConv = restored!.get("persist-1")
+      expect(restoredConv).toBeDefined()
+      expect(restoredConv!.readPaths.has("/src/app.ts")).toBe(true)
+      expect(restoredConv!.readPaths.has("/src/utils.ts")).toBe(true)
     })
   })
 })

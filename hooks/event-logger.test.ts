@@ -2,7 +2,7 @@ import { describe, it, expect, beforeEach, afterEach } from "bun:test"
 import { logEvent, getEvents, clearLog, getLogPath } from "./event-logger"
 import { existsSync, mkdirSync, rmSync } from "node:fs"
 
-describe("event-logger per-session behavior", () => {
+describe("event-logger per-conversation behavior", () => {
   beforeEach(() => {
     clearLog()
   })
@@ -35,7 +35,7 @@ describe("event-logger per-session behavior", () => {
     expect(getEvents({ sessionId: "session-B" }).length).toBe(1)
   })
 
-  it("clearLog with sessionId removes only that session", () => {
+  it("clearLog with sessionId removes only that conversation", () => {
     clearLog()
     logEvent({
       ts: new Date().toISOString(),
@@ -66,7 +66,7 @@ describe("event-logger per-session behavior", () => {
     expect(getEvents({ sessionId: "session-Y" }).length).toBe(2)
   })
 
-  it("getLogPath returns per-session path", () => {
+  it("getLogPath returns per-conversation path", () => {
     const withSession = getLogPath("my-session")
     expect(withSession).toContain("session-log-my-session.jsonl")
     const defaultPath = getLogPath()

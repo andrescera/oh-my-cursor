@@ -33,7 +33,7 @@ export const RecentToolTrailEntrySchema = z.object({
 })
 export type RecentToolTrailEntry = z.infer<typeof RecentToolTrailEntrySchema>
 
-export const SessionStateSchema = z.object({
+export const ConversationStateSchema = z.object({
   id: z.string(),
   startedAt: z.string(),
   env: z.record(z.string(), z.string()),
@@ -74,4 +74,4 @@ export const SessionStateSchema = z.object({
   subagentFailureCounts: z.record(z.string(), z.number()),
   delegateRetryState: z.record(z.string(), z.number()),
 })
-export type SessionState = z.infer<typeof SessionStateSchema>
+export type ConversationState = z.infer<typeof ConversationStateSchema>

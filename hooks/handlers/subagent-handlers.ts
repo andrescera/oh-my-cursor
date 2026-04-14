@@ -1,7 +1,7 @@
-import type { SessionState, HandlerMap } from "../types"
+import type { ConversationState, HandlerMap } from "../types"
 import type { BackgroundTracker } from "./background-tracker"
 import type { WisdomTracker } from "./wisdom-tracker"
-import { getOrCreateSession, resolveConversationId } from "../shared"
+import { getOrCreateConversation, resolveConversationId } from "../shared"
 import { createEmptyTaskDetector } from "./empty-task-detector"
 import { contextCollector } from "../context-collector"
 import { loadConfig } from "../config"
@@ -12,7 +12,7 @@ import { resolve } from "node:path"
 const SUBAGENT_TIMING_LOG = "/tmp/oh-my-cursor-timing.jsonl"
 
 export function createSubagentHandlers(
-  _sessions: Map<string, SessionState>,
+  _conversations: Map<string, ConversationState>,
   tracker: BackgroundTracker,
   wisdom: WisdomTracker,
 ): HandlerMap {
@@ -26,10 +26,10 @@ export function createSubagentHandlers(
       const description = (input.description as string) || ""
       const convId = resolveConversationId(input)
       tracker.track(agentId, agentType, description, convId)
-      const session = getOrCreateSession(convId)
+      const conversation = getOrCreateConversation(convId)
 
       let additional_context: string | undefined
-      const recentOutcomes = session.subagentOutcomes.slice(-5)
+      const recentOutcomes = conversation.subagentOutcomes.slice(-5)
       for (let i = recentOutcomes.length - 1; i >= 0; i--) {
         const o = recentOutcomes[i]
         if (o.agentType === agentType && o.status === "failed") {
@@ -39,8 +39,8 @@ export function createSubagentHandlers(
         }
       }
 
-      if (session.activePlan) {
-        const wisdomContext = wisdom.formatForInjection(session.activePlan.path)
+      if (conversation.activePlan) {
+        const wisdomContext = wisdom.formatForInjection(conversation.activePlan.path)
         if (wisdomContext) {
           additional_context = additional_context
             ? `${additional_context}\n\n${wisdomContext}`
@@ -88,7 +88,7 @@ export function createSubagentHandlers(
       const status = (input.status as string) || ""
       const stopHookActive = Boolean(input.stop_hook_active)
       const loopCount = (input.loop_count as number) || 0
-      const session = getOrCreateSession(convId)
+      const conversation = getOrCreateConversation(convId)
 
       const summary = (input.summary as string) || ""
       const duration_ms = typeof input.duration_ms === "number" ? input.duration_ms : undefined
@@ -103,7 +103,7 @@ export function createSubagentHandlers(
       const output = (input.output as string) || ""
       const isSuccess = status === "completed" || status === ""
       const typeKey = subagentType || "unknown"
-      session.subagentOutcomes.push({
+      conversation.subagentOutcomes.push({
         agentId,
         agentType: typeKey,
         description: (input.description as string) || "",
@@ -112,24 +112,24 @@ export function createSubagentHandlers(
         completedAt: new Date().toISOString(),
         durationMs: duration_ms,
       })
-      if (session.subagentOutcomes.length > 20) {
-        session.subagentOutcomes = session.subagentOutcomes.slice(-20)
+      if (conversation.subagentOutcomes.length > 20) {
+        conversation.subagentOutcomes = conversation.subagentOutcomes.slice(-20)
       }
-      if (isSuccess && session.activePlan && output) {
-        wisdom.addLearning(session.activePlan.path, {
+      if (isSuccess && conversation.activePlan && output) {
+        wisdom.addLearning(conversation.activePlan.path, {
           source: typeKey,
           learning: output.slice(-200).trim(),
           timestamp: new Date().toISOString(),
         })
       }
       if (isSuccess) {
-        session.subagentFailureCounts[typeKey] = 0
+        conversation.subagentFailureCounts[typeKey] = 0
       } else {
-        session.subagentFailureCounts[typeKey] = (session.subagentFailureCounts[typeKey] || 0) + 1
+        conversation.subagentFailureCounts[typeKey] = (conversation.subagentFailureCounts[typeKey] || 0) + 1
       }
 
-      if ((session.subagentFailureCounts[typeKey] || 0) >= 3) {
-        const fc = session.subagentFailureCounts[typeKey] || 0
+      if ((conversation.subagentFailureCounts[typeKey] || 0) >= 3) {
+        const fc = conversation.subagentFailureCounts[typeKey] || 0
         console.warn(
           `[oh-my-cursor/unstable-agent-babysitter] Agent type '${typeKey}' has failed ${fc} times consecutively. Consider using a different agent type or model.`,
         )
@@ -181,7 +181,7 @@ export function createSubagentHandlers(
 
       if (!stopHookActive) {
         const stopKey = `stop:${subagentType.toLowerCase()}`
-        session.dispatchCounts[stopKey] = (session.dispatchCounts[stopKey] || 0) + 1
+        conversation.dispatchCounts[stopKey] = (conversation.dispatchCounts[stopKey] || 0) + 1
       }
 
       if (loopCount > 0) {

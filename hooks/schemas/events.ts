@@ -13,7 +13,7 @@ export const EventEntrySchema = z.object({
 })
 export type EventEntry = z.infer<typeof EventEntrySchema>
 
-export const SessionSummarySchema = z.object({
+export const ConversationSummarySchema = z.object({
   sessionId: z.string(),
   startedAt: z.string().nullable(),
   endedAt: z.string().nullable(),
@@ -39,4 +39,4 @@ export const SessionSummarySchema = z.object({
     }),
   ),
 })
-export type SessionSummary = z.infer<typeof SessionSummarySchema>
+export type ConversationSummary = z.infer<typeof ConversationSummarySchema>

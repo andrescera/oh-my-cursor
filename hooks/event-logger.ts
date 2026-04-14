@@ -13,7 +13,7 @@ export type EventEntry = {
   meta?: Record<string, unknown>
 }
 
-export type SessionSummary = {
+export type ConversationSummary = {
   sessionId: string
   startedAt: string | null
   endedAt: string | null
@@ -49,7 +49,7 @@ const logDir = process.env.OH_MY_CURSOR_PROJECT_DIR
   ? resolve(process.env.OH_MY_CURSOR_PROJECT_DIR, ".cursor/hooks/state")
   : "/tmp"
 
-function getLogPathForSession(sessionId?: string): string {
+function getLogPathForConversation(sessionId?: string): string {
   if (sessionId) return join(logDir, `session-log-${sessionId}.jsonl`)
   return join(logDir, "session-log.jsonl")
 }
@@ -108,13 +108,13 @@ function flushPending(): void {
   }
 
   for (const [sessionId, group] of grouped) {
-    const filePath = getLogPathForSession(sessionId || undefined)
+    const filePath = getLogPathForConversation(sessionId || undefined)
     const chunk = group.map((e) => JSON.stringify(e)).join("\n") + "\n"
     appendFileSync(filePath, chunk)
     rotateIfNeeded(filePath)
   }
 
-  cleanupOldSessionFiles()
+  cleanupOldConversationFiles()
 }
 
 function rotateIfNeeded(filePath: string): void {
@@ -129,7 +129,7 @@ function rotateIfNeeded(filePath: string): void {
 
 const STALE_FILE_MS = 7 * 24 * 60 * 60 * 1000
 
-function cleanupOldSessionFiles(): void {
+function cleanupOldConversationFiles(): void {
   try {
     if (!existsSync(logDir)) return
     const now = Date.now()
@@ -170,15 +170,15 @@ export function getEvents(opts?: {
   return results.slice(-limit).reverse()
 }
 
-export function getSessionSummary(sessionId?: string): SessionSummary {
+export function getConversationSummary(sessionId?: string): ConversationSummary {
   const events = sessionId ? buffer.filter((e) => e.sessionId === sessionId) : buffer
   const id = sessionId ?? events[0]?.sessionId ?? "unknown"
 
   const toolCounts: Record<string, number> = {}
   const dispatchCounts: Record<string, number> = {}
   const hookCounts: Record<string, number> = {}
-  const errors: SessionSummary["errors"] = []
-  const denies: SessionSummary["denies"] = []
+  const errors: ConversationSummary["errors"] = []
+  const denies: ConversationSummary["denies"] = []
 
   for (const e of events) {
     hookCounts[e.event] = (hookCounts[e.event] ?? 0) + 1
@@ -222,7 +222,7 @@ export function clearLog(sessionId?: string): void {
   }
   try {
     if (sessionId) {
-      const filePath = getLogPathForSession(sessionId)
+      const filePath = getLogPathForConversation(sessionId)
       if (existsSync(filePath)) unlinkSync(filePath)
     } else {
       if (!existsSync(logDir)) return
@@ -233,5 +233,5 @@ export function clearLog(sessionId?: string): void {
 }
 
 export function getLogPath(sessionId?: string): string {
-  return getLogPathForSession(sessionId)
+  return getLogPathForConversation(sessionId)
 }

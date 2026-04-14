@@ -1,5 +1,5 @@
 import { describe, test, expect } from "bun:test"
-import { EventEntrySchema, SessionSummarySchema } from "./events"
+import { EventEntrySchema, ConversationSummarySchema } from "./events"
 
 describe("EventEntrySchema", () => {
   test("valid EventEntry passes", () => {
@@ -59,7 +59,7 @@ describe("EventEntrySchema", () => {
   })
 })
 
-describe("SessionSummarySchema", () => {
+describe("ConversationSummarySchema", () => {
   const baseSummary = {
     sessionId: "sess",
     startedAt: "2026-01-01T00:00:00.000Z",
@@ -75,13 +75,13 @@ describe("SessionSummarySchema", () => {
     denies: [] as { ts: string; tool: string; reason: string }[],
   }
 
-  test("valid SessionSummary passes", () => {
-    const r = SessionSummarySchema.safeParse(baseSummary)
+  test("valid ConversationSummary passes", () => {
+    const r = ConversationSummarySchema.safeParse(baseSummary)
     expect(r.success).toBe(true)
   })
 
   test("null startedAt passes", () => {
-    const r = SessionSummarySchema.safeParse({
+    const r = ConversationSummarySchema.safeParse({
       ...baseSummary,
       startedAt: null,
     })
@@ -92,7 +92,7 @@ describe("SessionSummarySchema", () => {
   })
 
   test("errors array validates correctly", () => {
-    const r = SessionSummarySchema.safeParse({
+    const r = ConversationSummarySchema.safeParse({
       ...baseSummary,
       errors: [
         { ts: "2026-01-01T00:00:00.000Z", tool: "write", error: "denied" },
@@ -106,7 +106,7 @@ describe("SessionSummarySchema", () => {
   })
 
   test("denies array validates correctly", () => {
-    const r = SessionSummarySchema.safeParse({
+    const r = ConversationSummarySchema.safeParse({
       ...baseSummary,
       denies: [
         { ts: "2026-01-01T00:01:00.000Z", tool: "shell", reason: "policy" },

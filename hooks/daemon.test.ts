@@ -86,21 +86,21 @@ describe("hook daemon", () => {
     test("cleans up session (Claude Code format)", async () => {
       await post("/sessionStart", { session_id: "sess-cleanup" })
       const health1 = await (await fetch(`${BASE}/health`)).json()
-      const before = health1.sessions
+      const before = health1.conversations
 
       await post("/sessionEnd", { session_id: "sess-cleanup" })
       const health2 = await (await fetch(`${BASE}/health`)).json()
-      expect(health2.sessions).toBe(before - 1)
+      expect(health2.conversations).toBe(before - 1)
     })
 
     test("cleans up session with Cursor-native conversation_id + workspace_roots", async () => {
       await post("/sessionStart", { conversation_id: "conv-cleanup" })
       const health1 = await (await fetch(`${BASE}/health`)).json()
-      const before = health1.sessions
+      const before = health1.conversations
 
       await post("/sessionEnd", { conversation_id: "conv-cleanup", workspace_roots: ["/project"] })
       const health2 = await (await fetch(`${BASE}/health`)).json()
-      expect(health2.sessions).toBe(before - 1)
+      expect(health2.conversations).toBe(before - 1)
     })
   })
 
@@ -522,7 +522,7 @@ describe("hook daemon", () => {
             error: "429 Too Many Requests",
             session_id: "sess-fail-rate",
           })
-          expect(result.additional_context).toContain("session-recovery")
+          expect(result.additional_context).toContain("conversation-recovery")
           expect(result.additional_context).toContain("Rate limit")
           expect(result.hookSpecificOutput.hookEventName).toBe("PostToolUseFailure")
         })
@@ -537,7 +537,7 @@ describe("hook daemon", () => {
             error: "Request timed out after 30s",
             session_id: "sess-fail-timeout",
           })
-          expect(result.additional_context).toContain("session-recovery")
+          expect(result.additional_context).toContain("conversation-recovery")
           expect(result.additional_context).toContain("timed out")
           expect(result.hookSpecificOutput.hookEventName).toBe("PostToolUseFailure")
         })
@@ -552,7 +552,7 @@ describe("hook daemon", () => {
             error: "Permission denied: /etc/passwd",
             session_id: "sess-fail-perm",
           })
-          expect(result.additional_context).toContain("session-recovery")
+          expect(result.additional_context).toContain("conversation-recovery")
           expect(result.additional_context).toContain("Permission denied")
           expect(result.hookSpecificOutput.hookEventName).toBe("PostToolUseFailure")
         })
@@ -567,7 +567,7 @@ describe("hook daemon", () => {
             error: "No such file or directory",
             session_id: "sess-fail-notfound",
           })
-          expect(result.additional_context).toContain("session-recovery")
+          expect(result.additional_context).toContain("conversation-recovery")
           expect(result.additional_context).toContain("not found")
           expect(result.hookSpecificOutput.hookEventName).toBe("PostToolUseFailure")
         })

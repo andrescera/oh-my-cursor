@@ -1,17 +1,17 @@
 import { describe, it, expect, beforeEach, afterEach } from "bun:test"
-import { resolveConversationId, getOrCreateSession, sessions } from "./shared"
+import { resolveConversationId, getOrCreateConversation, conversations } from "./shared"
 import { ContextCollector } from "./context-collector"
 import { BackgroundTracker } from "./handlers/background-tracker"
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i
 
-describe("session isolation", () => {
+describe("conversation isolation", () => {
   beforeEach(() => {
-    sessions.clear()
+    conversations.clear()
   })
 
   afterEach(() => {
-    sessions.clear()
+    conversations.clear()
   })
 
   describe("resolveConversationId", () => {
@@ -55,21 +55,21 @@ describe("session isolation", () => {
     })
   })
 
-  describe("session-scoped readPaths", () => {
-    it("does not leak readPaths between sessions", () => {
-      const sessionA = getOrCreateSession("session-a")
-      sessionA.readPaths.add("/only-in-a")
-      const sessionB = getOrCreateSession("session-b")
-      expect(sessionB.readPaths.has("/only-in-a")).toBe(false)
+  describe("conversation-scoped readPaths", () => {
+    it("does not leak readPaths between conversations", () => {
+      const conversationA = getOrCreateConversation("session-a")
+      conversationA.readPaths.add("/only-in-a")
+      const conversationB = getOrCreateConversation("session-b")
+      expect(conversationB.readPaths.has("/only-in-a")).toBe(false)
     })
   })
 
-  describe("session-scoped delegateRetryState", () => {
-    it("does not share delegateRetryState between sessions", () => {
-      const sessionA = getOrCreateSession("delegate-a")
-      sessionA.delegateRetryState["omi.probe"] = 7
-      const sessionB = getOrCreateSession("delegate-b")
-      expect(Object.keys(sessionB.delegateRetryState)).toHaveLength(0)
+  describe("conversation-scoped delegateRetryState", () => {
+    it("does not share delegateRetryState between conversations", () => {
+      const conversationA = getOrCreateConversation("delegate-a")
+      conversationA.delegateRetryState["omi.probe"] = 7
+      const conversationB = getOrCreateConversation("delegate-b")
+      expect(Object.keys(conversationB.delegateRetryState)).toHaveLength(0)
     })
   })
 
@@ -80,19 +80,19 @@ describe("session isolation", () => {
       tracker = new BackgroundTracker()
     })
 
-    it("getActiveTasksForSession returns only tasks for the requested conversation", () => {
+    it("getActiveTasksForConversation returns only tasks for the requested conversation", () => {
       tracker.track("agent-1", "explore", "Task one", "conv-1")
       tracker.track("agent-2", "librarian", "Task two", "conv-2")
       tracker.track("agent-3", "explore", "Task three", "conv-1")
 
-      const forOne = tracker.getActiveTasksForSession("conv-1")
+      const forOne = tracker.getActiveTasksForConversation("conv-1")
       expect(forOne).toHaveLength(2)
       expect(new Set(forOne.map((t) => t.agentId))).toEqual(new Set(["agent-1", "agent-3"]))
       forOne.forEach((t) => {
         expect(t.conversationId).toBe("conv-1")
       })
 
-      const forTwo = tracker.getActiveTasksForSession("conv-2")
+      const forTwo = tracker.getActiveTasksForConversation("conv-2")
       expect(forTwo).toHaveLength(1)
       expect(forTwo[0].agentId).toBe("agent-2")
     })
@@ -106,14 +106,14 @@ describe("session isolation", () => {
     })
   })
 
-  describe("ContextCollector per-session counter", () => {
+  describe("ContextCollector per-conversation counter", () => {
     let collector: ContextCollector
 
     beforeEach(() => {
       collector = new ContextCollector()
     })
 
-    it("starts registration order at 1 independently per session", () => {
+    it("starts registration order at 1 independently per conversation", () => {
       collector.register("s-one", { id: "e1", source: "src", content: "a" })
       collector.register("s-two", { id: "e1", source: "src", content: "b" })
 
@@ -133,7 +133,7 @@ describe("session isolation", () => {
       expect(ordersTwo).toEqual([1, 2])
     })
 
-    it("clear(sessionId) removes entries and counter for that session only", () => {
+    it("clear(sessionId) removes entries and counter for that conversation only", () => {
       collector.register("keep", { id: "x", source: "s", content: "k" })
       collector.register("drop", { id: "y", source: "s", content: "d" })
       collector.register("drop", { id: "z", source: "s", content: "d2" })

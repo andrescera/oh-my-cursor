@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeEach, afterEach } from "bun:test"
 import { randomUUID } from "node:crypto"
 import { createContinuationHandlers } from "./continuation-handlers"
-import { getOrCreateSession, sessions } from "../shared"
+import { getOrCreateConversation, conversations } from "../shared"
 
 function makeConvId(): string {
   return `continuation-test-${randomUUID()}`
@@ -18,89 +18,89 @@ function baseStopInput(convId: string, overrides: Record<string, unknown> = {}):
 }
 
 describe("createContinuationHandlers", () => {
-  const unusedSessions = new Map()
+  const unusedConversations = new Map()
   let handlers: ReturnType<typeof createContinuationHandlers>
   let convId: string
 
   beforeEach(() => {
-    handlers = createContinuationHandlers(unusedSessions)
+    handlers = createContinuationHandlers(unusedConversations)
     convId = makeConvId()
   })
 
   afterEach(() => {
-    sessions.delete(convId)
+    conversations.delete(convId)
   })
 
   describe("/stop handler", () => {
     describe("ralph-loop continuation", () => {
       it("continues with iteration message when ralph is active and context has no DONE", () => {
-        const session = getOrCreateSession(convId)
-        session.ralphState = {
+        const conversation = getOrCreateConversation(convId)
+        conversation.ralphState = {
           active: true,
           iteration: 0,
           maxIterations: 0,
           startedAt: new Date().toISOString(),
         }
-        session.contextHistory = ["some work"]
+        conversation.contextHistory = ["some work"]
 
         const result = handlers["/stop"](baseStopInput(convId)) as {
           followup_message?: string
           decision?: string
         }
 
-        expect(session.ralphState?.iteration).toBe(1)
+        expect(conversation.ralphState?.iteration).toBe(1)
         expect(result.followup_message).toContain("Continue working")
         expect(result.followup_message).toContain("Iteration 1/unlimited")
         expect(result.decision).toBe("block")
       })
 
       it("clears ralph and returns empty when context includes DONE", () => {
-        const session = getOrCreateSession(convId)
-        session.ralphState = {
+        const conversation = getOrCreateConversation(convId)
+        conversation.ralphState = {
           active: true,
           iteration: 1,
           maxIterations: 0,
           startedAt: new Date().toISOString(),
         }
-        session.contextHistory = ["done <promise>DONE</promise>"]
+        conversation.contextHistory = ["done <promise>DONE</promise>"]
 
         const result = handlers["/stop"](baseStopInput(convId))
 
-        expect(session.ralphState).toBeNull()
+        expect(conversation.ralphState).toBeNull()
         expect(result).toEqual({})
       })
 
       it("stops ralph when max iterations reached", () => {
-        const session = getOrCreateSession(convId)
-        session.ralphState = {
+        const conversation = getOrCreateConversation(convId)
+        conversation.ralphState = {
           active: true,
           iteration: 1,
           maxIterations: 2,
           startedAt: new Date().toISOString(),
         }
-        session.contextHistory = []
+        conversation.contextHistory = []
 
         const result = handlers["/stop"](baseStopInput(convId))
 
-        expect(session.ralphState).toBeNull()
+        expect(conversation.ralphState).toBeNull()
         expect(result).toEqual({})
       })
     })
 
     describe("state-based todo detection", () => {
       it("triggers continuation when todoStates has pending items", () => {
-        const session = getOrCreateSession(convId)
-        session.todoStates.set("t1", "pending")
+        const conversation = getOrCreateConversation(convId)
+        conversation.todoStates.set("t1", "pending")
 
         const result = handlers["/stop"](baseStopInput(convId)) as { followup_message?: string }
 
         expect(result.followup_message).toContain("incomplete todos")
-        expect(session.boulderState?.active).toBe(true)
+        expect(conversation.boulderState?.active).toBe(true)
       })
 
       it("triggers continuation when todoStates has in_progress items", () => {
-        const session = getOrCreateSession(convId)
-        session.todoStates.set("t1", "in_progress")
+        const conversation = getOrCreateConversation(convId)
+        conversation.todoStates.set("t1", "in_progress")
 
         const result = handlers["/stop"](baseStopInput(convId)) as { followup_message?: string }
 
@@ -108,8 +108,8 @@ describe("createContinuationHandlers", () => {
       })
 
       it("does not trigger from todoStates when all items are completed", () => {
-        const session = getOrCreateSession(convId)
-        session.todoStates.set("t1", "completed")
+        const conversation = getOrCreateConversation(convId)
+        conversation.todoStates.set("t1", "completed")
 
         const result = handlers["/stop"](baseStopInput(convId))
 
@@ -117,8 +117,8 @@ describe("createContinuationHandlers", () => {
       })
 
       it("falls back to TodoWrite in contextHistory when todoStates is empty", () => {
-        const session = getOrCreateSession(convId)
-        session.contextHistory = ["called TodoWrite"]
+        const conversation = getOrCreateConversation(convId)
+        conversation.contextHistory = ["called TodoWrite"]
 
         const result = handlers["/stop"](baseStopInput(convId)) as { followup_message?: string }
 
@@ -127,10 +127,10 @@ describe("createContinuationHandlers", () => {
     })
 
     describe("cooldown gate", () => {
-      it("returns empty object when session is in continuation cooldown", () => {
-        const session = getOrCreateSession(convId)
-        session.todoStates.set("t1", "pending")
-        session.continuationCooldownUntil = Date.now() + 86_400_000
+      it("returns empty object when conversation is in continuation cooldown", () => {
+        const conversation = getOrCreateConversation(convId)
+        conversation.todoStates.set("t1", "pending")
+        conversation.continuationCooldownUntil = Date.now() + 86_400_000
 
         const result = handlers["/stop"](baseStopInput(convId))
 
@@ -140,34 +140,34 @@ describe("createContinuationHandlers", () => {
 
     describe("stagnation and failure escalation", () => {
       it("increments consecutive failures when todo snapshot unchanged", () => {
-        const session = getOrCreateSession(convId)
-        session.todoStates.set("a", "pending")
+        const conversation = getOrCreateConversation(convId)
+        conversation.todoStates.set("a", "pending")
         const snap = JSON.stringify([["a", "pending"]])
-        session.lastTodoSnapshot = snap
-        session.consecutiveContinuationFailures = 0
+        conversation.lastTodoSnapshot = snap
+        conversation.consecutiveContinuationFailures = 0
 
         handlers["/stop"](baseStopInput(convId))
 
-        expect(session.consecutiveContinuationFailures).toBe(1)
+        expect(conversation.consecutiveContinuationFailures).toBe(1)
       })
 
       it("resets consecutive failures when todo snapshot changes", () => {
-        const session = getOrCreateSession(convId)
-        session.todoStates.set("a", "pending")
-        session.lastTodoSnapshot = JSON.stringify([["b", "pending"]])
-        session.consecutiveContinuationFailures = 3
+        const conversation = getOrCreateConversation(convId)
+        conversation.todoStates.set("a", "pending")
+        conversation.lastTodoSnapshot = JSON.stringify([["b", "pending"]])
+        conversation.consecutiveContinuationFailures = 3
 
         handlers["/stop"](baseStopInput(convId))
 
-        expect(session.consecutiveContinuationFailures).toBe(0)
-        expect(session.lastTodoSnapshot).toBe(JSON.stringify([["a", "pending"]]))
+        expect(conversation.consecutiveContinuationFailures).toBe(0)
+        expect(conversation.lastTodoSnapshot).toBe(JSON.stringify([["a", "pending"]]))
       })
 
       it("appends stagnation attempt text when failures are non-zero", () => {
-        const session = getOrCreateSession(convId)
-        session.todoStates.set("a", "pending")
-        session.lastTodoSnapshot = JSON.stringify([["a", "pending"]])
-        session.consecutiveContinuationFailures = 1
+        const conversation = getOrCreateConversation(convId)
+        conversation.todoStates.set("a", "pending")
+        conversation.lastTodoSnapshot = JSON.stringify([["a", "pending"]])
+        conversation.consecutiveContinuationFailures = 1
 
         const result = handlers["/stop"](baseStopInput(convId)) as { followup_message?: string }
 
@@ -176,53 +176,53 @@ describe("createContinuationHandlers", () => {
       })
 
       it("deactivates boulder after five stagnation failures", () => {
-        const session = getOrCreateSession(convId)
-        session.todoStates.set("a", "pending")
-        session.lastTodoSnapshot = JSON.stringify([["a", "pending"]])
-        session.consecutiveContinuationFailures = 4
-        session.boulderState = { active: true, failureCount: 0, lastContinuationAt: null }
-        session.continuationCooldownUntil = null
+        const conversation = getOrCreateConversation(convId)
+        conversation.todoStates.set("a", "pending")
+        conversation.lastTodoSnapshot = JSON.stringify([["a", "pending"]])
+        conversation.consecutiveContinuationFailures = 4
+        conversation.boulderState = { active: true, failureCount: 0, lastContinuationAt: null }
+        conversation.continuationCooldownUntil = null
 
         const result = handlers["/stop"](baseStopInput(convId))
 
-        expect(session.consecutiveContinuationFailures).toBe(5)
-        expect(session.boulderState?.active).toBe(false)
+        expect(conversation.consecutiveContinuationFailures).toBe(5)
+        expect(conversation.boulderState?.active).toBe(false)
         expect(result).toEqual({})
       })
 
       it("sets continuation cooldown when failures reach three", () => {
-        const session = getOrCreateSession(convId)
-        session.todoStates.set("a", "pending")
-        session.lastTodoSnapshot = JSON.stringify([["a", "pending"]])
-        session.consecutiveContinuationFailures = 2
-        session.continuationCooldownUntil = null
+        const conversation = getOrCreateConversation(convId)
+        conversation.todoStates.set("a", "pending")
+        conversation.lastTodoSnapshot = JSON.stringify([["a", "pending"]])
+        conversation.consecutiveContinuationFailures = 2
+        conversation.continuationCooldownUntil = null
 
         handlers["/stop"](baseStopInput(convId))
 
-        expect(session.consecutiveContinuationFailures).toBe(3)
-        expect(session.continuationCooldownUntil).not.toBeNull()
-        expect(session.continuationCooldownUntil!).toBeGreaterThan(Date.now())
+        expect(conversation.consecutiveContinuationFailures).toBe(3)
+        expect(conversation.continuationCooldownUntil).not.toBeNull()
+        expect(conversation.continuationCooldownUntil!).toBeGreaterThan(Date.now())
       })
     })
 
     describe("loop count runaway protection", () => {
       it("deactivates boulder and returns empty when loop_count exceeds 10", () => {
-        const session = getOrCreateSession(convId)
-        session.todoStates.set("t1", "pending")
-        session.boulderState = { active: true, failureCount: 0, lastContinuationAt: null }
+        const conversation = getOrCreateConversation(convId)
+        conversation.todoStates.set("t1", "pending")
+        conversation.boulderState = { active: true, failureCount: 0, lastContinuationAt: null }
 
         const result = handlers["/stop"](baseStopInput(convId, { loop_count: 11 }))
 
-        expect(session.boulderState?.active).toBe(false)
+        expect(conversation.boulderState?.active).toBe(false)
         expect(result).toEqual({})
       })
     })
 
     describe("plan-phase-aware message", () => {
       it("uses plan-phase wording when activePlan is present", () => {
-        const session = getOrCreateSession(convId)
-        session.todoStates.set("t1", "pending")
-        session.activePlan = { path: "/plans/foo.md", phase: "Phase 2", completedTasks: [] }
+        const conversation = getOrCreateConversation(convId)
+        conversation.todoStates.set("t1", "pending")
+        conversation.activePlan = { path: "/plans/foo.md", phase: "Phase 2", completedTasks: [] }
 
         const result = handlers["/stop"](baseStopInput(convId)) as { followup_message?: string }
 
@@ -233,11 +233,11 @@ describe("createContinuationHandlers", () => {
 
     describe("plan mode continuation", () => {
       it("triggers continuation when composerMode is plan and todos are incomplete", () => {
-        const session = getOrCreateSession(convId)
-        session.composerMode = "plan"
-        session.todoStates.set("plan-write", "completed")
-        session.todoStates.set("plan-selfreview", "pending")
-        session.todoStates.set("plan-review", "pending")
+        const conversation = getOrCreateConversation(convId)
+        conversation.composerMode = "plan"
+        conversation.todoStates.set("plan-write", "completed")
+        conversation.todoStates.set("plan-selfreview", "pending")
+        conversation.todoStates.set("plan-review", "pending")
 
         const result = handlers["/stop"](baseStopInput(convId)) as {
           followup_message?: string
@@ -249,14 +249,14 @@ describe("createContinuationHandlers", () => {
       })
 
       it("continuation message references correct next phase from todoStates", () => {
-        const session = getOrCreateSession(convId)
-        session.composerMode = "plan"
-        session.todoStates.set("plan-switchmode", "completed")
-        session.todoStates.set("plan-interview", "completed")
-        session.todoStates.set("plan-explore", "completed")
-        session.todoStates.set("plan-metis", "completed")
-        session.todoStates.set("plan-write", "completed")
-        session.todoStates.set("plan-selfreview", "pending")
+        const conversation = getOrCreateConversation(convId)
+        conversation.composerMode = "plan"
+        conversation.todoStates.set("plan-switchmode", "completed")
+        conversation.todoStates.set("plan-interview", "completed")
+        conversation.todoStates.set("plan-explore", "completed")
+        conversation.todoStates.set("plan-metis", "completed")
+        conversation.todoStates.set("plan-write", "completed")
+        conversation.todoStates.set("plan-selfreview", "pending")
 
         const result = handlers["/stop"](baseStopInput(convId)) as {
           followup_message?: string
@@ -266,9 +266,9 @@ describe("createContinuationHandlers", () => {
       })
 
       it("allows agent type plan when composerMode is plan and todos are pending", () => {
-        const session = getOrCreateSession(convId)
-        session.composerMode = "plan"
-        session.todoStates.set("plan-write", "pending")
+        const conversation = getOrCreateConversation(convId)
+        conversation.composerMode = "plan"
+        conversation.todoStates.set("plan-write", "pending")
 
         const result = handlers["/stop"](baseStopInput(convId, { agent_type: "plan" })) as {
           followup_message?: string
@@ -280,8 +280,8 @@ describe("createContinuationHandlers", () => {
 
     describe("early exits", () => {
       it("returns empty when stop_hook_active is true", () => {
-        const session = getOrCreateSession(convId)
-        session.todoStates.set("t1", "pending")
+        const conversation = getOrCreateConversation(convId)
+        conversation.todoStates.set("t1", "pending")
 
         const result = handlers["/stop"](baseStopInput(convId, { stop_hook_active: true }))
 
@@ -289,8 +289,8 @@ describe("createContinuationHandlers", () => {
       })
 
       it("returns empty when status is not completed", () => {
-        const session = getOrCreateSession(convId)
-        session.todoStates.set("t1", "pending")
+        const conversation = getOrCreateConversation(convId)
+        conversation.todoStates.set("t1", "pending")
 
         const result = handlers["/stop"](baseStopInput(convId, { status: "running" }))
 
@@ -321,9 +321,9 @@ describe("createContinuationHandlers", () => {
       expect(result.additional_context).toContain("Prometheus planning mode active")
     })
 
-    it("detects plan mode from session composerMode", () => {
-      const session = getOrCreateSession(convId)
-      session.composerMode = "plan"
+    it("detects plan mode from conversation composerMode", () => {
+      const conversation = getOrCreateConversation(convId)
+      conversation.composerMode = "plan"
 
       const result = handlers["/beforeSubmitPrompt"]({
         prompt: "no slash plan token here",
@@ -366,7 +366,7 @@ describe("createContinuationHandlers", () => {
         }) as { additional_context?: string }
         expect(r2.additional_context).toContain("[mode:ultrawork]")
       } finally {
-        sessions.delete(conv2)
+        conversations.delete(conv2)
       }
     })
 
@@ -380,36 +380,36 @@ describe("createContinuationHandlers", () => {
     })
 
     it("activates ralph state for /ralph-loop with optional max iterations", () => {
-      const session = getOrCreateSession(convId)
+      const conversation = getOrCreateConversation(convId)
 
       const result = handlers["/beforeSubmitPrompt"]({
         prompt: "/ralph-loop --max-iterations 5",
         conversation_id: convId,
       }) as { additional_context?: string }
 
-      expect(session.ralphState?.active).toBe(true)
-      expect(session.ralphState?.maxIterations).toBe(5)
+      expect(conversation.ralphState?.active).toBe(true)
+      expect(conversation.ralphState?.maxIterations).toBe(5)
       expect(result.additional_context).toContain("[ralph-loop]")
     })
 
     it("clears continuation state for /stop-continuation", () => {
-      const session = getOrCreateSession(convId)
-      session.ralphState = {
+      const conversation = getOrCreateConversation(convId)
+      conversation.ralphState = {
         active: true,
         iteration: 2,
         maxIterations: 0,
         startedAt: new Date().toISOString(),
       }
-      session.boulderState = { active: true, failureCount: 1, lastContinuationAt: "x" }
+      conversation.boulderState = { active: true, failureCount: 1, lastContinuationAt: "x" }
 
       const result = handlers["/beforeSubmitPrompt"]({
         prompt: "/stop-continuation",
         conversation_id: convId,
       }) as { additional_context?: string }
 
-      expect(session.ralphState).toBeNull()
-      expect(session.boulderState).toBeNull()
-      expect(session.stoppedAt).not.toBeNull()
+      expect(conversation.ralphState).toBeNull()
+      expect(conversation.boulderState).toBeNull()
+      expect(conversation.stoppedAt).not.toBeNull()
       expect(result.additional_context).toContain("Continuation loops stopped")
     })
 
@@ -433,9 +433,9 @@ describe("createContinuationHandlers", () => {
     })
 
     it("adds agent+plan context when in agent mode with activePlan", () => {
-      const session = getOrCreateSession(convId)
-      session.composerMode = "agent"
-      session.activePlan = { path: "/p.md", phase: "P1", completedTasks: [] }
+      const conversation = getOrCreateConversation(convId)
+      conversation.composerMode = "agent"
+      conversation.activePlan = { path: "/p.md", phase: "P1", completedTasks: [] }
 
       const result = handlers["/beforeSubmitPrompt"]({
         prompt: "continue",
@@ -447,8 +447,8 @@ describe("createContinuationHandlers", () => {
     })
 
     it("injects [start-work:discover] when /start-work and no activePlan", () => {
-      const session = getOrCreateSession(convId)
-      session.activePlan = null
+      const conversation = getOrCreateConversation(convId)
+      conversation.activePlan = null
 
       const result = handlers["/beforeSubmitPrompt"]({
         prompt: "/start-work",
@@ -460,8 +460,8 @@ describe("createContinuationHandlers", () => {
     })
 
     it("injects [start-work:fresh] when /start-work and activePlan with no completed tasks", () => {
-      const session = getOrCreateSession(convId)
-      session.activePlan = { path: "plans/a.plan.md", phase: "Wave 0", completedTasks: [] }
+      const conversation = getOrCreateConversation(convId)
+      conversation.activePlan = { path: "plans/a.plan.md", phase: "Wave 0", completedTasks: [] }
 
       const result = handlers["/beforeSubmitPrompt"]({
         prompt: "/start-work",
@@ -473,8 +473,8 @@ describe("createContinuationHandlers", () => {
     })
 
     it("injects [start-work:resume] when /start-work and activePlan has completed tasks", () => {
-      const session = getOrCreateSession(convId)
-      session.activePlan = {
+      const conversation = getOrCreateConversation(convId)
+      conversation.activePlan = {
         path: "plans/b.plan.md",
         phase: "Wave 2",
         completedTasks: ["t1", "t2"],
@@ -491,8 +491,8 @@ describe("createContinuationHandlers", () => {
     })
 
     it("updates composerMode from plan to agent when inputMode changes", () => {
-      const session = getOrCreateSession(convId)
-      session.composerMode = "plan"
+      const conversation = getOrCreateConversation(convId)
+      conversation.composerMode = "plan"
 
       const result = handlers["/beforeSubmitPrompt"]({
         prompt: "continue working",
@@ -500,7 +500,7 @@ describe("createContinuationHandlers", () => {
         conversation_id: convId,
       }) as { additional_context?: string }
 
-      expect(session.composerMode).toBe("agent")
+      expect(conversation.composerMode).toBe("agent")
       expect(result.additional_context).not.toContain("[mode:plan]")
     })
 
@@ -519,51 +519,51 @@ describe("createContinuationHandlers", () => {
         conversation_id: convId,
       }) as { additional_context?: string }
 
-      const session = getOrCreateSession(convId)
-      expect(session.composerMode).toBe("plan")
+      const conversation = getOrCreateConversation(convId)
+      expect(conversation.composerMode).toBe("plan")
       expect(result.additional_context).toContain("[mode:plan]")
     })
 
     describe("mode transition and per-turn dispatch reset", () => {
       it("transitions composerMode from plan to agent on /start-work and clears plan-phase todos", () => {
-        const session = getOrCreateSession(convId)
-        session.composerMode = "plan"
-        session.todoStates.set("plan-write", "completed")
-        session.todoStates.set("plan-handoff", "completed")
+        const conversation = getOrCreateConversation(convId)
+        conversation.composerMode = "plan"
+        conversation.todoStates.set("plan-write", "completed")
+        conversation.todoStates.set("plan-handoff", "completed")
 
         handlers["/beforeSubmitPrompt"]({
           user_message: "/start-work",
           conversation_id: convId,
         })
 
-        expect(session.composerMode).toBe("agent")
-        expect(session.todoStates.has("plan-write")).toBe(false)
-        expect(session.todoStates.has("plan-handoff")).toBe(false)
+        expect(conversation.composerMode).toBe("agent")
+        expect(conversation.todoStates.has("plan-write")).toBe(false)
+        expect(conversation.todoStates.has("plan-handoff")).toBe(false)
       })
 
       it("keeps plan mode when plan-phase todos are incomplete and message is not /start-work", () => {
-        const session = getOrCreateSession(convId)
-        session.composerMode = "plan"
-        session.todoStates.set("plan-explore", "in_progress")
+        const conversation = getOrCreateConversation(convId)
+        conversation.composerMode = "plan"
+        conversation.todoStates.set("plan-explore", "in_progress")
 
         handlers["/beforeSubmitPrompt"]({
           prompt: "continue with the design",
           conversation_id: convId,
         })
 
-        expect(session.composerMode).toBe("plan")
+        expect(conversation.composerMode).toBe("plan")
       })
 
       it("resets dispatchCountsThisTurn on each beforeSubmitPrompt", () => {
-        const session = getOrCreateSession(convId)
-        session.dispatchCountsThisTurn = { Task: 5, "subagent:explore": 3 }
+        const conversation = getOrCreateConversation(convId)
+        conversation.dispatchCountsThisTurn = { Task: 5, "subagent:explore": 3 }
 
         handlers["/beforeSubmitPrompt"]({
           prompt: "hello",
           conversation_id: convId,
         })
 
-        expect(session.dispatchCountsThisTurn).toEqual({})
+        expect(conversation.dispatchCountsThisTurn).toEqual({})
       })
     })
   })

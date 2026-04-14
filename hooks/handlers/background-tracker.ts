@@ -56,7 +56,7 @@ export class BackgroundTracker {
     }))
   }
 
-  getActiveTasksForSession(conversationId: string): ActiveTask[] {
+  getActiveTasksForConversation(conversationId: string): ActiveTask[] {
     const now = Date.now()
     return Array.from(this.tasks.entries())
       .filter(([, task]) => task.conversationId === conversationId)
@@ -85,7 +85,7 @@ export function createBackgroundTasksHandler(tracker: BackgroundTracker): Handle
     tracker.cleanup()
     const convId =
       (input.conversation_id as string) || (input.session_id as string) || ""
-    const tasks = convId ? tracker.getActiveTasksForSession(convId) : tracker.getActiveTasks()
+    const tasks = convId ? tracker.getActiveTasksForConversation(convId) : tracker.getActiveTasks()
     return { tasks, count: tasks.length }
   }
 }

@@ -170,7 +170,7 @@ const TOOLS = [
   {
     name: "get_dispatch_stats",
     description:
-      "Get current session dispatch statistics including explore/worker counts, tool call counts, and active agents from the oh-my-cursor daemon.",
+      "Get current conversation dispatch statistics including explore/worker counts, tool call counts, and active agents from the oh-my-cursor daemon.",
     inputSchema: {
       type: "object" as const,
       properties: {},
@@ -216,7 +216,7 @@ const TOOLS = [
   {
     name: "session_log",
     description:
-      "Query the oh-my-cursor session event log. Returns structured events from the current or past sessions for analysis, review, and improvement.",
+      "Query the oh-my-cursor conversation event log. Returns structured events from the current or past sessions for analysis, review, and improvement.",
     inputSchema: {
       type: "object" as const,
       properties: {

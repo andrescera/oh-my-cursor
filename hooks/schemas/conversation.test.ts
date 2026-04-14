@@ -1,12 +1,12 @@
 import { describe, test, expect } from "bun:test"
 import {
-  SessionStateSchema,
+  ConversationStateSchema,
   SubagentOutcomeSchema,
   RalphLoopStateSchema,
   BoulderStateSchema,
-} from "./session"
+} from "./conversation"
 
-function minimalSession(overrides: Record<string, unknown> = {}) {
+function minimalConversation(overrides: Record<string, unknown> = {}) {
   return {
     id: "sess-1",
     startedAt: "2026-01-01T00:00:00.000Z",
@@ -42,9 +42,9 @@ function minimalSession(overrides: Record<string, unknown> = {}) {
   }
 }
 
-describe("SessionStateSchema", () => {
-  test("valid full session passes safeParse", () => {
-    const session = minimalSession({
+describe("ConversationStateSchema", () => {
+  test("valid full conversation passes", () => {
+    const conversation = minimalConversation({
       env: { HOME: "/home/u" },
       dispatchCounts: { explore: 2 },
       contextHistory: ["ctx"],
@@ -95,21 +95,21 @@ describe("SessionStateSchema", () => {
       subagentFailureCounts: { x: 1 },
       delegateRetryState: { y: 0 },
     })
-    const r = SessionStateSchema.safeParse(session)
+    const r = ConversationStateSchema.safeParse(conversation)
     expect(r.success).toBe(true)
   })
 
-  test("empty object fails because id is required", () => {
-    const r = SessionStateSchema.safeParse({})
+  test("empty object fails", () => {
+    const r = ConversationStateSchema.safeParse({})
     expect(r.success).toBe(false)
     if (!r.success) {
       expect(r.error.issues.some((i) => i.path.includes("id"))).toBe(true)
     }
   })
 
-  test("session with array readPaths (serialized form) passes", () => {
-    const r = SessionStateSchema.safeParse(
-      minimalSession({ readPaths: ["/src/a.ts", "/src/b.ts"] }),
+  test("conversation with array readPaths (serialized form) passes", () => {
+    const r = ConversationStateSchema.safeParse(
+      minimalConversation({ readPaths: ["/src/a.ts", "/src/b.ts"] }),
     )
     expect(r.success).toBe(true)
     if (r.success) {
@@ -117,9 +117,9 @@ describe("SessionStateSchema", () => {
     }
   })
 
-  test("session with record todoStates (serialized form) passes", () => {
-    const r = SessionStateSchema.safeParse(
-      minimalSession({
+  test("conversation with record todoStates (serialized form) passes", () => {
+    const r = ConversationStateSchema.safeParse(
+      minimalConversation({
         todoStates: {
           t1: "pending",
           t2: "completed",

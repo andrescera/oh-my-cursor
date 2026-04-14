@@ -8,7 +8,7 @@ const fileEditCounts = new Map<string, number>()
 const mcpCallCounts = new Map<string, number>()
 const responseCount = new Map<string, number>()
 
-export function cleanupSafetySession(convId: string): void {
+export function cleanupSafetyConversation(convId: string): void {
   shellFailureCounts.delete(convId)
   responseCount.delete(convId)
   for (const key of fileEditCounts.keys()) {

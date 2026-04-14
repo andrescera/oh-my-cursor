@@ -212,8 +212,8 @@ describe("#when filtering by session", () => {
     tracker.track("a2", "librarian", "Task B", "session-b")
     tracker.track("a3", "explore", "Task C", "session-a")
 
-    const tasksA = tracker.getActiveTasksForSession("session-a")
-    const tasksB = tracker.getActiveTasksForSession("session-b")
+    const tasksA = tracker.getActiveTasksForConversation("session-a")
+    const tasksB = tracker.getActiveTasksForConversation("session-b")
 
     expect(tasksA).toHaveLength(2)
     expect(tasksB).toHaveLength(1)
@@ -223,6 +223,6 @@ describe("#when filtering by session", () => {
 
   it("returns empty for unknown session", () => {
     tracker.track("a1", "explore", "Task", "session-a")
-    expect(tracker.getActiveTasksForSession("session-x")).toEqual([])
+    expect(tracker.getActiveTasksForConversation("session-x")).toEqual([])
   })
 })

@@ -17,11 +17,11 @@ describe("hook-tiers", () => {
   describe("#given session-tier hooks", () => {
     describe("#when their tier assignments are checked", () => {
       test("#then they all map to SESSION tier", () => {
-        const sessionHooks = [
+        const conversationHooks = [
           "/health", "/sessionStart", "/sessionEnd", "/preCompact",
           "/heartbeat", "/config", "/sessionHistory", "/backgroundTasks",
         ]
-        for (const hook of sessionHooks) {
+        for (const hook of conversationHooks) {
           expect(HOOK_TIER_ASSIGNMENTS[hook]).toBe(HookTier.SESSION)
         }
       })

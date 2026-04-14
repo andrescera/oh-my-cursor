@@ -1,11 +1,11 @@
 import * as crypto from "node:crypto"
-import type { SessionState } from "./types"
+import type { ConversationState } from "./types"
 
-export const sessions = new Map<string, SessionState>()
+export const conversations = new Map<string, ConversationState>()
 
-export function getOrCreateSession(conversationId: string): SessionState {
-  if (!sessions.has(conversationId)) {
-    sessions.set(conversationId, {
+export function getOrCreateConversation(conversationId: string): ConversationState {
+  if (!conversations.has(conversationId)) {
+    conversations.set(conversationId, {
       id: conversationId,
       startedAt: new Date().toISOString(),
       env: {},
@@ -38,7 +38,7 @@ export function getOrCreateSession(conversationId: string): SessionState {
       delegateRetryState: {},
     })
   }
-  return sessions.get(conversationId)!
+  return conversations.get(conversationId)!
 }
 
 export function parseInput(body: unknown): Record<string, unknown> {
@@ -111,19 +111,19 @@ export function hashTodoStates(states: Map<string, string>): string {
   return JSON.stringify(sorted)
 }
 
-export function isInCooldown(session: SessionState): boolean {
-  return session.continuationCooldownUntil !== null && Date.now() < session.continuationCooldownUntil
+export function isInCooldown(conversation: ConversationState): boolean {
+  return conversation.continuationCooldownUntil !== null && Date.now() < conversation.continuationCooldownUntil
 }
 
-export function setCooldown(session: SessionState, durationMs: number): void {
-  session.continuationCooldownUntil = Date.now() + durationMs
+export function setCooldown(conversation: ConversationState, durationMs: number): void {
+  conversation.continuationCooldownUntil = Date.now() + durationMs
 }
 
-export function incrementContinuationFailure(session: SessionState): void {
-  session.consecutiveContinuationFailures++
+export function incrementContinuationFailure(conversation: ConversationState): void {
+  conversation.consecutiveContinuationFailures++
 }
 
-export function resetContinuationFailure(session: SessionState): void {
-  session.consecutiveContinuationFailures = 0
-  session.continuationCooldownUntil = null
+export function resetContinuationFailure(conversation: ConversationState): void {
+  conversation.consecutiveContinuationFailures = 0
+  conversation.continuationCooldownUntil = null
 }

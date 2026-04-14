@@ -1,20 +1,20 @@
-import type { SessionState, HandlerMap } from "../types"
-import { getOrCreateSession, resolveConversationId } from "../shared"
+import type { ConversationState, HandlerMap } from "../types"
+import { getOrCreateConversation, resolveConversationId } from "../shared"
 import { loadConfig } from "../config"
 import { contextCollector } from "../context-collector"
 import { COMPACTION_CONTEXT_PROMPT } from "../compaction-context-prompt"
-import { cleanupSafetySession } from "./safety-handlers"
-import { cleanupToolGuardSession } from "./tool-guard-handlers"
+import { cleanupSafetyConversation } from "./safety-handlers"
+import { cleanupToolGuardConversation } from "./tool-guard-handlers"
 
-function buildCompactionTodoPreservation(session: SessionState): string {
+function buildCompactionTodoPreservation(conversation: ConversationState): string {
   const lines: string[] = [
     "[todo-preservation] Preserved todo states from before compaction:",
   ]
-  for (const [id, status] of [...session.todoStates.entries()].sort(([a], [b]) => a.localeCompare(b))) {
+  for (const [id, status] of [...conversation.todoStates.entries()].sort(([a], [b]) => a.localeCompare(b))) {
     lines.push("- " + id + ": " + status)
   }
-  if (session.activePlan) {
-    const p = session.activePlan
+  if (conversation.activePlan) {
+    const p = conversation.activePlan
     let planLine =
       "[active-plan] path: " +
       p.path +
@@ -25,23 +25,23 @@ function buildCompactionTodoPreservation(session: SessionState): string {
     }
     lines.push(planLine)
   }
-  if (session.composerMode) {
-    lines.push("[composer-mode] " + session.composerMode)
+  if (conversation.composerMode) {
+    lines.push("[composer-mode] " + conversation.composerMode)
   }
   return lines.join("\n")
 }
 
-export function createSessionHandlers(
-  sessions: Map<string, SessionState>,
+export function createConversationHandlers(
+  conversations: Map<string, ConversationState>,
   getPort: () => number,
 ): HandlerMap {
   return {
     "/health": () => {
       const TWO_HOURS = 2 * 60 * 60 * 1000
       const now = Date.now()
-      for (const [id, session] of sessions) {
-        if (now - new Date(session.startedAt).getTime() > TWO_HOURS && !session.ralphState?.active) {
-          sessions.delete(id)
+      for (const [id, conversation] of conversations) {
+        if (now - new Date(conversation.startedAt).getTime() > TWO_HOURS && !conversation.ralphState?.active) {
+          conversations.delete(id)
         }
       }
 
@@ -49,60 +49,60 @@ export function createSessionHandlers(
       let exploreCounts = 0
       let workerCounts = 0
       let ralphActive = false
-      let currentSessionId = ""
+      let currentConversationId = ""
 
-      for (const [id, session] of sessions) {
-        currentSessionId = id
-        totalToolCalls += session.toolCallCount
-        exploreCounts += session.dispatchCounts["subagent:explore"] || 0
+      for (const [id, conversation] of conversations) {
+        currentConversationId = id
+        totalToolCalls += conversation.toolCallCount
+        exploreCounts += conversation.dispatchCounts["subagent:explore"] || 0
         workerCounts +=
-          (session.dispatchCounts["subagent:general-purpose"] || 0) +
-          (session.dispatchCounts["subagent:generalpurpose"] || 0) +
-          (session.dispatchCounts["subagent:sisyphus"] || 0) +
-          (session.dispatchCounts["subagent:sisyphus-junior"] || 0) +
-          (session.dispatchCounts["subagent:hephaestus"] || 0) +
-          (session.dispatchCounts["subagent:atlas"] || 0) +
-          (session.dispatchCounts["subagent:oracle"] || 0) +
-          (session.dispatchCounts["subagent:prometheus"] || 0) +
-          (session.dispatchCounts["subagent:metis"] || 0) +
-          (session.dispatchCounts["subagent:momus"] || 0)
-        if (session.ralphState?.active) ralphActive = true
+          (conversation.dispatchCounts["subagent:general-purpose"] || 0) +
+          (conversation.dispatchCounts["subagent:generalpurpose"] || 0) +
+          (conversation.dispatchCounts["subagent:sisyphus"] || 0) +
+          (conversation.dispatchCounts["subagent:sisyphus-junior"] || 0) +
+          (conversation.dispatchCounts["subagent:hephaestus"] || 0) +
+          (conversation.dispatchCounts["subagent:atlas"] || 0) +
+          (conversation.dispatchCounts["subagent:oracle"] || 0) +
+          (conversation.dispatchCounts["subagent:prometheus"] || 0) +
+          (conversation.dispatchCounts["subagent:metis"] || 0) +
+          (conversation.dispatchCounts["subagent:momus"] || 0)
+        if (conversation.ralphState?.active) ralphActive = true
       }
 
       const allDispatchCounts: Record<string, number> = {}
-      for (const [, session] of sessions) {
-        for (const [key, val] of Object.entries(session.dispatchCounts)) {
+      for (const [, conversation] of conversations) {
+        for (const [key, val] of Object.entries(conversation.dispatchCounts)) {
           allDispatchCounts[key] = (allDispatchCounts[key] || 0) + val
         }
       }
 
       return {
         status: "ok",
-        sessions: sessions.size,
+        conversations: conversations.size,
         uptime: process.uptime(),
         toolCalls: totalToolCalls,
         exploreCounts,
         workerCounts,
         ralphActive,
-        currentSessionId,
+        currentConversationId,
         allDispatchCounts,
       }
     },
 
     "/sessionStart": (input) => {
       const convId = resolveConversationId(input)
-      const session = getOrCreateSession(convId)
+      const conversation = getOrCreateConversation(convId)
       const projectDir = ((input.workspace_roots as string[])?.[0]) || (input.cwd as string) || process.cwd()
 
-      session.env.OH_MY_CURSOR_SESSION_ID = convId
-      session.env.OH_MY_CURSOR_PROJECT_DIR = projectDir
+      conversation.env.OH_MY_CURSOR_SESSION_ID = convId
+      conversation.env.OH_MY_CURSOR_PROJECT_DIR = projectDir
 
       const contextStr = [
         "## oh-my-cursor Context",
         "",
         `Session: ${convId}`,
         `Project: ${projectDir}`,
-        `Started: ${session.startedAt}`,
+        `Started: ${conversation.startedAt}`,
         "",
         "**Identity (mandatory, by Cursor mode):** Plan→Prometheus (strategic planner; say \"I am Prometheus\" if asked). Agent→Orchestrator/Atlas when a plan exists (pure dispatcher). Debug→diagnose; suggest fixes, do not apply. Ask→advisor; read-only.",
         "**Forbidden tools:** Plan→Shell, Delete, StrReplace, Task(sisyphus/hephaestus/sisyphus-junior/atlas). Agent→direct Write/StrReplace/Delete/Shell (delegate all implementation via Task). Debug|Ask→Write, Shell, StrReplace, Delete, Task.",
@@ -131,28 +131,28 @@ export function createSessionHandlers(
     "/sessionEnd": (input) => {
       const convId = resolveConversationId(input)
       contextCollector.clear(convId)
-      cleanupSafetySession(convId)
-      cleanupToolGuardSession(convId)
-      sessions.delete(convId)
+      cleanupSafetyConversation(convId)
+      cleanupToolGuardConversation(convId)
+      conversations.delete(convId)
 
       return {}
     },
 
     "/preCompact": (input) => {
       const convId = resolveConversationId(input)
-      const session = getOrCreateSession(convId)
+      const conversation = getOrCreateConversation(convId)
 
-      session.lastCompactionEpoch++
-      session.compactionSnapshot = {
-        epoch: session.lastCompactionEpoch,
-        toolCallCount: session.toolCallCount,
-        dispatchCounts: { ...session.dispatchCounts },
+      conversation.lastCompactionEpoch++
+      conversation.compactionSnapshot = {
+        epoch: conversation.lastCompactionEpoch,
+        toolCallCount: conversation.toolCallCount,
+        dispatchCounts: { ...conversation.dispatchCounts },
         timestamp: new Date().toISOString(),
       }
-      session.injectedPaths.clear()
-      session.reminderInjected = false
-      session.recentToolTrail = []
-      session.toolCallsSinceTaskDispatch = 0
+      conversation.injectedPaths.clear()
+      conversation.reminderInjected = false
+      conversation.recentToolTrail = []
+      conversation.toolCallsSinceTaskDispatch = 0
 
       contextCollector.clear(convId)
 
@@ -178,21 +178,21 @@ export function createSessionHandlers(
 
         const snapshotLines = [
           "[session-snapshot]",
-          `Tool calls: ${session.toolCallCount}`,
-          `Errors: ${session.errorCount}`,
-          `Compaction epoch: ${session.lastCompactionEpoch}`,
-          `Dispatches: ${JSON.stringify(session.dispatchCounts)}`,
+          `Tool calls: ${conversation.toolCallCount}`,
+          `Errors: ${conversation.errorCount}`,
+          `Compaction epoch: ${conversation.lastCompactionEpoch}`,
+          `Dispatches: ${JSON.stringify(conversation.dispatchCounts)}`,
         ]
-        if (session.ralphState?.active) {
-          snapshotLines.push(`Ralph loop: active (iteration ${session.ralphState.iteration})`)
+        if (conversation.ralphState?.active) {
+          snapshotLines.push(`Ralph loop: active (iteration ${conversation.ralphState.iteration})`)
         }
-        if (session.boulderState?.active) {
-          snapshotLines.push(`Boulder: active (failures ${session.boulderState.failureCount})`)
+        if (conversation.boulderState?.active) {
+          snapshotLines.push(`Boulder: active (failures ${conversation.boulderState.failureCount})`)
         }
 
         contextCollector.register(convId, {
-          id: "session-snapshot",
-          source: "session-snapshot",
+          id: "conversation-snapshot",
+          source: "conversation-snapshot",
           content: snapshotLines.join("\n"),
           priority: "high",
         })
@@ -200,7 +200,7 @@ export function createSessionHandlers(
         contextCollector.register(convId, {
           id: "todo-preservation",
           source: "compaction-todo-preserver",
-          content: buildCompactionTodoPreservation(session),
+          content: buildCompactionTodoPreservation(conversation),
           priority: "high",
         })
       }

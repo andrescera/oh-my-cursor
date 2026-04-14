@@ -3,16 +3,16 @@ import { readFileSync, writeFileSync, renameSync, unlinkSync, existsSync } from 
 import { homedir } from "node:os"
 import { join } from "node:path"
 import { STATUS_HTML } from "./mcp-app"
-import { logEvent, getEvents, getSessionSummary, getLogPath, clearLog, onEvent, offEvent } from "./event-logger"
+import { logEvent, getEvents, getConversationSummary, getLogPath, clearLog, onEvent, offEvent } from "./event-logger"
 import type { EventEntry } from "./event-logger"
-import { sessions, parseInput, extractMeta } from "./shared"
+import { conversations, parseInput, extractMeta } from "./shared"
 import { isHookEnabled, getHookConfig, resetHookConfigCache } from "./hook-config"
-import { createSessionHandlers } from "./handlers/session-handlers"
+import { createConversationHandlers } from "./handlers/conversation-handlers"
 import { createToolGuardHandlers } from "./handlers/tool-guard-handlers"
 import { createContinuationHandlers } from "./handlers/continuation-handlers"
 import { createSafetyHandlers } from "./handlers/safety-handlers"
 import { createSubagentHandlers } from "./handlers/subagent-handlers"
-import { createSessionHistoryHandler } from "./handlers/session-history"
+import { createConversationHistoryHandler } from "./handlers/conversation-history"
 import { BackgroundTracker, createBackgroundTasksHandler } from "./handlers/background-tracker"
 import { WisdomTracker } from "./handlers/wisdom-tracker"
 import { StatePersistence } from "./state-persistence"
@@ -31,7 +31,7 @@ const persistence = new StatePersistence(config.state_persistence.path)
 const restored = persistence.load()
 if (restored) {
   for (const [id, state] of restored) {
-    sessions.set(id, state)
+    conversations.set(id, state)
   }
 }
 
@@ -127,7 +127,7 @@ function gracefulShutdown(reason: string): void {
   }
   activeStreams.clear()
 
-  persistence.forceFlush(sessions)
+  persistence.forceFlush(conversations)
 
   if (server) {
     server.stop(true)
@@ -145,12 +145,12 @@ function gracefulShutdown(reason: string): void {
 const startTime = Date.now()
 
 const handlers: HandlerMap = {
-  ...createSessionHandlers(sessions, () => actualPort),
-  ...createToolGuardHandlers(sessions, tracker),
-  ...createContinuationHandlers(sessions),
+  ...createConversationHandlers(conversations, () => actualPort),
+  ...createToolGuardHandlers(conversations, tracker),
+  ...createContinuationHandlers(conversations),
   ...createSafetyHandlers(),
-  ...createSubagentHandlers(sessions, tracker, wisdomTracker),
-  "/sessionHistory": createSessionHistoryHandler(sessions),
+  ...createSubagentHandlers(conversations, tracker, wisdomTracker),
+  "/sessionHistory": createConversationHistoryHandler(conversations),
   "/backgroundTasks": createBackgroundTasksHandler(tracker),
   "/heartbeat": createHeartbeatHandler(startTime),
   "/shutdown": () => {
@@ -177,7 +177,7 @@ const handlers: HandlerMap = {
         user: join(homedir(), ".config", "oh-my-cursor", "config.jsonc"),
         project: join(process.cwd(), ".cursor", "oh-my-cursor.jsonc"),
       },
-      activeSessions: sessions.size,
+      activeConversations: conversations.size,
       startTime: new Date(startTime).toISOString(),
     }
   },
@@ -209,7 +209,7 @@ const fetchHandler = async (req: Request) => {
 
   if (path === "/session-log/summary") {
     const sessionId = url.searchParams.get("session") || undefined
-    const summary = getSessionSummary(sessionId)
+    const summary = getConversationSummary(sessionId)
     return new Response(JSON.stringify(summary), {
       headers: { "Content-Type": "application/json" },
     })
@@ -333,7 +333,7 @@ const fetchHandler = async (req: Request) => {
   if (path === "/events/stream") {
     const encoder = new TextEncoder()
     let keepaliveTimer: ReturnType<typeof setInterval> | null = null
-    let sessionSnapshotTimer: ReturnType<typeof setInterval> | null = null
+    let conversationSnapshotTimer: ReturnType<typeof setInterval> | null = null
     let sendFn: ((entry: EventEntry) => void) | null = null
 
     let streamController: ReadableStreamDefaultController | null = null
@@ -348,7 +348,7 @@ const fetchHandler = async (req: Request) => {
           } catch {
             if (sendFn) offEvent(sendFn)
             if (keepaliveTimer) clearInterval(keepaliveTimer)
-            if (sessionSnapshotTimer) clearInterval(sessionSnapshotTimer)
+            if (conversationSnapshotTimer) clearInterval(conversationSnapshotTimer)
             activeStreams.delete(controller)
             controller.close()
           }
@@ -361,14 +361,14 @@ const fetchHandler = async (req: Request) => {
           } catch {
             if (sendFn) offEvent(sendFn)
             if (keepaliveTimer) clearInterval(keepaliveTimer)
-            if (sessionSnapshotTimer) clearInterval(sessionSnapshotTimer)
+            if (conversationSnapshotTimer) clearInterval(conversationSnapshotTimer)
             activeStreams.delete(controller)
             controller.close()
           }
         }, 15_000)
-        sessionSnapshotTimer = setInterval(() => {
+        conversationSnapshotTimer = setInterval(() => {
           try {
-            const snapshot = Array.from(sessions.entries()).map(([id, s]) => ({
+            const snapshot = Array.from(conversations.entries()).map(([id, s]) => ({
               id,
               startedAt: s.startedAt,
               toolCallCount: s.toolCallCount,
@@ -376,11 +376,11 @@ const fetchHandler = async (req: Request) => {
               composerMode: s.composerMode,
               dispatchCounts: s.dispatchCounts,
             }))
-            controller.enqueue(encoder.encode(`event: session-snapshot\ndata: ${JSON.stringify(snapshot)}\n\n`))
+            controller.enqueue(encoder.encode(`event: conversation-snapshot\ndata: ${JSON.stringify(snapshot)}\n\n`))
           } catch {
             if (sendFn) offEvent(sendFn)
             if (keepaliveTimer) clearInterval(keepaliveTimer)
-            if (sessionSnapshotTimer) clearInterval(sessionSnapshotTimer)
+            if (conversationSnapshotTimer) clearInterval(conversationSnapshotTimer)
             activeStreams.delete(controller)
             controller.close()
           }
@@ -389,7 +389,7 @@ const fetchHandler = async (req: Request) => {
       cancel() {
         if (sendFn) offEvent(sendFn)
         if (keepaliveTimer) clearInterval(keepaliveTimer)
-        if (sessionSnapshotTimer) clearInterval(sessionSnapshotTimer)
+        if (conversationSnapshotTimer) clearInterval(conversationSnapshotTimer)
         if (streamController) activeStreams.delete(streamController)
       },
     })
@@ -416,7 +416,7 @@ const fetchHandler = async (req: Request) => {
         controller.enqueue(encoder.encode(`retry: 3000\n: ok\n\n`))
         interval = setInterval(() => {
           try {
-            const sessionData = Array.from(sessions.entries()).map(([id, s]) => ({
+            const conversationData = Array.from(conversations.entries()).map(([id, s]) => ({
               id,
               startedAt: s.startedAt,
               toolCallCount: s.toolCallCount,
@@ -424,7 +424,7 @@ const fetchHandler = async (req: Request) => {
               composerMode: s.composerMode,
               dispatchCounts: s.dispatchCounts,
             }))
-            controller.enqueue(encoder.encode(`data: ${JSON.stringify(sessionData)}\n\n`))
+            controller.enqueue(encoder.encode(`data: ${JSON.stringify(conversationData)}\n\n`))
           } catch {
             if (interval) clearInterval(interval)
             activeStreams.delete(controller)
@@ -448,7 +448,7 @@ const fetchHandler = async (req: Request) => {
   }
 
   if (path === "/sessions" && req.method === "GET") {
-    const list = Array.from(sessions.entries()).map(([id, s]) => ({
+    const list = Array.from(conversations.entries()).map(([id, s]) => ({
       id,
       startedAt: s.startedAt,
       toolCallCount: s.toolCallCount,
@@ -572,7 +572,7 @@ writePortCoordination({
 })
 heartbeatInterval = startHeartbeatWriter()
 persistenceInterval = setInterval(() => {
-  persistence.save(sessions)
+  persistence.save(conversations)
 }, 30_000)
 
 process.on("SIGTERM", () => gracefulShutdown("SIGTERM"))

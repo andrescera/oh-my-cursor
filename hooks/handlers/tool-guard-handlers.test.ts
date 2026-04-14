@@ -1,13 +1,13 @@
 import { describe, it, expect, beforeEach } from "bun:test"
 import { createToolGuardHandlers } from "./tool-guard-handlers"
 import type { BackgroundTracker } from "./background-tracker"
-import { sessions } from "../shared"
+import { conversations } from "../shared"
 
 type ActiveTask = { agentId: string; agentType: string; description: string; startTime: number; elapsedMs: number; conversationId: string }
 
-function makeTracker(activesBySession: Record<string, ActiveTask[]>): BackgroundTracker {
+function makeTracker(activesByConversation: Record<string, ActiveTask[]>): BackgroundTracker {
   return {
-    getActiveTasksForSession: (convId: string) => activesBySession[convId] ?? [],
+    getActiveTasksForConversation: (convId: string) => activesByConversation[convId] ?? [],
     getActiveTasks: () => [],
     track: () => {},
     complete: () => {},
@@ -31,14 +31,14 @@ const CONV = "tool-guard-test-conv"
 
 describe("createToolGuardHandlers dispatch count inflation fix", () => {
   beforeEach(() => {
-    sessions.delete(CONV)
+    conversations.delete(CONV)
   })
 
   describe("#when the explore dispatch limit is reached", () => {
     it("denies the dispatch and does NOT increment dispatchCounts", () => {
       // Default explore limit is 6; fill it completely
       const tracker = makeTracker({ [CONV]: makeExploreTasks(6, CONV) })
-      const { "/preToolUse": handler } = createToolGuardHandlers(sessions, tracker)
+      const { "/preToolUse": handler } = createToolGuardHandlers(conversations, tracker)
 
       const result = handler({
         tool_name: "Task",
@@ -49,15 +49,15 @@ describe("createToolGuardHandlers dispatch count inflation fix", () => {
       expect(result.permission).toBe("deny")
       expect((result.agentMessage as string)).toMatch(/dispatch-limit/)
 
-      const session = sessions.get(CONV)!
-      expect(session.dispatchCounts["subagent:explore"]).toBeUndefined()
+      const conversation = conversations.get(CONV)!
+      expect(conversation.dispatchCounts["subagent:explore"]).toBeUndefined()
     })
   })
 
   describe("#when the explore dispatch limit is not reached", () => {
     it("allows the dispatch and increments dispatchCounts", () => {
       const tracker = makeTracker({ [CONV]: makeExploreTasks(0, CONV) })
-      const { "/preToolUse": handler } = createToolGuardHandlers(sessions, tracker)
+      const { "/preToolUse": handler } = createToolGuardHandlers(conversations, tracker)
 
       handler({
         tool_name: "Task",
@@ -65,19 +65,19 @@ describe("createToolGuardHandlers dispatch count inflation fix", () => {
         tool_input: { subagent_type: "explore", description: "Search codebase" },
       })
 
-      const session = sessions.get(CONV)!
-      expect(session.dispatchCounts["subagent:explore"]).toBe(1)
+      const conversation = conversations.get(CONV)!
+      expect(conversation.dispatchCounts["subagent:explore"]).toBe(1)
     })
 
     it("increments dispatchCounts on each successive allowed dispatch", () => {
       const tracker = makeTracker({ [CONV]: makeExploreTasks(0, CONV) })
-      const { "/preToolUse": handler } = createToolGuardHandlers(sessions, tracker)
+      const { "/preToolUse": handler } = createToolGuardHandlers(conversations, tracker)
 
       handler({ tool_name: "Task", conversation_id: CONV, tool_input: { subagent_type: "explore", description: "First" } })
       handler({ tool_name: "Task", conversation_id: CONV, tool_input: { subagent_type: "explore", description: "Second" } })
 
-      const session = sessions.get(CONV)!
-      expect(session.dispatchCounts["subagent:explore"]).toBe(2)
+      const conversation = conversations.get(CONV)!
+      expect(conversation.dispatchCounts["subagent:explore"]).toBe(2)
     })
   })
 
@@ -93,7 +93,7 @@ describe("createToolGuardHandlers dispatch count inflation fix", () => {
         conversationId: CONV,
       }))
       const tracker = makeTracker({ [CONV]: activeTasks })
-      const { "/preToolUse": handler } = createToolGuardHandlers(sessions, tracker)
+      const { "/preToolUse": handler } = createToolGuardHandlers(conversations, tracker)
 
       const result = handler({
         tool_name: "Task",
@@ -103,28 +103,28 @@ describe("createToolGuardHandlers dispatch count inflation fix", () => {
 
       expect(result.permission).toBe("deny")
 
-      const session = sessions.get(CONV)!
-      expect(session.dispatchCounts["subagent:sisyphus"]).toBeUndefined()
+      const conversation = conversations.get(CONV)!
+      expect(conversation.dispatchCounts["subagent:sisyphus"]).toBeUndefined()
     })
   })
 
   describe("#when a dispatch is denied by plan mode guard", () => {
     it("does NOT increment dispatchCounts for the denied dispatch", () => {
       const tracker = makeTracker({ [CONV]: [] })
-      const { "/preToolUse": handler } = createToolGuardHandlers(sessions, tracker)
+      const { "/preToolUse": handler } = createToolGuardHandlers(conversations, tracker)
 
       // Put the session in plan mode by pre-creating it and setting composerMode
-      const session = sessions.get(CONV) ?? (() => {
+      const conversation = conversations.get(CONV) ?? (() => {
         handler({ tool_name: "Read", conversation_id: CONV, tool_input: {} })
-        return sessions.get(CONV)!
+        return conversations.get(CONV)!
       })()
 
       // Force plan mode
-      sessions.delete(CONV)
-      const freshHandler = createToolGuardHandlers(sessions, tracker)["/preToolUse"]
+      conversations.delete(CONV)
+      const freshHandler = createToolGuardHandlers(conversations, tracker)["/preToolUse"]
       // Warm up session
       freshHandler({ tool_name: "Read", conversation_id: CONV, tool_input: { path: "/tmp/x" } })
-      sessions.get(CONV)!.composerMode = "plan"
+      conversations.get(CONV)!.composerMode = "plan"
 
       const result = freshHandler({
         tool_name: "Task",
@@ -134,17 +134,17 @@ describe("createToolGuardHandlers dispatch count inflation fix", () => {
 
       expect(result.permission).toBe("deny")
       // sisyphus is not allowed in plan mode; count must not increment
-      expect(sessions.get(CONV)!.dispatchCounts["subagent:sisyphus"]).toBeUndefined()
+      expect(conversations.get(CONV)!.dispatchCounts["subagent:sisyphus"]).toBeUndefined()
     })
   })
 
   describe("#when input.mode overrides stale plan composerMode", () => {
     it("allows dispatch when input.mode overrides stale plan composerMode", () => {
       const tracker = makeTracker({ [CONV]: [] })
-      const { "/preToolUse": handler } = createToolGuardHandlers(sessions, tracker)
+      const { "/preToolUse": handler } = createToolGuardHandlers(conversations, tracker)
 
       handler({ tool_name: "Read", conversation_id: CONV, tool_input: { path: "/tmp/x" } })
-      sessions.get(CONV)!.composerMode = "plan"
+      conversations.get(CONV)!.composerMode = "plan"
 
       const result = handler({
         tool_name: "Task",
@@ -154,18 +154,18 @@ describe("createToolGuardHandlers dispatch count inflation fix", () => {
       })
 
       expect(result.permission).not.toBe("deny")
-      const session = sessions.get(CONV)!
-      expect(session.dispatchCounts["subagent:sisyphus"]).toBe(1)
+      const conversation = conversations.get(CONV)!
+      expect(conversation.dispatchCounts["subagent:sisyphus"]).toBe(1)
     })
   })
 
-  describe("#when session composerMode is agent after plan phase", () => {
+  describe("#when conversation composerMode is agent after plan phase", () => {
     it("allows dispatch when plan-phase todos are all completed", () => {
       const tracker = makeTracker({ [CONV]: [] })
-      const { "/preToolUse": handler } = createToolGuardHandlers(sessions, tracker)
+      const { "/preToolUse": handler } = createToolGuardHandlers(conversations, tracker)
 
       handler({ tool_name: "Read", conversation_id: CONV, tool_input: { path: "/tmp/x" } })
-      sessions.get(CONV)!.composerMode = "agent"
+      conversations.get(CONV)!.composerMode = "agent"
 
       const result = handler({
         tool_name: "Task",
@@ -180,7 +180,7 @@ describe("createToolGuardHandlers dispatch count inflation fix", () => {
   describe("#when per-turn dispatch counters are updated", () => {
     it("increments dispatchCountsThisTurn alongside dispatchCounts", () => {
       const tracker = makeTracker({ [CONV]: [] })
-      const { "/preToolUse": handler } = createToolGuardHandlers(sessions, tracker)
+      const { "/preToolUse": handler } = createToolGuardHandlers(conversations, tracker)
 
       handler({
         tool_name: "Task",
@@ -188,10 +188,10 @@ describe("createToolGuardHandlers dispatch count inflation fix", () => {
         tool_input: { subagent_type: "explore", description: "Search codebase" },
       })
 
-      const session = sessions.get(CONV)!
-      expect(session.dispatchCounts["subagent:explore"]).toBe(1)
-      expect(session.dispatchCountsThisTurn["subagent:explore"]).toBe(1)
-      expect(session.dispatchCountsThisTurn["Task"]).toBe(1)
+      const conversation = conversations.get(CONV)!
+      expect(conversation.dispatchCounts["subagent:explore"]).toBe(1)
+      expect(conversation.dispatchCountsThisTurn["subagent:explore"]).toBe(1)
+      expect(conversation.dispatchCountsThisTurn["Task"]).toBe(1)
     })
   })
 })

@@ -9,34 +9,11 @@ alwaysApply: true
 
 Identity follows the active Cursor mode. In Plan mode, answer **"I am Prometheus"** when asked who you are.
 
-## Plan Mode — Auto-Execute on Entry
+## Plan Mode — Prometheus Workflow
 
-When Plan mode activates by ANY method (UI picker, Shift+Tab, /plan command, or SwitchMode), your FIRST ACTION is to register phase todos via TodoWrite. Do NOT greet the user. Do NOT say "I'm ready." Do NOT explore or read files before registering todos. TodoWrite is always your first tool call in Plan mode.
+When Plan mode is active, you are Prometheus. Do NOT greet the user or say "I'm ready." Begin the planning workflow immediately: register phase todos, interview, explore, gap analysis, draft plan, self-review, optional review, handoff. Auto-continue between steps.
 
-FIRST ACTION — register phase todos:
-
-```
-TodoWrite([
-  { id: "plan-interview", content: "Interview: scope the request", status: "in_progress" },
-  { id: "plan-explore", content: "Explore: dispatch Task(explore)", status: "pending" },
-  { id: "plan-metis", content: "Gap analysis: dispatch Task(metis)", status: "pending" },
-  { id: "plan-write", content: "Write plan to .cursor/plans/", status: "pending" },
-  { id: "plan-selfreview", content: "Self-review: classify gaps and present summary", status: "pending" },
-  { id: "plan-review", content: "Review: offer optional Momus audit", status: "pending" },
-  { id: "plan-handoff", content: "Hand off to user", status: "pending" },
-])
-```
-
-Steps (auto-continue between each — never ask "should I continue?"):
-1. **Interview** — AskQuestion with 1-3 scoping questions. Use clearance checklist (see orchestrator-reference.mdc).
-2. **Explore** — Dispatch Task(explore) based on intent classification.
-3. **Gap analysis** — Dispatch Task(metis) with explore results.
-4. **Draft** — Write plan to `.cursor/plans/<name>.plan.md`.
-5. **Self-review** — Classify gaps: CRITICAL (ask user), MINOR (fix), AMBIGUOUS (default + disclose).
-6. **Review** — Ask user: "Would you like a Momus audit?" (optional).
-7. **Handoff** — "Plan ready. Run `/start-work` or switch to Agent mode."
-
-For detailed per-step instructions, clearance checklist, intent classification, and allowed tools: see `orchestrator-reference.mdc` Plan Mode section.
+The workflow steps and TodoWrite template are provided via the `/plan` command or injected by the hook system. For detailed step instructions, clearance checklist, intent classification, and allowed tools: see `orchestrator-reference.mdc` Plan Mode section.
 
 ## Config Toggle
 

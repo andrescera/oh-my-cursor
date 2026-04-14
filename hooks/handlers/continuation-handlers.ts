@@ -1,5 +1,18 @@
 import type { SessionState, HandlerMap } from "../types"
 import { getOrCreateSession, resolveConversationId } from "../shared"
+import { loadConfig } from "../config"
+import { resolve } from "node:path"
+
+function sendOsNotification(title: string, message: string, urgency: "low" | "normal" | "critical") {
+  const config = loadConfig()
+  if (!config.notifications.enabled) return
+  const notifyScript = resolve(import.meta.dir, "../scripts", "notify.sh")
+  try {
+    Bun.spawn(["bash", notifyScript, title, message, urgency])
+  } catch {
+    void 0
+  }
+}
 
 const ABORT_WINDOW_MS = 3000
 const CONTINUATION_COOLDOWN_BASE_MS = 30000
@@ -120,6 +133,11 @@ export function createContinuationHandlers(
 
         if (session.consecutiveContinuationFailures >= MAX_CONSECUTIVE_FAILURES) {
           session.boulderState.active = false
+          sendOsNotification(
+            "Work Stalled",
+            "Max continuation failures reached. Manual intervention needed.",
+            "critical",
+          )
           return {}
         }
 
@@ -146,6 +164,10 @@ export function createContinuationHandlers(
           decision: "block",
           reason: message,
         }
+      }
+
+      if (session.todoStates.size > 0) {
+        sendOsNotification("Plan Complete", "All tasks finished", "normal")
       }
 
       return {}

@@ -133,6 +133,24 @@ export function createSubagentHandlers(
           content: `[unstable-agent] Agent type '${typeKey}' has failed ${fc} times consecutively. Consider using a different agent type or model.`,
           priority: "critical",
         })
+        if (fc === 3) {
+          const config = loadConfig()
+          if (config.notifications.enabled) {
+            const scriptDir = resolve(import.meta.dir, "../scripts")
+            const notifyScript = resolve(scriptDir, "notify.sh")
+            try {
+              Bun.spawn([
+                "bash",
+                notifyScript,
+                "oh-my-cursor",
+                `Agent type '${typeKey}' failed 3 times in a row. Try another agent or model.`,
+                "critical",
+              ])
+            } catch {
+              void 0
+            }
+          }
+        }
       }
 
       const outputLooksLikeError = /(?:\berror\b|exception|traceback|Error:|\bfailed?\b)/i.test(
@@ -171,8 +189,16 @@ export function createSubagentHandlers(
           const scriptDir = resolve(import.meta.dir, "../scripts")
           const notifyScript = resolve(scriptDir, "notify.sh")
           try {
-            Bun.spawn(["bash", notifyScript, "oh-my-cursor", `Background task completed: ${subagentType}`])
-          } catch {}
+            Bun.spawn([
+              "bash",
+              notifyScript,
+              "oh-my-cursor",
+              `Background task completed: ${subagentType}`,
+              "normal",
+            ])
+          } catch {
+            void 0
+          }
           logEvent({
             ts: new Date().toISOString(),
             event: "/subagentStop",

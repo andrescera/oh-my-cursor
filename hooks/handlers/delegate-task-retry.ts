@@ -44,13 +44,13 @@ function encodeErrorType(t: ErrorType): number {
 function adviceForErrorType(errorType: ErrorType): string {
   switch (errorType) {
     case "rate_limit":
-      return "Rate limit hit. Wait 30s then retry with same model."
+      return "Rate limit hit. Wait 30s then retry. If persistent, try model: 'fast' parameter."
     case "model_unavailable":
-      return "Model not available. Retry with model: 'fast' parameter."
+      return "Model not available. Retry with model: 'fast'. If using sisyphus, consider sisyphus-junior as fallback."
     case "timeout":
-      return "Task timed out. Break into smaller subtasks."
+      return "Task timed out. Break into smaller subtasks or retry with a simpler agent type."
     case "generic":
-      return "Task failed. Resume the same agent ID with specific fix instructions."
+      return "Task failed. Resume the same agent ID with fix context. After 3 failures, escalate to user."
   }
 }
 
@@ -90,13 +90,17 @@ export function createDelegateTaskRetry() {
 
     const parts: string[] = [adviceForErrorType(errorType)]
 
-    if (agentTotal >= 2 || typeStreak >= 2) {
+    if (errorType === "model_unavailable" && errTypeTotal >= 2) {
+      parts.push(
+        "Model unavailable has recurred for this agent type; switch to a different subagent_type entirely.",
+      )
+    } else if (agentTotal >= 2 || typeStreak >= 2) {
       parts.push("Consider switching to a different subagent_type.")
     }
 
     if (agentTotal > 3) {
       parts.push(
-        `Agent type '${agentType}' has failed ${agentTotal} times. Recommend escalating to user or trying a completely different approach.`,
+        `ESCALATION: Agent type '${agentType}' has failed ${agentTotal} times. Strongly recommend: 1) Try a different agent type, 2) Use model: 'fast', or 3) Ask the user for guidance.`,
       )
     }
 

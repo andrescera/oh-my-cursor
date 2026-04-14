@@ -18,22 +18,22 @@ describe("createDelegateTaskRetry", () => {
       {
         label: "rate_limit",
         output: "HTTP 429 too many requests — rate limit exceeded",
-        expectedAdvice: "Rate limit hit. Wait 30s",
+        expectedAdvice: "Rate limit hit. Wait 30s then retry. If persistent, try model: 'fast' parameter.",
       },
       {
         label: "model_unavailable",
         output: "Error: model_not_supported for this request",
-        expectedAdvice: "Model not available. Retry with model: 'fast' parameter.",
+        expectedAdvice: "Model not available. Retry with model: 'fast'. If using sisyphus, consider sisyphus-junior as fallback.",
       },
       {
         label: "timeout",
         output: "The subagent timed out after 120s",
-        expectedAdvice: "Task timed out. Break into smaller subtasks.",
+        expectedAdvice: "Task timed out. Break into smaller subtasks or retry with a simpler agent type.",
       },
       {
         label: "generic",
         output: "Something failed with exception in worker",
-        expectedAdvice: "Task failed. Resume the same agent ID",
+        expectedAdvice: "Task failed. Resume the same agent ID with fix context. After 3 failures, escalate to user.",
       },
     ]
 
@@ -95,7 +95,9 @@ describe("createDelegateTaskRetry", () => {
           tool_input: { subagent_type: "x" },
           output: `server error ${code}`,
         }, delegateRetryState)
-        expect(result.additional_context).toContain("Task failed. Resume the same agent ID")
+        expect(result.additional_context).toContain(
+          "Task failed. Resume the same agent ID with fix context. After 3 failures, escalate to user.",
+        )
       })
     }
   })
@@ -108,7 +110,30 @@ describe("createDelegateTaskRetry", () => {
         tool_input: { subagent_type: "worker" },
         output: "model unavailable for subagent_type shell",
       }, delegateRetryState)
-      expect(result.additional_context).toContain("'fast' parameter")
+      expect(result.additional_context).toContain("Retry with model: 'fast'")
+    })
+
+    it("after two model_unavailable errors for same agent type, advises switching subagent_type entirely", () => {
+      const delegateRetryState: Record<string, number> = {}
+      const handler = createDelegateTaskRetry()
+      handler(
+        {
+          tool_input: { subagent_type: "hephaestus" },
+          output: "model unavailable for requested worker",
+        },
+        delegateRetryState,
+      )
+      const result = handler(
+        {
+          tool_input: { subagent_type: "hephaestus" },
+          output: "Error: model_not_supported",
+        },
+        delegateRetryState,
+      )
+      expect(result.additional_context).toContain(
+        "switch to a different subagent_type entirely",
+      )
+      expect(result.additional_context).not.toContain("Consider switching to a different subagent_type")
     })
   })
 
@@ -141,9 +166,11 @@ describe("createDelegateTaskRetry", () => {
       }, delegateRetryState)
 
       expect(delegateRetryState["explore"]).toBe(4)
-      expect(result.additional_context).toContain("explore")
-      expect(result.additional_context).toContain("failed 4 times")
-      expect(result.additional_context).toContain("escalating to user")
+      expect(result.additional_context).toContain("ESCALATION:")
+      expect(result.additional_context).toContain("Agent type 'explore' has failed 4 times")
+      expect(result.additional_context).toContain("Try a different agent type")
+      expect(result.additional_context).toContain("Use model: 'fast'")
+      expect(result.additional_context).toContain("Ask the user for guidance")
     })
   })
 

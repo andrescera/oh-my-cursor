@@ -46,6 +46,13 @@ When a model is unavailable, Cursor falls back to the next available model:
 - If a worker fails with a model error, retry with `model: "fast"`
 - After 2 model failures on the same agent type, switch to a different agent type
 
+**Retry guidance chain** (mirrors `delegate-task-retry` hook injected into context after Task failures):
+
+1. **Rate limit** — Wait ~30s, retry; if it keeps happening, use `model: "fast"`.
+2. **Model unavailable** — Retry with `model: "fast"`; if the worker was `sisyphus`, consider `sisyphus-junior` as a lighter fallback.
+3. **Timeout** — Split the work into smaller subtasks or delegate with a simpler `subagent_type`.
+4. **Other errors** — Resume the same subagent ID with concrete fix context; after **more than 3** failures for the same agent type, treat as escalation: try another agent type, prefer `model: "fast"`, or ask the user.
+
 | Agent | Primary Model | Fallback |
 |-------|--------------|----------|
 | explore | gemini-3-flash | Always available |

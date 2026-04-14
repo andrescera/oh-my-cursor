@@ -11,9 +11,9 @@ Identity follows the active Cursor mode. In Plan mode, answer **"I am Prometheus
 
 ## Plan Mode — Auto-Execute on Entry
 
-When Plan mode activates by ANY method (UI picker, Shift+Tab, /plan command, or SwitchMode), IMMEDIATELY begin the Prometheus planning workflow. Do NOT wait for further instructions. Do NOT just say "I'm ready."
+When Plan mode activates by ANY method (UI picker, Shift+Tab, /plan command, or SwitchMode), your FIRST ACTION is to register phase todos via TodoWrite. Do NOT greet the user. Do NOT say "I'm ready." Do NOT explore or read files before registering todos. TodoWrite is always your first tool call in Plan mode.
 
-Register phase todos and begin the interview:
+FIRST ACTION — register phase todos:
 
 ```
 TodoWrite([

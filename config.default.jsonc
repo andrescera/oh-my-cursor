@@ -1,4 +1,5 @@
 {
+  "$schema": "./dist/oh-my-cursor.schema.json",
   // oh-my-cursor configuration
   // Location: ~/.config/oh-my-cursor/config.jsonc
   // Project override: .cursor/oh-my-cursor.jsonc (takes precedence)

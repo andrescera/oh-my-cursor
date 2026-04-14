@@ -8,6 +8,11 @@ export function renderDashboardHTML(daemonPort: number): string {
   <style>
     *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
 
+    button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-visible {
+      outline: 2px solid var(--vscode-focusBorder, #007fd4);
+      outline-offset: 1px;
+    }
+
     body {
       font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
       background: var(--vscode-editor-background, #1e1e1e);
@@ -17,6 +22,29 @@ export function renderDashboardHTML(daemonPort: number): string {
     }
 
     #app { padding: 16px; }
+
+    .sse-banner {
+      margin: -16px -16px 12px -16px;
+      padding: 6px 12px;
+      font-size: 11px;
+      text-align: center;
+      background: var(--vscode-inputValidation-warningBackground, #352a05);
+      color: var(--vscode-inputValidation-warningForeground, #ccc);
+      border-bottom: 1px solid var(--vscode-inputValidation-warningBorder, #b89500);
+    }
+    .sse-banner.offline {
+      background: var(--vscode-inputValidation-errorBackground, #3d1a1a);
+      color: var(--vscode-inputValidation-errorForeground, #ccc);
+      border-bottom-color: var(--vscode-inputValidation-errorBorder, #c33);
+    }
+
+    .tab-panel {
+      animation: tabPanelIn 0.18s ease-out;
+    }
+    @keyframes tabPanelIn {
+      from { opacity: 0.72; }
+      to { opacity: 1; }
+    }
 
     .header {
       display: flex;
@@ -128,7 +156,7 @@ export function renderDashboardHTML(daemonPort: number): string {
       margin-right: 4px;
     }
     .dot-active { background: #4ec9b0; }
-    .dot-idle   { background: #555; }
+    .dot-idle   { background: var(--vscode-disabledForeground, #858585); }
 
     .placeholder {
       padding: 24px 16px;
@@ -174,7 +202,7 @@ export function renderDashboardHTML(daemonPort: number): string {
       letter-spacing: 0.03em;
     }
     .badge-enabled  { background: rgba(78,201,176,0.15); color: #4ec9b0; }
-    .badge-disabled { background: rgba(136,136,136,0.12); color: #888; }
+    .badge-disabled { background: var(--vscode-badge-background, #666); color: var(--vscode-badge-foreground, #ccc); opacity: 0.85; }
 
     .hook-name { font-family: monospace; font-size: 12px; }
 
@@ -256,16 +284,16 @@ export function renderDashboardHTML(daemonPort: number): string {
       cursor: pointer;
       transition: background 0.1s;
     }
-    .ev-row:hover { background: rgba(255,255,255,0.04); }
+    .ev-row:hover { background: var(--vscode-list-hoverBackground, rgba(255,255,255,0.06)); }
     .ev-main { display: flex; align-items: baseline; gap: 8px; flex-wrap: wrap; }
     .ev-time  { color: var(--vscode-descriptionForeground, #666); min-width: 70px; }
-    .ev-hook  { color: #569cd6; }
+    .ev-hook  { color: var(--vscode-textLink-foreground, #3794ff); }
     .ev-tool  { color: var(--vscode-foreground, #ccc); }
-    .ev-agent { color: #c586c0; }
+    .ev-agent { color: var(--vscode-symbolIcon-variableForeground, #b180d7); }
     .ev-action { font-weight: 500; min-width: 40px; }
     .ev-action-allow { color: #4ec9b0; }
     .ev-action-deny  { color: #f44747; }
-    .ev-action-noop  { color: #888; }
+    .ev-action-noop  { color: var(--vscode-disabledForeground, #858585); }
     .ev-error { color: #f44747; font-size: 10px; }
     .ev-meta  { color: var(--vscode-descriptionForeground, #666); font-size: 10px; }
     .ev-detail {
@@ -294,7 +322,7 @@ export function renderDashboardHTML(daemonPort: number): string {
       cursor: pointer;
       transition: background 0.1s;
     }
-    .sess-row:hover { background: rgba(255,255,255,0.04); }
+    .sess-row:hover { background: var(--vscode-list-hoverBackground, rgba(255,255,255,0.06)); }
     .sess-row:last-child { border-bottom: none; }
     .sess-main {
       display: flex;
@@ -305,7 +333,7 @@ export function renderDashboardHTML(daemonPort: number): string {
     .sess-id {
       font-family: monospace;
       font-size: 11px;
-      color: #569cd6;
+      color: var(--vscode-textLink-foreground, #3794ff);
       min-width: 0;
     }
     .sess-time { color: var(--vscode-descriptionForeground, #666); font-size: 11px; }
@@ -341,9 +369,9 @@ export function renderDashboardHTML(daemonPort: number): string {
       color: var(--vscode-editor-foreground, #d4d4d4);
     }
     .sess-trail-item:last-child { border-bottom: none; }
-    .badge-composer-plan  { background: rgba(86,156,214,0.2); color: #569cd6; }
+    .badge-composer-plan  { background: color-mix(in srgb, var(--vscode-textLink-foreground, #3794ff) 22%, transparent); color: var(--vscode-textLink-foreground, #3794ff); }
     .badge-composer-agent { background: rgba(78,201,176,0.15); color: #4ec9b0; }
-    .badge-composer-none  { background: rgba(136,136,136,0.12); color: #888; }
+    .badge-composer-none  { background: var(--vscode-badge-background, #666); color: var(--vscode-badge-foreground, #ccc); opacity: 0.85; }
 
     /* ── Agents monitor (flat list) ───────────────────────────────────────── */
     .ag-list { font-size: 11px; }
@@ -372,7 +400,7 @@ export function renderDashboardHTML(daemonPort: number): string {
       color: var(--vscode-descriptionForeground, #888);
     }
     .dot-ag-running { background: #4ec9b0; }
-    .dot-ag-done { background: #6b6b6b; }
+    .dot-ag-done { background: var(--vscode-disabledForeground, #858585); }
     .dot-ag-failed { background: #f44747; }
   </style>
 </head>
@@ -399,6 +427,67 @@ export function renderDashboardHTML(daemonPort: number): string {
       { id: 'sessions',   label: 'Sessions'    },
       { id: 'agents',     label: 'Agents'      },
     ];
+
+    /** @typedef {'connected' | 'reconnecting' | 'offline'} SseStatus */
+
+    let sseBrokenCount = 0;
+    let sseOfflineTimer = null;
+    /** @type {SseStatus} */
+    let sseStatusValue = 'connected';
+    const sseStatusListeners = new Set();
+
+    function emitSseStatus(/** @type {SseStatus} */ s) {
+      sseStatusValue = s;
+      sseStatusListeners.forEach(fn => fn(s));
+    }
+
+    function recalculateSseStatus() {
+      clearTimeout(sseOfflineTimer);
+      sseOfflineTimer = null;
+      if (sseBrokenCount > 0) {
+        emitSseStatus('reconnecting');
+        sseOfflineTimer = setTimeout(() => emitSseStatus('offline'), 15000);
+      } else {
+        emitSseStatus('connected');
+      }
+    }
+
+    /** @param {(s: SseStatus) => void} fn */
+    function subscribeSseStatus(fn) {
+      sseStatusListeners.add(fn);
+      fn(sseStatusValue);
+      return () => sseStatusListeners.delete(fn);
+    }
+
+    /** @returns {() => void} */
+    function attachSseMonitor(es) {
+      let broken = false;
+      const onOpen = () => {
+        if (broken) {
+          broken = false;
+          sseBrokenCount = Math.max(0, sseBrokenCount - 1);
+          recalculateSseStatus();
+        }
+      };
+      const onError = () => {
+        if (!broken) {
+          broken = true;
+          sseBrokenCount += 1;
+          recalculateSseStatus();
+        }
+      };
+      es.addEventListener('open', onOpen);
+      es.addEventListener('error', onError);
+      return () => {
+        es.removeEventListener('open', onOpen);
+        es.removeEventListener('error', onError);
+        if (broken) {
+          broken = false;
+          sseBrokenCount = Math.max(0, sseBrokenCount - 1);
+          recalculateSseStatus();
+        }
+      };
+    }
 
     // ── Shared helpers ──────────────────────────────────────────────────────
 
@@ -462,9 +551,15 @@ export function renderDashboardHTML(daemonPort: number): string {
       useEffect(() => {
         let es;
         let retryTimer;
+        let detachMonitor = () => {};
 
         function connect() {
+          detachMonitor();
+          if (es) {
+            try { es.close(); } catch {}
+          }
           es = new EventSource(\`\${BASE}/events/stream\`);
+          detachMonitor = attachSseMonitor(es);
 
           es.onopen = () => setSseOn(true);
 
@@ -491,13 +586,17 @@ export function renderDashboardHTML(daemonPort: number): string {
 
           es.onerror = () => {
             setSseOn(false);
-            es.close();
+            try { es.close(); } catch {}
             retryTimer = setTimeout(connect, 3000);
           };
         }
 
         connect();
-        return () => { clearTimeout(retryTimer); if (es) es.close(); };
+        return () => {
+          clearTimeout(retryTimer);
+          detachMonitor();
+          if (es) try { es.close(); } catch {}
+        };
       }, []);
 
       if (loading) return html\`<\${Placeholder} text="Loading health..." />\`;
@@ -557,7 +656,7 @@ export function renderDashboardHTML(daemonPort: number): string {
                       <span><span class="dot dot-active"></span><span class="hook-name">\${hook}</span></span>
                       <span class="badge badge-enabled">on</span>
                     </div>\`)
-                : html\`<\${Placeholder} text="None enabled" />\`}
+                : html\`<\${Placeholder} text="No hooks are enabled." />\`}
             </div>
             <div>
               <div class="card-title" style="border:none;margin-bottom:6px">Disabled</div>
@@ -567,7 +666,7 @@ export function renderDashboardHTML(daemonPort: number): string {
                       <span><span class="dot dot-idle"></span><span class="hook-name">\${hook}</span></span>
                       <span class="badge badge-disabled">off</span>
                     </div>\`)
-                : html\`<\${Placeholder} text="All hooks enabled" />\`}
+                : html\`<\${Placeholder} text="All hooks are enabled." />\`}
             </div>
           </div>
         </div>\`;
@@ -606,6 +705,7 @@ export function renderDashboardHTML(daemonPort: number): string {
       useEffect(() => {
         let mounted = true;
         let es = null;
+        let detachMonitor = () => {};
 
         fetch(\`\${BASE}/backgroundTasks\`)
           .then(r => { if (!r.ok) throw new Error(\`HTTP \${r.status}\`); return r.json(); })
@@ -613,6 +713,7 @@ export function renderDashboardHTML(daemonPort: number): string {
           .catch(e => { if (mounted) setLoadErr(e.message); });
 
         es = new EventSource(\`\${BASE}/events/stream\`);
+        detachMonitor = attachSseMonitor(es);
         es.onmessage = (evt) => {
           try {
             const msg = JSON.parse(evt.data);
@@ -637,6 +738,7 @@ export function renderDashboardHTML(daemonPort: number): string {
 
         return () => {
           mounted = false;
+          detachMonitor();
           if (es) es.close();
         };
       }, []);
@@ -725,6 +827,7 @@ export function renderDashboardHTML(daemonPort: number): string {
       const [expandedKeys, setExpanded] = useState(new Set());
       const [filter, setFilter]         = useState('all');
       const [autoScroll, setAutoScroll] = useState(true);
+      const [logReady, setLogReady]     = useState(false);
       const scrollRef = useRef(null);
       const atBottom  = useRef(true);
 
@@ -732,12 +835,14 @@ export function renderDashboardHTML(daemonPort: number): string {
       useEffect(() => {
         const seen = new Set();
         let es;
+        let detachMonitor = () => {};
         fetch(\`\${BASE}/session-log?limit=200\`)
           .then(r => r.json())
           .then(data => {
             data.forEach(e => seen.add(eventKey(e)));
             setEvents(data);
             es = new EventSource(\`\${BASE}/events/stream\`);
+            detachMonitor = attachSseMonitor(es);
             es.onmessage = msg => {
               try {
                 const ev = JSON.parse(msg.data);
@@ -748,8 +853,12 @@ export function renderDashboardHTML(daemonPort: number): string {
               } catch {}
             };
           })
-          .catch(() => {});
-        return () => { if (es) es.close(); };
+          .catch(() => {})
+          .finally(() => setLogReady(true));
+        return () => {
+          detachMonitor();
+          if (es) es.close();
+        };
       }, []);
 
       // Track whether user is at the bottom of the scroll container
@@ -796,12 +905,22 @@ export function renderDashboardHTML(daemonPort: number): string {
 
       const filtered = applyEventFilter(events, filter);
 
+      const emptyMsg =
+        events.length === 0
+          ? 'No events recorded for this session yet.'
+          : 'No events match this filter.';
+
+      if (!logReady) {
+        return html\`<\${Placeholder} text="Loading events..." />\`;
+      }
+
       return html\`
         <div class="card" style="padding:0;overflow:hidden">
           <div class="ev-toolbar">
             <div class="ev-filters">
               \${EV_FILTERS.map(f => html\`
                 <button
+                  type="button"
                   key=\${f.id}
                   class=\${'ev-filter' + (filter === f.id ? ' active' : '')}
                   onClick=\${() => setFilter(f.id)}
@@ -810,18 +929,19 @@ export function renderDashboardHTML(daemonPort: number): string {
             <div class="ev-actions">
               <span class="ev-count">\${filtered.length} events</span>
               <button
+                type="button"
                 class=\${'ev-filter' + (autoScroll ? ' active' : '')}
                 onClick=\${() => setAutoScroll(v => !v)}
                 title="Toggle auto-scroll to bottom"
               >↓ Auto</button>
               <a class="ev-btn" href=\${BASE + '/session-log/download'} download="session-log.jsonl" target="_blank">↓ JSONL</a>
-              <button class="ev-btn" onClick=\${copyLog}>Copy JSON</button>
-              <button class="ev-btn ev-btn-danger" onClick=\${clearLog}>Clear</button>
+              <button type="button" class="ev-btn" onClick=\${copyLog}>Copy JSON</button>
+              <button type="button" class="ev-btn ev-btn-danger" onClick=\${clearLog}>Clear</button>
             </div>
           </div>
           <div class="ev-list" ref=\${scrollRef}>
             \${filtered.length === 0
-              ? html\`<div class="ev-empty">No events</div>\`
+              ? html\`<div class="ev-empty">\${emptyMsg}</div>\`
               : filtered.map(e => {
                   const k = eventKey(e);
                   return html\`<\${EventRow} key=\${k} event=\${e} expanded=\${expandedKeys.has(k)} onToggle=\${() => toggleExpand(k)} />\`;
@@ -857,7 +977,7 @@ export function renderDashboardHTML(daemonPort: number): string {
           <span class="stat-label">\${label}</span>
           <label style="display:flex;align-items:center;gap:6px;cursor:pointer">
             <input type="checkbox" checked=\${value} onChange=\${e => onChange(e.target.checked)} />
-            <span style=\${'font-size:12px;color:' + (value ? '#4ec9b0' : '#888')}>\${value ? 'on' : 'off'}</span>
+            <span style=\${'font-size:12px;color:' + (value ? '#4ec9b0' : 'var(--vscode-descriptionForeground,#888)')}>\${value ? 'on' : 'off'}</span>
           </label>
         </div>\`;
     }
@@ -986,8 +1106,8 @@ export function renderDashboardHTML(daemonPort: number): string {
         <div>
           \${banner ? html\`<div style=\${bannerStyle}>\${banner.msg}</div>\` : null}
           <div style="display:flex;gap:8px;margin-bottom:12px;justify-content:flex-end">
-            <button class="ev-btn" onClick=\${() => { setDraft(JSON.parse(JSON.stringify(config))); setBanner(null); }}>Reset</button>
-            <button class="refresh-btn" onClick=\${save} disabled=\${saving}
+            <button type="button" class="ev-btn" onClick=\${() => { setDraft(JSON.parse(JSON.stringify(config))); setBanner(null); }}>Reset</button>
+            <button type="button" class="refresh-btn" onClick=\${save} disabled=\${saving}
               style="background:rgba(78,201,176,0.15);border-color:rgba(78,201,176,0.4);color:#4ec9b0">
               \${saving ? html\`<span class="spinner"></span>Saving...\` : 'Save Config'}
             </button>
@@ -1154,6 +1274,7 @@ export function renderDashboardHTML(daemonPort: number): string {
 
       useEffect(() => {
         let es;
+        let detachMonitor = () => {};
         let cancelled = false;
 
         fetch(\`\${BASE}/sessions\`)
@@ -1162,6 +1283,7 @@ export function renderDashboardHTML(daemonPort: number): string {
             if (cancelled) return;
             setRows(Array.isArray(data) ? data : []);
             es = new EventSource(\`\${BASE}/sessions/stream\`);
+            detachMonitor = attachSseMonitor(es);
             es.onmessage = evt => {
               try {
                 const snap = JSON.parse(evt.data);
@@ -1174,6 +1296,7 @@ export function renderDashboardHTML(daemonPort: number): string {
 
         return () => {
           cancelled = true;
+          detachMonitor();
           if (es) es.close();
         };
       }, []);
@@ -1199,7 +1322,7 @@ export function renderDashboardHTML(daemonPort: number): string {
           </div>
           <div class="sess-list">
             \${list.length === 0
-              ? html\`<div class="ev-empty">No sessions</div>\`
+              ? html\`<div class="ev-empty">No sessions recorded yet.</div>\`
               : list.map(s => html\`
                   <\${SessionRow}
                     key=\${s.id}
@@ -1248,6 +1371,7 @@ export function renderDashboardHTML(daemonPort: number): string {
       useEffect(() => {
         let cancelled = false;
         let es = null;
+        let detachSse = () => {};
 
         fetch(\`\${BASE}/backgroundTasks\`)
           .then(r => { if (!r.ok) throw new Error(\`HTTP \${r.status}\`); return r.json(); })
@@ -1269,6 +1393,7 @@ export function renderDashboardHTML(daemonPort: number): string {
           .finally(() => { if (!cancelled) setReady(true); });
 
         es = new EventSource(\`\${BASE}/events/stream\`);
+        detachSse = attachSseMonitor(es);
         es.onmessage = (evt) => {
           try {
             const msg = JSON.parse(evt.data);
@@ -1349,6 +1474,7 @@ export function renderDashboardHTML(daemonPort: number): string {
 
         return () => {
           cancelled = true;
+          detachSse();
           if (es) es.close();
         };
       }, []);
@@ -1370,7 +1496,7 @@ export function renderDashboardHTML(daemonPort: number): string {
         <div class="card">
           <div class="card-title">Agents — \${running.length} running, \${history.length} recent</div>
           \${rows.length === 0
-            ? html\`<\${Placeholder} text="No agents yet" />\`
+            ? html\`<\${Placeholder} text="No agent activity yet. Subagents will appear here when they run." />\`
             : html\`
               <div class="ag-list">
                 \${rows.map(a => {
@@ -1412,10 +1538,25 @@ export function renderDashboardHTML(daemonPort: number): string {
 
     function App() {
       const [activeTab, setActiveTab] = useState('status');
+      const [sseStatus, setSseStatus] = useState(/** @type {SseStatus} */ ('connected'));
       const TabComponent = TAB_COMPONENTS[activeTab];
+
+      useEffect(() => subscribeSseStatus(setSseStatus), []);
 
       return html\`
         <div id="app">
+          \${sseStatus !== 'connected'
+            ? html\`
+              <div
+                class=\${'sse-banner' + (sseStatus === 'offline' ? ' offline' : '')}
+                role="status"
+                aria-live="polite"
+              >
+                \${sseStatus === 'offline'
+                  ? 'Connection lost. Still reconnecting…'
+                  : 'Connection lost. Reconnecting...'}
+              </div>\`
+            : null}
           <div class="header">
             <div class="header-title">
               oh-my-cursor
@@ -1423,9 +1564,12 @@ export function renderDashboardHTML(daemonPort: number): string {
             </div>
           </div>
 
-          <div class="tabs">
+          <div class="tabs" role="tablist" aria-label="Dashboard sections">
             \${TABS.map(tab => html\`
               <button
+                type="button"
+                role="tab"
+                aria-selected=\${activeTab === tab.id}
                 key=\${tab.id}
                 class=\${'tab' + (activeTab === tab.id ? ' active' : '')}
                 onClick=\${() => setActiveTab(tab.id)}
@@ -1434,7 +1578,9 @@ export function renderDashboardHTML(daemonPort: number): string {
               </button>\`)}
           </div>
 
-          <\${TabComponent} />
+          <div class="tab-panel" role="tabpanel" key=\${activeTab}>
+            <\${TabComponent} />
+          </div>
         </div>\`;
     }
 

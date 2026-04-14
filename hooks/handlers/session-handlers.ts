@@ -33,7 +33,7 @@ function buildCompactionTodoPreservation(session: SessionState): string {
 
 export function createSessionHandlers(
   sessions: Map<string, SessionState>,
-  port: number,
+  getPort: () => number,
 ): HandlerMap {
   return {
     "/health": () => {
@@ -109,8 +109,9 @@ export function createSessionHandlers(
         "**Agent mode:** Never edit files directly; all implementation via Task using the 6-section brief. Routing, limits, workflows: `orchestrator.mdc` + `orchestrator-reference.mdc`.",
       ].join("\n")
 
-      const daemonPort = String(port)
-      const sidecarPort = String(port + 1)
+      const currentPort = getPort()
+      const daemonPort = String(currentPort)
+      const sidecarPort = String(currentPort + 1)
 
       return {
         additional_context: contextStr,

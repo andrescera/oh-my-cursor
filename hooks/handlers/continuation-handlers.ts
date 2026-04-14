@@ -17,7 +17,12 @@ function sendOsNotification(title: string, message: string, urgency: "low" | "no
 const ABORT_WINDOW_MS = 3000
 const CONTINUATION_COOLDOWN_BASE_MS = 30000
 const MAX_CONSECUTIVE_FAILURES = 5
-const SKIP_AGENTS = new Set(["prometheus", "compaction", "plan"])
+const SKIP_AGENTS = new Set(["prometheus", "compaction"])
+
+const PLAN_PHASE_IDS = [
+  "plan-switchmode", "plan-draft", "plan-interview", "plan-explore", "plan-metis",
+  "plan-write", "plan-selfreview", "plan-summary", "plan-review", "plan-handoff",
+]
 
 const slashCommands: Record<string, string> = {
   "/plan": "[command:plan] Planning workflow. Follow commands/plan.md step sequence.",
@@ -37,6 +42,35 @@ const slashCommands: Record<string, string> = {
 
 const UNKNOWN_SLASH_COMMAND_HINT =
   "[command:unknown] Unknown command. Available: /plan, /start-work, /status, /help, /agents, /config, /refactor, /ulw-loop, /ralph-loop, /stop-continuation, /handoff, /briareus, /remove-ai-slops, /init-deep, /cloud-agents"
+
+function detectPlanMode(input: Record<string, unknown>, session: SessionState, userMessage: string): boolean {
+  if (session.composerMode === "plan") return true
+
+  const lowerMsg = userMessage.toLowerCase().trimStart()
+  if (lowerMsg.startsWith("/plan")) return true
+
+  const inputMode = (input.mode as string) || (input.composer_mode as string) || (input.composerMode as string) || ""
+  if (inputMode === "plan") return true
+
+  const cursorCommands = (input.cursor_commands as string) || (input.system_instructions as string) || ""
+  if (cursorCommands.toLowerCase().includes("/plan") || cursorCommands.toLowerCase().includes("plan mode")) return true
+
+  for (const phaseId of PLAN_PHASE_IDS) {
+    if (session.todoStates.has(phaseId)) return true
+  }
+
+  if (session.contextHistory.some(e => /plan-switchmode|plan-draft|plan-interview|plan-explore|plan-metis|plan-write/i.test(e))) return true
+
+  return false
+}
+
+function hasIncompletePlanTodos(session: SessionState): boolean {
+  for (const phaseId of PLAN_PHASE_IDS) {
+    const status = session.todoStates.get(phaseId)
+    if (status === "pending" || status === "in_progress") return true
+  }
+  return false
+}
 
 export function createContinuationHandlers(
   _sessions: Map<string, SessionState>,
@@ -156,11 +190,7 @@ export function createContinuationHandlers(
             ". Complete remaining todos before moving on."
         }
         if (session.composerMode === "plan") {
-          const phases = [
-            "plan-switchmode", "plan-draft", "plan-interview", "plan-explore", "plan-metis",
-            "plan-write", "plan-selfreview", "plan-summary", "plan-review", "plan-handoff",
-          ]
-          const nextPhase = phases.find(p => {
+          const nextPhase = PLAN_PHASE_IDS.find(p => {
             const s = session.todoStates.get(p)
             return s === "pending" || s === "in_progress"
           })
@@ -204,8 +234,8 @@ export function createContinuationHandlers(
 
       const lowerMsg = userMessage.toLowerCase()
 
+      const isPlanMode = detectPlanMode(input, session, userMessage)
       const inputMode = (input.mode as string) || (input.composer_mode as string) || (input.composerMode as string) || ""
-      const isPlanMode = lowerMsg.trimStart().startsWith("/plan") || inputMode === "plan"
       const isAgentMode =
         inputMode === "agent" || session.composerMode === "agent" || (!session.composerMode && !inputMode && !isPlanMode)
 

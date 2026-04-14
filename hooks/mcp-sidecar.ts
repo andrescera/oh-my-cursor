@@ -512,7 +512,7 @@ async function handleToolCall(
             ],
           }
         }
-        const rg = Bun.spawnSync(["rg", "-n", "--max-columns", "512", query, ...dirs])
+        const rg = Bun.spawnSync(["rg", "-n", "--max-columns", "512", "--", query, ...dirs])
         if (rg.exitCode === 2) {
           return {
             content: [

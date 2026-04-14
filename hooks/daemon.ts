@@ -145,7 +145,7 @@ function gracefulShutdown(reason: string): void {
 const startTime = Date.now()
 
 const handlers: HandlerMap = {
-  ...createSessionHandlers(sessions, DEFAULT_PORT),
+  ...createSessionHandlers(sessions, () => actualPort),
   ...createToolGuardHandlers(sessions, tracker),
   ...createContinuationHandlers(sessions),
   ...createSafetyHandlers(),
@@ -507,6 +507,7 @@ const fetchHandler = async (req: Request) => {
     return new Response(
       JSON.stringify({ error: message, hook: path }),
       {
+        status: 500,
         headers: { "Content-Type": "application/json" },
       },
     )

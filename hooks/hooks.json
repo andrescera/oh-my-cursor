@@ -2,25 +2,25 @@
   "version": 1,
   "hooks": {
     "sessionStart": [{ "command": "bash \"$HOME/.cursor/plugins/local/oh-my-cursor/hooks/scripts/start-daemon.sh\"" }],
-    "sessionEnd": [{ "command": "bash \"$HOME/.cursor/plugins/local/oh-my-cursor/hooks/scripts/ensure-daemon.sh\" /sessionEnd" }],
-    "preToolUse": [{ "command": "bash \"$HOME/.cursor/plugins/local/oh-my-cursor/hooks/scripts/ensure-daemon.sh\" /preToolUse", "matcher": "Shell|Write|Delete|StrReplace|Edit|Task" }],
-    "postToolUse": [{ "command": "bash \"$HOME/.cursor/plugins/local/oh-my-cursor/hooks/scripts/ensure-daemon.sh\" /postToolUse" }],
-    "postToolUseFailure": [{ "command": "bash \"$HOME/.cursor/plugins/local/oh-my-cursor/hooks/scripts/ensure-daemon.sh\" /postToolUseFailure", "matcher": "Shell|Write|Delete|StrReplace|Edit|Task" }],
-    "subagentStart": [{ "command": "bash \"$HOME/.cursor/plugins/local/oh-my-cursor/hooks/scripts/ensure-daemon.sh\" /subagentStart" }],
-    "subagentStop": [{ "command": "bash \"$HOME/.cursor/plugins/local/oh-my-cursor/hooks/scripts/ensure-daemon.sh\" /subagentStop", "loop_limit": null }],
+    "sessionEnd": [{ "command": "bash \"$HOME/.cursor/plugins/local/oh-my-cursor/hooks/scripts/post-daemon.sh\" /sessionEnd" }],
+    "preToolUse": [{ "command": "bash \"$HOME/.cursor/plugins/local/oh-my-cursor/hooks/scripts/post-daemon.sh\" /preToolUse", "matcher": "Shell|Write|Delete|StrReplace|Edit|Task" }],
+    "postToolUse": [{ "command": "bash \"$HOME/.cursor/plugins/local/oh-my-cursor/hooks/scripts/post-daemon.sh\" /postToolUse" }],
+    "postToolUseFailure": [{ "command": "bash \"$HOME/.cursor/plugins/local/oh-my-cursor/hooks/scripts/post-daemon.sh\" /postToolUseFailure", "matcher": "Shell|Write|Delete|StrReplace|Edit|Task" }],
+    "subagentStart": [{ "command": "bash \"$HOME/.cursor/plugins/local/oh-my-cursor/hooks/scripts/post-daemon.sh\" /subagentStart" }],
+    "subagentStop": [{ "command": "bash \"$HOME/.cursor/plugins/local/oh-my-cursor/hooks/scripts/post-daemon.sh\" /subagentStop", "loop_limit": null }],
     "beforeShellExecution": [{ "command": "bash \"$HOME/.cursor/plugins/local/oh-my-cursor/hooks/scripts/ensure-daemon.sh\" /beforeShellExecution", "matcher": "rm|curl|wget|docker|sudo", "failClosed": true }],
-    "afterShellExecution": [{ "command": "bash \"$HOME/.cursor/plugins/local/oh-my-cursor/hooks/scripts/ensure-daemon.sh\" /afterShellExecution" }],
+    "afterShellExecution": [{ "command": "bash \"$HOME/.cursor/plugins/local/oh-my-cursor/hooks/scripts/post-daemon.sh\" /afterShellExecution" }],
     "beforeMCPExecution": [
       { "command": "bash \"$HOME/.cursor/plugins/local/oh-my-cursor/hooks/scripts/ensure-daemon.sh\" /beforeMCPExecution", "failClosed": true },
       { "type": "prompt", "prompt": "Review this MCP tool call for safety. The tool arguments are: $ARGUMENTS. If this could expose secrets, modify system files, or make unauthorized network requests, respond with DENY and explain why. Otherwise respond with APPROVE.", "failClosed": true }
     ],
-    "afterMCPExecution": [{ "command": "bash \"$HOME/.cursor/plugins/local/oh-my-cursor/hooks/scripts/ensure-daemon.sh\" /afterMCPExecution" }],
-    "beforeReadFile": [{ "command": "bash \"$HOME/.cursor/plugins/local/oh-my-cursor/hooks/scripts/ensure-daemon.sh\" /beforeReadFile", "matcher": "Read" }],
-    "afterFileEdit": [{ "command": "bash \"$HOME/.cursor/plugins/local/oh-my-cursor/hooks/scripts/ensure-daemon.sh\" /afterFileEdit", "matcher": "Write" }],
-    "afterAgentResponse": [{ "command": "bash \"$HOME/.cursor/plugins/local/oh-my-cursor/hooks/scripts/ensure-daemon.sh\" /afterAgentResponse" }],
-    "afterAgentThought": [{ "command": "bash \"$HOME/.cursor/plugins/local/oh-my-cursor/hooks/scripts/ensure-daemon.sh\" /afterAgentThought" }],
-    "preCompact": [{ "command": "bash \"$HOME/.cursor/plugins/local/oh-my-cursor/hooks/scripts/ensure-daemon.sh\" /preCompact" }],
-    "stop": [{ "command": "bash \"$HOME/.cursor/plugins/local/oh-my-cursor/hooks/scripts/ensure-daemon.sh\" /stop", "loop_limit": null }],
-    "beforeSubmitPrompt": [{ "command": "bash \"$HOME/.cursor/plugins/local/oh-my-cursor/hooks/scripts/ensure-daemon.sh\" /beforeSubmitPrompt" }]
+    "afterMCPExecution": [{ "command": "bash \"$HOME/.cursor/plugins/local/oh-my-cursor/hooks/scripts/post-daemon.sh\" /afterMCPExecution" }],
+    "beforeReadFile": [{ "command": "bash \"$HOME/.cursor/plugins/local/oh-my-cursor/hooks/scripts/post-daemon.sh\" /beforeReadFile", "matcher": "Read" }],
+    "afterFileEdit": [{ "command": "bash \"$HOME/.cursor/plugins/local/oh-my-cursor/hooks/scripts/post-daemon.sh\" /afterFileEdit", "matcher": "Write" }],
+    "afterAgentResponse": [{ "command": "bash \"$HOME/.cursor/plugins/local/oh-my-cursor/hooks/scripts/post-daemon.sh\" /afterAgentResponse" }],
+    "afterAgentThought": [{ "command": "bash \"$HOME/.cursor/plugins/local/oh-my-cursor/hooks/scripts/post-daemon.sh\" /afterAgentThought" }],
+    "preCompact": [{ "command": "bash \"$HOME/.cursor/plugins/local/oh-my-cursor/hooks/scripts/post-daemon.sh\" /preCompact" }],
+    "stop": [{ "command": "bash \"$HOME/.cursor/plugins/local/oh-my-cursor/hooks/scripts/post-daemon.sh\" /stop", "loop_limit": null }],
+    "beforeSubmitPrompt": [{ "command": "bash \"$HOME/.cursor/plugins/local/oh-my-cursor/hooks/scripts/post-daemon.sh\" /beforeSubmitPrompt" }]
   }
 }

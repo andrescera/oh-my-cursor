@@ -86,6 +86,9 @@ Cursor 3's tiled layout enables multiple concurrent agent conversations per work
 ## Plans
 
 - **Default path:** New plan files default under the **home** plans directory (`~/.cursor/plans/`); **Save to workspace** (e.g. `.cursor/plans/`) is optional. [official-doc]
+- **Non-deterministic placement:** `CreatePlan` sometimes writes to `~/.cursor/plans/` (user-level) and sometimes to `.cursor/plans/` (workspace-level). Workflows that expect plans at a fixed workspace-relative path cannot rely on `CreatePlan`. [repro-local]
+- **No hook events:** `CreatePlan` does not fire `preToolUse` or `postToolUse` hooks (see Hook Tool Coverage above). This means the hook system cannot detect when a plan is created, track it, or trigger continuation logic afterward. After `CreatePlan` executes, `/stop` fires with no information about what just happened — the continuation handler cannot distinguish "agent just created a plan" from "agent finished talking." [repro-local]
+- **Workaround:** Use `Write` to create plan files directly at `.cursor/plans/<name>.plan.md`. `Write` fires `postToolUse`, giving the hook system visibility into plan creation. The plan format is YAML frontmatter (`name`, `overview`, `todos`, `isProject`) followed by a markdown body. [repro-local]
 
 ---
 

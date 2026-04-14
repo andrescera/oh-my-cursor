@@ -387,7 +387,7 @@ export function createContinuationHandlers(
         }
 
         if (!conversation.activePlan) {
-          const projectDir = process.env.OH_MY_CURSOR_PROJECT_DIR || process.cwd()
+          const projectDir = conversation.env.OH_MY_CURSOR_PROJECT_DIR ?? process.env.OH_MY_CURSOR_PROJECT_DIR ?? process.cwd()
           const perConvFile = resolve(projectDir, `.cursor/state/active-plan-${convId}.json`)
           const globalFile = resolve(projectDir, ".cursor/state/active-plan.json")
           const stateFile = existsSync(perConvFile) ? perConvFile : globalFile

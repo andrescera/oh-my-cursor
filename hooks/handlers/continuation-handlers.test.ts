@@ -449,25 +449,15 @@ describe("createContinuationHandlers", () => {
     it("injects [start-work:discover] when /start-work and no activePlan", () => {
       const conversation = getOrCreateConversation(convId)
       conversation.activePlan = null
+      conversation.env.OH_MY_CURSOR_PROJECT_DIR = "/tmp/oh-my-cursor-test-empty-workspace"
 
-      const origProjectDir = process.env.OH_MY_CURSOR_PROJECT_DIR
-      process.env.OH_MY_CURSOR_PROJECT_DIR = "/tmp/oh-my-cursor-test-empty-workspace"
+      const result = handlers["/beforeSubmitPrompt"]({
+        prompt: "/start-work",
+        conversation_id: convId,
+      }) as { additional_context?: string }
 
-      try {
-        const result = handlers["/beforeSubmitPrompt"]({
-          prompt: "/start-work",
-          conversation_id: convId,
-        }) as { additional_context?: string }
-
-        expect(result.additional_context).toContain("[start-work:discover]")
-        expect(result.additional_context).toContain("[command:start-work]")
-      } finally {
-        if (origProjectDir !== undefined) {
-          process.env.OH_MY_CURSOR_PROJECT_DIR = origProjectDir
-        } else {
-          delete process.env.OH_MY_CURSOR_PROJECT_DIR
-        }
-      }
+      expect(result.additional_context).toContain("[start-work:discover]")
+      expect(result.additional_context).toContain("[command:start-work]")
     })
 
     it("injects [start-work:fresh] when /start-work and activePlan with no completed tasks", () => {

@@ -17,33 +17,31 @@ describe("mcp-app", () => {
 
       test("#then contains valid HTML document structure", () => {
         expect(STATUS_HTML).toContain("<!DOCTYPE html>")
-        expect(STATUS_HTML).toContain("<html>")
+        expect(STATUS_HTML).toMatch(/<html[\s>]/)
         expect(STATUS_HTML).toContain("</html>")
         expect(STATUS_HTML).toContain("<head>")
         expect(STATUS_HTML).toContain("<body>")
       })
 
       test("#then contains status dashboard UI elements", () => {
-        expect(STATUS_HTML).toContain("oh-my-cursor Status")
-        expect(STATUS_HTML).toContain("daemon-status")
-        expect(STATUS_HTML).toContain("session-id")
-        expect(STATUS_HTML).toContain("tool-calls")
-        expect(STATUS_HTML).toContain("explore-count")
-        expect(STATUS_HTML).toContain("worker-count")
-        expect(STATUS_HTML).toContain("ralph-status")
+        expect(STATUS_HTML).toContain("oh-my-cursor Dashboard")
+        expect(STATUS_HTML).toContain('label="Session"')
+        expect(STATUS_HTML).toContain("Tool Calls")
+        expect(STATUS_HTML).toContain("Explore Dispatches")
+        expect(STATUS_HTML).toContain("Worker Dispatches")
+        expect(STATUS_HTML).toContain("Ralph Loop")
       })
 
-      test("#then contains tab navigation for Status and Event Log", () => {
-        expect(STATUS_HTML).toContain("switchTab('status')")
-        expect(STATUS_HTML).toContain("switchTab('events')")
-        expect(STATUS_HTML).toContain("tab-status")
-        expect(STATUS_HTML).toContain("tab-events")
+      test("#then contains tab navigation for Status and Events", () => {
+        expect(STATUS_HTML).toContain("setActiveTab")
+        expect(STATUS_HTML).toContain("{ id: 'status'")
+        expect(STATUS_HTML).toContain("{ id: 'events'")
       })
 
       test("#then contains event log filtering UI", () => {
-        expect(STATUS_HTML).toContain("filter-btn")
-        expect(STATUS_HTML).toContain("event-list")
-        expect(STATUS_HTML).toContain("refreshEvents")
+        expect(STATUS_HTML).toContain("ev-filter")
+        expect(STATUS_HTML).toContain("ev-list")
+        expect(STATUS_HTML).toContain("applyEventFilter")
       })
     })
   })
@@ -67,7 +65,7 @@ describe("mcp-app", () => {
 
       test("#then has _meta with UI resource URI", () => {
         expect(MCP_APP_TOOL._meta).toBeDefined()
-        expect(MCP_APP_TOOL._meta.ui.resourceUri).toBe("ui://oh-my-cursor/status")
+        expect(MCP_APP_TOOL._meta.ui.resourceUri).toBe("ui://oh-my-cursor/dashboard")
       })
     })
   })
@@ -75,7 +73,7 @@ describe("mcp-app", () => {
   describe("#given MCP_APP_RESOURCE export", () => {
     describe("#when inspecting resource definition", () => {
       test("#then has correct URI matching the tool _meta", () => {
-        expect(MCP_APP_RESOURCE.uri).toBe("ui://oh-my-cursor/status")
+        expect(MCP_APP_RESOURCE.uri).toBe("ui://oh-my-cursor/dashboard")
         expect(MCP_APP_RESOURCE.uri).toBe(MCP_APP_TOOL._meta.ui.resourceUri)
       })
 
@@ -109,7 +107,7 @@ describe("mcp-app", () => {
       test("#then returns _meta with UI resource URI", () => {
         const result = handleStatusToolCall()
         expect(result._meta).toBeDefined()
-        expect(result._meta?.ui.resourceUri).toBe("ui://oh-my-cursor/status")
+        expect(result._meta?.ui.resourceUri).toBe("ui://oh-my-cursor/dashboard")
       })
 
       test("#then _meta URI matches MCP_APP_RESOURCE URI", () => {

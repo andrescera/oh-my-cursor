@@ -179,13 +179,6 @@ const fetchHandler = async (req: Request) => {
   const url = new URL(req.url)
   const path = url.pathname
 
-  if (path === "/dashboard-v2") {
-    const { renderDashboardHTML } = await import("./dashboard/render")
-    return new Response(renderDashboardHTML(actualPort), {
-      headers: { "Content-Type": "text/html" },
-    })
-  }
-
   if (path === "/dashboard") {
     return new Response(STATUS_HTML, {
       headers: { "Content-Type": "text/html" },

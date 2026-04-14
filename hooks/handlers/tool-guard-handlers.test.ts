@@ -34,27 +34,7 @@ describe("createToolGuardHandlers dispatch count inflation fix", () => {
     conversations.delete(CONV)
   })
 
-  describe("#when the explore dispatch limit is reached", () => {
-    it("denies the dispatch and does NOT increment dispatchCounts", () => {
-      // Default explore limit is 6; fill it completely
-      const tracker = makeTracker({ [CONV]: makeExploreTasks(6, CONV) })
-      const { "/preToolUse": handler } = createToolGuardHandlers(conversations, tracker)
-
-      const result = handler({
-        tool_name: "Task",
-        conversation_id: CONV,
-        tool_input: { subagent_type: "explore", description: "Search codebase" },
-      })
-
-      expect(result.permission).toBe("deny")
-      expect((result.agentMessage as string)).toMatch(/dispatch-limit/)
-
-      const conversation = conversations.get(CONV)!
-      expect(conversation.dispatchCounts["subagent:explore"]).toBeUndefined()
-    })
-  })
-
-  describe("#when the explore dispatch limit is not reached", () => {
+  describe("#when an explore dispatch is allowed", () => {
     it("allows the dispatch and increments dispatchCounts", () => {
       const tracker = makeTracker({ [CONV]: makeExploreTasks(0, CONV) })
       const { "/preToolUse": handler } = createToolGuardHandlers(conversations, tracker)
@@ -78,33 +58,6 @@ describe("createToolGuardHandlers dispatch count inflation fix", () => {
 
       const conversation = conversations.get(CONV)!
       expect(conversation.dispatchCounts["subagent:explore"]).toBe(2)
-    })
-  })
-
-  describe("#when the worker dispatch limit is reached", () => {
-    it("denies the dispatch and does NOT increment dispatchCounts for the worker type", () => {
-      // Default worker limit is 8; fill it completely with sisyphus workers
-      const activeTasks: ActiveTask[] = Array.from({ length: 8 }, (_, i) => ({
-        agentId: `worker-${i}`,
-        agentType: "sisyphus",
-        description: "Task",
-        startTime: Date.now(),
-        elapsedMs: 0,
-        conversationId: CONV,
-      }))
-      const tracker = makeTracker({ [CONV]: activeTasks })
-      const { "/preToolUse": handler } = createToolGuardHandlers(conversations, tracker)
-
-      const result = handler({
-        tool_name: "Task",
-        conversation_id: CONV,
-        tool_input: { subagent_type: "sisyphus", description: "Do work" },
-      })
-
-      expect(result.permission).toBe("deny")
-
-      const conversation = conversations.get(CONV)!
-      expect(conversation.dispatchCounts["subagent:sisyphus"]).toBeUndefined()
     })
   })
 

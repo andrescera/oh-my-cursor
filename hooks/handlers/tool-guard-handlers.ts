@@ -184,34 +184,7 @@ export function createToolGuardHandlers(
             }
           }
 
-          const limit =
-            normalized === "explore"
-              ? config.subagent_limits.explore
-              : WORKER_TYPES.has(normalized)
-                ? config.subagent_limits.worker
-                : 0
-          if (limit > 0) {
-            const trackerCount = tracker
-              .getActiveTasksForConversation(convId)
-              .filter((t) => t.agentType === normalized).length
-            const thisTurnCount = conversation.dispatchCountsThisTurn[agentKey] || 0
-            const activeCount = Math.max(trackerCount, thisTurnCount)
-            console.log(`[oh-my-cursor][preToolUse:task] agentType=${normalized} | mode=${currentMode} | active=${activeCount}/${limit} | DECISION=${activeCount >= limit ? "deny" : "allow"}`)
-            if (activeCount >= limit) {
-              const label = normalized === "explore" ? "Explore" : "Worker"
-              const reason = `[dispatch-limit] ${label} concurrent limit reached (${activeCount}/${limit}). Consider consolidating ${normalized === "explore" ? "searches" : "tasks"}.`
-              return {
-                permission: "deny",
-                userMessage: reason,
-                agentMessage: reason,
-                hookSpecificOutput: {
-                  hookEventName: "PreToolUse",
-                  permissionDecision: "deny",
-                  permissionDecisionReason: reason,
-                },
-              }
-            }
-          }
+          console.log(`[oh-my-cursor][preToolUse:task] agentType=${normalized} | mode=${currentMode}`)
 
           conversation.dispatchCounts[agentKey] = (conversation.dispatchCounts[agentKey] || 0) + 1
           conversation.dispatchCountsThisTurn[agentKey] = (conversation.dispatchCountsThisTurn[agentKey] || 0) + 1

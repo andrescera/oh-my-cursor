@@ -215,26 +215,6 @@ describe("hook daemon", () => {
       expect(Object.keys(result).length).toBe(0)
     })
 
-    describe("#given explore dispatch limit", () => {
-      test("#then preToolUse(Task) denies beyond limit", async () => {
-        await post("/sessionStart", { session_id: "sess-explore-limit" })
-        for (let i = 0; i < 6; i++) {
-          await post("/preToolUse", {
-            tool_name: "Task",
-            tool_input: { subagent_type: "explore" },
-            session_id: "sess-explore-limit",
-          })
-        }
-        const result = await post("/preToolUse", {
-          tool_name: "Task",
-          tool_input: { subagent_type: "explore" },
-          session_id: "sess-explore-limit",
-        })
-        expect(result.permission).toBe("deny")
-        expect(result.hookSpecificOutput.permissionDecision).toBe("deny")
-        expect(result.hookSpecificOutput.permissionDecisionReason).toContain("dispatch-limit")
-      })
-    })
   })
 
   describe("/subagentStop", () => {

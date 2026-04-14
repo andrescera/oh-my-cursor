@@ -16,8 +16,6 @@ function sendOsNotification(title: string, message: string, urgency: "low" | "no
 }
 
 const ABORT_WINDOW_MS = 3000
-const CONTINUATION_COOLDOWN_BASE_MS = 30000
-const MAX_CONSECUTIVE_FAILURES = 5
 const SKIP_AGENTS = new Set(["prometheus", "compaction"])
 
 const PLAN_PHASE_IDS = [
@@ -170,66 +168,40 @@ export function createContinuationHandlers(
         return {}
       }
 
-      let hasIncompleteTodos = false
-      if (conversation.todoStates.size > 0) {
-        for (const s of conversation.todoStates.values()) {
-          if (s === "pending" || s === "in_progress") {
-            hasIncompleteTodos = true
-            break
-          }
-        }
-      } else if (conversation.contextHistory.some((e) => /TodoWrite/i.test(e))) {
-        hasIncompleteTodos = true
+      const delta = conversation.toolCallCount - conversation.toolCallCountAtLastStop
+      conversation.toolCallCountAtLastStop = conversation.toolCallCount
+
+      if (delta === 0) {
+        conversation.consecutiveZeroDeltas++
+      } else {
+        conversation.consecutiveZeroDeltas = 0
       }
 
-      console.log(`[oh-my-cursor][/stop] conversation=${convId} | composerMode=${conversation.composerMode} | activePlan=${!!conversation.activePlan} | todoStates.size=${conversation.todoStates.size} | hasIncompleteTodos=${hasIncompleteTodos} | boulderActive=${conversation.boulderState?.active ?? "null"} | todos=${JSON.stringify([...conversation.todoStates.entries()])}`)
+      console.log(`[oh-my-cursor][/stop] conversation=${convId} | composerMode=${conversation.composerMode} | activePlan=${!!conversation.activePlan} | toolCallDelta=${delta} | consecutiveZeroDeltas=${conversation.consecutiveZeroDeltas}`)
 
-      if (hasIncompleteTodos) {
+      if (conversation.consecutiveZeroDeltas >= 2) {
+        if (conversation.activePlan) {
+          sendOsNotification("Plan Complete", "Agent idle — continuation deactivated.", "normal")
+          conversation.activePlan = null
+          conversation.boulderState = null
+          conversation.consecutiveContinuationFailures = 0
+          conversation.continuationCooldownUntil = null
+        }
+        console.log(`[oh-my-cursor][/stop] RESULT=noop reason=idleDeactivation`)
+        return {}
+      }
+
+      if (conversation.activePlan) {
         if (!conversation.boulderState) {
           conversation.boulderState = { active: true, failureCount: 0, lastContinuationAt: null }
         }
-
         if (!conversation.boulderState.active) {
           console.log(`[oh-my-cursor][/stop] RESULT=noop reason=boulderInactive`)
           return {}
         }
-
-        const snapshot = JSON.stringify(
-          [...conversation.todoStates.entries()].sort(([a], [b]) => a.localeCompare(b)),
-        )
-
-        if (snapshot === conversation.lastTodoSnapshot) {
-          conversation.consecutiveContinuationFailures++
-        } else {
-          conversation.consecutiveContinuationFailures = 0
-          conversation.lastTodoSnapshot = snapshot
-        }
-
-        if (conversation.consecutiveContinuationFailures >= MAX_CONSECUTIVE_FAILURES) {
-          conversation.boulderState.active = false
-          sendOsNotification(
-            "Work Stalled",
-            "Max continuation failures reached. Manual intervention needed.",
-            "critical",
-          )
-          console.log(`[oh-my-cursor][/stop] RESULT=noop reason=maxFailures`)
-          return {}
-        }
-
-        if (conversation.consecutiveContinuationFailures > 0) {
-          const backoffMs = CONTINUATION_COOLDOWN_BASE_MS * Math.pow(2, conversation.consecutiveContinuationFailures)
-          conversation.continuationCooldownUntil = Date.now() + backoffMs
-        }
-
-        conversation.boulderState.failureCount = conversation.consecutiveContinuationFailures
         conversation.boulderState.lastContinuationAt = new Date().toISOString()
 
-        let message = "You have incomplete todos. Continue working on them until all are completed or cancelled."
-        if (conversation.activePlan) {
-          message = "Continue to the next plan phase" +
-            (conversation.activePlan.phase ? ": " + conversation.activePlan.phase : "") +
-            ". Complete remaining todos before moving on."
-        }
+        let message: string
         if (conversation.composerMode === "plan") {
           const nextPhase = PLAN_PHASE_IDS.find(p => {
             const s = conversation.todoStates.get(p)
@@ -239,9 +211,10 @@ export function createContinuationHandlers(
             (nextPhase ? "Next phase: " + nextPhase + ". " : "") +
             "Auto-continue between steps -- do not ask 'should I continue?'. " +
             "Follow commands/plan.md step sequence. Complete all remaining todos."
-        }
-        if (conversation.consecutiveContinuationFailures > 0) {
-          message += " (stagnation detected: attempt " + (conversation.consecutiveContinuationFailures + 1) + "/" + MAX_CONSECUTIVE_FAILURES + ")"
+        } else {
+          message = "Continue executing plan: " + conversation.activePlan.path +
+            ". Current phase: " + (conversation.activePlan.phase || "unknown") +
+            ". Do not stop until all plan tasks are complete."
         }
 
         console.log(`[oh-my-cursor][/stop] RESULT=continue msg="${message.slice(0, 80)}"`)
@@ -249,28 +222,6 @@ export function createContinuationHandlers(
           followup_message: message,
           decision: "block",
           reason: message,
-        }
-      }
-
-      if (conversation.todoStates.size > 0) {
-        sendOsNotification("Plan Complete", "All tasks finished", "normal")
-      }
-
-      if (conversation.activePlan && !hasIncompleteTodos) {
-        if (!conversation.boulderState) {
-          conversation.boulderState = { active: true, failureCount: 0, lastContinuationAt: null }
-        }
-        if (conversation.boulderState.active) {
-          conversation.boulderState.lastContinuationAt = new Date().toISOString()
-          const message = "Continue executing plan: " + conversation.activePlan.path +
-            ". Current phase: " + (conversation.activePlan.phase || "unknown") +
-            ". Do not stop until all plan tasks are complete. Use TodoWrite to track progress."
-          console.log(`[oh-my-cursor][/stop] RESULT=continue msg="${message.slice(0, 80)}"`)
-          return {
-            followup_message: message,
-            decision: "block",
-            reason: message,
-          }
         }
       }
 
@@ -369,6 +320,8 @@ export function createContinuationHandlers(
         conversation.stoppedAt = new Date().toISOString()
         conversation.ralphState = null
         conversation.boulderState = null
+        conversation.activePlan = null
+        conversation.consecutiveZeroDeltas = 0
         additionalContext += "\n[stop] Continuation loops stopped. Returning to normal chat."
       }
 

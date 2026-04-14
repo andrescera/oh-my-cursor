@@ -87,27 +87,34 @@ describe("createContinuationHandlers", () => {
       })
     })
 
-    describe("state-based todo detection", () => {
-      it("triggers continuation when todoStates has pending items", () => {
+    describe("tool-call delta and activePlan gating", () => {
+      it("does not continue when only todoStates are pending and there is no activePlan", () => {
         const conversation = getOrCreateConversation(convId)
         conversation.todoStates.set("t1", "pending")
 
-        const result = handlers["/stop"](baseStopInput(convId)) as { followup_message?: string }
+        const result = handlers["/stop"](baseStopInput(convId))
 
-        expect(result.followup_message).toContain("incomplete todos")
-        expect(conversation.boulderState?.active).toBe(true)
+        expect(result).toEqual({})
+        expect(conversation.consecutiveZeroDeltas).toBe(1)
       })
 
-      it("triggers continuation when todoStates has in_progress items", () => {
+      it("continues when activePlan is set and toolCallDelta allows (first zero-delta stop)", () => {
         const conversation = getOrCreateConversation(convId)
-        conversation.todoStates.set("t1", "in_progress")
+        conversation.todoStates.set("t1", "pending")
+        conversation.activePlan = { path: "/plans/foo.md", phase: "P1", completedTasks: [] }
+        conversation.toolCallCount = 0
+        conversation.toolCallCountAtLastStop = 0
+        conversation.consecutiveZeroDeltas = 0
 
         const result = handlers["/stop"](baseStopInput(convId)) as { followup_message?: string }
 
-        expect(result.followup_message).toContain("incomplete todos")
+        expect(result.followup_message).toContain("Continue executing plan")
+        expect(result.followup_message).toContain("/plans/foo.md")
+        expect(conversation.boulderState?.active).toBe(true)
+        expect(conversation.consecutiveZeroDeltas).toBe(1)
       })
 
-      it("does not trigger from todoStates when all items are completed", () => {
+      it("does not trigger from todoStates when all items are completed and no activePlan", () => {
         const conversation = getOrCreateConversation(convId)
         conversation.todoStates.set("t1", "completed")
 
@@ -116,13 +123,35 @@ describe("createContinuationHandlers", () => {
         expect(result).toEqual({})
       })
 
-      it("falls back to TodoWrite in contextHistory when todoStates is empty", () => {
+      it("resets consecutiveZeroDeltas when tool calls occurred between stops", () => {
         const conversation = getOrCreateConversation(convId)
-        conversation.contextHistory = ["called TodoWrite"]
+        conversation.activePlan = { path: "/p.md", phase: "A", completedTasks: [] }
+        conversation.toolCallCount = 0
+        conversation.toolCallCountAtLastStop = 0
+        handlers["/stop"](baseStopInput(convId))
+        expect(conversation.consecutiveZeroDeltas).toBe(1)
 
+        conversation.toolCallCount = 3
         const result = handlers["/stop"](baseStopInput(convId)) as { followup_message?: string }
 
-        expect(result.followup_message).toContain("incomplete todos")
+        expect(conversation.consecutiveZeroDeltas).toBe(0)
+        expect(result.followup_message).toContain("Continue executing plan")
+      })
+
+      it("clears activePlan after two consecutive zero tool-call deltas (idle deactivation)", () => {
+        const conversation = getOrCreateConversation(convId)
+        conversation.activePlan = { path: "/p.md", phase: "A", completedTasks: [] }
+        conversation.toolCallCount = 1
+        conversation.toolCallCountAtLastStop = 1
+        conversation.consecutiveZeroDeltas = 1
+
+        const result = handlers["/stop"](baseStopInput(convId))
+
+        expect(result).toEqual({})
+        expect(conversation.activePlan).toBeNull()
+        expect(conversation.boulderState).toBeNull()
+        expect(conversation.consecutiveContinuationFailures).toBe(0)
+        expect(conversation.continuationCooldownUntil).toBeNull()
       })
     })
 
@@ -135,73 +164,6 @@ describe("createContinuationHandlers", () => {
         const result = handlers["/stop"](baseStopInput(convId))
 
         expect(result).toEqual({})
-      })
-    })
-
-    describe("stagnation and failure escalation", () => {
-      it("increments consecutive failures when todo snapshot unchanged", () => {
-        const conversation = getOrCreateConversation(convId)
-        conversation.todoStates.set("a", "pending")
-        const snap = JSON.stringify([["a", "pending"]])
-        conversation.lastTodoSnapshot = snap
-        conversation.consecutiveContinuationFailures = 0
-
-        handlers["/stop"](baseStopInput(convId))
-
-        expect(conversation.consecutiveContinuationFailures).toBe(1)
-      })
-
-      it("resets consecutive failures when todo snapshot changes", () => {
-        const conversation = getOrCreateConversation(convId)
-        conversation.todoStates.set("a", "pending")
-        conversation.lastTodoSnapshot = JSON.stringify([["b", "pending"]])
-        conversation.consecutiveContinuationFailures = 3
-
-        handlers["/stop"](baseStopInput(convId))
-
-        expect(conversation.consecutiveContinuationFailures).toBe(0)
-        expect(conversation.lastTodoSnapshot).toBe(JSON.stringify([["a", "pending"]]))
-      })
-
-      it("appends stagnation attempt text when failures are non-zero", () => {
-        const conversation = getOrCreateConversation(convId)
-        conversation.todoStates.set("a", "pending")
-        conversation.lastTodoSnapshot = JSON.stringify([["a", "pending"]])
-        conversation.consecutiveContinuationFailures = 1
-
-        const result = handlers["/stop"](baseStopInput(convId)) as { followup_message?: string }
-
-        expect(result.followup_message).toContain("stagnation detected")
-        expect(result.followup_message).toContain("attempt 3/5")
-      })
-
-      it("deactivates boulder after five stagnation failures", () => {
-        const conversation = getOrCreateConversation(convId)
-        conversation.todoStates.set("a", "pending")
-        conversation.lastTodoSnapshot = JSON.stringify([["a", "pending"]])
-        conversation.consecutiveContinuationFailures = 4
-        conversation.boulderState = { active: true, failureCount: 0, lastContinuationAt: null }
-        conversation.continuationCooldownUntil = null
-
-        const result = handlers["/stop"](baseStopInput(convId))
-
-        expect(conversation.consecutiveContinuationFailures).toBe(5)
-        expect(conversation.boulderState?.active).toBe(false)
-        expect(result).toEqual({})
-      })
-
-      it("sets continuation cooldown when failures reach three", () => {
-        const conversation = getOrCreateConversation(convId)
-        conversation.todoStates.set("a", "pending")
-        conversation.lastTodoSnapshot = JSON.stringify([["a", "pending"]])
-        conversation.consecutiveContinuationFailures = 2
-        conversation.continuationCooldownUntil = null
-
-        handlers["/stop"](baseStopInput(convId))
-
-        expect(conversation.consecutiveContinuationFailures).toBe(3)
-        expect(conversation.continuationCooldownUntil).not.toBeNull()
-        expect(conversation.continuationCooldownUntil!).toBeGreaterThan(Date.now())
       })
     })
 
@@ -219,22 +181,24 @@ describe("createContinuationHandlers", () => {
     })
 
     describe("plan-phase-aware message", () => {
-      it("uses plan-phase wording when activePlan is present", () => {
+      it("uses execute-plan wording when activePlan is present in agent mode", () => {
         const conversation = getOrCreateConversation(convId)
         conversation.todoStates.set("t1", "pending")
         conversation.activePlan = { path: "/plans/foo.md", phase: "Phase 2", completedTasks: [] }
+        conversation.composerMode = "agent"
 
         const result = handlers["/stop"](baseStopInput(convId)) as { followup_message?: string }
 
-        expect(result.followup_message).toContain("Continue to the next plan phase")
+        expect(result.followup_message).toContain("Continue executing plan")
         expect(result.followup_message).toContain("Phase 2")
       })
     })
 
     describe("plan mode continuation", () => {
-      it("triggers continuation when composerMode is plan and todos are incomplete", () => {
+      it("triggers continuation when composerMode is plan, activePlan set, and todos are incomplete", () => {
         const conversation = getOrCreateConversation(convId)
         conversation.composerMode = "plan"
+        conversation.activePlan = { path: ".cursor/plans/x.md", phase: "draft", completedTasks: [] }
         conversation.todoStates.set("plan-write", "completed")
         conversation.todoStates.set("plan-selfreview", "pending")
         conversation.todoStates.set("plan-review", "pending")
@@ -251,6 +215,7 @@ describe("createContinuationHandlers", () => {
       it("continuation message references correct next phase from todoStates", () => {
         const conversation = getOrCreateConversation(convId)
         conversation.composerMode = "plan"
+        conversation.activePlan = { path: ".cursor/plans/x.md", phase: "draft", completedTasks: [] }
         conversation.todoStates.set("plan-switchmode", "completed")
         conversation.todoStates.set("plan-interview", "completed")
         conversation.todoStates.set("plan-explore", "completed")
@@ -265,9 +230,10 @@ describe("createContinuationHandlers", () => {
         expect(result.followup_message).toContain("plan-selfreview")
       })
 
-      it("allows agent type plan when composerMode is plan and todos are pending", () => {
+      it("allows agent type plan when composerMode is plan, activePlan set, and todos are pending", () => {
         const conversation = getOrCreateConversation(convId)
         conversation.composerMode = "plan"
+        conversation.activePlan = { path: ".cursor/plans/x.md", phase: "draft", completedTasks: [] }
         conversation.todoStates.set("plan-write", "pending")
 
         const result = handlers["/stop"](baseStopInput(convId, { agent_type: "plan" })) as {
@@ -401,6 +367,8 @@ describe("createContinuationHandlers", () => {
         startedAt: new Date().toISOString(),
       }
       conversation.boulderState = { active: true, failureCount: 1, lastContinuationAt: "x" }
+      conversation.activePlan = { path: "/p.md", phase: "x", completedTasks: [] }
+      conversation.consecutiveZeroDeltas = 2
 
       const result = handlers["/beforeSubmitPrompt"]({
         prompt: "/stop-continuation",
@@ -409,6 +377,8 @@ describe("createContinuationHandlers", () => {
 
       expect(conversation.ralphState).toBeNull()
       expect(conversation.boulderState).toBeNull()
+      expect(conversation.activePlan).toBeNull()
+      expect(conversation.consecutiveZeroDeltas).toBe(0)
       expect(conversation.stoppedAt).not.toBeNull()
       expect(result.additional_context).toContain("Continuation loops stopped")
     })

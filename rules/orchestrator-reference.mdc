@@ -27,17 +27,17 @@ Interview-first. Gather context before producing anything. Never implement code.
 1. **Interview** — Ask 1-3 scoping questions via AskQuestion. Clarify ambiguity, confirm constraints. For complex tasks, record decisions to `.cursor/drafts/{name}.md` (see Draft Protocol in `agents/prometheus.md`).
 2. **Track** — Register plan phases as todos via TodoWrite. Use the phase todo schema in `orchestrator.mdc` (Plan Mode — Auto-Execute on Entry).
 3. **Explore** — Dispatch Task(explore) to map relevant codebase areas. Batch related searches into a single dispatch.
-4. **Gap analysis** — Dispatch Task(metis) with explore results as CONTEXT. Metis identifies missing requirements, ambiguities, and technical risks.
-5. **Draft** — Write the plan to `.cursor/plans/<name>.plan.md`. Include: objective, file list, dependency order, acceptance criteria, parallel execution waves. Follow the template in `agents/prometheus.md`.
+4. **Gap analysis (NEVER skip)** — Dispatch Task(subagent_type="metis") with explore results as CONTEXT using the structured context template from `commands/plan.md`. Metis identifies missing requirements, ambiguities, and technical risks. **Skipping Metis is a hard constraint violation.**
+5. **Write plan** — Write the plan to `.cursor/plans/<name>.plan.md`. Include: objective, file list, dependency order, acceptance criteria, parallel execution waves. Follow the template in `agents/prometheus.md`.
 6. **Self-review** — Classify gaps: CRITICAL (ask user via AskQuestion), MINOR (fix silently), AMBIGUOUS (apply default, disclose in summary).
-7. **Review (optional)** — Ask user via AskQuestion: "Want a Momus review?" If yes, dispatch Task(momus) with plan contents, incorporate feedback. **Momus loop**: auto-loops up to 3 rejections (revise plan → re-submit to Momus). After 3 rejections, surface blockers to user via AskQuestion.
+7. **Review (optional)** — Ask user via AskQuestion: "Want a Momus review?" If yes, dispatch Task(subagent_type="momus") with **only the plan file path** as the prompt (no explanations, no wrapping). Incorporate feedback. **Momus loop**: auto-loops up to 3 rejections (revise plan → re-submit to Momus). After 3 rejections, surface blockers to user via AskQuestion.
 8. **Handoff** — Tell user to switch to Agent mode and run `/start-work` to execute.
 
-**Auto-continue rule:** After completing each step, IMMEDIATELY proceed to the next without waiting for user input. Only stop if genuinely blocked by missing information.
+**Auto-continue rule:** After completing each step, IMMEDIATELY proceed to the next without waiting for user input. Only stop if genuinely blocked by missing information. **The plan flow has 8 mandatory steps -- completing step 5 (write plan) does NOT end the workflow.**
 
 **Draft protocol:** For complex tasks or multi-turn interviews, record decisions to `.cursor/drafts/{name}.md` using Write. Update after every meaningful user response.
 
-**Plan file requirements:** The plan MUST include: TL;DR, problem analysis, implementation tasks in parallel execution waves, per-task acceptance criteria, QA scenarios, commit strategy, and final verification wave.
+**Plan file requirements:** The plan MUST include: TL;DR, problem analysis, implementation tasks in parallel execution waves, **dependency matrix (mandatory for 3+ tasks)**, per-task acceptance criteria, QA scenarios, commit strategy, and final verification wave.
 
 **Subagent mode fallback** (`orchestration.mode = "subagent"`): Instead of root adopting Prometheus, dispatch `Task(subagent_type="prometheus")` with the user's request. Prometheus handles the full workflow internally. After it returns, offer optional Momus review, then handoff.
 
@@ -67,6 +67,7 @@ Interview-first. Gather context before producing anything. Never implement code.
 | **Collaborative** | 0–2 | Iterative — user co-designs | UX flow, config DSL design |
 
 **Allowed tools:** Read, Grep, Glob, Write (.cursor/plans/ and .cursor/drafts/ only), AskQuestion, TodoWrite, Task(explore), Task(metis), Task(momus), Task(librarian), SwitchMode.
+**Allowed subagent types in plan mode (ONLY these):** `explore`, `metis`, `momus`, `librarian`. Any other subagent_type will be denied by the tool guard hook.
 **FORBIDDEN:** Task(sisyphus), Task(hephaestus), Task(sisyphus-junior), Task(atlas), Shell, Delete, StrReplace. MUST NOT dispatch implementation workers.
 
 > Cross-ref: In subagent mode, `Task(prometheus)` loads `agents/prometheus.md` instead.

@@ -472,7 +472,8 @@ const fetchHandler = async (req: Request) => {
     })
   }
 
-  if (req.method !== "POST") {
+  const GET_ALLOWED_ROUTES = new Set(["/health", "/heartbeat", "/status", "/backgroundTasks"])
+  if (req.method !== "POST" && !GET_ALLOWED_ROUTES.has(path)) {
     return new Response(JSON.stringify({ error: "Method not allowed", allowed: "POST" }), {
       status: 405,
       headers: { "Content-Type": "application/json", "Allow": "POST" },
@@ -480,7 +481,7 @@ const fetchHandler = async (req: Request) => {
   }
 
   try {
-    const body = await req.json()
+    const body = req.method === "POST" ? await req.json() : {}
     const parsed = parseInput(body)
     const result = handler(parsed)
 

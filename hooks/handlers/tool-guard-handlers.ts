@@ -121,13 +121,13 @@ export function createToolGuardHandlers(
         const filePath = rawWritePath ? resolve(rawWritePath) : ""
         if (!isEditOperation && filePath && !filePath.includes(".sisyphus") && !filePath.includes("node_modules") && !filePath.includes(".cursor/")) {
           if (existsSync(filePath) && !conversation.readPaths.has(filePath)) {
-            console.log(`[oh-my-cursor][read-guard] DENY write without read: "${filePath}" | conversation: ${convId}`)
-            const reason = `[read-before-write] File "${filePath}" was not read first. Read the file before overwriting it to preserve existing content.`
-            return {
-              permission: "deny",
-              userMessage: reason,
-              agentMessage: reason,
-            }
+            console.log(`[oh-my-cursor][read-guard] WARN write without read: "${filePath}" | conversation: ${convId}`)
+            contextCollector.register(convId, {
+              id: "read-before-write",
+              source: "read-before-write",
+              content: `[read-before-write] Writing to "${filePath}" without reading it first. Consider reading the file to verify current contents before overwriting.`,
+              priority: "normal",
+            })
           }
         }
       }

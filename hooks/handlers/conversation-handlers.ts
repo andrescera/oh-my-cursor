@@ -40,7 +40,8 @@ export function createConversationHandlers(
       const TWO_HOURS = 2 * 60 * 60 * 1000
       const now = Date.now()
       for (const [id, conversation] of conversations) {
-        if (now - new Date(conversation.startedAt).getTime() > TWO_HOURS && !conversation.ralphState?.active) {
+        const age = now - new Date(conversation.startedAt).getTime()
+        if (age > TWO_HOURS) {
           conversations.delete(id)
         }
       }

@@ -167,15 +167,14 @@ describe("daemon integration lifecycle", () => {
 
   describe("#given an existing file was never read and write has no old_string", () => {
     describe("#when POST /preToolUse with blind Write is called", () => {
-      test("#then it denies the write", async () => {
+      test("#then it warns via context but does not deny", async () => {
         const { data } = await post("/preToolUse", {
           tool_name: "Write",
           tool_input: { file_path: GUARD_TEST_FILE, contents: "overwrite" },
           session_id: "guard-test-fresh-session",
         })
 
-        expect(data.permission).toBe("deny")
-        expect(data.agentMessage).toContain("not read first")
+        expect(data.permission).toBeUndefined()
       })
     })
   })

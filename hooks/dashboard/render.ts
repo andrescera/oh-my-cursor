@@ -639,8 +639,8 @@ export function renderDashboardHTML(daemonPort: number): string {
         </div>
         <div class="card">
           <\${Stat} label="Tool Calls"         value=\${stats?.toolCalls ?? 0} />
-          <\${Stat} label="Explore Dispatches" value=\${(stats?.exploreCounts ?? 0) + ' / 5'} />
-          <\${Stat} label="Worker Dispatches"  value=\${(stats?.workerCounts ?? 0) + ' / 8'} />
+          <\${Stat} label="Explore Dispatches" value=\${stats?.exploreCounts ?? 0} />
+          <\${Stat} label="Worker Dispatches"  value=\${stats?.workerCounts ?? 0} />
           <\${Stat} label="Ralph Loop"         value=\${stats?.ralphActive ? 'Active' : 'Inactive'}
                    valueClass=\${stats?.ralphActive ? 'status-ok' : ''} />
         </div>

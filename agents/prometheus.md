@@ -202,6 +202,10 @@ Plans saved to `.cursor/plans/{name}.plan.md` follow this template:
 ## TL;DR
 [1-3 sentences: what, deliverables, effort estimate, parallel execution info]
 
+> **Estimated Effort**: [Quick | Short | Medium | Large | XL]
+> **Parallel Execution**: [YES - N waves | NO - sequential]
+> **Critical Path**: [Task X -> Task Y -> Task Z]
+
 ## Context
 ### Original Request
 [User's description]
@@ -229,16 +233,42 @@ Plans saved to `.cursor/plans/{name}.plan.md` follow this template:
 
 ## Execution Strategy
 For plans with 3+ tasks, **Dependency Matrix** (below) is mandatory and must be non-empty.
-### Parallel Waves
-| Wave | Tasks | Reason |
-|------|-------|--------|
-| 1 | 1, 2, 3 | Independent files |
-### Dependency Matrix (MANDATORY for plans with 3+ tasks)
-This section MUST be non-empty for any plan with 3 or more tasks. Every task that has dependencies MUST be listed here.
 
-| Task | Depends On | Reason |
-|------|-----------|--------|
-| 4 | 1 | Requires output from 1 |
+### Parallel Execution Waves
+> Maximize throughput by grouping independent tasks. Target: 5-8 tasks per wave.
+> Fewer than 3 per wave (except final) = under-splitting.
+
+Wave 1 (Start immediately - foundation):
++-- Task 1: [description] [sisyphus-junior]
++-- Task 2: [description] [sisyphus-junior]
++-- Task 3: [description] [sisyphus-junior]
+
+Wave 2 (After Wave 1 - core modules):
++-- Task 4: [description] (depends: 1, 2) [sisyphus]
++-- Task 5: [description] (depends: 1) [sisyphus-junior]
+
+Wave FINAL (After ALL tasks):
++-- F1: Plan compliance audit (oracle)
++-- F2: Code quality review
++-- F3: QA scenario execution
++-- F4: Scope fidelity check
+-> Present results -> Get explicit user okay
+
+### Dependency Matrix (MANDATORY for plans with 3+ tasks)
+This section MUST be non-empty for any plan with 3 or more tasks. Every task that has dependencies MUST be listed. Include what each task blocks.
+
+| Task | Depends On | Blocks | Reason |
+|------|-----------|--------|--------|
+| 1-3 | None | 4, 5 | Foundation tasks, no prerequisites |
+| 4 | 1, 2 | 7 | Requires output from 1 and types from 2 |
+| 7 | 4, 5 | F1-F4 | Integration requires all core modules |
+
+### Agent Dispatch Summary
+| Wave | Tasks | Agents |
+|------|-------|--------|
+| 1 | 3 | T1-T3: sisyphus-junior |
+| 2 | 2 | T4: sisyphus, T5: sisyphus-junior |
+| FINAL | 4 | F1: oracle, F2-F4: sisyphus-junior |
 
 ## TODOs
 
@@ -250,6 +280,10 @@ This section MUST be non-empty for any plan with 3 or more tasks. Every task tha
 
   **Parallelizable**: YES (with 2, 3) | NO (depends on 0)
 
+  **Recommended Agent**:
+  - **Agent**: `sisyphus-junior` | `sisyphus` -- [reason for choice]
+  - **Blocks**: [Tasks that depend on this task completing]
+
   **References**:
   - Pattern: `src/services/auth.ts:45-78` — Authentication flow to follow
   - API: `src/types/user.ts:UserDTO` — Response shape
@@ -260,6 +294,30 @@ This section MUST be non-empty for any plan with 3 or more tasks. Every task tha
   - [ ] ReadLints clean on changed files
   - [ ] `Shell: bun test [file]` → PASS
   - [ ] Manual: Read changed files, verify logic
+
+  **QA Scenarios (MANDATORY -- task is INCOMPLETE without these):**
+
+  Minimum: 1 happy path + 1 failure/edge case per task.
+  Each scenario = exact tool + exact steps + exact assertions.
+
+  Scenario: [Happy path]
+    Tool: [Shell / Read / ReadLints]
+    Steps:
+      1. [Exact action with specific command]
+      2. [Assertion with expected value]
+    Expected: [Concrete pass/fail criterion]
+
+  Scenario: [Failure/edge case]
+    Tool: [same format]
+    Steps:
+      1. [Trigger error condition]
+      2. [Assert graceful handling]
+    Expected: [Specific error message or behavior]
+
+  Anti-patterns (scenario is INVALID if):
+  - "Verify it works correctly" -- HOW?
+  - "Check the API returns data" -- WHAT data?
+  - "Test the component renders" -- WHERE? What selector?
 
   **Commit**: `type(scope): description` | Files: `path/to/file`
 
@@ -280,6 +338,18 @@ This section MUST be non-empty for any plan with 3 or more tasks. Every task tha
 - [ ] All verification commands pass
 - [ ] Dependency matrix is populated (non-empty for plans with 3+ tasks)
 ````
+
+### Incremental Write Protocol (prevents output limit stalls)
+
+Plans with many tasks will exceed output token limits if generated at once.
+
+Step 1: Write skeleton (all sections EXCEPT individual task details) using Write or CreatePlan
+Step 2: Use StrReplace to append tasks in batches of 2-4 before the Final Verification section
+Step 3: Read the plan file to verify completeness -- all tasks present, no content lost
+
+FORBIDDEN:
+- Write() twice to the same file (second call erases the first)
+- Generating ALL tasks in a single Write (hits output limits, causes stalls)
 
 ## Key Principles
 

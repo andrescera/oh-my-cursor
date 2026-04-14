@@ -543,9 +543,48 @@ export function renderDashboardHTML(daemonPort: number): string {
         </div>\`;
     }
 
+    // ── Conversation Selector ────────────────────────────────────────────────
+
+    function ConversationSelector({ value, onChange }) {
+      const [conversations, setConversations] = useState([]);
+
+      useEffect(() => {
+        fetch(\`\${BASE}/sessions\`)
+          .then(r => r.ok ? r.json() : [])
+          .then(data => {
+            setConversations((data || []).filter(s => s.composerMode !== null || (s.toolCallCount || 0) > 0));
+          })
+          .catch(() => {});
+
+        const unsub = sseSubscribe((msg) => {
+          if (msg.type === 'conversation-snapshot' && Array.isArray(msg.data)) {
+            setConversations(msg.data.filter(s => s.composerMode !== null || (s.toolCallCount || 0) > 0));
+          }
+        });
+        return unsub;
+      }, []);
+
+      const selStyle = 'background:var(--vscode-dropdown-background,#3c3c3c);color:var(--vscode-dropdown-foreground,#ccc);border:1px solid var(--vscode-dropdown-border,#454545);padding:3px 6px;border-radius:3px;font-size:11px';
+
+      return html\`
+        <select
+          value=\${value}
+          onChange=\${e => onChange(e.target.value)}
+          style=\${selStyle}
+          aria-label="Select conversation"
+        >
+          <option value="">All conversations</option>
+          \${conversations.map(s => {
+            const label = s.id.length > 12 ? s.id.slice(0, 10) + '…' : s.id;
+            const mode = s.composerMode ? ' [' + s.composerMode + ']' : '';
+            return html\`<option key=\${s.id} value=\${s.id} selected=\${s.id === value}>\${label}\${mode}</option>\`;
+          })}
+        </select>\`;
+    }
+
     // ── Tab: Status ─────────────────────────────────────────────────────────
 
-    function StatusTab() {
+    function StatusTab({ selectedConversation = '' }) {
       const [stats, setStats]     = useState(null);
       const [errors, setErrors]   = useState([]);
       const [loading, setLoading] = useState(true);
@@ -553,12 +592,15 @@ export function renderDashboardHTML(daemonPort: number): string {
       const [offline, setOffline] = useState(false);
 
       useEffect(() => {
-        fetch(\`\${BASE}/health\`)
+        const healthUrl = selectedConversation
+          ? \`\${BASE}/health?conversation=\${encodeURIComponent(selectedConversation)}\`
+          : \`\${BASE}/health\`;
+        fetch(healthUrl)
           .then(r => { if (!r.ok) throw new Error('offline'); return r.json(); })
           .then(data => { setStats(data); setOffline(false); })
           .catch(() => setOffline(true))
           .finally(() => setLoading(false));
-      }, []);
+      }, [selectedConversation]);
 
       useEffect(() => {
         const unsub = sseSubscribe((event) => {
@@ -799,7 +841,7 @@ export function renderDashboardHTML(daemonPort: number): string {
         </div>\`;
     }
 
-    function EventsTab() {
+    function EventsTab({ selectedConversation = '' }) {
       const [events, setEvents]         = useState([]);
       const [expandedKeys, setExpanded] = useState(new Set());
       const [filter, setFilter]         = useState('all');
@@ -809,15 +851,22 @@ export function renderDashboardHTML(daemonPort: number): string {
       const atBottom  = useRef(true);
 
       useEffect(() => {
+        setEvents([]);
+        setExpanded(new Set());
+        setLogReady(false);
         const seen = new Set();
         let unsub = () => {};
-        fetch(\`\${BASE}/session-log?limit=200\`)
+        const logUrl = selectedConversation
+          ? \`\${BASE}/session-log?limit=200&session=\${encodeURIComponent(selectedConversation)}\`
+          : \`\${BASE}/session-log?limit=200\`;
+        fetch(logUrl)
           .then(r => r.json())
           .then(data => {
             data.forEach(e => seen.add(eventKey(e)));
             setEvents(data);
             unsub = sseSubscribe((ev) => {
               if (ev.type === 'conversation-snapshot') return;
+              if (selectedConversation && ev.sessionId !== selectedConversation) return;
               const k = eventKey(ev);
               if (seen.has(k)) return;
               seen.add(k);
@@ -827,7 +876,7 @@ export function renderDashboardHTML(daemonPort: number): string {
           .catch(() => {})
           .finally(() => setLogReady(true));
         return () => unsub();
-      }, []);
+      }, [selectedConversation]);
 
       // Track whether user is at the bottom of the scroll container
       useEffect(() => {
@@ -863,9 +912,15 @@ export function renderDashboardHTML(daemonPort: number): string {
       }
 
       async function clearLog() {
-        if (!confirm('Clear all session events?')) return;
+        const msg = selectedConversation ? 'Clear events for this conversation?' : 'Clear all session events?';
+        if (!confirm(msg)) return;
         try {
-          await fetch(\`\${BASE}/session-log/clear\`, { method: 'POST' });
+          const opts = { method: 'POST' };
+          if (selectedConversation) {
+            opts.headers = { 'Content-Type': 'application/json' };
+            opts.body = JSON.stringify({ sessionId: selectedConversation });
+          }
+          await fetch(\`\${BASE}/session-log/clear\`, opts);
           setEvents([]);
           setExpanded(new Set());
         } catch {}
@@ -902,7 +957,7 @@ export function renderDashboardHTML(daemonPort: number): string {
                 onClick=\${() => setAutoScroll(v => !v)}
                 title="Toggle auto-scroll to bottom"
               >↓ Auto</button>
-              <a class="ev-btn" href=\${BASE + '/session-log/download'} download="session-log.jsonl" target="_blank">↓ JSONL</a>
+              <a class="ev-btn" href=\${selectedConversation ? BASE + '/session-log/download?session=' + encodeURIComponent(selectedConversation) : BASE + '/session-log/download'} download="session-log.jsonl" target="_blank">↓ JSONL</a>
               <button type="button" class="ev-btn" onClick=\${copyLog}>Copy JSON</button>
               <button type="button" class="ev-btn ev-btn-danger" onClick=\${clearLog}>Clear</button>
             </div>
@@ -1494,6 +1549,7 @@ export function renderDashboardHTML(daemonPort: number): string {
     function App() {
       const [activeTab, setActiveTab] = useState('status');
       const [sseStatus, setSseStatus] = useState(/** @type {SseStatus} */ ('connected'));
+      const [selectedConversation, setSelectedConversation] = useState('');
       const TabComponent = TAB_COMPONENTS[activeTab];
 
       useEffect(() => subscribeSseStatus(setSseStatus), []);
@@ -1517,6 +1573,7 @@ export function renderDashboardHTML(daemonPort: number): string {
               oh-my-cursor Status
               <span class="header-badge">v2</span>
             </div>
+            <\${ConversationSelector} value=\${selectedConversation} onChange=\${setSelectedConversation} />
           </div>
 
           <div class="tabs" role="tablist" aria-label="Dashboard sections">
@@ -1534,7 +1591,7 @@ export function renderDashboardHTML(daemonPort: number): string {
           </div>
 
           <div class="tab-panel" role="tabpanel" key=\${activeTab}>
-            <\${TabComponent} />
+            <\${TabComponent} selectedConversation=\${selectedConversation} />
           </div>
         </div>\`;
     }

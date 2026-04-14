@@ -243,6 +243,10 @@ const TOOLS = [
           type: "string",
           description: "Filter by action: 'allow', 'deny', 'block', 'continue', 'noop'",
         },
+        workspace_root: {
+          type: "string",
+          description: "Absolute path to workspace root (optional, for resolving project-specific log paths)",
+        },
       },
       required: ["action"],
     },
@@ -631,8 +635,9 @@ async function handleToolCall(
             ],
           }
         }
-        const logPath = process.env.OH_MY_CURSOR_PROJECT_DIR
-          ? join(resolve(process.env.OH_MY_CURSOR_PROJECT_DIR), ".cursor/hooks/state/session-log.jsonl")
+        const projectDir = (args.workspace_root as string) ?? process.env.OH_MY_CURSOR_PROJECT_DIR
+        const logPath = projectDir
+          ? join(resolve(projectDir), ".cursor/hooks/state/session-log.jsonl")
           : "/tmp/oh-my-cursor-session-log.jsonl"
         return {
           content: [

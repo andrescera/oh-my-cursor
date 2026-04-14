@@ -195,10 +195,10 @@ const fetchHandler = async (req: Request) => {
     })
   }
 
-  if (path === "/session-log") {
+  if (path === "/session-log" || path === "/conversation-log") {
     const rawLimit = parseInt(url.searchParams.get("limit") || "100")
     const limit = Number.isNaN(rawLimit) || rawLimit < 1 ? 100 : rawLimit
-    const sessionId = url.searchParams.get("session") || undefined
+    const sessionId = url.searchParams.get("session") || url.searchParams.get("conversation") || undefined
     const event = url.searchParams.get("event") || undefined
     const action = url.searchParams.get("action") || undefined
     const events = getEvents({ limit, sessionId, event, action })
@@ -207,16 +207,17 @@ const fetchHandler = async (req: Request) => {
     })
   }
 
-  if (path === "/session-log/summary") {
-    const sessionId = url.searchParams.get("session") || undefined
+  if (path === "/session-log/summary" || path === "/conversation-log/summary") {
+    const sessionId = url.searchParams.get("session") || url.searchParams.get("conversation") || undefined
     const summary = getConversationSummary(sessionId)
     return new Response(JSON.stringify(summary), {
       headers: { "Content-Type": "application/json" },
     })
   }
 
-  if (path === "/session-log/download") {
-    const filePath = getLogPath()
+  if (path === "/session-log/download" || path === "/conversation-log/download") {
+    const sessionId = url.searchParams.get("session") || url.searchParams.get("conversation") || undefined
+    const filePath = getLogPath(sessionId)
     try {
       const file = Bun.file(filePath)
       if (await file.exists()) {
@@ -234,8 +235,10 @@ const fetchHandler = async (req: Request) => {
     }
   }
 
-  if (path === "/session-log/clear" && req.method === "POST") {
-    clearLog()
+  if ((path === "/session-log/clear" || path === "/conversation-log/clear") && req.method === "POST") {
+    const clearBody = await req.json().catch(() => ({})) as Record<string, unknown>
+    const sessionId = (clearBody.sessionId as string) || (clearBody.conversationId as string) || url.searchParams.get("session") || url.searchParams.get("conversation") || undefined
+    clearLog(sessionId)
     return new Response(JSON.stringify({ status: "cleared" }), {
       headers: { "Content-Type": "application/json" },
     })
@@ -403,7 +406,7 @@ const fetchHandler = async (req: Request) => {
     })
   }
 
-  if (path === "/sessions/stream") {
+  if (path === "/sessions/stream" || path === "/conversations/stream") {
     const encoder = new TextEncoder()
     let interval: ReturnType<typeof setInterval> | null = null
 
@@ -447,7 +450,7 @@ const fetchHandler = async (req: Request) => {
     })
   }
 
-  if (path === "/sessions" && req.method === "GET") {
+  if ((path === "/sessions" || path === "/conversations") && req.method === "GET") {
     const list = Array.from(conversations.entries()).map(([id, s]) => ({
       id,
       startedAt: s.startedAt,
@@ -489,6 +492,11 @@ const fetchHandler = async (req: Request) => {
   try {
     const body = req.method === "POST" ? await req.json() : {}
     const parsed = parseInput(body)
+    if (req.method !== "POST") {
+      for (const [key, value] of url.searchParams) {
+        parsed[key] = value
+      }
+    }
     if (path !== "/health" && path !== "/heartbeat" && path !== "/status") {
       console.log(`[oh-my-cursor][daemon] ${path} | inputKeys=${Object.keys(parsed).join(",")}`)
     }

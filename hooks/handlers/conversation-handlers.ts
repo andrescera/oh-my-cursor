@@ -36,7 +36,7 @@ export function createConversationHandlers(
   getPort: () => number,
 ): HandlerMap {
   return {
-    "/health": () => {
+    "/health": (input) => {
       const TWO_HOURS = 2 * 60 * 60 * 1000
       const now = Date.now()
       for (const [id, conversation] of conversations) {
@@ -45,14 +45,17 @@ export function createConversationHandlers(
         }
       }
 
+      const filterConvId = (input.conversation as string) || ""
+      const scope = filterConvId
+        ? (conversations.has(filterConvId) ? [[filterConvId, conversations.get(filterConvId)!]] as [string, ConversationState][] : [])
+        : Array.from(conversations.entries())
+
       let totalToolCalls = 0
       let exploreCounts = 0
       let workerCounts = 0
       let ralphActive = false
-      let currentConversationId = ""
 
-      for (const [id, conversation] of conversations) {
-        currentConversationId = id
+      for (const [, conversation] of scope) {
         totalToolCalls += conversation.toolCallCount
         exploreCounts += conversation.dispatchCounts["subagent:explore"] || 0
         workerCounts +=
@@ -70,7 +73,7 @@ export function createConversationHandlers(
       }
 
       const allDispatchCounts: Record<string, number> = {}
-      for (const [, conversation] of conversations) {
+      for (const [, conversation] of scope) {
         for (const [key, val] of Object.entries(conversation.dispatchCounts)) {
           allDispatchCounts[key] = (allDispatchCounts[key] || 0) + val
         }
@@ -79,12 +82,12 @@ export function createConversationHandlers(
       return {
         status: "ok",
         conversations: conversations.size,
+        conversationCount: scope.length,
         uptime: process.uptime(),
         toolCalls: totalToolCalls,
         exploreCounts,
         workerCounts,
         ralphActive,
-        currentConversationId,
         allDispatchCounts,
       }
     },

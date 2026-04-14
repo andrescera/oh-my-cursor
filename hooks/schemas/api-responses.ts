@@ -9,7 +9,7 @@ export const HealthResponseSchema = z.object({
   exploreCounts: z.number(),
   workerCounts: z.number(),
   ralphActive: z.boolean(),
-  currentConversationId: z.string(),
+  conversationCount: z.number(),
   allDispatchCounts: z.record(z.string(), z.number()),
 })
 export type HealthResponse = z.infer<typeof HealthResponseSchema>

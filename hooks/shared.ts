@@ -10,6 +10,7 @@ export function getOrCreateSession(conversationId: string): SessionState {
       startedAt: new Date().toISOString(),
       env: {},
       dispatchCounts: {},
+      dispatchCountsThisTurn: {},
       contextHistory: [],
       readPaths: new Set(),
       injectedPaths: new Set(),

@@ -32,6 +32,7 @@ export type SessionState = {
   startedAt: string
   env: Record<string, string>
   dispatchCounts: Record<string, number>
+  dispatchCountsThisTurn: Record<string, number>
   contextHistory: string[]
   readPaths: Set<string>
   injectedPaths: Set<string>

@@ -38,6 +38,7 @@ export const SessionStateSchema = z.object({
   startedAt: z.string(),
   env: z.record(z.string(), z.string()),
   dispatchCounts: z.record(z.string(), z.number()),
+  dispatchCountsThisTurn: z.record(z.string(), z.number()),
   contextHistory: z.array(z.string()),
   // Set<string> serializes to array in JSON
   readPaths: z.array(z.string()),

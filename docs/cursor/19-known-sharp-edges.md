@@ -32,6 +32,26 @@ Cursor slash commands defined in `commands/*.md` are **expanded by Cursor before
 
 No hook payload includes a `mode`, `composerMode`, or `composer_mode` field indicating the current Cursor mode (plan/agent/debug/ask). The `beforeSubmitPrompt` handler cannot reliably detect which mode is active from the input alone. [repro-local]
 
+**Workaround:** Mode transitions are detected in `beforeSubmitPrompt` via `detectPlanMode()` heuristics. When `/start-work` is processed, `session.composerMode` is explicitly set to `"agent"` and plan-phase todo IDs are cleared from `todoStates` to break stickiness. The `preToolUse` handler also checks `input.mode` and `input.composerMode` as a forward-compatibility measure, but these fields are currently always undefined.
+
+### Session Isolation Gaps
+
+Critical state (`SessionState`, `BackgroundTracker`, `contextCollector`) is isolated per `conversationId`. Known remaining shared state:
+- **`/tmp/oh-my-cursor-timing.jsonl`**: Global file for subagent timing telemetry, shared across all sessions (deferred fix)
+- **Event logs**: Now written per-session (`session-log-{sessionId}.jsonl`) but the in-memory buffer remains global for cross-session admin queries via `getEvents()`
+- **Config**: `loadConfig()` returns project-level config, intentionally shared
+- **Console output**: Process-level stdout/stderr, not actionable data
+
+### Dispatch Counter Semantics
+
+- **`dispatchCounts`**: Cumulative per-session counter. Incremented on every `preToolUse`, never resets within a session. Used for skill reminders and dashboard display.
+- **`dispatchCountsThisTurn`**: Per-turn counter. Resets to `{}` on each `beforeSubmitPrompt`. Tracks dispatches within a single user message turn.
+- **Concurrent limits**: Enforced via `BackgroundTracker.getActiveTasksForSession()` live counts, NOT via either dispatch counter. The tracker uses an in-memory Map with 10-minute stale cleanup.
+
+### Tiled Layout Implications (Cursor 3)
+
+Cursor 3's tiled layout enables multiple concurrent agent sessions per workspace. All critical hook state is isolated by `conversationId`, so parallel chat windows do not interfere. The `BackgroundTracker` correctly scopes active task counts per conversation. Session log files are written per-session. The daemon process is shared but stateless beyond the tracker and session Map.
+
 ---
 
 ## MCP

@@ -145,9 +145,9 @@ export function createToolGuardHandlers(
         const agentType = (toolInput.subagent_type as string) || (toolInput.agent_type as string) || ""
         if (agentType) {
           const normalized = agentType.toLowerCase().replace("generalpurpose", "general-purpose")
-          const mode = session.composerMode
+          const currentMode = (input.mode as string) || (input.composerMode as string) || session.composerMode
 
-          if (mode === "ask") {
+          if (currentMode === "ask") {
             const reason = "[mode-guard] Task dispatches are not allowed in Ask mode."
             return {
               permission: "deny",
@@ -161,7 +161,7 @@ export function createToolGuardHandlers(
             }
           }
 
-          if (mode === "plan" && !PLAN_MODE_ALLOWED_AGENTS.has(normalized)) {
+          if (currentMode === "plan" && !PLAN_MODE_ALLOWED_AGENTS.has(normalized)) {
             const reason = `[mode-guard] Agent type '${normalized}' is not allowed in Plan mode. Only explore, metis, momus, and librarian are allowed.`
             return {
               permission: "deny",
@@ -212,6 +212,7 @@ export function createToolGuardHandlers(
           }
 
           session.dispatchCounts[agentKey] = (session.dispatchCounts[agentKey] || 0) + 1
+          session.dispatchCountsThisTurn[agentKey] = (session.dispatchCountsThisTurn[agentKey] || 0) + 1
           console.log(`[oh-my-cursor] Dispatch tracked via preToolUse: ${agentKey} (${session.dispatchCounts[agentKey]})`)
           if (normalized === "momus") {
             session.momusIterations++
@@ -220,6 +221,7 @@ export function createToolGuardHandlers(
       }
 
       session.dispatchCounts[toolName] = (session.dispatchCounts[toolName] || 0) + 1
+      session.dispatchCountsThisTurn[toolName] = (session.dispatchCountsThisTurn[toolName] || 0) + 1
 
       return {}
     },

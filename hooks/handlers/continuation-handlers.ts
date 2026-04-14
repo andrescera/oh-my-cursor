@@ -52,6 +52,15 @@ function detectPlanMode(input: Record<string, unknown>, session: SessionState, u
   const lowerMsg = userMessage.toLowerCase().trimStart()
   if (lowerMsg.startsWith("/plan")) return true
 
+  const planTodosPresent = PLAN_PHASE_IDS.some((id) => session.todoStates.has(id))
+  if (planTodosPresent) {
+    const allDone = PLAN_PHASE_IDS.every((id) => {
+      const status = session.todoStates.get(id)
+      return !status || status === "completed" || status === "cancelled"
+    })
+    if (allDone) return false
+  }
+
   if (session.composerMode === "plan") return true
 
   const cursorCommands = (input.cursor_commands as string) || (input.system_instructions as string) || ""
@@ -226,6 +235,8 @@ export function createContinuationHandlers(
         session.stoppedAt = null
       }
 
+      session.dispatchCountsThisTurn = {}
+
       const lowerMsg = userMessage.toLowerCase()
 
       const isPlanMode = detectPlanMode(input, session, userMessage)
@@ -308,6 +319,11 @@ export function createContinuationHandlers(
       }
 
       if (userMessage.startsWith("/start-work")) {
+        session.composerMode = "agent"
+        for (const phaseId of PLAN_PHASE_IDS) {
+          session.todoStates.delete(phaseId)
+        }
+
         const ap = session.activePlan
         if (ap && ap.completedTasks.length > 0) {
           const phaseLabel = ap.phase || "(none)"

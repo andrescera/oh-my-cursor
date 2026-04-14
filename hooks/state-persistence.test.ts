@@ -11,6 +11,7 @@ function createTestSession(id: string): SessionState {
     startedAt: new Date().toISOString(),
     env: {},
     dispatchCounts: {},
+    dispatchCountsThisTurn: {},
     contextHistory: [],
     readPaths: new Set(["file1.ts", "file2.ts"]),
     injectedPaths: new Set(["agents.md"]),

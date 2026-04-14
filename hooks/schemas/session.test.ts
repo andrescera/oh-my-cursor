@@ -12,6 +12,7 @@ function minimalSession(overrides: Record<string, unknown> = {}) {
     startedAt: "2026-01-01T00:00:00.000Z",
     env: {},
     dispatchCounts: {},
+    dispatchCountsThisTurn: {},
     contextHistory: [],
     readPaths: [],
     injectedPaths: [],

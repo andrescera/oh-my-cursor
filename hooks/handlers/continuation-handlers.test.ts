@@ -523,5 +523,48 @@ describe("createContinuationHandlers", () => {
       expect(session.composerMode).toBe("plan")
       expect(result.additional_context).toContain("[mode:plan]")
     })
+
+    describe("mode transition and per-turn dispatch reset", () => {
+      it("transitions composerMode from plan to agent on /start-work and clears plan-phase todos", () => {
+        const session = getOrCreateSession(convId)
+        session.composerMode = "plan"
+        session.todoStates.set("plan-write", "completed")
+        session.todoStates.set("plan-handoff", "completed")
+
+        handlers["/beforeSubmitPrompt"]({
+          user_message: "/start-work",
+          conversation_id: convId,
+        })
+
+        expect(session.composerMode).toBe("agent")
+        expect(session.todoStates.has("plan-write")).toBe(false)
+        expect(session.todoStates.has("plan-handoff")).toBe(false)
+      })
+
+      it("keeps plan mode when plan-phase todos are incomplete and message is not /start-work", () => {
+        const session = getOrCreateSession(convId)
+        session.composerMode = "plan"
+        session.todoStates.set("plan-explore", "in_progress")
+
+        handlers["/beforeSubmitPrompt"]({
+          prompt: "continue with the design",
+          conversation_id: convId,
+        })
+
+        expect(session.composerMode).toBe("plan")
+      })
+
+      it("resets dispatchCountsThisTurn on each beforeSubmitPrompt", () => {
+        const session = getOrCreateSession(convId)
+        session.dispatchCountsThisTurn = { Task: 5, "subagent:explore": 3 }
+
+        handlers["/beforeSubmitPrompt"]({
+          prompt: "hello",
+          conversation_id: convId,
+        })
+
+        expect(session.dispatchCountsThisTurn).toEqual({})
+      })
+    })
   })
 })

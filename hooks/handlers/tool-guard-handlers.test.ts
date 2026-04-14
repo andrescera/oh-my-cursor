@@ -137,4 +137,61 @@ describe("createToolGuardHandlers dispatch count inflation fix", () => {
       expect(sessions.get(CONV)!.dispatchCounts["subagent:sisyphus"]).toBeUndefined()
     })
   })
+
+  describe("#when input.mode overrides stale plan composerMode", () => {
+    it("allows dispatch when input.mode overrides stale plan composerMode", () => {
+      const tracker = makeTracker({ [CONV]: [] })
+      const { "/preToolUse": handler } = createToolGuardHandlers(sessions, tracker)
+
+      handler({ tool_name: "Read", conversation_id: CONV, tool_input: { path: "/tmp/x" } })
+      sessions.get(CONV)!.composerMode = "plan"
+
+      const result = handler({
+        tool_name: "Task",
+        conversation_id: CONV,
+        mode: "agent",
+        tool_input: { subagent_type: "sisyphus", description: "Do work" },
+      })
+
+      expect(result.permission).not.toBe("deny")
+      const session = sessions.get(CONV)!
+      expect(session.dispatchCounts["subagent:sisyphus"]).toBe(1)
+    })
+  })
+
+  describe("#when session composerMode is agent after plan phase", () => {
+    it("allows dispatch when plan-phase todos are all completed", () => {
+      const tracker = makeTracker({ [CONV]: [] })
+      const { "/preToolUse": handler } = createToolGuardHandlers(sessions, tracker)
+
+      handler({ tool_name: "Read", conversation_id: CONV, tool_input: { path: "/tmp/x" } })
+      sessions.get(CONV)!.composerMode = "agent"
+
+      const result = handler({
+        tool_name: "Task",
+        conversation_id: CONV,
+        tool_input: { subagent_type: "sisyphus", description: "Do work" },
+      })
+
+      expect(result.permission).not.toBe("deny")
+    })
+  })
+
+  describe("#when per-turn dispatch counters are updated", () => {
+    it("increments dispatchCountsThisTurn alongside dispatchCounts", () => {
+      const tracker = makeTracker({ [CONV]: [] })
+      const { "/preToolUse": handler } = createToolGuardHandlers(sessions, tracker)
+
+      handler({
+        tool_name: "Task",
+        conversation_id: CONV,
+        tool_input: { subagent_type: "explore", description: "Search codebase" },
+      })
+
+      const session = sessions.get(CONV)!
+      expect(session.dispatchCounts["subagent:explore"]).toBe(1)
+      expect(session.dispatchCountsThisTurn["subagent:explore"]).toBe(1)
+      expect(session.dispatchCountsThisTurn["Task"]).toBe(1)
+    })
+  })
 })

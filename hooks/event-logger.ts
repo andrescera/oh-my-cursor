@@ -1,5 +1,5 @@
-import { existsSync, mkdirSync, appendFileSync } from "node:fs"
-import { resolve, dirname } from "node:path"
+import { existsSync, mkdirSync, appendFileSync, readdirSync, statSync, unlinkSync } from "node:fs"
+import { resolve, dirname, join } from "node:path"
 
 export type EventEntry = {
   ts: string
@@ -45,30 +45,41 @@ const FLUSH_DELAY = 500
 const MAX_FILE_LINES = 10_000
 const FILE_TRIM_TO = 5_000
 
-const logPath = process.env.OH_MY_CURSOR_PROJECT_DIR
-  ? resolve(process.env.OH_MY_CURSOR_PROJECT_DIR, ".cursor/hooks/state/session-log.jsonl")
-  : "/tmp/oh-my-cursor-session-log.jsonl"
+const logDir = process.env.OH_MY_CURSOR_PROJECT_DIR
+  ? resolve(process.env.OH_MY_CURSOR_PROJECT_DIR, ".cursor/hooks/state")
+  : "/tmp"
+
+function getLogPathForSession(sessionId?: string): string {
+  if (sessionId) return join(logDir, `session-log-${sessionId}.jsonl`)
+  return join(logDir, "session-log.jsonl")
+}
 
 let buffer: EventEntry[] = []
 let pending: EventEntry[] = []
 let flushTimer: ReturnType<typeof setTimeout> | null = null
 
-function loadExisting(): void {
+function loadFromFile(filePath: string): void {
   try {
-    if (!existsSync(logPath)) return
-    const text = Bun.file(logPath).textSync()
+    if (!existsSync(filePath)) return
+    const text = Bun.file(filePath).textSync()
     if (!text.trim()) return
     for (const line of text.trim().split("\n")) {
       try {
         buffer.push(JSON.parse(line))
-      } catch {
-        // skip corrupt lines
-      }
+      } catch { /* skip corrupt lines */ }
+    }
+  } catch { /* file unreadable, skip */ }
+}
+
+function loadExisting(): void {
+  try {
+    if (!existsSync(logDir)) return
+    const files = readdirSync(logDir).filter((f) => f.startsWith("session-log") && f.endsWith(".jsonl"))
+    for (const file of files) {
+      loadFromFile(join(logDir, file))
     }
     if (buffer.length > MAX_BUFFER) buffer = buffer.slice(-TRIM_TO)
-  } catch {
-    // file unreadable, start fresh
-  }
+  } catch { /* directory unreadable, start fresh */ }
 }
 
 loadExisting()
@@ -86,25 +97,51 @@ function flushPending(): void {
   const entries = pending
   pending = []
 
-  const dir = dirname(logPath)
-  if (!existsSync(dir)) mkdirSync(dir, { recursive: true })
+  if (!existsSync(logDir)) mkdirSync(logDir, { recursive: true })
 
-  const chunk = entries.map((e) => JSON.stringify(e)).join("\n") + "\n"
-  appendFileSync(logPath, chunk)
+  const grouped = new Map<string, EventEntry[]>()
+  for (const entry of entries) {
+    const key = entry.sessionId || ""
+    const group = grouped.get(key)
+    if (group) group.push(entry)
+    else grouped.set(key, [entry])
+  }
 
-  rotateIfNeeded()
+  for (const [sessionId, group] of grouped) {
+    const filePath = getLogPathForSession(sessionId || undefined)
+    const chunk = group.map((e) => JSON.stringify(e)).join("\n") + "\n"
+    appendFileSync(filePath, chunk)
+    rotateIfNeeded(filePath)
+  }
+
+  cleanupOldSessionFiles()
 }
 
-function rotateIfNeeded(): void {
+function rotateIfNeeded(filePath: string): void {
   try {
-    const text = Bun.file(logPath).textSync()
+    const text = Bun.file(filePath).textSync()
     const lines = text.trim().split("\n")
     if (lines.length > MAX_FILE_LINES) {
-      Bun.write(logPath, lines.slice(-FILE_TRIM_TO).join("\n") + "\n")
+      Bun.write(filePath, lines.slice(-FILE_TRIM_TO).join("\n") + "\n")
     }
-  } catch {
-    // rotation failure is non-fatal
-  }
+  } catch { /* rotation failure is non-fatal */ }
+}
+
+const STALE_FILE_MS = 7 * 24 * 60 * 60 * 1000
+
+function cleanupOldSessionFiles(): void {
+  try {
+    if (!existsSync(logDir)) return
+    const now = Date.now()
+    const files = readdirSync(logDir).filter((f) => f.startsWith("session-log-") && f.endsWith(".jsonl"))
+    for (const file of files) {
+      const fullPath = join(logDir, file)
+      try {
+        const stat = statSync(fullPath)
+        if (now - stat.mtimeMs > STALE_FILE_MS) unlinkSync(fullPath)
+      } catch { /* stat/unlink failure is non-fatal */ }
+    }
+  } catch { /* cleanup failure is non-fatal */ }
 }
 
 export function logEvent(entry: EventEntry): void {
@@ -172,21 +209,29 @@ export function getSessionSummary(sessionId?: string): SessionSummary {
   }
 }
 
-export function clearLog(): void {
-  buffer = []
-  pending = []
-  if (flushTimer) {
+export function clearLog(sessionId?: string): void {
+  if (sessionId) {
+    buffer = buffer.filter((e) => e.sessionId !== sessionId)
+  } else {
+    buffer = []
+  }
+  pending = sessionId ? pending.filter((e) => e.sessionId !== sessionId) : []
+  if (!sessionId && flushTimer) {
     clearTimeout(flushTimer)
     flushTimer = null
   }
   try {
-    const { unlinkSync } = require("node:fs")
-    if (existsSync(logPath)) unlinkSync(logPath)
-  } catch {
-    // deletion failure is non-fatal
-  }
+    if (sessionId) {
+      const filePath = getLogPathForSession(sessionId)
+      if (existsSync(filePath)) unlinkSync(filePath)
+    } else {
+      if (!existsSync(logDir)) return
+      const files = readdirSync(logDir).filter((f) => f.startsWith("session-log") && f.endsWith(".jsonl"))
+      for (const file of files) unlinkSync(join(logDir, file))
+    }
+  } catch { /* deletion failure is non-fatal */ }
 }
 
-export function getLogPath(): string {
-  return logPath
+export function getLogPath(sessionId?: string): string {
+  return getLogPathForSession(sessionId)
 }

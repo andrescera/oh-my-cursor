@@ -18,7 +18,6 @@ beforeAll(async () => {
 })
 
 afterAll(() => {
-  process.exit(0)
 })
 
 describe("mcp-sidecar", () => {

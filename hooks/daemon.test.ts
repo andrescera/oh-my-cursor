@@ -4,7 +4,7 @@ import { join } from "node:path"
 import { tmpdir } from "node:os"
 import type { Server } from "bun"
 
-const PORT = 47899
+const PORT = 47900
 let server: ReturnType<typeof import("bun")["serve"]> | null = null
 const BASE = `http://localhost:${PORT}`
 
@@ -35,7 +35,6 @@ afterAll(() => {
   try { unlinkSync(AGENTS_TEST_FILE) } catch {}
   try { unlinkSync(AGENTS_MD_PATH) } catch {}
   try { rmdirSync(AGENTS_TEST_DIR) } catch {}
-  process.exit(0)
 })
 
 describe("hook daemon", () => {

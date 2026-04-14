@@ -2,7 +2,7 @@ import { describe, test, expect, beforeAll, afterAll } from "bun:test"
 import type { Subprocess } from "bun"
 import { writeFileSync, unlinkSync } from "node:fs"
 
-const PORT = 47899
+const PORT = 47901
 const BASE = `http://localhost:${PORT}`
 const SESSION_ID = "integration-test-session"
 const GUARD_TEST_FILE = "/tmp/oh-my-cursor-guard-test.txt"

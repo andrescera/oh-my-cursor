@@ -1,5 +1,6 @@
 import { readFileSync, existsSync } from "node:fs"
 import type { HandlerMap, RecentToolTrailEntry, SessionState } from "../types"
+import type { BackgroundTracker } from "./background-tracker"
 import { getOrCreateSession, resolveConversationId } from "../shared"
 import { loadConfig } from "../config"
 import { createContextWindowMonitor } from "./context-window-monitor"
@@ -13,6 +14,8 @@ const WORKER_TYPES = new Set([
   "sisyphus", "sisyphus-junior", "hephaestus",
   "atlas", "oracle", "prometheus", "metis", "momus",
 ])
+
+const PLAN_MODE_ALLOWED_AGENTS = new Set(["explore", "metis", "momus", "librarian"])
 
 const RECENT_TOOL_TRAIL_MAX = 15
 const SKILL_REMINDER_INTERVAL = 20
@@ -95,6 +98,7 @@ export function cleanupToolGuardSession(convId: string): void {
 
 export function createToolGuardHandlers(
   _sessions: Map<string, SessionState>,
+  tracker: BackgroundTracker,
 ): HandlerMap {
   const config = loadConfig()
   const contextWindowMonitor = createContextWindowMonitor(sessionTokens)
@@ -141,6 +145,36 @@ export function createToolGuardHandlers(
         const agentType = (toolInput.subagent_type as string) || (toolInput.agent_type as string) || ""
         if (agentType) {
           const normalized = agentType.toLowerCase().replace("generalpurpose", "general-purpose")
+          const mode = session.composerMode
+
+          if (mode === "ask") {
+            const reason = "[mode-guard] Task dispatches are not allowed in Ask mode."
+            return {
+              permission: "deny",
+              userMessage: reason,
+              agentMessage: reason,
+              hookSpecificOutput: {
+                hookEventName: "PreToolUse",
+                permissionDecision: "deny",
+                permissionDecisionReason: reason,
+              },
+            }
+          }
+
+          if (mode === "plan" && !PLAN_MODE_ALLOWED_AGENTS.has(normalized)) {
+            const reason = `[mode-guard] Agent type '${normalized}' is not allowed in Plan mode. Only explore, metis, momus, and librarian are allowed.`
+            return {
+              permission: "deny",
+              userMessage: reason,
+              agentMessage: reason,
+              hookSpecificOutput: {
+                hookEventName: "PreToolUse",
+                permissionDecision: "deny",
+                permissionDecisionReason: reason,
+              },
+            }
+          }
+
           const agentKey = `subagent:${normalized}`
           session.dispatchCounts[agentKey] = (session.dispatchCounts[agentKey] || 0) + 1
           console.log(`[oh-my-cursor] Dispatch tracked via preToolUse: ${agentKey} (${session.dispatchCounts[agentKey]})`)
@@ -154,25 +188,29 @@ export function createToolGuardHandlers(
             }
           }
 
-          const count = session.dispatchCounts[agentKey]
           const limit =
             normalized === "explore"
               ? config.subagent_limits.explore
               : WORKER_TYPES.has(normalized)
                 ? config.subagent_limits.worker
                 : 0
-          if (limit > 0 && count > limit) {
-            const label = normalized === "explore" ? "Explore" : "Worker"
-            const reason = `[dispatch-limit] ${label} dispatch limit reached (${count}/${limit}). Consider consolidating ${normalized === "explore" ? "searches" : "tasks"}.`
-            return {
-              permission: "deny",
-              userMessage: reason,
-              agentMessage: reason,
-              hookSpecificOutput: {
-                hookEventName: "PreToolUse",
-                permissionDecision: "deny",
-                permissionDecisionReason: reason,
-              },
+          if (limit > 0) {
+            const activeCount = tracker
+              .getActiveTasksForSession(convId)
+              .filter((t) => t.agentType === normalized).length
+            if (activeCount >= limit) {
+              const label = normalized === "explore" ? "Explore" : "Worker"
+              const reason = `[dispatch-limit] ${label} concurrent limit reached (${activeCount}/${limit}). Consider consolidating ${normalized === "explore" ? "searches" : "tasks"}.`
+              return {
+                permission: "deny",
+                userMessage: reason,
+                agentMessage: reason,
+                hookSpecificOutput: {
+                  hookEventName: "PreToolUse",
+                  permissionDecision: "deny",
+                  permissionDecisionReason: reason,
+                },
+              }
             }
           }
         }

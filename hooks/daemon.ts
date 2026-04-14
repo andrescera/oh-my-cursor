@@ -132,7 +132,7 @@ const startTime = Date.now()
 
 const handlers: HandlerMap = {
   ...createSessionHandlers(sessions, DEFAULT_PORT),
-  ...createToolGuardHandlers(sessions),
+  ...createToolGuardHandlers(sessions, tracker),
   ...createContinuationHandlers(sessions),
   ...createSafetyHandlers(),
   ...createSubagentHandlers(sessions, tracker),

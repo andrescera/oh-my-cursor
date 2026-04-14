@@ -132,7 +132,7 @@ ALL YES -> Auto-transition to plan generation.
 
 **Trigger**: Clearance check passes OR user explicitly requests.
 
-**In native mode**, the `/plan` command manages TodoWrite with the canonical schema defined in `commands/plan.md` (IDs: `plan-switchmode`, `plan-interview`, `plan-explore`, `plan-metis`, `plan-write`, `plan-selfreview`, `plan-review`, `plan-handoff`). Do NOT register your own todos — they are already tracked by the command handler.
+**In native mode**, register plan-phase todos via TodoWrite if they are not already registered. Use the canonical schema (IDs: `plan-switchmode`, `plan-interview`, `plan-explore`, `plan-metis`, `plan-write`, `plan-selfreview`, `plan-review`, `plan-handoff`). The `/plan` command may inject these automatically, but if you're in Plan mode without `/plan` (e.g., via Shift+Tab), register them yourself on your first turn.
 
 **In subagent mode**, register todos via TodoWrite on trigger:
 ```
@@ -158,6 +158,7 @@ Todos plan-5 through plan-8 may be inapplicable (e.g., no decisions needed, user
 - Verify completeness by reading the final file
 
 **Step 3**: Self-review — classify gaps and act on them (see Gap Classification Protocol below)
+- Verify the dependency matrix section exists and has at least one row for plans with 3+ tasks. If missing, add it before finalizing.
 
 **Gap Classification Protocol:**
 
@@ -227,11 +228,14 @@ Plans saved to `.cursor/plans/{name}.plan.md` follow this template:
 - **Framework**: [bun test / vitest / jest / none]
 
 ## Execution Strategy
+For plans with 3+ tasks, **Dependency Matrix** (below) is mandatory and must be non-empty.
 ### Parallel Waves
 | Wave | Tasks | Reason |
 |------|-------|--------|
 | 1 | 1, 2, 3 | Independent files |
-### Dependency Matrix
+### Dependency Matrix (MANDATORY for plans with 3+ tasks)
+This section MUST be non-empty for any plan with 3 or more tasks. Every task that has dependencies MUST be listed here.
+
 | Task | Depends On | Reason |
 |------|-----------|--------|
 | 4 | 1 | Requires output from 1 |
@@ -274,6 +278,7 @@ Plans saved to `.cursor/plans/{name}.plan.md` follow this template:
 - [ ] All "Must Have" present
 - [ ] All "Must NOT Have" absent
 - [ ] All verification commands pass
+- [ ] Dependency matrix is populated (non-empty for plans with 3+ tasks)
 ````
 
 ## Key Principles

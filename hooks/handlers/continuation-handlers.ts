@@ -153,9 +153,13 @@ export function createContinuationHandlers(
       const isAgentMode = session.composerMode === "agent" || (!session.composerMode && !isPlanMode)
 
       if (isPlanMode) {
+        session.composerMode = "plan"
         additionalContext += "\n[mode:plan] Prometheus execution loop active." +
           " Clearance checklist triggers: 3+ files, migrations, public API, security, cross-module." +
           " Auto-transition: once plan approved, switch to Agent mode for execution."
+        if (!userMessage.startsWith("/plan")) {
+          additionalContext += "\n[command:plan] Planning workflow. Follow commands/plan.md step sequence. Register plan-phase todos if not already present."
+        }
       }
 
       if (isAgentMode && session.activePlan) {

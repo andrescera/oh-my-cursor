@@ -311,7 +311,7 @@ describe("createContinuationHandlers", () => {
 
     it("detects plan mode from /plan keyword and adds Prometheus context", () => {
       const result = handlers["/beforeSubmitPrompt"]({
-        prompt: "Use /plan for this",
+        prompt: "/plan add auth",
         conversation_id: convId,
       }) as { additional_context?: string }
 
@@ -486,6 +486,40 @@ describe("createContinuationHandlers", () => {
       expect(result.additional_context).toContain("[start-work:resume]")
       expect(result.additional_context).toContain("t1, t2")
       expect(result.additional_context).toContain("Wave 2")
+    })
+
+    it("updates composerMode from plan to agent when inputMode changes", () => {
+      const session = getOrCreateSession(convId)
+      session.composerMode = "plan"
+
+      const result = handlers["/beforeSubmitPrompt"]({
+        prompt: "continue working",
+        mode: "agent",
+        conversation_id: convId,
+      }) as { additional_context?: string }
+
+      expect(session.composerMode).toBe("agent")
+      expect(result.additional_context).not.toContain("[mode:plan]")
+    })
+
+    it("does not re-trigger plan mode from /plan substring in injected context", () => {
+      const result = handlers["/beforeSubmitPrompt"]({
+        prompt: "working on the explain/planning feature",
+        conversation_id: convId,
+      }) as { additional_context?: string }
+
+      expect(result.additional_context).not.toContain("[mode:plan]")
+    })
+
+    it("detects plan mode only when message starts with /plan", () => {
+      const result = handlers["/beforeSubmitPrompt"]({
+        prompt: "/plan add auth",
+        conversation_id: convId,
+      }) as { additional_context?: string }
+
+      const session = getOrCreateSession(convId)
+      expect(session.composerMode).toBe("plan")
+      expect(result.additional_context).toContain("[mode:plan]")
     })
   })
 })

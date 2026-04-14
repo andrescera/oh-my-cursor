@@ -205,16 +205,17 @@ export function createContinuationHandlers(
       const lowerMsg = userMessage.toLowerCase()
 
       const inputMode = (input.mode as string) || (input.composer_mode as string) || (input.composerMode as string) || ""
-      const isPlanMode = lowerMsg.includes("/plan") || session.composerMode === "plan" || inputMode === "plan"
+      const isPlanMode = lowerMsg.trimStart().startsWith("/plan") || inputMode === "plan"
       const isAgentMode =
         inputMode === "agent" || session.composerMode === "agent" || (!session.composerMode && !inputMode && !isPlanMode)
 
-      if (inputMode && !session.composerMode) {
+      if (isPlanMode) {
+        session.composerMode = "plan"
+      } else if (inputMode) {
         session.composerMode = inputMode
       }
 
-      if (isPlanMode) {
-        session.composerMode = "plan"
+      if (session.composerMode === "plan") {
         additionalContext += "\n[mode:plan] Prometheus planning mode active." +
           " Use /plan command to start the structured planning workflow."
       }

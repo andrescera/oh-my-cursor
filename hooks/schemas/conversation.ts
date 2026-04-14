@@ -66,6 +66,8 @@ export const ConversationStateSchema = z.object({
   todoStates: z.record(z.string(), z.enum(["pending", "in_progress", "completed", "cancelled"])),
   continuationCooldownUntil: z.number().nullable(),
   consecutiveContinuationFailures: z.number(),
+  toolCallCountAtLastStop: z.number(),
+  consecutiveZeroDeltas: z.number(),
   lastTodoSnapshot: z.string(),
   momusIterations: z.number(),
   composerMode: z.string().nullable(),

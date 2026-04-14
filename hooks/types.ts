@@ -51,6 +51,8 @@ export type ConversationState = {
   todoStates: Map<string, "pending" | "in_progress" | "completed" | "cancelled">
   continuationCooldownUntil: number | null
   consecutiveContinuationFailures: number
+  toolCallCountAtLastStop: number
+  consecutiveZeroDeltas: number
   lastTodoSnapshot: string
   momusIterations: number
   composerMode: string | null

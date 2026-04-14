@@ -44,7 +44,7 @@ export class StatePersistence {
       const conversations = new Map<string, ConversationState>()
       for (const entry of data) {
         // Provide defaults for nullable fields added after initial persistence (backward compat)
-        const result = ConversationStateSchema.safeParse({ abortDetectedAt: null, delegateRetryState: {}, ...entry })
+        const result = ConversationStateSchema.safeParse({ abortDetectedAt: null, delegateRetryState: {}, toolCallCountAtLastStop: 0, consecutiveZeroDeltas: 0, ...entry })
         if (result.success) {
           const validated = result.data
           conversations.set(validated.id, {

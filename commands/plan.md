@@ -17,7 +17,7 @@ Then call `SwitchMode(plan)` if not already in Plan mode. Mark `plan-switchmode`
 
 Now execute the Prometheus planning workflow. Auto-continue between steps -- never ask "should I continue?"
 
-1. **Interview** -- Mark `plan-interview` in_progress. Ask 1-3 scoping questions via AskQuestion. For multi-turn interviews, record decisions to `.cursor/drafts/{name}.md` -- update after EVERY meaningful user response. Mark completed when clearance checklist passes (see `orchestrator-reference.mdc`). Proceed immediately.
+1. **Interview** -- Mark `plan-interview` in_progress. Ask 1-3 scoping questions via AskQuestion. Record decisions to `.cursor/drafts/{name}.md` immediately -- create the draft file on your first interview turn and update after EVERY meaningful user response. The draft is your working memory beyond the context window. Mark completed when clearance checklist passes (see `orchestrator-reference.mdc`). Proceed immediately.
 
 2. **Explore** -- Mark `plan-explore` in_progress. Dispatch `Task(subagent_type="explore")` based on intent classification (see `orchestrator-reference.mdc`). Mark completed. Proceed immediately.
 

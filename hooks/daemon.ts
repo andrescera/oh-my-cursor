@@ -1,5 +1,5 @@
 import { serve, type Server } from "bun"
-import { readFileSync, writeFileSync, unlinkSync, existsSync } from "node:fs"
+import { readFileSync, writeFileSync, renameSync, unlinkSync, existsSync } from "node:fs"
 import { homedir } from "node:os"
 import { join } from "node:path"
 import { STATUS_HTML } from "./mcp-app"
@@ -17,7 +17,8 @@ import { BackgroundTracker, createBackgroundTasksHandler } from "./handlers/back
 import { WisdomTracker } from "./handlers/wisdom-tracker"
 import { StatePersistence } from "./state-persistence"
 import { createHeartbeatHandler, startHeartbeatWriter, HEARTBEAT_FILE } from "./handlers/heartbeat"
-import { loadConfig } from "./config"
+import { loadConfig, resetConfigCache } from "./config"
+import { OhMyCursorConfigSchema } from "./schemas/config"
 import { cleanupStaleProcess } from "./process-guard"
 import { writePortCoordination } from "./port-manager"
 import type { HandlerMap } from "./types"
@@ -236,6 +237,38 @@ const fetchHandler = async (req: Request) => {
     })
   }
 
+  if (path === "/config" && req.method === "POST") {
+    try {
+      const body = await req.json()
+      const result = OhMyCursorConfigSchema.safeParse(body)
+      if (!result.success) {
+        return new Response(JSON.stringify({ error: "Validation failed", issues: result.error.issues }), {
+          status: 400,
+          headers: { "Content-Type": "application/json" },
+        })
+      }
+      const configPath = join(process.cwd(), ".cursor", "oh-my-cursor.jsonc")
+      const tmpPath = configPath + ".tmp"
+      writeFileSync(tmpPath, JSON.stringify(result.data, null, 2), "utf-8")
+      renameSync(tmpPath, configPath)
+      resetConfigCache()
+      return new Response(JSON.stringify({ status: "saved", path: configPath }), {
+        headers: { "Content-Type": "application/json" },
+      })
+    } catch (err) {
+      return new Response(JSON.stringify({ error: err instanceof Error ? err.message : String(err) }), {
+        status: 500,
+        headers: { "Content-Type": "application/json" },
+      })
+    }
+  }
+
+  if (path === "/config/full") {
+    return new Response(JSON.stringify(loadConfig()), {
+      headers: { "Content-Type": "application/json" },
+    })
+  }
+
   if (path === "/config") {
     return new Response(JSON.stringify(getHookConfig()), {
       headers: { "Content-Type": "application/json" },
@@ -344,6 +377,23 @@ const fetchHandler = async (req: Request) => {
         "Connection": "keep-alive",
         "Access-Control-Allow-Origin": "*",
       },
+    })
+  }
+
+  if (path === "/sessions" && req.method === "GET") {
+    const list = Array.from(sessions.entries()).map(([id, s]) => ({
+      id,
+      startedAt: s.startedAt,
+      toolCallCount: s.toolCallCount,
+      dispatchCounts: { ...s.dispatchCounts },
+      errorCount: s.errorCount,
+      composerMode: s.composerMode,
+      ralphState: s.ralphState,
+      stoppedAt: s.stoppedAt,
+      recentToolTrail: s.recentToolTrail,
+    }))
+    return new Response(JSON.stringify(list), {
+      headers: { "Content-Type": "application/json" },
     })
   }
 

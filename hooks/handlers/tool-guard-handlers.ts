@@ -1,4 +1,5 @@
 import { readFileSync, existsSync } from "node:fs"
+import { resolve } from "node:path"
 import type { HandlerMap, RecentToolTrailEntry, SessionState } from "../types"
 import type { BackgroundTracker } from "./background-tracker"
 import { getOrCreateSession, resolveConversationId } from "../shared"
@@ -115,7 +116,8 @@ export function createToolGuardHandlers(
 
       if (["write", "Write", "str_replace", "StrReplace", "edit", "Edit", "apply_patch", "ApplyPatch"].includes(toolName)) {
         const isEditOperation = Boolean(toolInput.old_string)
-        const filePath = (toolInput.file_path || toolInput.path) as string
+        const rawWritePath = (toolInput.file_path || toolInput.path) as string
+        const filePath = rawWritePath ? resolve(rawWritePath) : ""
         if (!isEditOperation && filePath && !filePath.includes(".sisyphus") && !filePath.includes("node_modules") && !filePath.includes(".cursor/")) {
           if (existsSync(filePath) && !session.readPaths.has(filePath)) {
             const reason = "File exists but was not read first: " + filePath + ". Use Read tool first."
@@ -378,7 +380,7 @@ export function createToolGuardHandlers(
       }
 
       if (["read", "Read"].includes(toolName) && readFilePath) {
-        session.readPaths.add(readFilePath)
+        session.readPaths.add(resolve(readFilePath))
       }
 
       const cw = contextWindowMonitor({ sessionId: convId, content: output })

@@ -62,7 +62,7 @@ export function createContinuationHandlers(
       }
 
       const agentType = (input.agent_type as string) || (input.agentType as string) || ""
-      if (SKIP_AGENTS.has(agentType) || session.composerMode === "plan") {
+      if (SKIP_AGENTS.has(agentType)) {
         return {}
       }
 
@@ -154,6 +154,20 @@ export function createContinuationHandlers(
           message = "Continue to the next plan phase" +
             (session.activePlan.phase ? ": " + session.activePlan.phase : "") +
             ". Complete remaining todos before moving on."
+        }
+        if (session.composerMode === "plan") {
+          const phases = [
+            "plan-switchmode", "plan-interview", "plan-explore", "plan-metis",
+            "plan-write", "plan-selfreview", "plan-review", "plan-handoff",
+          ]
+          const nextPhase = phases.find(p => {
+            const s = session.todoStates.get(p)
+            return s === "pending" || s === "in_progress"
+          })
+          message = "Continue the Prometheus planning workflow. " +
+            (nextPhase ? "Next phase: " + nextPhase + ". " : "") +
+            "Auto-continue between steps -- do not ask 'should I continue?'. " +
+            "Follow commands/plan.md step sequence. Complete all remaining todos."
         }
         if (session.consecutiveContinuationFailures > 0) {
           message += " (stagnation detected: attempt " + (session.consecutiveContinuationFailures + 1) + "/" + MAX_CONSECUTIVE_FAILURES + ")"

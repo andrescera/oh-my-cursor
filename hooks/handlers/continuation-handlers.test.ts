@@ -231,6 +231,51 @@ describe("createContinuationHandlers", () => {
       })
     })
 
+    describe("plan mode continuation", () => {
+      it("triggers continuation when composerMode is plan and todos are incomplete", () => {
+        const session = getOrCreateSession(convId)
+        session.composerMode = "plan"
+        session.todoStates.set("plan-write", "completed")
+        session.todoStates.set("plan-selfreview", "pending")
+        session.todoStates.set("plan-review", "pending")
+
+        const result = handlers["/stop"](baseStopInput(convId)) as {
+          followup_message?: string
+          decision?: string
+        }
+
+        expect(result.followup_message).toContain("Continue the Prometheus planning workflow")
+        expect(result.decision).toBe("block")
+      })
+
+      it("continuation message references correct next phase from todoStates", () => {
+        const session = getOrCreateSession(convId)
+        session.composerMode = "plan"
+        session.todoStates.set("plan-switchmode", "completed")
+        session.todoStates.set("plan-interview", "completed")
+        session.todoStates.set("plan-explore", "completed")
+        session.todoStates.set("plan-metis", "completed")
+        session.todoStates.set("plan-write", "completed")
+        session.todoStates.set("plan-selfreview", "pending")
+
+        const result = handlers["/stop"](baseStopInput(convId)) as {
+          followup_message?: string
+        }
+
+        expect(result.followup_message).toContain("plan-selfreview")
+      })
+
+      it("SKIP_AGENTS still blocks agent type plan regardless of composerMode", () => {
+        const session = getOrCreateSession(convId)
+        session.composerMode = "plan"
+        session.todoStates.set("plan-write", "pending")
+
+        const result = handlers["/stop"](baseStopInput(convId, { agent_type: "plan" }))
+
+        expect(result).toEqual({})
+      })
+    })
+
     describe("early exits", () => {
       it("returns empty when stop_hook_active is true", () => {
         const session = getOrCreateSession(convId)

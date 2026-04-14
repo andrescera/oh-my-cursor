@@ -46,7 +46,8 @@ Read the **orchestration.mode** value from the session's `additional_context` (i
 The root thread adopts **Atlas coordination personality** and executes the plan directly, retaining full conversation context. Root becomes a pure dispatcher — it does NOT implement anything itself.
 
 1. **Read** the full plan file.
-2. **Task breakdown** — Decompose every plan task into granular sub-steps and register **ALL** of them as todos via **TodoWrite** **before** starting any implementation or dispatch work. Do not begin waves or **Task** dispatches until every sub-step is registered.
+2. **Task breakdown (MANDATORY)** — Decompose every plan task into granular, implementation-level sub-steps and register **ALL** of them as todos via **TodoWrite** **before** starting any implementation or dispatch work. Do not begin waves or **Task** dispatches until every sub-step is registered. Each sub-step should be specific enough that it touches a clear set of files/functions (e.g. "add validateToken() to src/auth/middleware.ts" not "implement auth").
+2.5. **Notepad setup** — Create `.cursor/notepads/{plan-name}/` with `learnings.md`, `decisions.md`, `issues.md` before starting Wave 1. These files accumulate wisdom across delegations.
 3. Decompose tasks into parallel waves based on the plan's dependency matrix. Tasks within a wave have no interdependencies and run concurrently.
 4. For each wave, dispatch workers in parallel via **Task**:
    - `subagent_type="sisyphus-junior"` for single-file, bounded tasks
@@ -57,6 +58,7 @@ The root thread adopts **Atlas coordination personality** and executes the plan 
    - **Read** changed files to confirm correctness
    - Cross-reference what the worker claimed vs actual file contents
 6. Mark verified tasks as completed in **TodoWrite**. Persist progress in **`active-plan.json`** ( **`currentWave`**, **`completedTasks`** ).
+6.5. **Wave commit (mandatory)** — After each wave passes verification, commit with a wave-descriptive message (e.g. `feat(wave-2): implement API handlers`) before starting the next wave. Do not begin the next wave until that commit is done.
 7. **Auto-continue** — dispatch the next wave immediately. Never ask "should I continue?" — only stop when blocked by genuine ambiguity requiring user input.
 8. Run the **Final Verification Wave** from the plan (if present).
 
@@ -73,6 +75,8 @@ Atlas will:
 - Never ask "should I continue?" between plan steps. Only stop when blocked by ambiguity.
 
 Keep atlas's **CONTEXT** section rich: full plan text, selected file paths, and dependency order from the plan.
+
+Atlas will also create `.cursor/notepads/{plan-name}/` with `learnings.md`, `decisions.md`, `issues.md` to accumulate wisdom across delegations, and commit after each verified wave.
 
 ---
 

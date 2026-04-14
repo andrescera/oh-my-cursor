@@ -25,6 +25,25 @@ export class BackgroundTracker {
     this.tasks.delete(agentId)
   }
 
+  completeOldestByType(conversationId: string, agentType: string): boolean {
+    const normalizedType = agentType.toLowerCase()
+    let oldestKey: string | null = null
+    let oldestTime = Infinity
+    for (const [agentId, task] of this.tasks) {
+      if (task.conversationId === conversationId && task.agentType.toLowerCase() === normalizedType) {
+        if (task.startTime < oldestTime) {
+          oldestTime = task.startTime
+          oldestKey = agentId
+        }
+      }
+    }
+    if (oldestKey !== null) {
+      this.tasks.delete(oldestKey)
+      return true
+    }
+    return false
+  }
+
   getActiveTasks(): ActiveTask[] {
     const now = Date.now()
     return Array.from(this.tasks.entries()).map(([agentId, task]) => ({

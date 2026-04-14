@@ -21,7 +21,7 @@ export function createSubagentHandlers(
   return {
     "/subagentStart": (input) => {
       const entryMs = Date.now()
-      const agentType = (input.agent_type as string) || (input.subagent_type as string) || "unknown"
+      const agentType = ((input.agent_type as string) || (input.subagent_type as string) || "unknown").toLowerCase()
       const agentId = (input.agent_id as string) || agentType + "-" + Date.now()
       const description = (input.description as string) || ""
       const convId = resolveConversationId(input)
@@ -73,15 +73,21 @@ export function createSubagentHandlers(
     "/subagentStop": (input) => {
       const entryMs = Date.now()
       const agentId = (input.agent_id as string) || ""
+      const convId = resolveConversationId(input)
+
       if (agentId) {
         tracker.complete(agentId)
+      } else {
+        const stopType = ((input.agent_type as string) || (input.subagent_type as string) || "").toLowerCase()
+        if (stopType) {
+          tracker.completeOldestByType(convId, stopType)
+        }
       }
 
       const subagentType = (input.agent_type as string) || (input.subagent_type as string) || ""
       const status = (input.status as string) || ""
       const stopHookActive = Boolean(input.stop_hook_active)
       const loopCount = (input.loop_count as number) || 0
-      const convId = resolveConversationId(input)
       const session = getOrCreateSession(convId)
 
       const summary = (input.summary as string) || ""

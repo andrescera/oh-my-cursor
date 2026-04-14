@@ -158,6 +158,48 @@ describe("createBackgroundTasksHandler", () => {
   })
 })
 
+describe("#completeOldestByType", () => {
+  let tracker: BackgroundTracker
+
+  beforeEach(() => {
+    tracker = new BackgroundTracker()
+  })
+
+  it("removes oldest matching task (FIFO by startTime)", async () => {
+    tracker.track("agent-a", "explore", "First", "conv-1")
+    await new Promise(r => setTimeout(r, 5))
+    tracker.track("agent-b", "explore", "Second", "conv-1")
+    await new Promise(r => setTimeout(r, 5))
+    tracker.track("agent-c", "explore", "Third", "conv-1")
+
+    const removed = tracker.completeOldestByType("conv-1", "explore")
+
+    expect(removed).toBe(true)
+    const remaining = tracker.getActiveTasks()
+    expect(remaining).toHaveLength(2)
+    expect(remaining.find(t => t.agentId === "agent-a")).toBeUndefined()
+    expect(remaining.find(t => t.agentId === "agent-b")).toBeDefined()
+    expect(remaining.find(t => t.agentId === "agent-c")).toBeDefined()
+  })
+
+  it("returns false when no matching conv/type exists", () => {
+    tracker.track("agent-a", "explore", "Task", "conv-1")
+
+    expect(tracker.completeOldestByType("conv-999", "explore")).toBe(false)
+    expect(tracker.completeOldestByType("conv-1", "librarian")).toBe(false)
+    expect(tracker.getActiveTasks()).toHaveLength(1)
+  })
+
+  it("is case-insensitive on agentType", () => {
+    tracker.track("agent-a", "explore", "Task", "conv-1")
+
+    const removed = tracker.completeOldestByType("conv-1", "Explore")
+
+    expect(removed).toBe(true)
+    expect(tracker.getActiveTasks()).toHaveLength(0)
+  })
+})
+
 describe("#when filtering by session", () => {
   let tracker: BackgroundTracker
 

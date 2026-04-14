@@ -176,11 +176,8 @@ export function createToolGuardHandlers(
           }
 
           const agentKey = `subagent:${normalized}`
-          session.dispatchCounts[agentKey] = (session.dispatchCounts[agentKey] || 0) + 1
-          console.log(`[oh-my-cursor] Dispatch tracked via preToolUse: ${agentKey} (${session.dispatchCounts[agentKey]})`)
 
           if (normalized === "momus") {
-            session.momusIterations++
             if (session.momusIterations >= 3) {
               return {
                 additional_context: "[momus-loop] Momus iteration limit (3) reached. Ask the user whether to continue reviewing or accept the current plan.",
@@ -212,6 +209,12 @@ export function createToolGuardHandlers(
                 },
               }
             }
+          }
+
+          session.dispatchCounts[agentKey] = (session.dispatchCounts[agentKey] || 0) + 1
+          console.log(`[oh-my-cursor] Dispatch tracked via preToolUse: ${agentKey} (${session.dispatchCounts[agentKey]})`)
+          if (normalized === "momus") {
+            session.momusIterations++
           }
         }
       }

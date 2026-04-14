@@ -201,23 +201,8 @@ export function createContinuationHandlers(
 
       if (isPlanMode) {
         session.composerMode = "plan"
-        if (!userMessage.startsWith("/plan")) {
-          additionalContext +=
-            "\n[mode:plan] You are Prometheus. FIRST ACTION: Register plan-phase todos via TodoWrite before doing anything else." +
-            " TodoWrite([{id:'plan-interview',content:'Interview: scope the request',status:'in_progress'}," +
-            "{id:'plan-explore',content:'Explore: dispatch Task(explore)',status:'pending'}," +
-            "{id:'plan-metis',content:'Gap analysis: dispatch Task(metis)',status:'pending'}," +
-            "{id:'plan-write',content:'Write plan to .cursor/plans/',status:'pending'}," +
-            "{id:'plan-selfreview',content:'Self-review',status:'pending'}," +
-            "{id:'plan-review',content:'Review: offer optional Momus audit',status:'pending'}," +
-            "{id:'plan-handoff',content:'Hand off to user',status:'pending'}])" +
-            " Then: Interview (AskQuestion 1-3 scoping questions) → Explore → Gap analysis (Task metis) → Draft plan → Self-review → Optional Momus → Handoff." +
-            " Auto-continue between steps. See orchestrator-reference.mdc for detailed instructions."
-        } else {
-          additionalContext +=
-            "\n[mode:plan] Prometheus execution loop active." +
-            " Auto-continue between steps. See orchestrator-reference.mdc for details."
-        }
+        additionalContext += "\n[mode:plan] Prometheus planning mode active." +
+          " Use /plan command to start the structured planning workflow."
       }
 
       if (isAgentMode && session.activePlan) {

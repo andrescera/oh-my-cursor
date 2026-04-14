@@ -271,7 +271,7 @@ describe("createContinuationHandlers", () => {
       }) as { additional_context?: string }
 
       expect(result.additional_context).toContain("[mode:plan]")
-      expect(result.additional_context).toContain("Prometheus")
+      expect(result.additional_context).toContain("Prometheus planning mode active")
     })
 
     it("detects plan mode from session composerMode", () => {

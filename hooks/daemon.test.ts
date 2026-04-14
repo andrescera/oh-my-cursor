@@ -377,19 +377,21 @@ describe("hook daemon", () => {
       })
     })
 
-    describe("#given context history contains TodoWrite entries", () => {
-      describe("#when stop is called with no active ralph loop", () => {
-        test("#then it blocks and requests todo completion via boulder state", async () => {
+    describe("#given activePlan set with tool activity", () => {
+      describe("#when stop is called after tool calls were made", () => {
+        test("#then it blocks and requests plan continuation", async () => {
           await post("/sessionStart", { session_id: "sess-boulder-stop" })
           await post("/postToolUse", {
-            tool_name: "TodoWrite",
+            tool_name: "Read",
             session_id: "sess-boulder-stop",
           })
+          const conv = (await import("./shared")).getOrCreateConversation("sess-boulder-stop")
+          conv.activePlan = { path: "/plans/test.md", phase: "wave-0", completedTasks: [] }
           const result = await post("/stop", {
             session_id: "sess-boulder-stop",
           })
           expect(result.decision).toBe("block")
-          expect(result.followup_message).toContain("incomplete todos")
+          expect(result.followup_message).toContain("Continue executing plan")
         })
       })
     })

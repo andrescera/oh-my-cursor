@@ -31,6 +31,8 @@ function minimalConversation(overrides: Record<string, unknown> = {}) {
     todoStates: {},
     continuationCooldownUntil: null,
     consecutiveContinuationFailures: 0,
+    toolCallCountAtLastStop: 0,
+    consecutiveZeroDeltas: 0,
     lastTodoSnapshot: "",
     momusIterations: 0,
     composerMode: null,

@@ -1003,8 +1003,8 @@ export function renderDashboardHTML(daemonPort: number): string {
       const arr = value || [];
       return html\`
         <\${FieldRow} label=\${label}>
-          <textarea value=\${arr.join('\n')} rows=\${Math.max(2, arr.length + 1)}
-            onInput=\${e => onChange(e.target.value.split('\n').map(s => s.trim()).filter(Boolean))}
+          <textarea value=\${arr.join('\\n')} rows=\${Math.max(2, arr.length + 1)}
+            onInput=\${e => onChange(e.target.value.split('\\n').map(s => s.trim()).filter(Boolean))}
             style=\${CFG_INPUT + ';width:100%;max-width:260px;resize:vertical;font-family:monospace'} />
         </\${FieldRow}>\`;
     }
@@ -1019,11 +1019,11 @@ export function renderDashboardHTML(daemonPort: number): string {
     }
 
     function kvText(obj) {
-      return Object.entries(obj || {}).map(([k, v]) => k + ': ' + v).join('\n');
+      return Object.entries(obj || {}).map(([k, v]) => k + ': ' + v).join('\\n');
     }
     function parseKV(text) {
       const out = {};
-      text.split('\n').forEach(line => {
+      text.split('\\n').forEach(line => {
         const i = line.indexOf(':');
         if (i > 0) out[line.slice(0, i).trim()] = line.slice(i + 1).trim();
       });

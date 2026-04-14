@@ -146,6 +146,10 @@ stop_daemon() {
     fi
   fi
 
+  # Kill supervisor wrapper (the nohup bash loop that auto-restarts the daemon)
+  pkill -f "oh-my-cursor.*daemon.ts" 2>/dev/null || true
+  sleep 0.5
+
   # Kill sidecar by port file
   local mcp_port
   mcp_port="$(cat /tmp/oh-my-cursor-sidecar.port 2>/dev/null || echo "$DEFAULT_MCP_PORT")"

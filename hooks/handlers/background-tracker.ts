@@ -85,7 +85,7 @@ export function createBackgroundTasksHandler(tracker: BackgroundTracker): Handle
     tracker.cleanup()
     const convId =
       (input.conversation_id as string) || (input.session_id as string) || ""
-    const tasks = convId ? tracker.getActiveTasksForConversation(convId) : tracker.getActiveTasks()
+    const tasks = convId ? tracker.getActiveTasksForConversation(convId) : []
     return { tasks, count: tasks.length }
   }
 }

@@ -1,4 +1,5 @@
 import type { ConversationState, HandlerMap } from "../types"
+import type { WisdomTracker } from "./wisdom-tracker"
 import { getOrCreateConversation, resolveConversationId } from "../shared"
 import { loadConfig } from "../config"
 import { contextCollector } from "../context-collector"
@@ -34,6 +35,7 @@ function buildCompactionTodoPreservation(conversation: ConversationState): strin
 export function createConversationHandlers(
   conversations: Map<string, ConversationState>,
   getPort: () => number,
+  wisdomTracker: WisdomTracker,
 ): HandlerMap {
   return {
     "/health": (input) => {
@@ -135,6 +137,7 @@ export function createConversationHandlers(
     "/sessionEnd": (input) => {
       const convId = resolveConversationId(input)
       contextCollector.clear(convId)
+      wisdomTracker.clearConversation(convId)
       cleanupSafetyConversation(convId)
       cleanupToolGuardConversation(convId)
       conversations.delete(convId)

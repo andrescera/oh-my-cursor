@@ -342,11 +342,9 @@ export function createContinuationHandlers(
         if (!conversation.activePlan) {
           const projectDir = conversation.env.OH_MY_CURSOR_PROJECT_DIR ?? process.env.OH_MY_CURSOR_PROJECT_DIR ?? process.cwd()
           const perConvFile = resolve(projectDir, `.cursor/state/active-plan-${convId}.json`)
-          const globalFile = resolve(projectDir, ".cursor/state/active-plan.json")
-          const stateFile = existsSync(perConvFile) ? perConvFile : globalFile
           try {
-            if (existsSync(stateFile)) {
-              const state = JSON.parse(Bun.file(stateFile).textSync())
+            if (existsSync(perConvFile)) {
+              const state = JSON.parse(Bun.file(perConvFile).textSync())
               if (state.path) {
                 conversation.activePlan = {
                   path: state.path,
@@ -354,28 +352,10 @@ export function createContinuationHandlers(
                   completedTasks: state.completedTasks || [],
                 }
               }
+            } else {
+              console.log(`[oh-my-cursor] No per-conversation plan state for ${convId}, falling through to discover`)
             }
           } catch { /* state file missing or corrupt, continue without */ }
-
-          if (!conversation.activePlan) {
-            try {
-              const plansDir = resolve(projectDir, ".cursor/plans")
-              if (existsSync(plansDir)) {
-                const { readdirSync, statSync } = require("node:fs")
-                const plans = readdirSync(plansDir)
-                  .filter((f: string) => f.endsWith(".plan.md"))
-                  .map((f: string) => ({ name: f, mtime: statSync(resolve(plansDir, f)).mtimeMs }))
-                  .sort((a: { mtime: number }, b: { mtime: number }) => b.mtime - a.mtime)
-                if (plans.length > 0) {
-                  conversation.activePlan = {
-                    path: resolve(plansDir, plans[0].name),
-                    phase: "wave-0",
-                    completedTasks: [],
-                  }
-                }
-              }
-            } catch { /* plans dir scan failed, continue without */ }
-          }
         }
 
         const ap = conversation.activePlan

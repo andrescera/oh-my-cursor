@@ -1158,7 +1158,7 @@ export function renderDashboardHTML(daemonPort: number): string {
           <div class="card">
             <div class="card-title">State Persistence</div>
             <\${BoolField} label="Enabled" value=\${d.state_persistence.enabled} onChange=\${upd('state_persistence','enabled')} />
-            <\${StrField} label="Path" value=\${d.state_persistence.path} onChange=\${upd('state_persistence','path')} />
+            <\${StrField} label="State Directory" value=\${d.state_persistence.path} onChange=\${upd('state_persistence','path')} />
           </div>
 
           <div class="card">

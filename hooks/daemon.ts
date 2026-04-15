@@ -4,7 +4,7 @@ import { join } from "node:path"
 import { STATUS_HTML } from "./mcp-app"
 import { logEvent, getEvents, getConversationSummary, getLogPath, clearLog, onEvent, offEvent } from "./event-logger"
 import type { EventEntry } from "./event-logger"
-import { conversations, parseInput, extractMeta } from "./shared"
+import { conversations, parseInput, extractMeta, setPersistence } from "./shared"
 import { isHookEnabled, getHookConfig, resetHookConfigCache } from "./hook-config"
 import { createConversationHandlers } from "./handlers/conversation-handlers"
 import { createToolGuardHandlers } from "./handlers/tool-guard-handlers"
@@ -13,7 +13,7 @@ import { createSafetyHandlers } from "./handlers/safety-handlers"
 import { createSubagentHandlers } from "./handlers/subagent-handlers"
 import { createConversationHistoryHandler } from "./handlers/conversation-history"
 import { BackgroundTracker, createBackgroundTasksHandler } from "./handlers/background-tracker"
-import { StatePersistence } from "./state-persistence"
+import { StatePersistence, type ConversationMetadata } from "./state-persistence"
 import { createHeartbeatHandler, startHeartbeatWriter, HEARTBEAT_FILE } from "./handlers/heartbeat"
 import { loadConfig, resetConfigCache } from "./config"
 import { OhMyCursorConfigSchema } from "./schemas/config"
@@ -24,17 +24,54 @@ import type { HandlerMap } from "./types"
 const config = loadConfig()
 const tracker = new BackgroundTracker()
 const persistence = new StatePersistence(config.state_persistence.path)
+setPersistence(persistence)
 
-const maxRestoreAgeMs = 4 * 60 * 60 * 1000
-const now = Date.now()
-for (const [id, meta] of persistence.loadIndex()) {
-  const ageMs = now - new Date(meta.startedAt).getTime()
-  if (ageMs > maxRestoreAgeMs) {
-    console.warn(`[oh-my-cursor] Skipping stale conversation ${id} (age: ${Math.round(ageMs / 60000)}min)`)
-    continue
+function mergedConversationIndex(): Map<string, ConversationMetadata> {
+  const index = persistence.loadIndex()
+  for (const [id, conv] of conversations) {
+    if (!index.has(id)) {
+      index.set(id, {
+        id,
+        startedAt: conv.startedAt,
+        composerMode: conv.composerMode,
+        toolCallCount: conv.toolCallCount,
+        errorCount: conv.errorCount,
+        stoppedAt: conv.stoppedAt,
+      })
+    }
   }
-  const state = persistence.loadOne(id)
-  if (state) conversations.set(id, state)
+  return index
+}
+
+function conversationRowsForStream(): Array<{
+  id: string
+  startedAt: string
+  toolCallCount: number
+  errorCount: number
+  composerMode: string | null
+  dispatchCounts?: Record<string, number>
+}> {
+  const index = mergedConversationIndex()
+  return Array.from(index.values()).map((meta) => {
+    const s = conversations.get(meta.id)
+    if (s) {
+      return {
+        id: meta.id,
+        startedAt: s.startedAt,
+        toolCallCount: s.toolCallCount,
+        errorCount: s.errorCount,
+        composerMode: s.composerMode,
+        dispatchCounts: s.dispatchCounts,
+      }
+    }
+    return {
+      id: meta.id,
+      startedAt: meta.startedAt,
+      toolCallCount: meta.toolCallCount,
+      errorCount: meta.errorCount,
+      composerMode: meta.composerMode,
+    }
+  })
 }
 
 try {
@@ -379,14 +416,7 @@ const fetchHandler = async (req: Request) => {
         }, 15_000)
         conversationSnapshotTimer = setInterval(() => {
           try {
-            const snapshot = Array.from(conversations.entries()).map(([id, s]) => ({
-              id,
-              startedAt: s.startedAt,
-              toolCallCount: s.toolCallCount,
-              errorCount: s.errorCount,
-              composerMode: s.composerMode,
-              dispatchCounts: s.dispatchCounts,
-            }))
+            const snapshot = conversationRowsForStream()
             controller.enqueue(encoder.encode(`event: conversation-snapshot\ndata: ${JSON.stringify(snapshot)}\n\n`))
           } catch {
             if (sendFn) offEvent(sendFn)
@@ -427,14 +457,7 @@ const fetchHandler = async (req: Request) => {
         controller.enqueue(encoder.encode(`retry: 3000\n: ok\n\n`))
         interval = setInterval(() => {
           try {
-            const conversationData = Array.from(conversations.entries()).map(([id, s]) => ({
-              id,
-              startedAt: s.startedAt,
-              toolCallCount: s.toolCallCount,
-              errorCount: s.errorCount,
-              composerMode: s.composerMode,
-              dispatchCounts: s.dispatchCounts,
-            }))
+            const conversationData = conversationRowsForStream()
             controller.enqueue(encoder.encode(`data: ${JSON.stringify(conversationData)}\n\n`))
           } catch {
             if (interval) clearInterval(interval)
@@ -459,17 +482,35 @@ const fetchHandler = async (req: Request) => {
   }
 
   if ((path === "/sessions" || path === "/conversations") && req.method === "GET") {
-    const list = Array.from(conversations.entries()).map(([id, s]) => ({
-      id,
-      startedAt: s.startedAt,
-      toolCallCount: s.toolCallCount,
-      dispatchCounts: { ...s.dispatchCounts },
-      errorCount: s.errorCount,
-      composerMode: s.composerMode,
-      ralphState: s.ralphState,
-      stoppedAt: s.stoppedAt,
-      recentToolTrail: s.recentToolTrail,
-    }))
+    const index = mergedConversationIndex()
+    const list = Array.from(index.keys()).map((id) => {
+      const s = conversations.get(id)
+      const meta = index.get(id)!
+      if (s) {
+        return {
+          id,
+          startedAt: s.startedAt,
+          toolCallCount: s.toolCallCount,
+          dispatchCounts: { ...s.dispatchCounts },
+          errorCount: s.errorCount,
+          composerMode: s.composerMode,
+          ralphState: s.ralphState,
+          stoppedAt: s.stoppedAt,
+          recentToolTrail: s.recentToolTrail,
+        }
+      }
+      return {
+        id: meta.id,
+        startedAt: meta.startedAt,
+        toolCallCount: meta.toolCallCount,
+        dispatchCounts: {},
+        errorCount: meta.errorCount,
+        composerMode: meta.composerMode,
+        ralphState: null,
+        stoppedAt: meta.stoppedAt,
+        recentToolTrail: [],
+      }
+    })
     return new Response(JSON.stringify(list), {
       headers: { "Content-Type": "application/json" },
     })
@@ -590,8 +631,8 @@ writePortCoordination({
   updatedAt: new Date().toISOString(),
 })
 heartbeatInterval = startHeartbeatWriter()
-persistenceInterval = setInterval(() => {
-  persistence.save(conversations)
+persistenceInterval = setInterval(async () => {
+  await persistence.save(conversations)
 }, 30_000)
 
 process.on("SIGTERM", () => gracefulShutdown("SIGTERM"))
@@ -606,6 +647,12 @@ process.on("unhandledRejection", (reason) => {
     action: "error",
     error: reason instanceof Error ? reason.message : String(reason),
   })
+})
+
+process.on("uncaughtException", (err) => {
+  console.error("[oh-my-cursor] Uncaught exception:", err.stack || err.message || String(err))
+  persistence.forceFlush(conversations)
+  process.exit(1)
 })
 
 console.log(`[oh-my-cursor] Hook daemon ready on http://localhost:${actualPort}`)

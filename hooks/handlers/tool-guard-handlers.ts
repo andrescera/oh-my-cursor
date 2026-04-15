@@ -16,7 +16,7 @@ const WORKER_TYPES = new Set([
   "atlas", "oracle", "prometheus", "metis", "momus",
 ])
 
-const PLAN_MODE_ALLOWED_AGENTS = new Set(["explore", "metis", "momus", "librarian"])
+const PLAN_MODE_ALLOWED_AGENTS = new Set(["explore", "metis", "momus", "librarian", "oracle"])
 
 const RECENT_TOOL_TRAIL_MAX = 15
 const SKILL_REMINDER_INTERVAL = 20
@@ -161,7 +161,7 @@ export function createToolGuardHandlers(
           }
 
           if (currentMode === "plan" && !PLAN_MODE_ALLOWED_AGENTS.has(normalized)) {
-            const reason = `[mode-guard] Agent type '${normalized}' is not allowed in Plan mode. Only explore, metis, momus, and librarian are allowed.`
+            const reason = `[mode-guard] Agent type '${normalized}' is not allowed in Plan mode. Only explore, metis, momus, librarian, and oracle are allowed.`
             return {
               permission: "deny",
               userMessage: reason,

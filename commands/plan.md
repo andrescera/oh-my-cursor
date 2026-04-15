@@ -114,7 +114,7 @@ If Momus: dispatch `Task(subagent_type="momus")` with ONLY the plan file path as
 
 9. **Handoff** -- Mark `plan-handoff` in_progress. Delete the draft file (`.cursor/drafts/{sessionId-short}-{name}.md`). Tell user: "Plan ready. Run `/start-work` or switch to Agent mode." Mark completed.
 
-**Agent type restriction:** Only `explore`, `metis`, `momus`, and `librarian` subagent types are allowed in plan mode. Any other type (including `generalPurpose`) will be denied by the tool guard.
+**Agent type restriction:** Only `explore`, `metis`, `momus`, `librarian`, and `oracle` subagent types are allowed in plan mode. Any other type (including `generalPurpose`) will be denied by the tool guard.
 
 For detailed clearance checklist, intent classification table, allowed/forbidden tools, and subagent fallback: see `orchestrator-reference.mdc` Plan Mode section.
 

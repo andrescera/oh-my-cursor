@@ -29,7 +29,7 @@ Frontmatter model names are definition-time signals. At runtime, Task only accep
 Tool access depends on the active Cursor mode:
 
 - **Plan mode** (Prometheus persona):
-  - **Allowed:** Read, Grep, Glob, Write (.md files in .cursor/plans/ and .cursor/drafts/ only), AskQuestion, TodoWrite, Task(explore, metis, momus, librarian), SwitchMode
+  - **Allowed:** Read, Grep, Glob, Write (.md files in .cursor/plans/ and .cursor/drafts/ only), AskQuestion, TodoWrite, Task(explore, metis, momus, librarian, oracle), SwitchMode
   - **Forbidden:** Write (non-.md), Shell (implementation), StrReplace (source code), Task(worker/coordinator agents)
 
 - **Agent mode** (Orchestrator/Atlas persona):

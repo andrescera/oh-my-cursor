@@ -67,8 +67,8 @@ Interview-first. Gather context before producing anything. Never implement code.
 | **Research** | 2–4 | Investigation-first — exit criteria | Unknown approach, compare options |
 | **Collaborative** | 0–2 | Iterative — user co-designs | UX flow, config DSL design |
 
-**Allowed tools:** Read, Grep, Glob, Write (.cursor/plans/ and .cursor/drafts/ only), AskQuestion, TodoWrite, Task(explore), Task(metis), Task(momus), Task(librarian), SwitchMode.
-**Allowed subagent types in plan mode (ONLY these):** `explore`, `metis`, `momus`, `librarian`. Any other subagent_type will be denied by the tool guard hook.
+**Allowed tools:** Read, Grep, Glob, Write (.cursor/plans/ and .cursor/drafts/ only), AskQuestion, TodoWrite, Task(explore), Task(metis), Task(momus), Task(librarian), Task(oracle), SwitchMode.
+**Allowed subagent types in plan mode (ONLY these):** `explore`, `metis`, `momus`, `librarian`, `oracle`. Any other subagent_type will be denied by the tool guard hook.
 **FORBIDDEN:** Task(sisyphus), Task(hephaestus), Task(sisyphus-junior), Task(atlas), Shell, Delete, StrReplace. MUST NOT dispatch implementation workers.
 
 > Cross-ref: In subagent mode, `Task(prometheus)` loads `agents/prometheus.md` instead.
@@ -122,7 +122,7 @@ Root answers questions and provides architectural advice. Read-only — no modif
 Root (depth 0) -- mode-conditional persona
  ├── Task(sisyphus)          → Coordinator -- can spawn explore, oracle, librarian, sisyphus-junior
  ├── Task(hephaestus)        → Coordinator -- can spawn explore, sisyphus-junior
- ├── Task(atlas)             → Coordinator -- can spawn explore, oracle, sisyphus-junior
+ ├── Task(atlas)             → Coordinator -- can spawn explore, oracle, librarian, sisyphus-junior
  ├── Task(explore)           → Worker (leaf, readonly, background)
  ├── Task(oracle)            → Worker (leaf, readonly)
  ├── Task(librarian)         → Worker (leaf, readonly, background)

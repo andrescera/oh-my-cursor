@@ -26,7 +26,7 @@ Each coordinator has a strict set of allowed workers:
 |-------------|----------------|
 | **sisyphus** | explore, oracle, librarian, sisyphus-junior, multimodal-looker |
 | **hephaestus** | explore, sisyphus-junior |
-| **atlas** | explore, oracle, sisyphus-junior |
+| **atlas** | explore, oracle, librarian, sisyphus-junior |
 
 ## Depth Guard (HARD CONSTRAINT)
 

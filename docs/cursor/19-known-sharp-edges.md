@@ -36,11 +36,21 @@ No hook payload includes a `mode`, `composerMode`, or `composer_mode` field indi
 
 ### Conversation Isolation Gaps
 
-Critical state (`ConversationState`, `BackgroundTracker`, `contextCollector`) is isolated per `conversationId`. Known remaining shared state:
+Critical state (`ConversationState`, `BackgroundTracker`, `contextCollector`, `WisdomTracker`) is isolated per `conversationId`. Fixed in recent hardening pass:
+- **`WisdomTracker`**: Now keyed by `{conversationId}:{planPath}` composite key (previously plan-path-only, allowing cross-conversation wisdom leakage)
+- **`BackgroundTracker` HTTP handler**: Returns empty array when `conversationId` is missing (previously returned all conversations' tasks)
+- **`/start-work` plan loading**: Only reads per-conversation state file `active-plan-{conversationId}.json` (previously fell back to global `active-plan.json` and mtime-based plan scan)
+- **Draft files**: Now use `{sessionId-short}-{name}.md` naming convention (previously topic-slug-only, causing collisions between parallel conversations)
+
+Known remaining shared state:
 - **`/tmp/oh-my-cursor-timing.jsonl`**: Global file for subagent timing telemetry, shared across all conversations (deferred fix)
-- **Event logs**: Now written per conversation (`session-log-{sessionId}.jsonl`) but the in-memory buffer remains global for cross-conversation admin queries via `getEvents()`
+- **Event logs**: Written per conversation (`session-log-{sessionId}.jsonl`) but the in-memory buffer remains global for cross-conversation admin queries via `getEvents()`
 - **Config**: `loadConfig()` returns project-level config, intentionally shared
 - **Console output**: Process-level stdout/stderr, not actionable data
+
+Known Cursor IDE-level limitations (not fixable by hooks):
+- **Recently viewed files**: Cursor's system context includes files from all conversations in the same workspace. Draft files from other conversations may appear in another conversation's `recently_viewed_files`.
+- **Command expansion**: The `cursor_commands` section content is controlled by Cursor IDE internals, not by the hook daemon.
 
 ### Dispatch Counter Semantics
 

@@ -19,7 +19,9 @@ Then call `SwitchMode(plan)` if not already in Plan mode. Mark `plan-switchmode`
 
 Now execute the Prometheus planning workflow. Auto-continue between steps -- never ask "should I continue?"
 
-1. **Create draft** -- Mark `plan-draft` in_progress. Create `.cursor/drafts/{name}.md` immediately with this structure:
+1. **Create draft** -- Mark `plan-draft` in_progress. Create `.cursor/drafts/{sessionId-short}-{name}.md` immediately with this structure:
+
+Use the first 8 characters of the Session ID from the `## oh-my-cursor Context` section as `{sessionId-short}` (e.g., `78d7f663-my-topic.md`).
 
 ```markdown
 # Draft: {Topic}
@@ -80,7 +82,7 @@ Mark completed. Proceed immediately.
 - **Momus Review**: "Have Momus rigorously verify every detail. Adds review loop."
 If Momus: dispatch `Task(subagent_type="momus")` with ONLY the plan file path as the prompt. Do NOT wrap in explanations. Loop up to 3x if rejected. Mark completed.
 
-9. **Handoff** -- Mark `plan-handoff` in_progress. Delete the draft file (`.cursor/drafts/{name}.md`). Tell user: "Plan ready. Run `/start-work` or switch to Agent mode." Mark completed.
+9. **Handoff** -- Mark `plan-handoff` in_progress. Delete the draft file (`.cursor/drafts/{sessionId-short}-{name}.md`). Tell user: "Plan ready. Run `/start-work` or switch to Agent mode." Mark completed.
 
 **Agent type restriction:** Only `explore`, `metis`, `momus`, and `librarian` subagent types are allowed in plan mode. Any other type (including `generalPurpose`) will be denied by the tool guard.
 

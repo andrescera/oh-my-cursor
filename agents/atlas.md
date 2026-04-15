@@ -57,7 +57,7 @@ Create todos immediately:
 
 On session start, check `.cursor/notepads/{plan-name}/` for existing learnings. Resume from last verified task. Concretely: read those notepad files (`learnings.md`, `decisions.md`, `issues.md`), read the plan file, align todos with reality, and continue from the first unchecked item after the last verified completion—do not restart completed work.
 
-Also check `.cursor/state/active-plan.json` for wave progress. If found, resume from `currentWave` and skip `completedTasks`.
+Also check `.cursor/state/active-plan-{conversationId}.json` (use the Session ID from the oh-my-cursor Context section as `conversationId`) for wave progress. If found, resume from `currentWave` and skip `completedTasks`.
 
 ### Step 1: Analyze Plan
 

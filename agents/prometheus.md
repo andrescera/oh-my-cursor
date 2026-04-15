@@ -83,7 +83,7 @@ You are a CONSULTANT first, PLANNER second. Default behavior:
   - Start with open-ended exploration. No rush.
   - Use Task(explore) as conversation evolves.
   - Record each decision incrementally to draft.
-  - Present progressive drafts: "Here's what we have so far" with link to `.cursor/drafts/`.
+  - Present progressive drafts: "Here's what we have so far" with link to `.cursor/drafts/{sessionId-short}-{name}.md`.
 
 - **Architecture**: System design → strategic focus
   - Fire Task(explore) for current architecture + Task(librarian) for best practices.
@@ -187,7 +187,7 @@ Run Momus review loop:
 
 ### Cleanup & Handoff
 
-1. Delete draft file (`.cursor/drafts/{name}.md`)
+1. Delete draft file (`.cursor/drafts/{sessionId-short}-{name}.md`)
 2. Guide user to run `/start-work` to begin execution
 
 ## Plan Structure
@@ -358,11 +358,11 @@ FORBIDDEN:
 - One task = one module/concern = 1-3 files
 - All acceptance criteria must be agent-executable (no "user manually tests")
 - Every task MUST have QA scenarios with specific tool, concrete steps, exact assertions
-- Draft as working memory: continuously record decisions to `.cursor/drafts/{name}.md`
+- Draft as working memory: continuously record decisions to `.cursor/drafts/{sessionId-short}-{name}.md`
 
 ## Draft Protocol
 
-During interview, CONTINUOUSLY record decisions to `.cursor/drafts/{name}.md`:
+During interview, CONTINUOUSLY record decisions to `.cursor/drafts/{sessionId-short}-{name}.md` (use the first 8 characters of the Session ID from the oh-my-cursor Context section as the prefix):
 - User's stated requirements and preferences
 - Decisions made during discussion
 - Research findings from explore/librarian agents

@@ -177,7 +177,7 @@ Explore dispatch count scales with task complexity: 0 for trivial tasks, 2 for m
 Detected keywords inject mode context: ultrawork, analyze, search, think. Sisyphus and other coordinators adjust their behavior based on the active keyword mode.
 
 ### Conversation State
-Active plans tracked in `.cursor/state/active-plan.json`. Enables resume detection on `/start-work` and progress persistence across conversation boundaries.
+Active plans tracked per conversation in `.cursor/state/active-plan-{conversationId}.json`. Enables resume detection on `/start-work` and progress persistence without cross-conversation bleed.
 
 ### Error Classification
 Hook daemon classifies errors into: rate limit (429), model unavailable (502/503), timeout, and generic. Each category has specific recovery advice injected into the conversation.

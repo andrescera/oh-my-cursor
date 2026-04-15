@@ -1,5 +1,5 @@
 import type { HandlerMap } from "../types"
-import { resolveConversationId } from "../shared"
+import { getOrCreateConversation, resolveConversationId } from "../shared"
 import { createThinkingBlockValidator } from "./thinking-block-validator"
 import { loadConfig } from "../config"
 
@@ -122,7 +122,9 @@ export function createSafetyHandlers(): HandlerMap {
 
     "/beforeMCPExecution": (input) => {
       const serverName = (input.mcp_server_name as string) || (input.serverName as string) || ""
-      const config = loadConfig()
+      const convId = resolveConversationId(input)
+      const conversation = getOrCreateConversation(convId)
+      const config = loadConfig(conversation.env.OH_MY_CURSOR_PROJECT_DIR)
       const allowlist = config.mcp_allowlist
 
       if (allowlist.includes("*") || allowlist.includes(serverName)) {

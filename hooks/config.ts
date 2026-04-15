@@ -122,13 +122,14 @@ function parseJsoncFile(filePath: string): Record<string, unknown> | null {
   }
 }
 
-let cachedConfig: OhMyCursorConfig | null = null
-let configLoadTime = 0
+const configCache = new Map<string, { config: OhMyCursorConfig; loadTime: number }>()
 const CONFIG_CACHE_TTL_MS = 30_000
 
-export function loadConfig(): OhMyCursorConfig {
+export function loadConfig(projectDir?: string): OhMyCursorConfig {
+  const cacheKey = projectDir || "__default__"
   const now = Date.now()
-  if (cachedConfig && now - configLoadTime < CONFIG_CACHE_TTL_MS) return cachedConfig
+  const cached = configCache.get(cacheKey)
+  if (cached && now - cached.loadTime < CONFIG_CACHE_TTL_MS) return cached.config
 
   let merged: Record<string, unknown> = structuredClone(DEFAULT_CONFIG) as unknown as Record<string, unknown>
 
@@ -138,20 +139,17 @@ export function loadConfig(): OhMyCursorConfig {
     merged = deepMerge(merged, userConfig)
   }
 
-  const projectPath = join(process.cwd(), ".cursor", "oh-my-cursor.jsonc")
+  const projectPath = join(projectDir || process.cwd(), ".cursor", "oh-my-cursor.jsonc")
   const projectConfig = parseJsoncFile(projectPath)
   if (projectConfig) {
     merged = deepMerge(merged, projectConfig)
   }
 
   const config = validateConfig(merged)
-
-  cachedConfig = config
-  configLoadTime = now
+  configCache.set(cacheKey, { config, loadTime: now })
   return config
 }
 
 export function resetConfigCache(): void {
-  cachedConfig = null
-  configLoadTime = 0
+  configCache.clear()
 }

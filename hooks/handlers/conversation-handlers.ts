@@ -165,7 +165,7 @@ export function createConversationHandlers(
 
       contextCollector.clear(convId)
 
-      const config = loadConfig()
+      const config = loadConfig(conversation.env.OH_MY_CURSOR_PROJECT_DIR)
       if (config.compaction.prompt_enabled) {
         contextCollector.register(convId, {
           id: "compaction-prompt",

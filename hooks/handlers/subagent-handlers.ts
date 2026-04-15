@@ -140,7 +140,7 @@ export function createSubagentHandlers(
           priority: "critical",
         })
         if (fc === 3) {
-          const config = loadConfig()
+          const config = loadConfig(conversation.env.OH_MY_CURSOR_PROJECT_DIR)
           if (config.notifications.enabled) {
             const scriptDir = resolve(import.meta.dir, "../scripts")
             const notifyScript = resolve(scriptDir, "notify.sh")
@@ -190,7 +190,7 @@ export function createSubagentHandlers(
 
       const isBackground = Boolean(input.is_background) || ["explore", "librarian"].includes(subagentType.toLowerCase())
       if (isBackground) {
-        const config = loadConfig()
+        const config = loadConfig(conversation.env.OH_MY_CURSOR_PROJECT_DIR)
         if (config.notifications.enabled) {
           const scriptDir = resolve(import.meta.dir, "../scripts")
           const notifyScript = resolve(scriptDir, "notify.sh")

@@ -100,7 +100,6 @@ export function createToolGuardHandlers(
   _conversations: Map<string, ConversationState>,
   tracker: BackgroundTracker,
 ): HandlerMap {
-  const config = loadConfig()
   const contextWindowMonitor = createContextWindowMonitor(conversationTokens)
   const commentChecker = createCommentChecker()
   const toolOutputTruncator = createToolOutputTruncator()
@@ -191,6 +190,7 @@ export function createToolGuardHandlers(
           const agentKey = `subagent:${normalized}`
 
           if (normalized === "momus") {
+            const config = loadConfig(conversation.env.OH_MY_CURSOR_PROJECT_DIR)
             if (conversation.momusIterations >= config.momus.max_iterations) {
               return {
                 additional_context: "[momus-loop] Momus iteration limit (3) reached. Ask the user whether to continue reviewing or accept the current plan.",
@@ -426,6 +426,7 @@ export function createToolGuardHandlers(
         }
       }
 
+      const config = loadConfig(conversation.env.OH_MY_CURSOR_PROJECT_DIR)
       if (!config.context_collector.enabled) {
         contextCollector.clear(convId)
         const out: Record<string, unknown> = {}
@@ -457,6 +458,7 @@ export function createToolGuardHandlers(
       conversation.errorCount++
       console.error("[oh-my-cursor] Tool failure:", toolName, errorMessage)
 
+      const config = loadConfig(conversation.env.OH_MY_CURSOR_PROJECT_DIR)
       if (!config.context_collector.enabled) {
         contextCollector.clear(convId)
         return {}

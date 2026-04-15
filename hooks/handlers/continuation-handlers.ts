@@ -4,8 +4,8 @@ import { loadConfig } from "../config"
 import { resolve } from "node:path"
 import { existsSync } from "node:fs"
 
-function sendOsNotification(title: string, message: string, urgency: "low" | "normal" | "critical") {
-  const config = loadConfig()
+function sendOsNotification(title: string, message: string, urgency: "low" | "normal" | "critical", projectDir?: string) {
+  const config = loadConfig(projectDir)
   if (!config.notifications.enabled) return
   const notifyScript = resolve(import.meta.dir, "../scripts", "notify.sh")
   try {
@@ -178,7 +178,7 @@ export function createContinuationHandlers(
 
       if (conversation.consecutiveZeroDeltas >= 2) {
         if (conversation.activePlan) {
-          sendOsNotification("Plan Complete", "Agent idle — continuation deactivated.", "normal")
+          sendOsNotification("Plan Complete", "Agent idle — continuation deactivated.", "normal", conversation.env.OH_MY_CURSOR_PROJECT_DIR)
           conversation.activePlan = null
           conversation.boulderState = null
           conversation.consecutiveContinuationFailures = 0

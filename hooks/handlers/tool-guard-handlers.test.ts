@@ -228,4 +228,59 @@ describe("createToolGuardHandlers dispatch count inflation fix", () => {
       expect(conversations.get(CONV)!.dispatchCounts["subagent:sisyphus"]).toBe(1)
     })
   })
+
+  describe("#momus iteration tracking", () => {
+    it("resets momusIterations when plan-momus transitions to in_progress", () => {
+      const tracker = makeTracker({ [CONV]: [] })
+      const handlers = createToolGuardHandlers(conversations, tracker)
+      const preToolUse = handlers["/preToolUse"]
+      const postToolUse = handlers["/postToolUse"]
+
+      preToolUse({ tool_name: "Read", conversation_id: CONV, tool_input: { path: "/tmp/x" } })
+      conversations.get(CONV)!.momusIterations = 3
+
+      postToolUse({
+        tool_name: "TodoWrite",
+        conversation_id: CONV,
+        tool_input: { todos: [{ id: "plan-momus", status: "in_progress", content: "Momus review" }] },
+      })
+
+      expect(conversations.get(CONV)!.momusIterations).toBe(0)
+    })
+
+    it("returns additional_context with interpolated cap when momus iterations at limit", () => {
+      const tracker = makeTracker({ [CONV]: [] })
+      const { "/preToolUse": handler } = createToolGuardHandlers(conversations, tracker)
+
+      handler({ tool_name: "Read", conversation_id: CONV, tool_input: { path: "/tmp/x" } })
+      conversations.get(CONV)!.momusIterations = 4
+
+      const result = handler({
+        tool_name: "Task",
+        conversation_id: CONV,
+        tool_input: { subagent_type: "momus", description: "Review plan" },
+      })
+
+      expect(result.additional_context).toContain("[momus-loop]")
+      expect(result.additional_context).toContain("(4)")
+      expect(result.additional_context).not.toContain("(3)")
+    })
+
+    it("allows momus dispatch and increments counter when below cap", () => {
+      const tracker = makeTracker({ [CONV]: [] })
+      const { "/preToolUse": handler } = createToolGuardHandlers(conversations, tracker)
+
+      handler({ tool_name: "Read", conversation_id: CONV, tool_input: { path: "/tmp/x" } })
+      conversations.get(CONV)!.momusIterations = 0
+
+      const result = handler({
+        tool_name: "Task",
+        conversation_id: CONV,
+        tool_input: { subagent_type: "momus", description: "Review plan" },
+      })
+
+      expect(result.additional_context ?? "").not.toContain("[momus-loop]")
+      expect(conversations.get(CONV)!.momusIterations).toBe(1)
+    })
+  })
 })

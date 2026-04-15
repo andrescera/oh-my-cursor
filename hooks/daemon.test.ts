@@ -1,7 +1,9 @@
 import { describe, test, expect, beforeAll, afterAll } from "bun:test"
-import { mkdirSync, writeFileSync, unlinkSync, rmdirSync } from "node:fs"
+import { mkdirSync, writeFileSync, unlinkSync, rmdirSync, rmSync } from "node:fs"
 import { join } from "node:path"
 import { tmpdir } from "node:os"
+import { randomUUID } from "node:crypto"
+import { DEFAULT_CONFIG } from "./config"
 import type { Server } from "bun"
 
 const PORT = 47900
@@ -25,6 +27,10 @@ beforeAll(async () => {
   mkdirSync(AGENTS_TEST_DIR, { recursive: true })
   writeFileSync(AGENTS_TEST_FILE, "test file", "utf-8")
   writeFileSync(AGENTS_MD_PATH, "# Test AGENTS\nThis directory has test rules.", "utf-8")
+
+  try {
+    rmSync(DEFAULT_CONFIG.state_persistence.path, { recursive: true, force: true })
+  } catch {}
 
   process.env.OH_MY_CURSOR_PORT = String(PORT)
   await import("./daemon.ts")
@@ -277,11 +283,12 @@ describe("hook daemon", () => {
     describe("#given a Read tool for a file in a directory with AGENTS.md", () => {
       describe("#when the handler is called", () => {
         test("#then it injects AGENTS.md content as directory context", async () => {
-          await post("/sessionStart", { session_id: "sess-agents-inject" })
+          const sid = `sess-agents-inject-${randomUUID()}`
+          await post("/sessionStart", { session_id: sid })
           const result = await post("/postToolUse", {
             tool_name: "Read",
             tool_input: { file_path: AGENTS_TEST_FILE },
-            session_id: "sess-agents-inject",
+            session_id: sid,
           })
           expect(result.additional_context).toContain("[directory-context]")
           expect(result.additional_context).toContain("AGENTS.md")
@@ -293,16 +300,17 @@ describe("hook daemon", () => {
     describe("#given AGENTS.md was already injected for a directory", () => {
       describe("#when reading another file in the same directory", () => {
         test("#then it does not re-inject AGENTS.md", async () => {
-          await post("/sessionStart", { session_id: "sess-agents-dedup" })
+          const sid = `sess-agents-dedup-${randomUUID()}`
+          await post("/sessionStart", { session_id: sid })
           await post("/postToolUse", {
             tool_name: "Read",
             tool_input: { file_path: AGENTS_TEST_FILE },
-            session_id: "sess-agents-dedup",
+            session_id: sid,
           })
           const result = await post("/postToolUse", {
             tool_name: "Read",
             tool_input: { file_path: AGENTS_TEST_FILE },
-            session_id: "sess-agents-dedup",
+            session_id: sid,
           })
           const ctx = result.additional_context || ""
           expect(ctx).not.toContain("[directory-context]")
@@ -618,9 +626,11 @@ describe("hook daemon", () => {
     describe("#given a file edit completes", () => {
       describe("#when the handler is called", () => {
         test("#then it returns empty object", async () => {
+          const sid = `sess-after-edit-${randomUUID()}`
+          await post("/sessionStart", { session_id: sid })
           const result = await post("/afterFileEdit", {
             file_path: "/project/src/file.ts",
-            session_id: "sess-after-edit",
+            session_id: sid,
           })
           expect(Object.keys(result).length).toBe(0)
         })

@@ -168,7 +168,7 @@ Conversations are tracked in-memory with periodic persistence to `/tmp/oh-my-cur
 Plan flow auto-advances between steps without asking "should I continue?" Boulder continuation uses activity-based detection with cooldown (default 5000ms), exponential backoff, and stagnation detection.
 
 ### Momus Review Loop
-Plans are auto-reviewed by Momus up to 3 times. After 3 rejections, the user is asked whether to continue iterating or accept the plan as-is.
+Plans are reviewed by Momus with user checkpoints between iterations — after each REJECT fix, the user is asked whether to continue reviewing. Loop up to 4 iterations. If the plan changes after Momus approves (OKAY), the user is offered a new review.
 
 ### Adaptive Explore Dispatch
 Explore dispatch count scales with task complexity: 0 for trivial tasks, 2 for mid-sized, 3-5+ for architecture or research. 7 prompt templates cover different explore intents (usage-mapping, test-coverage, similar-implementations, etc.).

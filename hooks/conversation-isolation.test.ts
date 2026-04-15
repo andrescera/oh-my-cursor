@@ -6,7 +6,9 @@ import { addWisdomLearning, formatWisdomForInjection } from "./handlers/wisdom-t
 import { loadConfig, resetConfigCache } from "./config"
 import { StatePersistence } from "./state-persistence"
 import { buildCompactionContextPrompt } from "./compaction-context-prompt"
-import { unlinkSync } from "node:fs"
+import { rmSync } from "node:fs"
+import { join } from "node:path"
+import { tmpdir } from "node:os"
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i
 
@@ -306,10 +308,15 @@ describe("token tracking on ConversationState", () => {
 })
 
 describe("TTL filtering on state restore", () => {
-  const tmpPath = `/tmp/oh-my-cursor-ttl-test-${Date.now()}.json`
+  let tmpPath: string
+
+  beforeEach(() => {
+    tmpPath = join(tmpdir(), `oh-my-cursor-ttl-test-${Date.now()}-${Math.random().toString(36).slice(2)}`)
+  })
 
   afterEach(() => {
-    try { unlinkSync(tmpPath) } catch {}
+    try { rmSync(tmpPath, { recursive: true, force: true }) } catch {}
+    conversations.clear()
   })
 
   it("filters out stale conversations on load", () => {
@@ -324,13 +331,13 @@ describe("TTL filtering on state restore", () => {
     const map = new Map<string, any>()
     map.set("fresh-conv", fresh)
     map.set("stale-conv", stale)
+    persistence.markDirty("fresh-conv")
+    persistence.markDirty("stale-conv")
     persistence.forceFlush(map)
 
-    const loaded = persistence.load(4 * 60 * 60 * 1000)
-    expect(loaded).not.toBeNull()
-    expect(loaded!.has("fresh-conv")).toBe(true)
-    expect(loaded!.has("stale-conv")).toBe(false)
-    conversations.clear()
+    persistence.pruneStale(4 * 60 * 60 * 1000)
+    expect(persistence.loadOne("fresh-conv")).not.toBeNull()
+    expect(persistence.loadOne("stale-conv")).toBeNull()
   })
 
   it("returns all conversations when TTL is Infinity", () => {
@@ -344,13 +351,13 @@ describe("TTL filtering on state restore", () => {
     const map = new Map<string, any>()
     map.set("fresh-inf", fresh)
     map.set("stale-inf", stale)
+    persistence.markDirty("fresh-inf")
+    persistence.markDirty("stale-inf")
     persistence.forceFlush(map)
 
-    const loaded = persistence.load(Infinity)
-    expect(loaded).not.toBeNull()
-    expect(loaded!.has("fresh-inf")).toBe(true)
-    expect(loaded!.has("stale-inf")).toBe(true)
-    conversations.clear()
+    persistence.pruneStale(Number.POSITIVE_INFINITY)
+    expect(persistence.loadOne("fresh-inf")).not.toBeNull()
+    expect(persistence.loadOne("stale-inf")).not.toBeNull()
   })
 })
 

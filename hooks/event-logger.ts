@@ -56,31 +56,36 @@ let buffer: EventEntry[] = []
 let pending: EventEntry[] = []
 let flushTimer: ReturnType<typeof setTimeout> | null = null
 
-function loadFromFile(filePath: string): void {
+function parseEventLogFile(filePath: string): EventEntry[] {
+  const out: EventEntry[] = []
   try {
-    if (!existsSync(filePath)) return
+    if (!existsSync(filePath)) return out
     const text = Bun.file(filePath).textSync()
-    if (!text.trim()) return
+    if (!text.trim()) return out
     for (const line of text.trim().split("\n")) {
       try {
-        buffer.push(JSON.parse(line))
+        out.push(JSON.parse(line) as EventEntry)
       } catch { /* skip corrupt lines */ }
     }
-  } catch { /* file unreadable, skip */ }
+  } catch { /* file unreadable */ }
+  return out
 }
 
-function loadExisting(): void {
-  try {
-    if (!existsSync(logDir)) return
-    const files = readdirSync(logDir).filter((f) => f.startsWith("session-log") && f.endsWith(".jsonl"))
-    for (const file of files) {
-      loadFromFile(join(logDir, file))
-    }
-    if (buffer.length > MAX_BUFFER) buffer = buffer.slice(-TRIM_TO)
-  } catch { /* directory unreadable, start fresh */ }
+function eventDedupeKey(e: EventEntry): string {
+  return `${e.ts}\0${e.event}\0${e.tool ?? ""}`
 }
 
-loadExisting()
+function mergeSessionEvents(sessionId: string): EventEntry[] {
+  const filePath = getLogPathForConversation(sessionId || undefined)
+  const fromDisk = parseEventLogFile(filePath).filter((e) => e.sessionId === sessionId)
+  const fromBuffer = buffer.filter((e) => e.sessionId === sessionId)
+  const map = new Map<string, EventEntry>()
+  for (const e of fromDisk) map.set(eventDedupeKey(e), e)
+  for (const e of fromBuffer) map.set(eventDedupeKey(e), e)
+  const merged = Array.from(map.values())
+  merged.sort((a, b) => new Date(a.ts).getTime() - new Date(b.ts).getTime())
+  return merged
+}
 
 function scheduleFlush(): void {
   if (flushTimer) return
@@ -164,15 +169,19 @@ export function getEvents(opts?: {
     console.warn("[oh-my-cursor][event-logger] getEvents() called without sessionId — cross-session query (deprecated)")
   }
   const limit = opts?.limit ?? 100
-  let results = buffer
-  if (opts?.sessionId) results = results.filter((e) => e.sessionId === opts.sessionId)
+  let results: EventEntry[]
+  if (opts?.sessionId !== undefined && opts.sessionId !== null) {
+    results = mergeSessionEvents(opts.sessionId)
+  } else {
+    results = buffer
+  }
   if (opts?.event) results = results.filter((e) => e.event === opts.event)
   if (opts?.action) results = results.filter((e) => e.action === opts.action)
   return results.slice(-limit).reverse()
 }
 
 export function getConversationSummary(sessionId: string): ConversationSummary {
-  const events = buffer.filter((e) => e.sessionId === sessionId)
+  const events = mergeSessionEvents(sessionId)
   const id = sessionId
 
   const toolCounts: Record<string, number> = {}

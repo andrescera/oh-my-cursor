@@ -130,6 +130,12 @@ export function createToolGuardHandlers(
           path: toolInput.file_path || toolInput.path,
           content: toolInput.new_string || toolInput.content || toolInput.contents,
         })
+        if (conversation.pendingWriteArgs.size > 20) {
+          const oldest = conversation.pendingWriteArgs.keys().next().value
+          if (oldest !== undefined) {
+            conversation.pendingWriteArgs.delete(oldest)
+          }
+        }
       }
 
       if (["Task", "task", "Agent", "agent"].includes(toolName)) {
@@ -244,6 +250,14 @@ export function createToolGuardHandlers(
         }
       }
 
+      if (
+        ["write", "Write", "str_replace", "StrReplace", "edit", "Edit"].includes(toolName) &&
+        input.tool_use_id &&
+        !/failed|error|could not|no match|not found in file/i.test(output)
+      ) {
+        conversation.pendingWriteArgs.delete(input.tool_use_id as string)
+      }
+
       if (!["bash", "shell", "read", "Read", "Shell"].includes(toolName)) {
         if (/unexpected token|json.*parse|invalid json|syntaxerror.*json/i.test(output)) {
           contextCollector.register(convId, {
@@ -284,6 +298,10 @@ export function createToolGuardHandlers(
               const content = readFileSync(agentsPath, "utf-8")
               if (content) {
                 conversation.injectedPaths.add(agentsPath)
+                if (conversation.injectedPaths.size > 100) {
+                  const arr = Array.from(conversation.injectedPaths)
+                  conversation.injectedPaths = new Set(arr.slice(-75))
+                }
                 const snippet = content.length > 2000 ? content.slice(0, 2000) + "\n...[truncated]" : content
                 contextCollector.register(convId, {
                   id: `agents-${agentsPath}`,
@@ -363,6 +381,10 @@ export function createToolGuardHandlers(
       if (["read", "Read"].includes(toolName) && readFilePath) {
         const resolved = resolve(readFilePath)
         conversation.readPaths.add(resolved)
+        if (conversation.readPaths.size > 200) {
+          const arr = Array.from(conversation.readPaths)
+          conversation.readPaths = new Set(arr.slice(-150))
+        }
         console.log(`[oh-my-cursor][read-guard] Tracked read: "${resolved}" (raw: "${readFilePath}") | conversation: ${convId}`)
       }
 
@@ -448,6 +470,10 @@ export function createToolGuardHandlers(
       const errorMessage = (input.error as string) || (input.error_message as string) || ((input.tool_response as Record<string, unknown>)?.error as string) || ""
       const convId = resolveConversationId(input)
       const conversation = getOrCreateConversation(convId)
+
+      if (["write", "Write", "str_replace", "StrReplace", "edit", "Edit"].includes(toolName) && input.tool_use_id) {
+        conversation.pendingWriteArgs.delete(input.tool_use_id as string)
+      }
 
       conversation.errorCount++
       console.error("[oh-my-cursor] Tool failure:", toolName, errorMessage)

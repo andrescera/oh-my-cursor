@@ -1,5 +1,5 @@
 import type { ConversationState, HandlerMap } from "../types"
-import { getOrCreateConversation, resolveConversationId, PLAN_PHASE_IDS } from "../shared"
+import { getOrCreateConversation, resolveConversationId, PLAN_PHASE_IDS, transitionFromPlanMode } from "../shared"
 import { loadConfig } from "../config"
 import { resolve } from "node:path"
 import { existsSync } from "node:fs"
@@ -78,19 +78,21 @@ function detectPlanMode(input: Record<string, unknown>, conversation: Conversati
     return true
   }
 
-  for (const phaseId of PLAN_PHASE_IDS) {
-    if (conversation.todoStates.has(phaseId)) {
-      console.log(`[oh-my-cursor][detectPlanMode] branch=planPhaseTodo | phaseId=${phaseId} | RESULT=true`)
-      return true
+  if (!conversation.composerMode) {
+    for (const phaseId of PLAN_PHASE_IDS) {
+      if (conversation.todoStates.has(phaseId)) {
+        console.log(`[oh-my-cursor][detectPlanMode] branch=planPhaseTodoFallback | composerMode=null | phaseId=${phaseId} | RESULT=true`)
+        return true
+      }
     }
   }
 
-  if (conversation.contextHistory.some(e => /plan-switchmode|plan-draft|plan-interview|plan-explore|plan-metis|plan-write/i.test(e))) {
-    console.log(`[oh-my-cursor][detectPlanMode] branch=contextHistoryMatch | RESULT=true`)
+  if (!conversation.composerMode && conversation.contextHistory.some(e => /plan-switchmode|plan-draft|plan-interview|plan-explore|plan-metis|plan-write/i.test(e))) {
+    console.log(`[oh-my-cursor][detectPlanMode] branch=contextHistoryFallback | composerMode=null | RESULT=true`)
     return true
   }
 
-  console.log(`[oh-my-cursor][detectPlanMode] inputMode="${inputMode}" | msgStartsPlan=${lowerMsg.startsWith("/plan")} | composerModeSticky=${conversation.composerMode === "plan"} | cursorCommandsPlan=${cursorCommands.toLowerCase().includes("/plan")} | planTodosPresent=${planTodosPresent} | contextHistoryMatch=${conversation.contextHistory.some(e => /plan-switchmode|plan-draft|plan-interview|plan-explore|plan-metis|plan-write/i.test(e))} | RESULT=false`)
+  console.log(`[oh-my-cursor][detectPlanMode] inputMode="${inputMode}" | msgStartsPlan=${lowerMsg.startsWith("/plan")} | composerModeSticky=${conversation.composerMode === "plan"} | cursorCommandsPlan=${cursorCommands.toLowerCase().includes("/plan")} | planTodosPresent=${planTodosPresent} | contextHistoryFallback=${!conversation.composerMode && conversation.contextHistory.some(e => /plan-switchmode|plan-draft|plan-interview|plan-explore|plan-metis|plan-write/i.test(e))} | RESULT=false`)
   return false
 }
 
@@ -329,10 +331,7 @@ export function createContinuationHandlers(
       }
 
       if (userMessage.startsWith("/start-work")) {
-        conversation.composerMode = "agent"
-        for (const phaseId of PLAN_PHASE_IDS) {
-          conversation.todoStates.delete(phaseId)
-        }
+        transitionFromPlanMode(conversation)
 
         if (!conversation.activePlan) {
           const projectDir = conversation.env.OH_MY_CURSOR_PROJECT_DIR ?? process.env.OH_MY_CURSOR_PROJECT_DIR ?? process.cwd()

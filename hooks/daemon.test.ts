@@ -684,4 +684,48 @@ describe("hook daemon", () => {
       expect(res.status).toBe(404)
     })
   })
+
+  describe("body parsing resilience", () => {
+    test("POST /shutdown with empty body returns 200 shutting_down", async () => {
+      const res = await fetch(`${BASE}/shutdown`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+      })
+      expect(res.status).toBe(200)
+      const data = await res.json()
+      expect(data.status).toBe("shutting_down")
+    })
+
+    test("POST /shutdown with valid JSON body returns 200", async () => {
+      const res = await fetch(`${BASE}/shutdown`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ reason: "test" }),
+      })
+      expect(res.status).toBe(200)
+      const data = await res.json()
+      expect(data.status).toBe("shutting_down")
+    })
+
+    test("POST /sessionStart with empty body returns 200 falling back to empty object", async () => {
+      const res = await fetch(`${BASE}/sessionStart`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+      })
+      expect(res.status).toBe(200)
+      const data = await res.json()
+      expect(data).toBeDefined()
+    })
+
+    test("POST /sessionStart with malformed JSON returns 400 with Invalid JSON body", async () => {
+      const res = await fetch(`${BASE}/sessionStart`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: "{broken",
+      })
+      expect(res.status).toBe(400)
+      const data = await res.json()
+      expect(data.error).toBe("Invalid JSON body")
+    })
+  })
 })

@@ -540,7 +540,28 @@ const fetchHandler = async (req: Request) => {
 
   let errorSessionId = ""
   try {
-    const body = req.method === "POST" ? await req.json() : {}
+    let body: Record<string, unknown> = {}
+    if (req.method === "POST") {
+      const raw = await req.text()
+      if (raw.length > 0) {
+        try {
+          body = JSON.parse(raw)
+        } catch {
+          logEvent({
+            ts: new Date().toISOString(),
+            event: path,
+            sessionId: "",
+            action: "error",
+            error: "Invalid JSON body",
+            meta: { rawBody: raw.slice(0, 2048) },
+          })
+          return new Response(
+            JSON.stringify({ error: "Invalid JSON body", hook: path }),
+            { status: 400, headers: { "Content-Type": "application/json" } },
+          )
+        }
+      }
+    }
     const parsed = parseInput(body)
     errorSessionId = (parsed.conversation_id as string) || (parsed.session_id as string) || ""
     if (req.method !== "POST") {

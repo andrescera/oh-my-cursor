@@ -451,8 +451,11 @@ export function renderDashboardHTML(daemonPort: number): string {
     let sseReconnectTimer = null;
     let sseBackoff = 1000;
     const SSE_MAX_BACKOFF = 30000;
+    let sseRetryCount = 0;
+    const SSE_MAX_RETRIES = 60;
 
     function sseConnect() {
+      if (sseRetryCount >= SSE_MAX_RETRIES) return;
       if (sseInstance) { try { sseInstance.close(); } catch {} }
       clearTimeout(sseReconnectTimer);
       clearTimeout(sseOfflineTimer);
@@ -462,6 +465,7 @@ export function renderDashboardHTML(daemonPort: number): string {
 
       es.onopen = () => {
         sseBackoff = 1000;
+        sseRetryCount = 0;
         clearTimeout(sseOfflineTimer);
         emitSseStatus('connected');
       };
@@ -482,11 +486,18 @@ export function renderDashboardHTML(daemonPort: number): string {
       es.addEventListener('shutdown', () => {
         try { es.close(); } catch {}
         sseBackoff = 1000;
+        sseRetryCount = 0;
         sseReconnectTimer = setTimeout(sseConnect, 500);
       });
 
       es.onerror = () => {
         try { es.close(); } catch {}
+        sseRetryCount++;
+        if (sseRetryCount >= SSE_MAX_RETRIES) {
+          clearTimeout(sseOfflineTimer);
+          emitSseStatus('offline');
+          return;
+        }
         emitSseStatus('reconnecting');
         sseOfflineTimer = setTimeout(() => emitSseStatus('offline'), 15000);
         const jitter = Math.random() * 500;
@@ -500,6 +511,13 @@ export function renderDashboardHTML(daemonPort: number): string {
       if (sseSubscribers.size === 1 && !sseInstance) sseConnect();
       return () => sseSubscribers.delete(fn);
     }
+
+    document.addEventListener('visibilitychange', () => {
+      if (document.visibilityState === 'visible' && (sseStatusValue === 'offline' || sseStatusValue === 'reconnecting')) {
+        sseRetryCount = 0;
+        sseConnect();
+      }
+    });
 
     // ── Shared helpers ──────────────────────────────────────────────────────
 
@@ -1564,7 +1582,7 @@ export function renderDashboardHTML(daemonPort: number): string {
                 aria-live="polite"
               >
                 \${sseStatus === 'offline'
-                  ? 'Connection lost. Still reconnecting…'
+                  ? html\`Connection lost. Daemon appears offline. <button type="button" onClick=\${ () => { sseRetryCount = 0; sseConnect(); }} style="margin-left:8px;padding:2px 10px;border:1px solid currentColor;background:transparent;color:inherit;cursor:pointer;border-radius:3px;font-size:11px">Reconnect</button>\`
                   : 'Connection lost. Reconnecting...'}
               </div>\`
             : null}

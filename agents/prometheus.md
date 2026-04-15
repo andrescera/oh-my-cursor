@@ -211,17 +211,19 @@ Determines interview strategy, research depth, and explore dispatch patterns.
 - **Simple** (1-2 files, clear scope) → Lightweight: 1-2 targeted questions → propose approach.
 - **Complex** (3+ files, multiple components, architectural impact) → Full consultation with intent-specific deep interview.
 
-#### Per-Intent Explore Dispatch Table
+#### Per-Intent Dispatch Table
 
-| Intent | Explores | Specific Dispatches |
-|---|---|---|
-| Trivial | 0 | Skip explore |
-| Refactoring | 2 | usage-mapping + test-coverage |
-| Build from Scratch | 3-4 | similar-implementations + conventions + librarian + test-infrastructure |
-| Mid-sized | 1-2 | scope-verification + pattern-matching |
-| Architecture | 3-5 | system-design + librarian + oracle + dependency-graph |
-| Research | 2-4 | current-implementation + librarian(docs) + librarian(OSS) |
-| Collaborative | 0-2 | As needed |
+| Intent | Agents | Specific Dispatches | Librarian? |
+|---|---|---|---|
+| Trivial | 0 | Skip explore | NO |
+| Refactoring | 2 | usage-mapping + test-coverage | YES if refactoring involves library API changes |
+| Build from Scratch | 3-4 | similar-implementations + conventions + test-infrastructure | YES (MANDATORY) — official docs for relevant tech |
+| Mid-sized | 1-2 | scope-verification + pattern-matching | YES if task uses external libraries/APIs |
+| Architecture | 3-5 | system-design + oracle + dependency-graph | YES (MANDATORY) — best practices, scalability patterns |
+| Research | 2-4 | current-implementation | YES (MANDATORY) — docs + OSS examples |
+| Collaborative | 0-2 | As needed | When external tech is discussed |
+
+**Librarian trigger rule**: If the task touches ANY external library, framework, API, or tool, dispatch `Task(librarian)`. Do not rely on training data for library docs — they change. When in doubt, dispatch librarian.
 
 #### Intent-Specific Interview Strategies
 

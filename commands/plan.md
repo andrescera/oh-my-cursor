@@ -60,12 +60,21 @@ This is your working memory beyond the context window.
 
 Mark completed. Proceed immediately.
 
-2. **Explore** -- Mark `plan-explore` in_progress. Ground yourself in the codebase BEFORE asking the user anything. Fire `explore` or `librarian` agents based on intent classification (see `orchestrator-reference.mdc`). For non-trivial intents, fire AT LEAST 3 agents. For trivial/collaborative intents, 0-2 is acceptable:
+2. **Explore** -- Mark `plan-explore` in_progress. Ground yourself in the codebase BEFORE asking the user anything. For non-trivial intents, fire AT LEAST 3 agents. For trivial/collaborative intents, 0-2 is acceptable.
 
-- **Codebase patterns**: Map directory structure, similar implementations, naming conventions.
-- **Test infrastructure**: Find test framework, config, representative tests, CI setup.
-- **Architecture**: Module boundaries, imports, dependency direction, key abstractions.
-- **External libraries** (if relevant): Dispatch `Task(subagent_type="librarian")` for official docs, API reference, recommended patterns.
+   **`explore` agents** (codebase search — ALWAYS fire for non-trivial intents):
+   - **Codebase patterns**: Map directory structure, similar implementations, naming conventions.
+   - **Test infrastructure**: Find test framework, config, representative tests, CI setup.
+   - **Architecture**: Module boundaries, imports, dependency direction, key abstractions.
+
+   **`librarian` agents** (external docs — MANDATORY when ANY of these apply):
+   - Task involves an **external library, framework, or SDK** (e.g., Zod, React, Express, Prisma)
+   - Task involves a **version migration or upgrade**
+   - Task involves an **API integration** (REST, GraphQL, MCP, cloud services)
+   - Task requires **configuration patterns** for a third-party tool (e.g., bundler, linter, CI)
+   - User mentions a technology the codebase doesn't already use
+   
+   When librarian triggers apply, dispatch `Task(subagent_type="librarian")` for official docs, API reference, and recommended patterns. Do NOT skip librarian and rely on training data — docs change.
 
 After collecting results, synthesize findings before proceeding. Note what you discovered, what it means for the plan, and what you still need to learn from the user. Mark completed. Proceed immediately.
 

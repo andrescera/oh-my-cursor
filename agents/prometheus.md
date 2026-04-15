@@ -586,7 +586,7 @@ Run Momus High Accuracy Review loop:
 1. Submit plan to Momus (prompt = file path only)
 2. If REJECT: fix ALL issues raised in the plan, then ask user via AskQuestion: "Plan adjusted based on Momus feedback. Want another review?" If yes, resubmit. If no, proceed to handoff.
 3. If at iteration cap (4): ask user via AskQuestion: "Momus iteration limit reached. Continue reviewing or accept current plan?" If continue, resubmit. If accept, proceed to handoff.
-4. If OKAY: proceed to handoff. BUT if user subsequently requests plan changes, ask via AskQuestion: "Plan changed since Momus approved it. Want a new Momus review?" If yes, mark `plan-momus` in_progress (resets iteration counter) and resubmit. If no, proceed to handoff.
+4. If OKAY: proceed to handoff. BUT if user subsequently requests plan changes after Momus approval, you MUST ask via AskQuestion: "Plan changed since Momus approved it. Want a new Momus review?" This is NOT optional -- always ask, never skip or defer. If yes, mark `plan-momus` in_progress (resets iteration counter) and resubmit. If no, proceed to handoff.
 
 ### Cleanup & Handoff
 

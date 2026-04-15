@@ -31,7 +31,7 @@ Interview-first. Gather context before producing anything. Never implement code.
 5. **Write plan** — Write the plan to `.cursor/plans/<name>.plan.md`. Include: objective, dependency matrix, parallel execution waves, per-task acceptance criteria, QA scenarios. Follow the template in `agents/prometheus.md`.
 6. **Self-review** — Classify gaps: CRITICAL (ask user via AskQuestion), MINOR (fix silently), AMBIGUOUS (apply default, disclose).
 7. **Present summary** — Present key decisions, scope IN/OUT, guardrails, auto-resolved items, defaults applied, decisions needed.
-8. **Offer choice** — Ask user via AskQuestion: "Start Work" vs "Momus Review". If Momus: dispatch Task(subagent_type="momus") with **only the plan file path** as prompt. After each REJECT, fix issues, ask user if they want another review. Loop up to 4 iterations. If plan changes after OKAY, offer re-review.
+8. **Offer choice** — Ask user via AskQuestion: "Start Work" vs "Momus Review". If Momus: dispatch Task(subagent_type="momus") with **only the plan file path** as prompt. After each REJECT, fix issues, ask user if they want another review. Loop up to 4 iterations. If plan changes after OKAY, MUST ask user about re-review (not optional to skip).
 9. **Handoff** — Delete draft file. Tell user to run `/start-work` to execute.
 
 **Auto-continue rule:** After completing each step, IMMEDIATELY proceed to the next without waiting for user input. Only stop if genuinely blocked by missing information. **The plan flow has 9 steps (including draft and summary) -- completing step 5 (write plan) does NOT end the workflow.**

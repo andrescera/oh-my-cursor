@@ -44,9 +44,10 @@ Tell the user: "I'm recording our discussion in `.cursor/drafts/{name}.md` -- fe
 - EXCLUDE: [what's explicitly out]
 
 ## Test Strategy Decision
+- Infrastructure exists: YES/NO
+- Automated tests: YES (TDD) / YES (after) / NO
 - Framework: [discovered or TBD]
-- Approach: [TDD / tests-after / none / TBD]
-- Coverage target: [TBD]
+- Agent-Executed QA: ALWAYS (mandatory regardless of test choice)
 ```
 
 This is your working memory beyond the context window.

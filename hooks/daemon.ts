@@ -4,7 +4,7 @@ import { join } from "node:path"
 import { STATUS_HTML } from "./mcp-app"
 import { logEvent, getEvents, getConversationSummary, getLogPath, clearLog, onEvent, offEvent } from "./event-logger"
 import type { EventEntry } from "./event-logger"
-import { conversations, parseInput, extractMeta, setPersistence } from "./shared"
+import { conversations, parseInput, extractMeta, classifyAction, setPersistence } from "./shared"
 import { isHookEnabled, getHookConfig, resetHookConfigCache } from "./hook-config"
 import { createConversationHandlers } from "./handlers/conversation-handlers"
 import { createToolGuardHandlers } from "./handlers/tool-guard-handlers"
@@ -538,9 +538,11 @@ const fetchHandler = async (req: Request) => {
     })
   }
 
+  let errorSessionId = ""
   try {
     const body = req.method === "POST" ? await req.json() : {}
     const parsed = parseInput(body)
+    errorSessionId = (parsed.conversation_id as string) || (parsed.session_id as string) || ""
     if (req.method !== "POST") {
       for (const [key, value] of url.searchParams) {
         parsed[key] = value
@@ -559,7 +561,7 @@ const fetchHandler = async (req: Request) => {
         sessionId: (parsed.conversation_id as string) || (parsed.session_id as string) || "",
         tool: (parsed.tool_name as string) || undefined,
         agentType: (toolInput.subagent_type as string) || (toolInput.agent_type as string) || (parsed.agent_type as string) || undefined,
-        action: path === "/postToolUseFailure" ? "error" : (result.permission as string) || (result.decision === "block" ? "block" : result.followup_message ? "continue" : (typeof result.user_message === "string" && result.user_message !== "") || (typeof result.additional_context === "string" && result.additional_context !== "") ? "context_injected" : "noop"),
+        action: classifyAction(path, result),
         durationMs: (parsed.duration_ms as number) || undefined,
         error: (parsed.error as string) || (parsed.error_message as string) || ((parsed.tool_response as Record<string, unknown>)?.error as string) || undefined,
         meta: extractMeta(path, parsed, toolInput, result),
@@ -575,7 +577,7 @@ const fetchHandler = async (req: Request) => {
     logEvent({
       ts: new Date().toISOString(),
       event: path,
-      sessionId: "",
+      sessionId: errorSessionId,
       action: "error",
       error: message,
       meta: err instanceof Error && err.stack ? { stack: err.stack } : undefined,

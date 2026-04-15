@@ -107,8 +107,9 @@ export function extractMeta(
 ): Record<string, unknown> | undefined {
   const meta: Record<string, unknown> = {}
 
-  if (toolInput.file_path || input.file_path) {
-    meta.file = (toolInput.file_path || input.file_path) as string
+  const filePath = (toolInput.file_path || input.file_path || toolInput.path || input.path) as string | undefined
+  if (filePath) {
+    meta.file = filePath
   }
 
   if (event === "/beforeShellExecution") {
@@ -135,7 +136,23 @@ export function extractMeta(
     meta.reason = (result.userMessage as string) || (result.agentMessage as string) || ""
   }
 
+  if (result.decision === "block" && result.reason) {
+    meta.reason = result.reason as string
+  }
+
   return Object.keys(meta).length > 0 ? meta : undefined
+}
+
+export function classifyAction(event: string, result: Record<string, unknown>): string {
+  if (event === "/postToolUseFailure") return "error"
+  if (typeof result.permission === "string" && result.permission) return result.permission
+  if (result.followup_message) return "continue"
+  if (result.decision === "block") return "block"
+  if (result.modified_output !== undefined) return "output_modified"
+  if ((typeof result.user_message === "string" && result.user_message !== "") ||
+      (typeof result.additional_context === "string" && result.additional_context !== ""))
+    return "context_injected"
+  return "noop"
 }
 
 export function parseTodoStates(toolInput: Record<string, unknown>): Map<string, string> {

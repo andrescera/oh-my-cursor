@@ -1,4 +1,4 @@
-import { readFileSync, existsSync } from "node:fs"
+import { existsSync } from "node:fs"
 import { resolve } from "node:path"
 import type { HandlerMap, RecentToolTrailEntry, ConversationState } from "../types"
 import type { BackgroundTracker } from "./background-tracker"
@@ -295,7 +295,7 @@ export function createToolGuardHandlers(
           const agentsPath = current + "/AGENTS.md"
           if (!conversation.injectedPaths.has(agentsPath)) {
             try {
-              const content = readFileSync(agentsPath, "utf-8")
+              const content = Bun.file(agentsPath).textSync()
               if (content) {
                 conversation.injectedPaths.add(agentsPath)
                 if (conversation.injectedPaths.size > 100) {

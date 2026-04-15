@@ -1,6 +1,5 @@
-import { existsSync, readFileSync } from "node:fs"
+import { existsSync } from "node:fs"
 import { join } from "node:path"
-import { homedir } from "node:os"
 import { OhMyCursorConfigSchema, DEFAULT_CONFIG } from "./schemas/config"
 import type { OhMyCursorConfig } from "./schemas/config"
 
@@ -110,7 +109,7 @@ export function deepMerge(
 function parseJsoncFile(filePath: string): Record<string, unknown> | null {
   try {
     if (!existsSync(filePath)) return null
-    const raw = readFileSync(filePath, "utf-8")
+    const raw = Bun.file(filePath).textSync()
     const stripped = stripJsoncComments(raw)
     return JSON.parse(stripped)
   } catch (err) {
@@ -133,7 +132,7 @@ export function loadConfig(projectDir?: string): OhMyCursorConfig {
 
   let merged: Record<string, unknown> = structuredClone(DEFAULT_CONFIG) as unknown as Record<string, unknown>
 
-  const userPath = join(homedir(), ".config", "oh-my-cursor", "config.jsonc")
+  const userPath = join(process.env.HOME ?? "/tmp", ".config", "oh-my-cursor", "config.jsonc")
   const userConfig = parseJsoncFile(userPath)
   if (userConfig) {
     merged = deepMerge(merged, userConfig)

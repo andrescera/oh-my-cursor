@@ -1,6 +1,5 @@
 import {
   existsSync,
-  readFileSync,
   readdirSync,
   writeFileSync,
   unlinkSync,
@@ -73,7 +72,7 @@ const DAEMON_PORT_FILE = "/tmp/oh-my-cursor-daemon.port"
 function resolvePreferredMcpPortFromDaemonFile(fallbackMcpPort: number): number {
   try {
     if (!existsSync(DAEMON_PORT_FILE)) return fallbackMcpPort
-    const raw = readFileSync(DAEMON_PORT_FILE, "utf-8").trim()
+    const raw = Bun.file(DAEMON_PORT_FILE).textSync().trim()
     const daemonPort = parseInt(raw, 10)
     if (
       Number.isFinite(daemonPort) &&
@@ -415,7 +414,7 @@ async function handleToolCall(
       }
 
       try {
-        const fileContent = readFileSync(skillPath, "utf-8")
+        const fileContent = Bun.file(skillPath).textSync()
         return { content: [{ type: "text", text: fileContent }] }
       } catch (err) {
         return {

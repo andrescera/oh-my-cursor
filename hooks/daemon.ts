@@ -1,6 +1,5 @@
 import { serve, type Server } from "bun"
-import { readFileSync, writeFileSync, renameSync, unlinkSync, existsSync } from "node:fs"
-import { homedir } from "node:os"
+import { writeFileSync, renameSync, unlinkSync, existsSync } from "node:fs"
 import { join } from "node:path"
 import { STATUS_HTML } from "./mcp-app"
 import { logEvent, getEvents, getConversationSummary, getLogPath, clearLog, onEvent, offEvent } from "./event-logger"
@@ -172,7 +171,7 @@ const handlers: HandlerMap = {
         configDefault: DEFAULT_PORT,
       },
       configFiles: {
-        user: join(homedir(), ".config", "oh-my-cursor", "config.jsonc"),
+        user: join(process.env.HOME ?? "/tmp", ".config", "oh-my-cursor", "config.jsonc"),
         project: join(process.cwd(), ".cursor", "oh-my-cursor.jsonc"),
       },
       activeConversations: conversations.size,

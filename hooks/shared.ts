@@ -1,4 +1,3 @@
-import * as crypto from "node:crypto"
 import type { ConversationState } from "./types"
 
 export const conversations = new Map<string, ConversationState>()

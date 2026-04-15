@@ -1,4 +1,4 @@
-import { existsSync, readFileSync, writeFileSync } from "node:fs"
+import { existsSync, writeFileSync } from "node:fs"
 
 const PORTS_FILE = "/tmp/oh-my-cursor-ports.json"
 
@@ -15,7 +15,7 @@ export function writePortCoordination(ports: PortCoordination): void {
 export function readPortCoordination(): PortCoordination | null {
   try {
     if (!existsSync(PORTS_FILE)) return null
-    const raw = readFileSync(PORTS_FILE, "utf-8")
+    const raw = Bun.file(PORTS_FILE).textSync()
     const parsed = JSON.parse(raw) as PortCoordination
     if (typeof parsed.daemon !== "number" || typeof parsed.sidecar !== "number") return null
     return parsed

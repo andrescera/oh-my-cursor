@@ -78,6 +78,7 @@ describe("createToolGuardHandlers dispatch count inflation fix", () => {
       // Warm up session
       freshHandler({ tool_name: "Read", conversation_id: CONV, tool_input: { path: "/tmp/x" } })
       conversations.get(CONV)!.composerMode = "plan"
+      conversations.get(CONV)!.todoStates.set("plan-write", "in_progress")
 
       const result = freshHandler({
         tool_name: "Task",

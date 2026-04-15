@@ -2,7 +2,12 @@ import { readFileSync, existsSync } from "node:fs"
 import { resolve } from "node:path"
 import type { HandlerMap, RecentToolTrailEntry, ConversationState } from "../types"
 import type { BackgroundTracker } from "./background-tracker"
-import { getOrCreateConversation, resolveConversationId } from "../shared"
+import {
+  getOrCreateConversation,
+  PLAN_PHASE_IDS,
+  resolveConversationId,
+  transitionFromPlanMode,
+} from "../shared"
 import { loadConfig } from "../config"
 import { createContextWindowMonitor, type ContextWindowConversationEntry } from "./context-window-monitor"
 import { createCommentChecker } from "./comment-checker"
@@ -146,7 +151,22 @@ export function createToolGuardHandlers(
           const normalized = agentType.toLowerCase().replace("generalpurpose", "general-purpose")
           const currentMode = (input.mode as string) || (input.composerMode as string) || conversation.composerMode
 
-          if (currentMode === "ask") {
+          let resolvedMode = currentMode
+          if (resolvedMode === "plan") {
+            const allPlanDone = PLAN_PHASE_IDS.every((id) => {
+              const s = conversation.todoStates.get(id)
+              return !s || s === "completed" || s === "cancelled"
+            })
+            if (allPlanDone) {
+              console.log(
+                `[oh-my-cursor][preToolUse] Plan-complete override: all plan todos done, transitioning to agent`,
+              )
+              transitionFromPlanMode(conversation)
+              resolvedMode = "agent"
+            }
+          }
+
+          if (resolvedMode === "ask") {
             const reason = "[mode-guard] Task dispatches are not allowed in Ask mode."
             return {
               permission: "deny",
@@ -160,7 +180,7 @@ export function createToolGuardHandlers(
             }
           }
 
-          if (currentMode === "plan" && !PLAN_MODE_ALLOWED_AGENTS.has(normalized)) {
+          if (resolvedMode === "plan" && !PLAN_MODE_ALLOWED_AGENTS.has(normalized)) {
             const reason = `[mode-guard] Agent type '${normalized}' is not allowed in Plan mode. Only explore, metis, momus, librarian, and oracle are allowed.`
             return {
               permission: "deny",

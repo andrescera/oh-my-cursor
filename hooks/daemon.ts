@@ -551,7 +551,9 @@ const fetchHandler = async (req: Request) => {
     if (path !== "/health" && path !== "/heartbeat" && path !== "/status") {
       console.log(`[oh-my-cursor][daemon] ${path} | inputKeys=${Object.keys(parsed).join(",")}`)
     }
+    const handlerStart = Date.now()
     const result = handler(parsed)
+    const handlerDurationMs = Date.now() - handlerStart
 
     if (path !== "/health" && path !== "/heartbeat" && path !== "/status") {
       const toolInput = (parsed.tool_input as Record<string, unknown>) || {}
@@ -562,7 +564,7 @@ const fetchHandler = async (req: Request) => {
         tool: (parsed.tool_name as string) || undefined,
         agentType: (toolInput.subagent_type as string) || (toolInput.agent_type as string) || (parsed.agent_type as string) || undefined,
         action: classifyAction(path, result),
-        durationMs: (parsed.duration_ms as number) || undefined,
+        durationMs: handlerDurationMs,
         error: (parsed.error as string) || (parsed.error_message as string) || ((parsed.tool_response as Record<string, unknown>)?.error as string) || undefined,
         meta: extractMeta(path, parsed, toolInput, result),
       })

@@ -132,6 +132,30 @@ export function extractMeta(
     meta.userMessageSize = typeof result.user_message === "string" ? result.user_message.length : 0
   }
 
+  if (event === "/afterShellExecution") {
+    meta.exitCode = (input.exit_code as number) ?? (input.exitCode as number) ?? undefined
+  }
+
+  if (event === "/beforeMCPExecution" || event === "/afterMCPExecution") {
+    meta.mcpServer = (input.server_name as string) || (input.mcp_server_name as string) || (toolInput.serverName as string) || ""
+  }
+
+  if (event === "/beforeSubmitPrompt") {
+    meta.promptLength = typeof input.prompt === "string" ? input.prompt.length : 0
+  }
+
+  if (event === "/subagentStart") {
+    meta.subagentType = (input.subagent_type as string) || (toolInput.subagent_type as string) || (input.agent_type as string) || ""
+    const desc = ((input.task as string) || (toolInput.description as string) || "").slice(0, 100)
+    if (desc) meta.description = desc
+  }
+
+  if (event === "/subagentStop") {
+    meta.subagentStatus = (input.status as string) || ""
+    if (input.message_count !== undefined) meta.messageCount = input.message_count as number
+    if (input.tool_call_count !== undefined) meta.toolCallCount = input.tool_call_count as number
+  }
+
   if (result.permission === "deny") {
     meta.reason = (result.userMessage as string) || (result.agentMessage as string) || ""
   }

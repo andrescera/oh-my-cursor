@@ -1,5 +1,5 @@
 import type { ConversationState, HandlerMap } from "../types"
-import { getOrCreateConversation, resolveConversationId } from "../shared"
+import { getOrCreateConversation, resolveConversationId, PLAN_PHASE_IDS } from "../shared"
 import { loadConfig } from "../config"
 import { resolve } from "node:path"
 import { existsSync } from "node:fs"
@@ -17,11 +17,6 @@ function sendOsNotification(title: string, message: string, urgency: "low" | "no
 
 const ABORT_WINDOW_MS = 3000
 const SKIP_AGENTS = new Set(["prometheus", "compaction"])
-
-const PLAN_PHASE_IDS = [
-  "plan-switchmode", "plan-draft", "plan-interview", "plan-explore", "plan-metis",
-  "plan-write", "plan-selfreview", "plan-summary", "plan-review", "plan-handoff",
-]
 
 const slashCommands: Record<string, string> = {
   "/plan": "[command:plan] Planning workflow. Follow commands/plan.md step sequence.",

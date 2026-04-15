@@ -129,3 +129,15 @@ export function resetContinuationFailure(conversation: ConversationState): void 
   conversation.consecutiveContinuationFailures = 0
   conversation.continuationCooldownUntil = null
 }
+
+export const PLAN_PHASE_IDS = [
+  "plan-switchmode", "plan-draft", "plan-interview", "plan-explore", "plan-metis",
+  "plan-write", "plan-selfreview", "plan-summary", "plan-review", "plan-handoff",
+]
+
+export function transitionFromPlanMode(conversation: ConversationState): void {
+  conversation.composerMode = "agent"
+  for (const phaseId of PLAN_PHASE_IDS) {
+    conversation.todoStates.delete(phaseId)
+  }
+}

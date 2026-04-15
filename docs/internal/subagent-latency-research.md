@@ -142,11 +142,11 @@ Models referenced by oh-my-cursor agent definitions in this repo (`agents/*.md` 
 | --- | --- |
 | explore | `fast` |
 | librarian | `fast` (Task tool parameter; selects a smaller/faster model — not a row in the CLI model list) |
-| sisyphus-junior | `claude-4.6-sonnet-medium-thinking` |
+| sisyphus-junior | `composer-2-fast` |
 | sisyphus | `claude-4.6-opus-high-thinking` |
 | hephaestus | `gpt-5.3-codex-high-fast` |
 | atlas | `claude-4.6-sonnet-medium-thinking` |
-| oracle | `gpt-5.3-codex-high-fast` |
+| oracle | `gpt-5.4-medium` |
 | prometheus | `claude-4.6-opus-high-thinking` |
 | metis | `gpt-5.4-medium` |
 | momus | `gpt-5.3-codex-high-fast` |

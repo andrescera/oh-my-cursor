@@ -796,6 +796,8 @@ This section MUST be non-empty for any plan with 3 or more tasks. Every task tha
   > `claude-4.6-opus-high-thinking` (heavy+) | `gemini-3.1-pro` (multimodal).
   > If MODEL is omitted, executor inherits parent model. See `rules/orchestrator.mdc` for canonical routing.
 
+  MODEL: <model slug from this task's Recommended Agent Profile — pass as Task(model="...") when dispatching that wave. If not specified for the task, omit to inherit parent model. Enum-enforced slugs: `rules/agent-tool-restrictions.mdc`.>
+
   **Parallelization**:
   - **Can Run In Parallel**: YES | NO
   - **Parallel Group**: Wave N (with Tasks X, Y) | Sequential

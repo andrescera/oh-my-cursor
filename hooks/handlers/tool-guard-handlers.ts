@@ -193,7 +193,7 @@ export function createToolGuardHandlers(
             const config = loadConfig(conversation.env.OH_MY_CURSOR_PROJECT_DIR)
             if (conversation.momusIterations >= config.momus.max_iterations) {
               return {
-                additional_context: "[momus-loop] Momus iteration limit (3) reached. Ask the user whether to continue reviewing or accept the current plan.",
+                additional_context: `[momus-loop] Momus iteration limit (${config.momus.max_iterations}) reached. Ask the user whether to continue reviewing or accept the current plan.`,
               }
             }
           }
@@ -353,6 +353,9 @@ export function createToolGuardHandlers(
               }
             }
             if ((todo.id.includes("plan-write") || todo.id.includes("plan-draft")) && todo.status === "in_progress") {
+              conversation.momusIterations = 0
+            }
+            if (todo.id.includes("plan-momus") && todo.status === "in_progress") {
               conversation.momusIterations = 0
             }
           }

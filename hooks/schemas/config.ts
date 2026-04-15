@@ -47,7 +47,7 @@ export const ContinuationSchema = z.object({
 })
 
 export const MomusSchema = z.object({
-  max_iterations: z.number().positive().default(3),
+  max_iterations: z.number().positive().default(4),
 })
 
 export const ModelRoutingSchema = z.object({
@@ -80,7 +80,7 @@ export const OhMyCursorConfigSchema = z.object({
   notifications: NotificationsSchema.default({ enabled: true, sound: false }),
   orchestration: OrchestrationSchema.default({ mode: "native" }),
   continuation: ContinuationSchema.default({ cooldown_ms: 5000, max_failures: 5, backoff_multiplier: 2 }),
-  momus: MomusSchema.default({ max_iterations: 3 }),
+  momus: MomusSchema.default({ max_iterations: 4 }),
   model_routing: ModelRoutingSchema.default({
     retry_on_errors: [429, 500, 502, 503, 504],
     max_retry_attempts: 3,

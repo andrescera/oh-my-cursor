@@ -60,21 +60,24 @@ This is your working memory beyond the context window.
 
 Mark completed. Proceed immediately.
 
-2. **Explore** -- Mark `plan-explore` in_progress. Ground yourself in the codebase BEFORE asking the user anything. For non-trivial intents, fire AT LEAST 3 agents. For trivial/collaborative intents, 0-2 is acceptable.
+2. **Explore** -- Mark `plan-explore` in_progress. Ground yourself in the codebase BEFORE asking the user anything. Silent exploration before your first question is mandatory for non-trivial intents.
 
-   **`explore` agents** (codebase search — ALWAYS fire for non-trivial intents):
+   **Step A — ALWAYS fire `explore` agents** (for non-trivial intents, AT LEAST 2):
    - **Codebase patterns**: Map directory structure, similar implementations, naming conventions.
    - **Test infrastructure**: Find test framework, config, representative tests, CI setup.
    - **Architecture**: Module boundaries, imports, dependency direction, key abstractions.
 
-   **`librarian` agents** (external docs — MANDATORY when ANY of these apply):
-   - Task involves an **external library, framework, or SDK** (e.g., Zod, React, Express, Prisma)
-   - Task involves a **version migration or upgrade**
-   - Task involves an **API integration** (REST, GraphQL, MCP, cloud services)
-   - Task requires **configuration patterns** for a third-party tool (e.g., bundler, linter, CI)
+   **Step B — Fire `librarian` agents when the task involves external technologies:**
+   If the task touches external libraries, frameworks, APIs, version migrations, or third-party tooling config, ALSO dispatch `Task(subagent_type="librarian")` for official docs, API reference, and recommended patterns. Do NOT skip librarian and rely on training data — docs change.
+
+   Librarian is MANDATORY when ANY of these apply:
+   - External library, framework, or SDK (e.g., Zod, React, Express, Prisma)
+   - Version migration or upgrade
+   - API integration (REST, GraphQL, MCP, cloud services)
+   - Configuration patterns for a third-party tool (bundler, linter, CI)
    - User mentions a technology the codebase doesn't already use
-   
-   When librarian triggers apply, dispatch `Task(subagent_type="librarian")` for official docs, API reference, and recommended patterns. Do NOT skip librarian and rely on training data — docs change.
+
+   For trivial/collaborative intents, 0-2 agents total is acceptable. For non-trivial intents, fire AT LEAST 2 explore + librarian when triggers apply (typically 3-5 agents total).
 
 After collecting results, synthesize findings before proceeding. Note what you discovered, what it means for the plan, and what you still need to learn from the user. Mark completed. Proceed immediately.
 

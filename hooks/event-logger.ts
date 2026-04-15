@@ -26,6 +26,8 @@ export type ConversationSummary = {
   hookCounts: Record<string, number>
   errors: Array<{ ts: string; tool: string; error: string }>
   denies: Array<{ ts: string; tool: string; reason: string }>
+  blockCount: number
+  blocks: Array<{ ts: string; event: string; reason: string }>
 }
 
 type EventCallback = (entry: EventEntry) => void
@@ -189,6 +191,7 @@ export function getConversationSummary(sessionId: string): ConversationSummary {
   const hookCounts: Record<string, number> = {}
   const errors: ConversationSummary["errors"] = []
   const denies: ConversationSummary["denies"] = []
+  const blocks: ConversationSummary["blocks"] = []
 
   for (const e of events) {
     hookCounts[e.event] = (hookCounts[e.event] ?? 0) + 1
@@ -196,6 +199,7 @@ export function getConversationSummary(sessionId: string): ConversationSummary {
     if (e.agentType) dispatchCounts[e.agentType] = (dispatchCounts[e.agentType] ?? 0) + 1
     if (e.action === "error" && e.error) errors.push({ ts: e.ts, tool: e.tool ?? "", error: e.error })
     if (e.action === "deny") denies.push({ ts: e.ts, tool: e.tool ?? "", reason: e.error ?? e.meta?.reason as string ?? "" })
+    if (e.action === "block") blocks.push({ ts: e.ts, event: e.event, reason: (e.meta?.reason as string) ?? "" })
   }
 
   const timestamps = events.map((e) => e.ts).sort()
@@ -216,6 +220,8 @@ export function getConversationSummary(sessionId: string): ConversationSummary {
     hookCounts,
     errors,
     denies,
+    blockCount: blocks.length,
+    blocks,
   }
 }
 

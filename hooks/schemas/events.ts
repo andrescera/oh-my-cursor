@@ -38,5 +38,13 @@ export const ConversationSummarySchema = z.object({
       reason: z.string(),
     }),
   ),
+  blockCount: z.number(),
+  blocks: z.array(
+    z.object({
+      ts: z.string(),
+      event: z.string(),
+      reason: z.string(),
+    }),
+  ),
 })
 export type ConversationSummary = z.infer<typeof ConversationSummarySchema>

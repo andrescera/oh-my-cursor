@@ -73,6 +73,8 @@ describe("ConversationSummarySchema", () => {
     hookCounts: { pre: 2 },
     errors: [] as { ts: string; tool: string; error: string }[],
     denies: [] as { ts: string; tool: string; reason: string }[],
+    blockCount: 0,
+    blocks: [] as { ts: string; event: string; reason: string }[],
   }
 
   test("valid ConversationSummary passes", () => {

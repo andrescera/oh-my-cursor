@@ -537,5 +537,36 @@ describe("createContinuationHandlers", () => {
         expect(conversation.dispatchCountsThisTurn).toEqual({})
       })
     })
+
+    describe("detectPlanMode hardening", () => {
+      it("does not re-stick to plan when composerMode is agent despite plan-phase context and todos", () => {
+        const conversation = getOrCreateConversation(convId)
+        conversation.composerMode = "agent"
+        conversation.contextHistory = ["plan-draft", "plan-write"]
+        conversation.todoStates.set("plan-write", "completed")
+
+        const result = handlers["/beforeSubmitPrompt"]({
+          prompt: "do something",
+          conversation_id: convId,
+        }) as { additional_context?: string }
+
+        expect(conversation.composerMode).toBe("agent")
+        expect(result.additional_context).not.toContain("[mode:plan]")
+      })
+
+      it("applies contextHistory heuristic when composerMode is null", () => {
+        const conversation = getOrCreateConversation(convId)
+        conversation.composerMode = null
+        conversation.contextHistory = ["plan-draft"]
+
+        const result = handlers["/beforeSubmitPrompt"]({
+          prompt: "do something",
+          conversation_id: convId,
+        }) as { additional_context?: string }
+
+        expect(conversation.composerMode).toBe("plan")
+        expect(result.additional_context).toContain("[mode:plan]")
+      })
+    })
   })
 })

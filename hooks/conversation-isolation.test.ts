@@ -1,7 +1,8 @@
 import { describe, it, expect, beforeEach, afterEach } from "bun:test"
 import { resolveConversationId, getOrCreateConversation, conversations } from "./shared"
 import { ContextCollector } from "./context-collector"
-import { BackgroundTracker } from "./handlers/background-tracker"
+import { BackgroundTracker, createBackgroundTasksHandler } from "./handlers/background-tracker"
+import { WisdomTracker } from "./handlers/wisdom-tracker"
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i
 
@@ -148,5 +149,74 @@ describe("conversation isolation", () => {
       expect(pending.entries).toHaveLength(1)
       expect(pending.entries[0].registrationOrder).toBe(1)
     })
+  })
+})
+
+describe("WisdomTracker conversation isolation", () => {
+  it("should isolate wisdom entries by conversationId even with same plan path", () => {
+    const tracker = new WisdomTracker()
+    const planPath = "/project/.cursor/plans/shared-plan.plan.md"
+
+    tracker.addLearning("conv-A", planPath, { source: "worker-1", learning: "lesson A", timestamp: "2024-01-01" })
+    tracker.addLearning("conv-B", planPath, { source: "worker-2", learning: "lesson B", timestamp: "2024-01-01" })
+
+    const learningsA = tracker.getLearnings("conv-A", planPath)
+    const learningsB = tracker.getLearnings("conv-B", planPath)
+
+    expect(learningsA).toHaveLength(1)
+    expect(learningsA[0].learning).toBe("lesson A")
+    expect(learningsB).toHaveLength(1)
+    expect(learningsB[0].learning).toBe("lesson B")
+  })
+
+  it("should format injection scoped to conversation", () => {
+    const tracker = new WisdomTracker()
+    const planPath = "/project/.cursor/plans/test.plan.md"
+
+    tracker.addLearning("conv-X", planPath, { source: "explore", learning: "found pattern", timestamp: "2024-01-01" })
+
+    expect(tracker.formatForInjection("conv-X", planPath)).toContain("found pattern")
+    expect(tracker.formatForInjection("conv-Y", planPath)).toBe("")
+  })
+
+  it("should clear only the target conversation's wisdom entries", () => {
+    const tracker = new WisdomTracker()
+    const planPath = "/project/.cursor/plans/plan.plan.md"
+
+    tracker.addLearning("conv-1", planPath, { source: "w1", learning: "L1", timestamp: "2024-01-01" })
+    tracker.addLearning("conv-2", planPath, { source: "w2", learning: "L2", timestamp: "2024-01-01" })
+
+    tracker.clearConversation("conv-1")
+
+    expect(tracker.getLearnings("conv-1", planPath)).toHaveLength(0)
+    expect(tracker.getLearnings("conv-2", planPath)).toHaveLength(1)
+  })
+})
+
+describe("BackgroundTracker empty convId isolation", () => {
+  it("should return empty array when convId is missing", () => {
+    const tracker = new BackgroundTracker()
+    tracker.track("agent-1", "explore", "searching", "conv-A")
+    tracker.track("agent-2", "sisyphus", "building", "conv-B")
+
+    const handler = createBackgroundTasksHandler(tracker)
+    const result = handler({ conversation_id: "", session_id: "" })
+
+    expect(result.tasks).toHaveLength(0)
+    expect(result.count).toBe(0)
+  })
+
+  it("should return only that conversation's tasks when convId is present", () => {
+    const tracker = new BackgroundTracker()
+    tracker.track("agent-1", "explore", "searching", "conv-A")
+    tracker.track("agent-2", "sisyphus", "building", "conv-B")
+    tracker.track("agent-3", "explore", "more searching", "conv-A")
+
+    const handler = createBackgroundTasksHandler(tracker)
+    const result = handler({ conversation_id: "conv-A" })
+
+    expect(result.tasks).toHaveLength(2)
+    expect(result.count).toBe(2)
+    expect(result.tasks.every((t: { conversationId: string }) => t.conversationId === "conv-A")).toBe(true)
   })
 })

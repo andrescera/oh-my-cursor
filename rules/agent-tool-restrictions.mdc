@@ -36,7 +36,11 @@ Tool access depends on the active Cursor mode:
   - **Allowed:** Task (all subagent types), TodoWrite, AskQuestion, SwitchMode, Read, Glob (plan discovery + verification)
   - **Forbidden:** Direct Write/StrReplace on source code (delegate instead)
 
-- **Debug / Ask modes** (read-only investigation):
+- **Debug mode** (diagnostic investigation):
+  - **Allowed:** Read, Grep, Glob, Task(explore), SwitchMode
+  - **Forbidden:** Write, StrReplace, Shell, Delete, Task (except explore)
+
+- **Ask mode** (read-only advisor):
   - **Allowed:** Read, Grep, Glob, SwitchMode
   - **Forbidden:** Write, StrReplace, Shell, Task, Delete
 

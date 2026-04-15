@@ -101,7 +101,7 @@ After every worker returns:
 
 | Agent | Max Concurrent | Notes |
 |-------|---------------|-------|
-| explore | 5 | Batch related queries into fewer agents |
+| explore | 6 | Batch related queries into fewer agents |
 | sisyphus-junior | 8 | One per independent file/module |
 | oracle | 2 | Foreground, high-cost reasoning |
 | librarian | 3 | Background, external docs search |

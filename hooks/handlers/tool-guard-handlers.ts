@@ -15,12 +15,6 @@ import { createToolOutputTruncator } from "./tool-output-truncator"
 import { createDelegateTaskRetry } from "./delegate-task-retry"
 import { contextCollector } from "../context-collector"
 
-const WORKER_TYPES = new Set([
-  "general-purpose", "generalpurpose",
-  "sisyphus", "sisyphus-junior", "hephaestus",
-  "atlas", "oracle", "prometheus", "metis", "momus",
-])
-
 const PLAN_MODE_ALLOWED_AGENTS = new Set(["explore", "metis", "momus", "librarian", "oracle"])
 
 const RECENT_TOOL_TRAIL_MAX = 15
@@ -197,7 +191,7 @@ export function createToolGuardHandlers(
           const agentKey = `subagent:${normalized}`
 
           if (normalized === "momus") {
-            if (conversation.momusIterations >= 3) {
+            if (conversation.momusIterations >= config.momus.max_iterations) {
               return {
                 additional_context: "[momus-loop] Momus iteration limit (3) reached. Ask the user whether to continue reviewing or accept the current plan.",
               }

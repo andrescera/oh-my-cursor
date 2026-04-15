@@ -70,8 +70,7 @@
   "model_routing": {
     "defaults": {
       "explore": "fast",
-      "librarian": "fast",
-      "metis": "fast"
+      "librarian": "fast"
     }
   }
 }

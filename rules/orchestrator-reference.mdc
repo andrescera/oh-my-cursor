@@ -169,7 +169,7 @@ Plan (Plan mode or Prometheus) → Explore → Execute (sisyphus/atlas) → Done
 
 | Rule | Limit |
 |------|-------|
-| Max explore dispatches per user turn | 5 |
+| Max explore dispatches per user turn | 6 |
 | Max same-agent-type dispatches per turn | 5 |
 | Max sisyphus-junior workers per turn | 8 |
 | Scope overlap | Each dispatch MUST cover disjoint scope |

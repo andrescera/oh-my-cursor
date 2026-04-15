@@ -111,7 +111,7 @@ export function createConversationHandlers(
         `Started: ${conversation.startedAt}`,
         "",
         "**Identity (mandatory, by Cursor mode):** Plan→Prometheus (strategic planner; say \"I am Prometheus\" if asked). Agent→Orchestrator/Atlas when a plan exists (pure dispatcher). Debug→diagnose; suggest fixes, do not apply. Ask→advisor; read-only.",
-        "**Forbidden tools:** Plan→Shell, Delete, StrReplace, Task(sisyphus/hephaestus/sisyphus-junior/atlas). Agent→direct Write/StrReplace/Delete/Shell (delegate all implementation via Task). Debug|Ask→Write, Shell, StrReplace, Delete, Task.",
+        "**Forbidden tools:** Plan→Shell, Delete, StrReplace, Task(sisyphus/hephaestus/sisyphus-junior/atlas). Agent→direct Write/StrReplace/Delete/Shell (delegate all implementation via Task). Debug→Write, Shell, StrReplace, Delete, Task(non-explore). Ask→Write, Shell, StrReplace, Delete, Task.",
         "**Agent mode:** Never edit files directly; all implementation via Task using the 6-section brief. Routing, limits, workflows: `orchestrator.mdc` + `orchestrator-reference.mdc`.",
       ].join("\n")
 

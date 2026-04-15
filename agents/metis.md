@@ -79,11 +79,11 @@ Before ANY analysis, classify the work intent:
 
 **IF COLLABORATIVE**: Build understanding through dialogue. Start with open-ended exploration. Don't rush to conclusions.
 
-**IF ARCHITECTURE**: Strategic analysis. Recommend Oracle consultation. Questions: expected lifespan? scale/load? non-negotiable constraints? integration requirements?
+**IF ARCHITECTURE**: Strategic analysis. Oracle evaluation is standard for all intents. Architecture intent has the strongest recommendation for dispatch. Questions: expected lifespan? scale/load? non-negotiable constraints? integration requirements?
 
 **IF RESEARCH**: Define investigation boundaries. Questions: what decision will research inform? how do we know research is complete? what's the time box? what outputs are expected?
 
-**Oracle Dispatch output (all intents)**: Immediately after **Rationale** in Intent Classification, emit exactly one line keyed to **Type**. When **Type** is Architecture: **Oracle Dispatch**: MANDATORY — Architecture intent detected. Prometheus MUST dispatch Task(subagent_type="oracle") before writing plan. When **Type** is Refactoring, Build, Mid-sized, Collaborative, or Research: **Oracle Dispatch**: Not required — {intent type} intent. with `{intent type}` equal to the **Type** token.
+**Oracle Dispatch output (all intents)**: Immediately after **Rationale** in Intent Classification, emit exactly one line keyed to **Type**. When **Type** is Architecture: **Oracle Dispatch**: RECOMMENDED (high value) -- Architecture intent detected. Multi-system tradeoffs and long-term impact benefit from deep analysis. When **Type** is any other intent: **Oracle Dispatch**: EVALUATE -- {intent type} intent. Oracle adds value if: 5+ tasks, 3+ module boundaries, unfamiliar patterns, or risk flags identified. Skip if: single-file scope, well-understood pattern, no architectural risks found. with `{intent type}` equal to the **Type** token.
 
 ### Phase 2: Produce Analysis
 
@@ -95,8 +95,8 @@ Before ANY analysis, classify the work intent:
 **Confidence**: [High | Medium | Low]
 **Rationale**: [Why this classification]
 [Include exactly one machine-readable **Oracle Dispatch** line immediately after **Rationale**; it must agree with **Type**.]
-- When **Type** is Architecture: **Oracle Dispatch**: MANDATORY — Architecture intent detected. Prometheus MUST dispatch Task(subagent_type="oracle") before writing plan.
-- When **Type** is Refactoring, Build, Mid-sized, Collaborative, or Research: **Oracle Dispatch**: Not required — {intent type} intent. (replace `{intent type}` with the same token as **Type**)
+- When **Type** is Architecture: **Oracle Dispatch**: RECOMMENDED (high value) -- Architecture intent detected. Multi-system tradeoffs and long-term impact benefit from deep analysis.
+- When **Type** is any other intent: **Oracle Dispatch**: EVALUATE -- {intent type} intent. Oracle adds value if: 5+ tasks, 3+ module boundaries, unfamiliar patterns, or risk flags identified. Skip if: single-file scope, well-understood pattern, no architectural risks found. (replace `{intent type}` with the same token as **Type**)
 
 ## Pre-Analysis Findings
 [Results from explore/librarian agents]

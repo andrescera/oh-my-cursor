@@ -101,7 +101,9 @@ Skipping Metis is a hard constraint violation. Mark completed. Proceed immediate
 
 5. **Oracle consultation** -- Mark `plan-oracle` in_progress.
 
-   **IF Metis classified intent as Architecture** (or you judge the work involves multi-system tradeoffs, unfamiliar patterns, or major design decisions even if Metis classified differently):
+   Always evaluate whether Oracle consultation would add value. Consider: Metis intent classification, number of tasks/modules affected, risk assessment from Metis, whether unfamiliar patterns or multi-system tradeoffs are involved.
+
+   **IF dispatching Oracle** (Metis classified as Architecture, OR 5+ tasks, OR 3+ module boundaries, OR unfamiliar patterns, OR significant risk flags):
 
    Dispatch `Task(subagent_type="oracle")` with this structured context:
 
@@ -116,13 +118,20 @@ Skipping Metis is a hard constraint violation. Mark completed. Proceed immediate
      Recommend a single primary approach with effort estimate.`)
    ```
 
-   Incorporate Oracle's recommendations into the plan. Add an `## Oracle Consultation` section to the plan documenting the findings.
+   Incorporate Oracle's recommendations into the plan. Add an `## Oracle Consultation` section documenting the findings.
 
-   **IF intent is NOT Architecture**: Mark completed immediately. Add to plan: `## Oracle Consultation\nSkipped — Metis classified intent as {type}. No multi-system tradeoffs or major design decisions identified.`
+   **IF skipping Oracle** (simple scope, well-understood patterns, no architectural risks from Metis):
+
+   Mark completed, but add a structured `## Oracle Consultation` section to the plan with ALL of the following:
+   - **Metis Intent**: {intent classification from Metis output}
+   - **Skip Reason**: {specific reason Oracle adds no marginal value -- "not Architecture" alone is NOT sufficient}
+   - **What Was Reviewed Instead**: {Metis risks assessed, files/modules examined, complexity evaluation}
+
+   Empty or generic skip reasons are forbidden. Every skip must demonstrate that Oracle's concerns were evaluated through other means.
 
    Mark completed. Proceed immediately.
 
-6. **Write plan** -- Mark `plan-write` in_progress. Write plan to `.cursor/plans/<name>.plan.md` using Write. The file must start with YAML frontmatter (`name`, `overview`, `todos`, `isProject`) before the markdown body so Cursor's plan UI can detect it; the `todos` array uses `{id, content, status}` shape matching the plan's TODOs section. Must include: TL;DR, problem analysis, implementation tasks in parallel waves, dependency matrix (mandatory for 3+ tasks), per-task acceptance criteria, QA scenarios, commit strategy, final verification wave. Mark completed.
+6. **Write plan** -- Mark `plan-write` in_progress. Write plan to `.cursor/plans/<name>.plan.md` using Write. The file must start with YAML frontmatter (`name`, `overview`, `todos`, `isProject`) before the markdown body so Cursor's plan UI can detect it; the `todos` array uses `{id, content, status}` shape matching the plan's TODOs section. Must include: TL;DR, problem analysis, implementation tasks in parallel waves, dependency matrix (mandatory for 3+ tasks), per-task acceptance criteria, QA scenarios, commit strategy, final verification wave. The dependency matrix MUST use the 4-column table format (`Task | Depends On | Blocks | Can Parallelize With`). ASCII diagrams and bullet lists are NOT valid substitutes. Mark completed.
 
    The plan's Final Verification Wave MUST include these four review tasks with their assigned agents (see `agents/prometheus.md` for full descriptions):
    - F1: Plan Compliance Audit — `oracle`

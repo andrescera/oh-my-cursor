@@ -721,11 +721,11 @@ Wave FINAL (After ALL tasks):
 
 This section MUST be non-empty for any plan with 3 or more tasks. Every task that has dependencies MUST be listed. Include what each task blocks.
 
-| Task | Depends On | Blocks | Reason |
-|------|-----------|--------|--------|
-| 1-3 | None | 4, 5 | Foundation tasks, no prerequisites |
-| 4 | 1, 2 | 7 | Requires output from 1 and types from 2 |
-| 7 | 4, 5 | F1-F4 | Integration requires all core modules |
+| Task | Depends On | Blocks | Can Parallelize With |
+|------|-----------|--------|----------------------|
+| 1-3 | None | 4, 5 | 2, 3 |
+| 4 | 1, 2 | 7 | 5 |
+| 7 | 4, 5 | F1-F4 | None (final) |
 
 ### Agent Dispatch Summary
 

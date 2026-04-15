@@ -60,7 +60,7 @@ This is your working memory beyond the context window.
 
 Mark completed. Proceed immediately.
 
-2. **Explore** -- Mark `plan-explore` in_progress. Ground yourself in the codebase BEFORE asking the user anything. Fire AT LEAST 3 `explore` or `librarian` agents based on intent classification (see `orchestrator-reference.mdc`):
+2. **Explore** -- Mark `plan-explore` in_progress. Ground yourself in the codebase BEFORE asking the user anything. Fire `explore` or `librarian` agents based on intent classification (see `orchestrator-reference.mdc`). For non-trivial intents, fire AT LEAST 3 agents. For trivial/collaborative intents, 0-2 is acceptable:
 
 - **Codebase patterns**: Map directory structure, similar implementations, naming conventions.
 - **Test infrastructure**: Find test framework, config, representative tests, CI setup.

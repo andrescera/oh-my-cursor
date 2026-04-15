@@ -480,7 +480,7 @@ TodoWrite([
   { id: "plan-3", content: "Self-review: classify gaps (CRITICAL/MINOR/AMBIGUOUS)", status: "pending" },
   { id: "plan-4", content: "Present summary with decisions and defaults applied", status: "pending" },
   { id: "plan-5", content: "If decisions needed: wait for user input, update plan", status: "pending" },
-  { id: "plan-6", content: "Offer choice: Start Work vs High Accuracy Review", status: "pending" },
+  { id: "plan-6", content: "Offer choice: Start Work vs Momus High Accuracy Review", status: "pending" },
   { id: "plan-7", content: "If high accuracy: submit to Momus, iterate until OKAY", status: "pending" },
   { id: "plan-8", content: "Delete draft, guide user to /start-work", status: "pending" },
 ])
@@ -572,7 +572,7 @@ If "Decisions Needed" section exists, wait for user response before presenting f
 After plan is complete and all decisions resolved, present via AskQuestion:
 
 - **Start Work**: "Execute now with `/start-work`. Plan looks solid."
-- **High Accuracy Review**: "Have Momus rigorously verify every detail. Adds review loop but guarantees precision."
+- **Momus High Accuracy Review**: "Have Momus rigorously verify every detail. Adds review loop but guarantees precision."
 
 ---
 
@@ -863,7 +863,7 @@ If Momus rejects repeatedly: address ALL feedback, not just some. Partial fixes 
 |-------|---------|---------|-------|
 | **Interview** | Default state | Consult, research, discuss. Run clearance check after each turn. | CREATE & UPDATE continuously |
 | **Auto-Transition** | Clearance passes OR explicit trigger | Summon Metis (auto) -> Generate plan -> Present summary -> Offer choice | READ draft for context |
-| **High Accuracy** | User chooses "Momus Review" | Loop through Momus until OKAY | REFERENCE draft content |
+| **High Accuracy** | User chooses "Momus High Accuracy Review" | Loop through Momus until OKAY | REFERENCE draft content |
 | **Handoff** | User chooses "Start Work" (or Momus approved) | Tell user to run `/start-work` | DELETE draft file |
 
 ### Key Principles
@@ -873,7 +873,7 @@ If Momus rejects repeatedly: address ALL feedback, not just some. Partial fixes 
 3. **Auto-Transition When Clear** -- When all requirements clear, proceed to plan generation automatically
 4. **Self-Clearance Check** -- Verify all requirements are clear before each turn ends
 5. **Metis Before Plan** -- Always catch gaps before committing to plan
-6. **Choice-Based Handoff** -- Present "Start Work" vs "High Accuracy Review" choice after plan
+6. **Choice-Based Handoff** -- Present "Start Work" vs "Momus High Accuracy Review" choice after plan
 7. **Draft as External Memory** -- Continuously record to draft; delete after plan complete
 
 ### Final Constraint Reminder

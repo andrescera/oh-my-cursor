@@ -1,7 +1,7 @@
 import { serve, type Server } from "bun"
 import { writeFileSync, renameSync, unlinkSync, existsSync } from "node:fs"
 import { join } from "node:path"
-import { STATUS_HTML } from "./mcp-app"
+import { getStatusHTML } from "./mcp-app"
 import { logEvent, getEvents, getConversationSummary, getLogPath, clearLog, onEvent, offEvent } from "./event-logger"
 import type { EventEntry } from "./event-logger"
 import { conversations, parseInput, extractMeta, classifyAction, setPersistence } from "./shared"
@@ -229,7 +229,7 @@ const fetchHandler = async (req: Request) => {
   const path = url.pathname
 
   if (path === "/dashboard") {
-    return new Response(STATUS_HTML, {
+    return new Response(getStatusHTML(), {
       headers: { "Content-Type": "text/html" },
     })
   }
@@ -655,6 +655,7 @@ writePortCoordination({
   sidecar: actualPort + 1,
   updatedAt: new Date().toISOString(),
 })
+getStatusHTML(actualPort)
 heartbeatInterval = startHeartbeatWriter()
 persistenceInterval = setInterval(async () => {
   await persistence.save(conversations)

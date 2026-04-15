@@ -11,13 +11,13 @@ import { serve } from "bun"
 
 import {
   handleStatusToolCall,
+  getStatusHTML,
   MCP_APP_RESOURCE,
   MCP_APP_TOOL,
-  STATUS_HTML,
 } from "./mcp-app"
 import { loadConfig } from "./config"
 import { cleanupStaleProcess } from "./process-guard"
-import { readPortCoordination, writePortCoordination } from "./port-manager"
+import { readPortCoordination, writePortCoordination, getDaemonPort } from "./port-manager"
 
 function getPluginRoot(): string {
   return resolve(import.meta.dir, "..")
@@ -780,7 +780,7 @@ const mcpFetchHandler = async (req: Request) => {
               {
                 uri: MCP_APP_RESOURCE.uri,
                 mimeType: "text/html",
-                text: STATUS_HTML,
+                text: getStatusHTML(),
               },
             ],
           },
@@ -884,7 +884,7 @@ console.log(`[oh-my-cursor] MCP sidecar ready on http://localhost:${actualMcpPor
 
 setInterval(async () => {
   try {
-    const daemonPort = process.env.OH_MY_CURSOR_DAEMON_PORT || "47847"
+    const daemonPort = getDaemonPort(47847)
     const res = await fetch(`http://localhost:${daemonPort}/health`, {
       signal: AbortSignal.timeout(5000),
     })

@@ -1,9 +1,17 @@
 import { renderDashboardHTML } from "./dashboard/render"
+import { getDaemonPort } from "./port-manager"
 
-const DAEMON_PORT = process.env.OH_MY_CURSOR_PORT || "47847"
+const DEFAULT_PORT = parseInt(process.env.OH_MY_CURSOR_PORT || "47847")
 
-const parsedPort = parseInt(DAEMON_PORT)
-export const STATUS_HTML = renderDashboardHTML(Number.isNaN(parsedPort) ? 47847 : parsedPort)
+let statusHtmlCache: string | null = null
+
+export function getStatusHTML(port?: number): string {
+  const effectivePort = port ?? getDaemonPort(Number.isNaN(DEFAULT_PORT) ? 47847 : DEFAULT_PORT)
+  statusHtmlCache = renderDashboardHTML(effectivePort)
+  return statusHtmlCache
+}
+
+export const STATUS_HTML = getStatusHTML()
 
 export const MCP_APP_TOOL = {
   name: "oh_my_cursor_status",

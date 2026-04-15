@@ -2,10 +2,12 @@ import { describe, test, expect } from "bun:test"
 
 import {
   STATUS_HTML,
+  getStatusHTML,
   MCP_APP_TOOL,
   MCP_APP_RESOURCE,
   handleStatusToolCall,
 } from "./mcp-app"
+import { renderDashboardHTML } from "./dashboard/render"
 
 describe("mcp-app", () => {
   describe("#given STATUS_HTML export", () => {
@@ -90,6 +92,39 @@ describe("mcp-app", () => {
 
       test("#then contains the STATUS_HTML content", () => {
         expect(MCP_APP_RESOURCE.text).toBe(STATUS_HTML)
+      })
+    })
+  })
+
+  describe("#given getStatusHTML function", () => {
+    describe("#when called with a specific port", () => {
+      test("#then renderDashboardHTML with that port contains the right localhost URL", () => {
+        const html = renderDashboardHTML(12345)
+        expect(html).toContain("http://localhost:12345")
+      })
+
+      test("#then getStatusHTML(12345) returns HTML containing http://localhost:12345", () => {
+        const html = getStatusHTML(12345)
+        expect(html).toContain("http://localhost:12345")
+      })
+
+      test("#then getStatusHTML(99999) returns HTML containing http://localhost:99999", () => {
+        const html = getStatusHTML(99999)
+        expect(html).toContain("http://localhost:99999")
+      })
+    })
+
+    describe("#when called without arguments", () => {
+      test("#then returns a non-empty HTML string", () => {
+        const html = getStatusHTML()
+        expect(typeof html).toBe("string")
+        expect(html.length).toBeGreaterThan(0)
+        expect(html).toContain("<!DOCTYPE html>")
+      })
+
+      test("#then falls back to a valid port (getDaemonPort or default 47847)", () => {
+        const html = getStatusHTML()
+        expect(html).toMatch(/http:\/\/localhost:\d+/)
       })
     })
   })

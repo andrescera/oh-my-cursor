@@ -71,7 +71,9 @@ export function createConversationHandlers(
           (conversation.dispatchCounts["subagent:oracle"] || 0) +
           (conversation.dispatchCounts["subagent:prometheus"] || 0) +
           (conversation.dispatchCounts["subagent:metis"] || 0) +
-          (conversation.dispatchCounts["subagent:momus"] || 0)
+          (conversation.dispatchCounts["subagent:momus"] || 0) +
+          (conversation.dispatchCounts["subagent:librarian"] || 0) +
+          (conversation.dispatchCounts["subagent:multimodal-looker"] || 0)
         if (conversation.ralphState?.active) ralphActive = true
       }
 

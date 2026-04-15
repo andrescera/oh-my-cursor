@@ -146,20 +146,53 @@ stop_daemon() {
     fi
   fi
 
-  # Kill supervisor wrapper (the nohup bash loop that auto-restarts the daemon)
+  # Kill supervisor wrapper and wait for all daemon processes to exit
   pkill -f "oh-my-cursor.*daemon.ts" 2>/dev/null || true
-  sleep 0.5
+  local waited=0
+  while pgrep -f "oh-my-cursor.*daemon.ts" >/dev/null 2>&1 && (( waited < 5 )); do
+    sleep 1
+    (( waited++ )) || true
+  done
+  if pgrep -f "oh-my-cursor.*daemon.ts" >/dev/null 2>&1; then
+    pkill -9 -f "oh-my-cursor.*daemon.ts" 2>/dev/null || true
+    sleep 0.5
+  fi
 
-  # Kill sidecar by port file
+  # Kill sidecar and wait for it to exit
   local mcp_port
   mcp_port="$(cat /tmp/oh-my-cursor-sidecar.port 2>/dev/null || echo "$DEFAULT_MCP_PORT")"
-  if curl -s --max-time 3 -X POST "http://localhost:${mcp_port}/shutdown" &>/dev/null; then
+  curl -s --max-time 3 -X POST "http://localhost:${mcp_port}/shutdown" &>/dev/null || true
+  pkill -f "mcp-sidecar" 2>/dev/null || true
+  waited=0
+  while pgrep -f "mcp-sidecar" >/dev/null 2>&1 && (( waited < 3 )); do
     sleep 1
+    (( waited++ )) || true
+  done
+  if pgrep -f "mcp-sidecar" >/dev/null 2>&1; then
+    pkill -9 -f "mcp-sidecar" 2>/dev/null || true
+    sleep 0.5
   fi
 
   # Clean up temp files
   for f in "${TEMP_FILES[@]}"; do
     rm -f "$f" 2>/dev/null || true
+  done
+
+  # Verify ports are free before returning
+  waited=0
+  while (( waited < 3 )); do
+    local daemon_free=true sidecar_free=true
+    if curl -s --max-time 1 "http://localhost:${port}/health" &>/dev/null; then
+      daemon_free=false
+    fi
+    if curl -s --max-time 1 "http://localhost:${mcp_port}/health" &>/dev/null; then
+      sidecar_free=false
+    fi
+    if $daemon_free && $sidecar_free; then
+      break
+    fi
+    sleep 1
+    (( waited++ )) || true
   done
 }
 

@@ -16,13 +16,13 @@ Items are tagged by evidence type. **[community]** and **[binary-only]** entries
 
 ### Hook Tool Coverage
 
-Not all tools fire `preToolUse`/`postToolUse` hooks. Cursor limits hook invocation to a subset of tools. Verified from a 4.5MB production conversation log (9,452 `postToolUse` events, Cursor 3.0.16): [repro-local]
+`preToolUse` and `postToolUse` are **not** the same coverage: tools matched by `hooks.json` can still receive `preToolUse` even when Cursor never emits `postToolUse` for them. Verified from a 4.5MB production conversation log (9,452 `postToolUse` events, Cursor 3.0.16): [repro-local]
 
 **Tools that DO fire `postToolUse`:** `Read` (4,565), `Grep` (2,709), `Shell` (1,212), `Write` (834), `WebSearch` (84), `WebFetch` (41), `Delete` (7).
 
-**Tools that do NOT fire hooks:** `TodoWrite`, `SwitchMode`, `AskQuestion`, `CreatePlan`, `Task`, `Glob`, `StrReplace`, `EditNotebook`, `GenerateImage`. Zero events observed for any of these across 316 `/stop` events and the full conversation log.
+**Tools that do NOT fire `postToolUse`:** `TodoWrite`, `SwitchMode`, `AskQuestion`, `CreatePlan`, `Task`, `Glob`, `StrReplace`, `EditNotebook`, `GenerateImage`. Zero `postToolUse` events observed for any of these across 316 `/stop` events and the full conversation log. [repro-local] Several of these (e.g. `Task`, `Glob`, and other tools your `hooks.json` matchers include) **do** fire `preToolUse` when the matcher applies. **`SwitchMode` fires neither** `preToolUse` nor `postToolUse` — verified, not merely observed: **zero** `tool=SwitchMode` events in daemon logs across 10+ conversations despite `SwitchMode` `tool_use` calls in transcripts. [repro-local]
 
-**Implication for hook developers:** Do not rely on `postToolUse` to track `TodoWrite` calls, `SwitchMode` mode changes, or `Task` dispatches. These must be detected through alternative mechanisms (e.g., `afterAgentResponse` parsing, `beforeSubmitPrompt` context injection, or `subagentStart`/`subagentStop` for Task tracking).
+**Implication for hook developers:** Do not rely on `postToolUse` to track `TodoWrite` calls, `SwitchMode` mode changes, or `Task` dispatches. Do not expect `SwitchMode` on any hook stage. Use `preToolUse` where configured (e.g. for `Task` / `Glob`), plus alternatives such as `afterAgentResponse` parsing, `beforeSubmitPrompt` context injection, or `subagentStart`/`subagentStop` for Task tracking.
 
 ### Cursor Command Expansion
 
@@ -30,9 +30,9 @@ Cursor slash commands defined in `commands/*.md` are **expanded by Cursor before
 
 ### Composer Mode Not in Hook Payloads
 
-No hook payload includes a `mode`, `composerMode`, or `composer_mode` field indicating the current Cursor mode (plan/agent/debug/ask). The `beforeSubmitPrompt` handler cannot reliably detect which mode is active from the input alone. [repro-local]
+`composer_mode` (snake_case) **is** present on **`beforeSubmitPrompt`** payloads for Cursor **3.0.16+**, indicating the active mode (plan/agent/debug/ask). [repro-local] **`preToolUse` payloads still do not** include `composer_mode`, `composerMode`, or `mode` — mode cannot be read consistently from every hook stage.
 
-**Workaround:** Mode transitions are detected in `beforeSubmitPrompt` via `detectPlanMode()` heuristics. When `/start-work` is processed, `conversation.composerMode` is explicitly set to `"agent"` and plan-phase todo IDs are cleared from `todoStates` to break stickiness. The `preToolUse` handler also checks `input.mode` and `input.composerMode` as a forward-compatibility measure, but these fields are currently always undefined.
+**Workaround:** Mode is taken from `composer_mode` when present, with `detectPlanMode()` heuristics as a fallback. When `/start-work` is processed, `conversation.composerMode` is explicitly set to `"agent"` and plan-phase todo IDs are cleared from `todoStates` to break stickiness. When **all plan-phase todos** are done, the Task guard **auto-transitions** composer mode to agent via the shared **`transitionFromPlanMode()`** helper — the **same** helper **`/start-work`** uses. **`detectPlanMode`** hardening: the two heuristic fallback branches (**plan-phase todos**, ca. L86–91, and **contextHistory**, ca. L93–96) are gated behind **`!conversation.composerMode`**, so they only run for **fresh** conversations where mode was never explicitly set. The **only** remaining intentional sticky path is **`composerMode === "plan"`** (ca. L76), which is **correct** when `composerMode` is accurately set. The `preToolUse` handler also checks `input.mode` and `input.composerMode` as a forward-compatibility measure, but these fields are currently always undefined.
 
 ### Conversation Isolation Gaps
 

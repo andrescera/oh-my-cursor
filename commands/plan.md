@@ -1,5 +1,7 @@
 Use **TodoWrite** to track phase progress. This is your FIRST action -- register all phases before doing anything else:
 
+> **Pattern provenance**: This workflow is adapted from the oh-my-openagent-original Prometheus planning workflow. See `../oh-my-openagent-original/src/agents/prometheus/` for the TypeScript source. These are informational references, not runtime dependencies.
+
 ```
 TodoWrite([
   { id: "plan-draft", content: "Create draft file for interview working memory", status: "in_progress" },

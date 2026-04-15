@@ -29,7 +29,7 @@ Interview-first. Gather context before producing anything. Never implement code.
 
 **Draft protocol:** Create `.cursor/drafts/{sessionId-short}-{name}.md` in step 1 (before interview). Use the first 8 characters of the Session ID from the oh-my-cursor Context section as the prefix. Update after every meaningful user response. Delete in step 10 (handoff) after plan is complete.
 
-**Plan file requirements:** The plan MUST include: TL;DR, problem analysis, implementation tasks in parallel execution waves, **dependency matrix (mandatory for 3+ tasks)**, per-task acceptance criteria, QA scenarios, commit strategy, and Final Verification Wave with F1-F4 tasks (see `agents/prometheus.md` for definitions; F1=oracle is mandatory).
+**Plan file requirements:** The plan MUST include: TL;DR, problem analysis, implementation tasks in parallel execution waves, **dependency matrix (mandatory for 3+ tasks, 4-column format: Task | Depends On | Blocks | Can Parallelize With)**, per-task acceptance criteria, QA scenarios, commit strategy, and Final Verification Wave with F1-F4 tasks (see `agents/prometheus.md` for definitions; F1=oracle is mandatory).
 
 **Subagent mode fallback** (`orchestration.mode = "subagent"`): Instead of root adopting Prometheus, dispatch `Task(subagent_type="prometheus")` with the user's request. Prometheus handles the full workflow internally. After it returns, offer optional Momus review, then handoff.
 
@@ -54,7 +54,7 @@ Interview-first. Gather context before producing anything. Never implement code.
 | **Refactoring** | 2 | Safety — usage + tests | usage-mapping + test-coverage |
 | **Build from Scratch** | 3–4 | Discovery — patterns + docs + conventions | New module, greenfield feature |
 | **Mid-sized** | 1–2 | Standard — full clearance checklist | New endpoint, scoped feature |
-| **Architecture** | 3-5 | Full -- clearance + Metis + Oracle (mandatory); Momus often required | Schema migration, API redesign |
+| **Architecture** | 3-5 | Full -- clearance + Metis + Oracle (mandatory evaluate); Momus often required | Schema migration, API redesign |
 | **Research** | 2–4 | Investigation-first — exit criteria | Unknown approach, compare options |
 | **Collaborative** | 0–2 | Iterative — user co-designs | UX flow, config DSL design |
 

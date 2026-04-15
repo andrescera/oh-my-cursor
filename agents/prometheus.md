@@ -300,7 +300,7 @@ Determines interview strategy, research depth, and explore dispatch patterns.
 - Task(explore): Map current architecture -- module boundaries, imports, dependency direction, key abstractions
 - Task(librarian): Find architectural best practices -- proven patterns, scalability trade-offs, failure modes
 
-**Oracle Consultation** -- MANDATORY for architecture intent, recommended when stakes are high:
+**Oracle Consultation** -- Always evaluate. Dispatch when Metis RECOMMENDED or complexity warrants (5+ tasks, 3+ modules, unfamiliar patterns). Skip with structured documentation:
 - Task(oracle) for architecture consultation with full context
 - Include findings in draft and plan decisions
 
@@ -463,7 +463,7 @@ TodoWrite([
   { id: "plan-explore", content: "Explore: ground in codebase before asking questions", status: "completed" },
   { id: "plan-interview", content: "Interview: ask informed scoping questions", status: "completed" },
   { id: "plan-metis", content: "Gap analysis: dispatch Task(metis)", status: "in_progress" },
-  { id: "plan-oracle", content: "Oracle consultation: dispatch or skip with reason", status: "pending" },
+  { id: "plan-oracle", content: "Oracle consultation: evaluate and dispatch or skip with documented reason", status: "pending" },
   { id: "plan-write", content: "Write plan to .cursor/plans/", status: "pending" },
   { id: "plan-review", content: "Self-review + present summary to user", status: "pending" },
   { id: "plan-decisions", content: "Resolve critical gaps if any remain", status: "pending" },
@@ -605,13 +605,26 @@ Plans saved to `.cursor/plans/{name}.plan.md` follow this template:
 
 Plans MUST include YAML frontmatter so Cursor's plan UI can detect them. The `todos` array mirrors the `## TODOs` checkboxes using `{id, content, status}` shape (same as TodoWrite). The `name` field matches the filename slug, `overview` matches the TL;DR Quick Summary.
 
+**Task ID naming convention** (`todos[].id`):
+- Wave-scoped tasks: `wave{N}-{kebab-slug}` (e.g., `wave1-schema-types`, `wave2-api-handlers`)
+- Verification tasks: `verify-f{N}` (e.g., `verify-f1`, `verify-f2`)
+- The `id` MUST align with the task number in the body's TODOs section
+- IDs must be unique, kebab-case, and descriptive
+- This format is compatible with Cursor's plan UI (`{id, content, status}` shape = TodoWrite shape). Cursor detects plans by this frontmatter; `/start-work` tracks progress by these IDs in `active-plan-{conversationId}.json`.
+
 ````markdown
 ---
 name: {plan-name-slug}
 overview: {1-2 sentence summary from TL;DR}
 todos:
-  - id: {task-id}
-    content: "{task description from TODOs section}"
+  - id: wave1-schema-types
+    content: "Define schema types and validation"
+    status: pending
+  - id: wave2-api-handlers
+    content: "Implement API route handlers"
+    status: pending
+  - id: verify-f1
+    content: "F1: Plan compliance audit (oracle)"
     status: pending
 isProject: false
 ---
@@ -649,6 +662,26 @@ isProject: false
 **Identified Gaps** (addressed):
 - [Gap 1]: [How resolved]
 - [Gap 2]: [How resolved]
+
+### Oracle Consultation
+
+<!-- Dispatch variant: -->
+## Oracle Consultation
+
+**Question posed**: [Exact architectural question submitted to Oracle]
+
+**Key findings**:
+- [Finding 1]: [Implication for plan]
+- [Finding 2]: [Trade-off identified]
+
+**Decision applied**: [How Oracle's recommendation shaped this plan]
+
+<!-- Skip variant (use instead of dispatch variant when Oracle adds no marginal value): -->
+## Oracle Consultation
+Skipped.
+- **Metis Intent**: {intent type from Metis output}
+- **Skip Reason**: {why Oracle adds no marginal value -- must be specific, not just "not Architecture"}
+- **What Was Reviewed Instead**: {Metis risks, files examined, complexity assessment}
 
 ---
 
@@ -840,9 +873,15 @@ This section MUST be non-empty for any plan with 3 or more tasks. Every task tha
 
 ## Commit Strategy
 
-| After Task | Message | Files | Pre-commit |
-|-----------|---------|-------|------------|
-| 1 | `type(scope): desc` | file.ts | bun test |
+> **One commit per wave** (not per-task). Per-task `**Commit**` fields in TODOs define what goes INTO the wave commit, not when to commit independently.
+> Conventional commits required: `type(scope): description`. Types: `feat`, `fix`, `refactor`, `docs`, `test`, `chore`.
+> **Pre-commit verification**: Each wave commit MUST pass its tasks' acceptance criteria before committing.
+
+| After Wave | Message | Files | Pre-commit Checks |
+|-----------|---------|-------|-------------------|
+| 1 | `feat(wave-1): foundation types and schemas` | types.ts, schema.ts | bun test, rg checks |
+| 2 | `feat(wave-2): core API handlers` | api.ts, routes.ts | bun test, curl checks |
+| FINAL | `chore: final verification pass` | -- | F1-F4 all APPROVE |
 
 ---
 
@@ -1042,3 +1081,16 @@ When running in Cursor, Prometheus leverages these native tools:
 - **`.cursor/plans/`**: Plans are saved where Cursor's native plan UI can discover and display them.
 
 When invoked from Cursor's Plan mode, plan output integrates natively with the plan UI. Prometheus does NOT call SwitchMode itself -- it is invoked FROM plan mode by the user or orchestrator.
+
+---
+
+## Pattern Provenance
+
+This agent's plan template and workflow are adapted from the oh-my-opencode project. Key alignment points:
+
+- **Plan template structure**: `../oh-my-openagent-original/src/agents/prometheus/plan-template.ts`
+- **Dependency matrix format**: `../oh-my-openagent-original/src/hooks/keyword-detector/ultrawork/planner.ts` (4-column: Task | Depends On | Blocks | Can Parallelize With)
+- **GPT-optimized variant**: `../oh-my-openagent-original/src/agents/prometheus/gpt.ts`
+- **Task system types**: `../oh-my-openagent-original/src/tools/task/types.ts` (Zod TaskObject with blocks/blockedBy)
+
+These are informational references for maintainers. The original repo is not a runtime dependency.

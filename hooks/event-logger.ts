@@ -160,6 +160,9 @@ export function getEvents(opts?: {
   event?: string
   action?: string
 }): EventEntry[] {
+  if (!opts?.sessionId) {
+    console.warn("[oh-my-cursor][event-logger] getEvents() called without sessionId — cross-session query (deprecated)")
+  }
   const limit = opts?.limit ?? 100
   let results = buffer
   if (opts?.sessionId) results = results.filter((e) => e.sessionId === opts.sessionId)
@@ -168,9 +171,9 @@ export function getEvents(opts?: {
   return results.slice(-limit).reverse()
 }
 
-export function getConversationSummary(sessionId?: string): ConversationSummary {
-  const events = sessionId ? buffer.filter((e) => e.sessionId === sessionId) : buffer
-  const id = sessionId ?? events[0]?.sessionId ?? "unknown"
+export function getConversationSummary(sessionId: string): ConversationSummary {
+  const events = buffer.filter((e) => e.sessionId === sessionId)
+  const id = sessionId
 
   const toolCounts: Record<string, number> = {}
   const dispatchCounts: Record<string, number> = {}

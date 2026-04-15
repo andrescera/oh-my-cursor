@@ -207,6 +207,12 @@ const fetchHandler = async (req: Request) => {
 
   if (path === "/session-log/summary" || path === "/conversation-log/summary") {
     const sessionId = url.searchParams.get("session") || url.searchParams.get("conversation") || undefined
+    if (!sessionId) {
+      return new Response(JSON.stringify({ error: "Missing required query parameter: session or conversation" }), {
+        status: 400,
+        headers: { "Content-Type": "application/json" },
+      })
+    }
     const summary = getConversationSummary(sessionId)
     return new Response(JSON.stringify(summary), {
       headers: { "Content-Type": "application/json" },

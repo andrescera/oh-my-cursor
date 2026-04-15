@@ -2,7 +2,7 @@ import { describe, test, expect, beforeAll, afterAll } from "bun:test"
 import { readFile, rm, mkdir } from "node:fs/promises"
 import { join } from "node:path"
 import { existsSync } from "node:fs"
-import { mapModel } from "./config-generator"
+import { mapModel, VALID_CURSOR_SLUGS } from "./config-generator"
 
 const TEST_DIR = "/tmp/oh-my-cursor-test-output"
 const SCRIPT = join(import.meta.dir, "config-generator.ts")
@@ -16,8 +16,8 @@ afterAll(async () => {
 })
 
 describe("mapModel", () => {
-  test("maps gpt-5.4 with variant high to gpt-5.4-high", () => {
-    expect(mapModel("gpt-5.4", "high")).toBe("gpt-5.4-high")
+  test("maps gpt-5.4 with variant high to gpt-5.3-codex-high-fast via re-normalization", () => {
+    expect(mapModel("gpt-5.4", "high")).toBe("gpt-5.3-codex-high-fast")
   })
 
   test("maps gpt-5.4 without variant to gpt-5.4-medium (backward compat)", () => {
@@ -25,15 +25,31 @@ describe("mapModel", () => {
   })
 
   test("maps gpt-5.4-high directly via MODEL_MAP", () => {
-    expect(mapModel("gpt-5.4-high")).toBe("gpt-5.4-high")
+    expect(mapModel("gpt-5.4-high")).toBe("gpt-5.3-codex-high-fast")
   })
 
-  test("maps claude-opus-4-6 without variant to claude-4.6-opus-max-thinking", () => {
-    expect(mapModel("claude-opus-4-6")).toBe("claude-4.6-opus-max-thinking")
+  test("maps claude-opus-4-6 without variant to claude-4.6-opus-high-thinking", () => {
+    expect(mapModel("claude-opus-4-6")).toBe("claude-4.6-opus-high-thinking")
   })
 
   test("maps claude-opus-4-6 with variant high to claude-4.6-opus-high-thinking", () => {
     expect(mapModel("claude-opus-4-6", "high")).toBe("claude-4.6-opus-high-thinking")
+  })
+
+  test("falls back to base when variant produces invalid slug", () => {
+    expect(mapModel("gpt-5.4", "unknown-variant")).toBe("gpt-5.4-medium")
+  })
+
+  test("all known model inputs map to valid Cursor slugs", () => {
+    const inputs = [
+      "claude-opus-4-6", "claude-sonnet-4-6", "claude-haiku-4-5",
+      "gpt-5.4", "gpt-5.4-high", "gpt-5-nano",
+      "gemini-3.1-pro", "gemini-2.5-flash", "gemini-3-flash", "kimi-k2.5",
+    ]
+    for (const input of inputs) {
+      const result = mapModel(input)
+      expect(VALID_CURSOR_SLUGS.has(result)).toBe(true)
+    }
   })
 })
 
@@ -69,7 +85,7 @@ describe("config-generator", () => {
     const sisyphusContent = await readFile(join(TEST_DIR, "agents", "sisyphus.md"), "utf-8")
 
     // then
-    expect(sisyphusContent).toContain("model: claude-4.6-opus-max-thinking")
+    expect(sisyphusContent).toContain("model: claude-4.6-opus-high-thinking")
 
     // given - momus is disabled, should not have agent file
     const momusExists = existsSync(join(TEST_DIR, "agents", "momus.md"))

@@ -1,7 +1,7 @@
 ---
 name: prometheus
 description: "Strategic planning consultant. Use for creating detailed work plans with parallel execution waves, dependency matrices, and acceptance criteria. Planning only -- never implements."
-model: claude-4.6-opus-max-thinking
+model: claude-4.6-opus-high-thinking
 ---
 
 # Prometheus - Strategic Planning Consultant
@@ -735,19 +735,19 @@ Every task MUST include agent-executed QA scenarios (see TODO template below).
 > Target: 5-8 tasks per wave. Fewer than 3 per wave (except final) = under-splitting.
 
 Wave 1 (Start immediately - foundation):
-+-- Task 1: [description] [sisyphus-junior]
-+-- Task 2: [description] [sisyphus-junior]
-+-- Task 3: [description] [sisyphus-junior]
++-- Task 1: [description] [sisyphus-junior, composer-2-fast]
++-- Task 2: [description] [sisyphus-junior, composer-2-fast]
++-- Task 3: [description] [sisyphus-junior, composer-2-fast]
 
 Wave 2 (After Wave 1 - core modules):
-+-- Task 4: [description] (depends: 1, 2) [sisyphus]
-+-- Task 5: [description] (depends: 1) [sisyphus-junior]
++-- Task 4: [description] (depends: 1, 2) [sisyphus, claude-4.6-opus-high-thinking]
++-- Task 5: [description] (depends: 1) [sisyphus-junior, composer-2-fast]
 
 Wave FINAL (After ALL tasks):
-+-- F1: Plan compliance audit (oracle)
-+-- F2: Code quality review
-+-- F3: QA scenario execution
-+-- F4: Scope fidelity check
++-- F1: Plan compliance audit (oracle) [gpt-5.4-medium]
++-- F2: Code quality review [composer-2-fast]
++-- F3: QA scenario execution [composer-2-fast]
++-- F4: Scope fidelity check [composer-2-fast]
 -> Present results -> Get explicit user okay
 
 ### Dependency Matrix (MANDATORY for plans with 3+ tasks)
@@ -762,18 +762,18 @@ This section MUST be non-empty for any plan with 3 or more tasks. Every task tha
 
 ### Agent Dispatch Summary
 
-| Wave | Tasks | Agents |
-|------|-------|--------|
-| 1 | 3 | T1-T3: sisyphus-junior |
-| 2 | 2 | T4: sisyphus, T5: sisyphus-junior |
-| FINAL | 4 | F1: oracle, F2-F4: sisyphus-junior |
+| Wave | Tasks | Agents | Model |
+|------|-------|--------|-------|
+| 1 | 3 | T1-T3: sisyphus-junior | composer-2-fast |
+| 2 | 2 | T4: sisyphus, T5: sisyphus-junior | T4: claude-4.6-opus-high-thinking, T5: composer-2-fast |
+| FINAL | 4 | F1: oracle, F2-F4: sisyphus-junior | F1: gpt-5.4-medium, F2-F4: composer-2-fast |
 
 ---
 
 ## TODOs
 
 > Implementation + Test = ONE Task. Never separate.
-> EVERY task MUST have: Recommended Agent + Parallelization info + QA Scenarios.
+> EVERY task MUST have: Recommended Agent Profile + Parallelization info + QA Scenarios.
 > A task WITHOUT QA Scenarios is INCOMPLETE. No exceptions.
 
 - [ ] 1. [Task Title]
@@ -785,9 +785,16 @@ This section MUST be non-empty for any plan with 3 or more tasks. Every task tha
   **Must NOT do**:
   - [Specific exclusions from guardrails]
 
-  **Recommended Agent**:
+  **Recommended Agent Profile**:
   - **Agent**: `sisyphus-junior` | `sisyphus` -- [reason for choice]
+  - **Model**: `composer-2-fast` | `claude-4.6-sonnet-medium-thinking` | `claude-4.6-opus-high-thinking` -- [reason for tier choice]
   - **Blocks**: [Tasks that depend on this task completing]
+
+  > **Model Selection Guide**: Valid Cursor Task model slugs (enum-enforced):
+  > `fast` (lightweight) | `composer-2-fast` (lightweight+) | `gpt-5.4-medium` (standard) |
+  > `claude-4.6-sonnet-medium-thinking` (standard+) | `gpt-5.3-codex-high-fast` (heavy) |
+  > `claude-4.6-opus-high-thinking` (heavy+) | `gemini-3.1-pro` (multimodal).
+  > If MODEL is omitted, executor inherits parent model. See `rules/orchestrator.mdc` for canonical routing.
 
   **Parallelization**:
   - **Can Run In Parallel**: YES | NO

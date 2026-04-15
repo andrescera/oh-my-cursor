@@ -1,5 +1,7 @@
 # Subagent Dispatch Latency Research
 
+> Model names updated to valid Cursor Task model slugs (2026-04-15).
+
 **Date:** 2026-04-13
 
 Research-phase notes on Cursor subagent (Task tool) dispatch and startup latency. Facts below are tagged where they come from **official Cursor documentation**, **staff or community forum posts**, **third-party projects**, or **inference** from documented behavior. This document does not include implementation recommendations or measured benchmarks (reserved for later waves).
@@ -138,16 +140,16 @@ Models referenced by oh-my-cursor agent definitions in this repo (`agents/*.md` 
 
 | Agent | Verified model ID |
 | --- | --- |
-| explore | `gemini-3-flash` |
+| explore | `fast` |
 | librarian | `fast` (Task tool parameter; selects a smaller/faster model — not a row in the CLI model list) |
 | sisyphus-junior | `claude-4.6-sonnet-medium-thinking` |
-| sisyphus | dynamic (`claude-4.6-sonnet-medium-thinking` / `claude-4.6-opus-max-thinking` by complexity) |
-| hephaestus | `gpt-5.4-high` |
+| sisyphus | `claude-4.6-opus-high-thinking` |
+| hephaestus | `gpt-5.3-codex-high-fast` |
 | atlas | `claude-4.6-sonnet-medium-thinking` |
-| oracle | `gpt-5.4-high` |
-| prometheus | `claude-4.6-opus-max-thinking` |
+| oracle | `gpt-5.3-codex-high-fast` |
+| prometheus | `claude-4.6-opus-high-thinking` |
 | metis | `gpt-5.4-medium` |
-| momus | `gpt-5.4-high` |
+| momus | `gpt-5.3-codex-high-fast` |
 | multimodal-looker | `gemini-3.1-pro` |
 
 **Note:** `fast` is a Task tool parameter (not in the `cursor agent models` list) that selects a smaller/faster model.

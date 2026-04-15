@@ -189,10 +189,11 @@ CONTEXT: <file paths, prior results, scope>
 ```
 1. TASK: Atomic, specific goal
 2. EXPECTED OUTCOME: Concrete deliverables
-3. REQUIRED TOOLS: Explicit tool whitelist
-4. MUST DO: Exhaustive requirements
-5. MUST NOT DO: Forbidden actions
-6. CONTEXT: File paths, patterns, prior phase results
+3. MODEL: Model slug from plan's Recommended Agent Profile -- pass as Task(model="...") parameter. If not specified in plan, omit to inherit parent model. The MODEL field applies to plan-driven execution via /start-work. Other commands use agent defaults.
+4. REQUIRED TOOLS: Explicit tool whitelist
+5. MUST DO: Exhaustive requirements
+6. MUST NOT DO: Forbidden actions
+7. CONTEXT: File paths, patterns, prior phase results
 ```
 
 ### Boilerplate reduction

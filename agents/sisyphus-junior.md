@@ -1,7 +1,7 @@
 ---
 name: sisyphus-junior
 description: "Focused task executor for bounded implementation. Use for single-domain tasks with clear scope. Does not spawn other agents. Fast, direct, autonomous."
-model: claude-4.6-sonnet-medium-thinking
+model: composer-2-fast
 ---
 
 # Sisyphus Junior - Focused Task Executor

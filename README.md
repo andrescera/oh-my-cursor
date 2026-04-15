@@ -29,16 +29,16 @@ You (root thread)
        │
        ├── Intent Gate: what did the user ask?
        │
-       ├── Task(explore) ──── Codebase search (gemini-3-flash, readonly, background)
+       ├── Task(explore) ──── Codebase search (fast, readonly, background)
        ├── Task(librarian) ── External docs search (fast, readonly, background)
-       ├── Task(sisyphus) ─── Complex multi-file work (dynamic: sonnet / opus by complexity)
-       ├── Task(hephaestus) ─ Sustained deep work (gpt-5.4-high)
-       ├── Task(atlas) ────── Plan execution via delegation (sonnet-medium-thinking)
-       ├── Task(prometheus) ─ Strategic planning (opus-max-thinking)
-       ├── Task(oracle) ───── Architecture consultation (gpt-5.4-high, readonly)
+       ├── Task(sisyphus) ─── Complex multi-file work (claude-4.6-opus-high-thinking)
+       ├── Task(hephaestus) ─ Sustained deep work (gpt-5.3-codex-high-fast)
+       ├── Task(atlas) ────── Plan execution via delegation (claude-4.6-sonnet-medium-thinking)
+       ├── Task(prometheus) ─ Strategic planning (claude-4.6-opus-high-thinking)
+       ├── Task(oracle) ───── Architecture consultation (gpt-5.4-medium, readonly)
        ├── Task(metis) ────── Pre-planning gap analysis (gpt-5.4-medium, readonly)
-       ├── Task(momus) ────── Plan review (gpt-5.4-high, readonly)
-       ├── Task(sisyphus-junior) ── Quick focused tasks (sonnet-medium-thinking)
+       ├── Task(momus) ────── Plan review (gpt-5.3-codex-high-fast, readonly)
+       ├── Task(sisyphus-junior) ── Quick focused tasks (composer-2-fast)
        └── Task(multimodal-looker) ── Visual analysis (gemini-3.1-pro, readonly)
 ```
 
@@ -52,17 +52,19 @@ Three **continuation loops**: Ralph (self-referential until done), Ultrawork/ULW
 
 | Agent | Model | Role |
 |-------|-------|------|
-| **sisyphus** | dynamic (sonnet / opus by complexity) | Main orchestrator + deep worker |
-| **hephaestus** | gpt-5.4-high | Autonomous deep worker |
+| **sisyphus** | claude-4.6-opus-high-thinking | Main orchestrator + deep worker |
+| **hephaestus** | gpt-5.3-codex-high-fast | Autonomous deep worker |
 | **atlas** | claude-4.6-sonnet-medium-thinking | Todo-list orchestrator |
-| **prometheus** | claude-4.6-opus-max-thinking | Strategic planner |
-| **oracle** | gpt-5.4-high | Architecture consultant (readonly) |
+| **prometheus** | claude-4.6-opus-high-thinking | Strategic planner |
+| **oracle** | gpt-5.4-medium | Architecture consultant (readonly) |
 | **metis** | gpt-5.4-medium | Pre-planning analysis (readonly) |
-| **momus** | gpt-5.4-high | Plan reviewer (readonly) |
-| **explore** | gemini-3-flash | Codebase search (readonly, background) |
+| **momus** | gpt-5.3-codex-high-fast | Plan reviewer (readonly) |
+| **explore** | fast | Codebase search (readonly, background) |
 | **librarian** | fast | External docs search (readonly, background) |
-| **sisyphus-junior** | claude-4.6-sonnet-medium-thinking | Quick task executor |
+| **sisyphus-junior** | composer-2-fast | Quick task executor |
 | **multimodal-looker** | gemini-3.1-pro | Visual file analysis (readonly) |
+
+These are valid Cursor Task model slugs. See `rules/orchestrator.mdc` for the canonical routing table.
 
 ## Commands
 

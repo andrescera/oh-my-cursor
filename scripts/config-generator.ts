@@ -76,16 +76,29 @@ interface CategoryConfig {
   [key: string]: unknown
 }
 
+export const VALID_CURSOR_SLUGS = new Set([
+  "fast", "composer-2-fast", "gpt-5.4-medium",
+  "claude-4.6-sonnet-medium-thinking", "claude-4.6-opus-high-thinking",
+  "gpt-5.3-codex-high-fast", "gemini-3.1-pro",
+])
+
+/**
+ * Maps oh-my-opencode model identifiers to valid Cursor Task model slugs.
+ * Cursor's Task tool only accepts these slugs (enum-enforced):
+ * fast, gpt-5.4-medium, claude-4.6-sonnet-medium-thinking,
+ * claude-4.6-opus-high-thinking, gemini-3.1-pro, composer-2-fast,
+ * gpt-5.3-codex-high-fast
+ */
 const MODEL_MAP: Record<string, string> = {
-  "claude-opus-4-6": "claude-4.6-opus-max-thinking",
+  "claude-opus-4-6": "claude-4.6-opus-high-thinking",
   "claude-sonnet-4-6": "claude-4.6-sonnet-medium-thinking",
   "claude-haiku-4-5": "fast",
   "gpt-5.4": "gpt-5.4-medium",
-  "gpt-5.4-high": "gpt-5.4-high",
+  "gpt-5.4-high": "gpt-5.3-codex-high-fast",
   "gpt-5-nano": "fast",
   "gemini-3.1-pro": "gemini-3.1-pro",
-  "gemini-2.5-flash": "gemini-3-flash",
-  "gemini-3-flash": "gemini-3-flash",
+  "gemini-2.5-flash": "fast",
+  "gemini-3-flash": "fast",
   "kimi-k2.5": "fast",
 }
 
@@ -104,7 +117,12 @@ export function mapModel(openCodeModel: string, variant?: string): string {
     const levelIdx = parts.findIndex((p) => ["medium", "high", "low", "max"].includes(p))
     if (levelIdx !== -1) {
       parts[levelIdx] = variant
-      return parts.join("-")
+      const variantResult = parts.join("-")
+      const remapped = MODEL_MAP[variantResult] ?? variantResult
+      if (VALID_CURSOR_SLUGS.has(remapped)) {
+        return remapped
+      }
+      return base
     }
   }
   return base

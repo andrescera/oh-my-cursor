@@ -56,6 +56,7 @@ The root thread adopts **Atlas coordination personality** and executes the plan 
 4. For each wave, dispatch workers in parallel via **Task**:
    - `subagent_type="sisyphus-junior"` for single-file, bounded tasks
    - `subagent_type="sisyphus"` for multi-file or cross-cutting work
+   - Use the **Model** from the plan's Recommended Agent Profile as the `model` parameter on the Task call. If the plan task omits Model, omit the parameter to inherit the parent model.
    - Each **Task** dispatch MUST use the six-section brief format below
 5. After each wave completes, verify every task:
    - **ReadLints** on changed files — must be clean
@@ -90,6 +91,8 @@ Atlas will also create `.cursor/notepads/{plan-name}/` with `learnings.md`, `dec
 TASK: <one clear objective>
 
 EXPECTED OUTCOME: <measurable done state>
+
+MODEL: <model slug from plan's Recommended Agent Profile -- pass as Task(model="...") parameter. If not specified in plan, omit to inherit parent model. The MODEL field applies to plan-driven execution via /start-work. Other commands use agent defaults.>
 
 REQUIRED TOOLS: <e.g. Read, Write, Grep, Shell, Task>
 

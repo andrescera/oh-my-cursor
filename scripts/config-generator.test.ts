@@ -2,6 +2,7 @@ import { describe, test, expect, beforeAll, afterAll } from "bun:test"
 import { readFile, rm, mkdir } from "node:fs/promises"
 import { join } from "node:path"
 import { existsSync } from "node:fs"
+import { mapModel } from "./config-generator"
 
 const TEST_DIR = "/tmp/oh-my-cursor-test-output"
 const SCRIPT = join(import.meta.dir, "config-generator.ts")
@@ -12,6 +13,28 @@ beforeAll(async () => {
 
 afterAll(async () => {
   await rm(TEST_DIR, { recursive: true, force: true })
+})
+
+describe("mapModel", () => {
+  test("maps gpt-5.4 with variant high to gpt-5.4-high", () => {
+    expect(mapModel("gpt-5.4", "high")).toBe("gpt-5.4-high")
+  })
+
+  test("maps gpt-5.4 without variant to gpt-5.4-medium (backward compat)", () => {
+    expect(mapModel("gpt-5.4")).toBe("gpt-5.4-medium")
+  })
+
+  test("maps gpt-5.4-high directly via MODEL_MAP", () => {
+    expect(mapModel("gpt-5.4-high")).toBe("gpt-5.4-high")
+  })
+
+  test("maps claude-opus-4-6 without variant to claude-4.6-opus-max-thinking", () => {
+    expect(mapModel("claude-opus-4-6")).toBe("claude-4.6-opus-max-thinking")
+  })
+
+  test("maps claude-opus-4-6 with variant high to claude-4.6-opus-high-thinking", () => {
+    expect(mapModel("claude-opus-4-6", "high")).toBe("claude-4.6-opus-high-thinking")
+  })
 })
 
 describe("config-generator", () => {

@@ -6,6 +6,7 @@ TodoWrite([
   { id: "plan-explore", content: "Explore: ground in codebase before asking questions", status: "pending" },
   { id: "plan-interview", content: "Interview: ask informed scoping questions", status: "pending" },
   { id: "plan-metis", content: "Gap analysis: dispatch Task(metis)", status: "pending" },
+  { id: "plan-oracle", content: "Oracle consultation: dispatch or skip with reason", status: "pending" },
   { id: "plan-write", content: "Write plan to .cursor/plans/", status: "pending" },
   { id: "plan-review", content: "Self-review + present summary to user", status: "pending" },
   { id: "plan-decisions", content: "Resolve critical gaps if any remain", status: "pending" },
@@ -98,12 +99,41 @@ Task(subagent_type="metis", prompt=`Review this planning session:
 
 Skipping Metis is a hard constraint violation. Mark completed. Proceed immediately.
 
-5. **Write plan** -- Mark `plan-write` in_progress. Write plan to `.cursor/plans/<name>.plan.md` using Write. The file must start with YAML frontmatter (`name`, `overview`, `todos`, `isProject`) before the markdown body so Cursor's plan UI can detect it; the `todos` array uses `{id, content, status}` shape matching the plan's TODOs section. Must include: TL;DR, problem analysis, implementation tasks in parallel waves, dependency matrix (mandatory for 3+ tasks), per-task acceptance criteria, QA scenarios, commit strategy, final verification wave. Mark completed.
+5. **Oracle consultation** -- Mark `plan-oracle` in_progress.
 
-**DO NOT stop after writing the plan. Steps 6-9 are MANDATORY. Auto-continue immediately.**
+   **IF Metis classified intent as Architecture** (or you judge the work involves multi-system tradeoffs, unfamiliar patterns, or major design decisions even if Metis classified differently):
 
-6. **Self-review + summary** -- Mark `plan-review` in_progress. Read plan back and classify gaps:
-- CRITICAL gaps -> flag for step 7.
+   Dispatch `Task(subagent_type="oracle")` with this structured context:
+
+   ```
+   Task(subagent_type="oracle", prompt=`Architecture consultation for planning:
+     **User's Goal**: {summarize what user wants}
+     **Metis Gap Analysis**: {full Metis output}
+     **Research Findings**: {key discoveries from explore/librarian}
+     **Current Understanding**: {your interpretation of requirements and approach}
+
+     Analyze: architectural options, trade-offs, long-term implications, risks.
+     Recommend a single primary approach with effort estimate.`)
+   ```
+
+   Incorporate Oracle's recommendations into the plan. Add an `## Oracle Consultation` section to the plan documenting the findings.
+
+   **IF intent is NOT Architecture**: Mark completed immediately. Add to plan: `## Oracle Consultation\nSkipped — Metis classified intent as {type}. No multi-system tradeoffs or major design decisions identified.`
+
+   Mark completed. Proceed immediately.
+
+6. **Write plan** -- Mark `plan-write` in_progress. Write plan to `.cursor/plans/<name>.plan.md` using Write. The file must start with YAML frontmatter (`name`, `overview`, `todos`, `isProject`) before the markdown body so Cursor's plan UI can detect it; the `todos` array uses `{id, content, status}` shape matching the plan's TODOs section. Must include: TL;DR, problem analysis, implementation tasks in parallel waves, dependency matrix (mandatory for 3+ tasks), per-task acceptance criteria, QA scenarios, commit strategy, final verification wave. Mark completed.
+
+   The plan's Final Verification Wave MUST include these four review tasks with their assigned agents (see `agents/prometheus.md` for full descriptions):
+   - F1: Plan Compliance Audit — `oracle`
+   - F2: Code Quality Review
+   - F3: QA Scenario Execution
+   - F4: Scope Fidelity Check
+
+**DO NOT stop after writing the plan. Steps 7-10 are MANDATORY. Auto-continue immediately.**
+
+7. **Self-review + summary** -- Mark `plan-review` in_progress. Read plan back and classify gaps:
+- CRITICAL gaps -> flag for step 8.
 - MINOR -> fix silently in the plan.
 - AMBIGUOUS -> apply default, disclose.
 - Verify dependency matrix exists and is non-empty for plans with 3+ tasks.
@@ -117,9 +147,9 @@ Then present summary to user:
 - Critical gaps remaining (if any)
 Mark completed. Proceed immediately.
 
-7. **Resolve decisions** -- Mark `plan-decisions` in_progress. If critical gaps were flagged in step 6, ask user via AskQuestion and WAIT for answers. Update the plan with resolutions. If no critical gaps remain, mark completed immediately. Proceed immediately.
+8. **Resolve decisions** -- Mark `plan-decisions` in_progress. If critical gaps were flagged in step 7, ask user via AskQuestion and WAIT for answers. Update the plan with resolutions. If no critical gaps remain, mark completed immediately. Proceed immediately.
 
-8. **Offer choice** -- Mark `plan-momus` in_progress. Ask user via AskQuestion: "How would you like to proceed?" with options:
+9. **Offer choice** -- Mark `plan-momus` in_progress. Ask user via AskQuestion: "How would you like to proceed?" with options:
 - **Start Work**: "Execute now with `/start-work`. Plan looks solid."
 - **Momus High Accuracy Review**: "Have Momus rigorously verify every detail. Adds review loop."
 If Momus: dispatch `Task(subagent_type="momus")` with ONLY the plan file path as the prompt. Do NOT wrap in explanations.
@@ -129,7 +159,7 @@ If Momus: dispatch `Task(subagent_type="momus")` with ONLY the plan file path as
   - If user chose Start Work initially (Momus never ran) but later requests significant plan changes, you MUST ask via AskQuestion: "Significant plan changes detected. Would you like a Momus review before proceeding?" This is NOT optional -- always ask when the agent judges the changes are significant. If yes, mark `plan-momus` in_progress and submit. If no, proceed to handoff.
 Mark completed when user chooses Start Work, Momus says OKAY with no further changes, or user explicitly stops the loop mid-iteration.
 
-9. **Handoff** -- Mark `plan-handoff` in_progress. Delete the draft file (`.cursor/drafts/{sessionId-short}-{name}.md`). Tell user: "Plan ready. Run `/start-work` or switch to Agent mode." Mark completed.
+10. **Handoff** -- Mark `plan-handoff` in_progress. Delete the draft file (`.cursor/drafts/{sessionId-short}-{name}.md`). Tell user: "Plan ready. Run `/start-work` or switch to Agent mode." Mark completed.
 
 **Agent type restriction:** Only `explore`, `metis`, `momus`, `librarian`, and `oracle` subagent types are allowed in plan mode. Any other type (including `generalPurpose`) will be denied by the tool guard.
 

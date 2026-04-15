@@ -81,6 +81,7 @@ const MODEL_MAP: Record<string, string> = {
   "claude-sonnet-4-6": "claude-4.6-sonnet-medium-thinking",
   "claude-haiku-4-5": "fast",
   "gpt-5.4": "gpt-5.4-medium",
+  "gpt-5.4-high": "gpt-5.4-high",
   "gpt-5-nano": "fast",
   "gemini-3.1-pro": "gemini-3.1-pro",
   "gemini-2.5-flash": "gemini-3-flash",
@@ -88,13 +89,25 @@ const MODEL_MAP: Record<string, string> = {
   "kimi-k2.5": "fast",
 }
 
-function mapModel(openCodeModel: string): string {
-  if (MODEL_MAP[openCodeModel]) return MODEL_MAP[openCodeModel]
-  const sortedKeys = Object.keys(MODEL_MAP).sort((a, b) => b.length - a.length)
-  for (const key of sortedKeys) {
-    if (openCodeModel.includes(key)) return MODEL_MAP[key]
+export function mapModel(openCodeModel: string, variant?: string): string {
+  const base =
+    MODEL_MAP[openCodeModel] ??
+    Object.keys(MODEL_MAP)
+      .sort((a, b) => b.length - a.length)
+      .reduce<string | undefined>(
+        (found, key) => found ?? (openCodeModel.includes(key) ? MODEL_MAP[key] : undefined),
+        undefined,
+      ) ??
+    openCodeModel
+  if (variant && base !== "fast") {
+    const parts = base.split("-")
+    const levelIdx = parts.findIndex((p) => ["medium", "high", "low", "max"].includes(p))
+    if (levelIdx !== -1) {
+      parts[levelIdx] = variant
+      return parts.join("-")
+    }
   }
-  return openCodeModel
+  return base
 }
 
 const DEFAULT_AGENTS = [
@@ -135,7 +148,7 @@ async function generatePlugin(configPath: string, outputDir: string): Promise<vo
 
   for (const agentName of enabledAgents) {
     const override = agentOverrides[agentName] || {}
-    const model = override.model ? mapModel(override.model) : undefined
+    const model = override.model ? mapModel(override.model, override.variant) : undefined
     const promptAppend = override.prompt_append || ""
 
     const lines = [
@@ -210,11 +223,13 @@ async function generatePlugin(configPath: string, outputDir: string): Promise<vo
   console.log(`[config-generator] Done. Output: ${outputDir}`)
 }
 
-const args = process.argv.slice(2)
-const configPath = args[0] || ".opencode/oh-my-opencode.jsonc"
-const outputDir = args[1] || "./generated-plugin"
+if (import.meta.main) {
+  const args = process.argv.slice(2)
+  const configPath = args[0] || ".opencode/oh-my-opencode.jsonc"
+  const outputDir = args[1] || "./generated-plugin"
 
-generatePlugin(configPath, outputDir).catch((err) => {
-  console.error("[config-generator] Error:", err)
-  process.exit(1)
-})
+  generatePlugin(configPath, outputDir).catch((err) => {
+    console.error("[config-generator] Error:", err)
+    process.exit(1)
+  })
+}

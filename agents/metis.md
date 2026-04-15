@@ -83,6 +83,8 @@ Before ANY analysis, classify the work intent:
 
 **IF RESEARCH**: Define investigation boundaries. Questions: what decision will research inform? how do we know research is complete? what's the time box? what outputs are expected?
 
+**Oracle Dispatch output (all intents)**: Immediately after **Rationale** in Intent Classification, emit exactly one line keyed to **Type**. When **Type** is Architecture: **Oracle Dispatch**: MANDATORY — Architecture intent detected. Prometheus MUST dispatch Task(subagent_type="oracle") before writing plan. When **Type** is Refactoring, Build, Mid-sized, Collaborative, or Research: **Oracle Dispatch**: Not required — {intent type} intent. with `{intent type}` equal to the **Type** token.
+
 ### Phase 2: Produce Analysis
 
 ## Output Format
@@ -92,6 +94,9 @@ Before ANY analysis, classify the work intent:
 **Type**: [Refactoring | Build | Mid-sized | Collaborative | Architecture | Research]
 **Confidence**: [High | Medium | Low]
 **Rationale**: [Why this classification]
+[Include exactly one machine-readable **Oracle Dispatch** line immediately after **Rationale**; it must agree with **Type**.]
+- When **Type** is Architecture: **Oracle Dispatch**: MANDATORY — Architecture intent detected. Prometheus MUST dispatch Task(subagent_type="oracle") before writing plan.
+- When **Type** is Refactoring, Build, Mid-sized, Collaborative, or Research: **Oracle Dispatch**: Not required — {intent type} intent. (replace `{intent type}` with the same token as **Type**)
 
 ## Pre-Analysis Findings
 [Results from explore/librarian agents]

@@ -123,10 +123,11 @@ Mark completed. Proceed immediately.
 - **Start Work**: "Execute now with `/start-work`. Plan looks solid."
 - **Momus High Accuracy Review**: "Have Momus rigorously verify every detail. Adds review loop."
 If Momus: dispatch `Task(subagent_type="momus")` with ONLY the plan file path as the prompt. Do NOT wrap in explanations.
-  - If REJECT: fix ALL issues raised in the plan, then ask user via AskQuestion: "Plan adjusted based on Momus feedback. Want another review?" If yes, resubmit. If no, proceed to handoff.
+  - If REJECT: fix ALL issues raised in the plan and automatically resubmit to Momus. Do NOT ask between iterations -- the loop runs automatically up to the cap. If the user explicitly requests to stop mid-loop (e.g. "stop Momus", "accept the plan"), honor that and proceed to handoff.
   - If at iteration cap (4): ask user via AskQuestion: "Momus iteration limit reached. Continue reviewing or accept current plan?" If continue, resubmit. If accept, proceed to handoff.
   - If OKAY: proceed to handoff. BUT if user subsequently requests plan changes after Momus approval, you MUST ask via AskQuestion: "Plan changed since Momus approved it. Want a new Momus review?" This is NOT optional -- always ask, never skip or defer. If yes, mark `plan-momus` in_progress (resets iteration counter) and resubmit. If no, proceed to handoff.
-Mark completed when user chooses Start Work, declines re-review, or Momus says OKAY with no further changes.
+  - If user chose Start Work initially (Momus never ran) but later requests significant plan changes, you MUST ask via AskQuestion: "Significant plan changes detected. Would you like a Momus review before proceeding?" This is NOT optional -- always ask when the agent judges the changes are significant. If yes, mark `plan-momus` in_progress and submit. If no, proceed to handoff.
+Mark completed when user chooses Start Work, Momus says OKAY with no further changes, or user explicitly stops the loop mid-iteration.
 
 9. **Handoff** -- Mark `plan-handoff` in_progress. Delete the draft file (`.cursor/drafts/{sessionId-short}-{name}.md`). Tell user: "Plan ready. Run `/start-work` or switch to Agent mode." Mark completed.
 

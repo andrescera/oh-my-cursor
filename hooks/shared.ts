@@ -131,8 +131,8 @@ export function resetContinuationFailure(conversation: ConversationState): void 
 }
 
 export const PLAN_PHASE_IDS = [
-  "plan-switchmode", "plan-draft", "plan-interview", "plan-explore", "plan-metis",
-  "plan-write", "plan-selfreview", "plan-summary", "plan-review", "plan-handoff",
+  "plan-draft", "plan-explore", "plan-interview", "plan-metis",
+  "plan-write", "plan-review", "plan-decisions", "plan-momus", "plan-handoff",
 ]
 
 export function transitionFromPlanMode(conversation: ConversationState): void {

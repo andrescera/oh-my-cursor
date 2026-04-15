@@ -200,8 +200,8 @@ describe("createContinuationHandlers", () => {
         conversation.composerMode = "plan"
         conversation.activePlan = { path: ".cursor/plans/x.md", phase: "draft", completedTasks: [] }
         conversation.todoStates.set("plan-write", "completed")
-        conversation.todoStates.set("plan-selfreview", "pending")
         conversation.todoStates.set("plan-review", "pending")
+        conversation.todoStates.set("plan-decisions", "pending")
 
         const result = handlers["/stop"](baseStopInput(convId)) as {
           followup_message?: string
@@ -216,18 +216,18 @@ describe("createContinuationHandlers", () => {
         const conversation = getOrCreateConversation(convId)
         conversation.composerMode = "plan"
         conversation.activePlan = { path: ".cursor/plans/x.md", phase: "draft", completedTasks: [] }
-        conversation.todoStates.set("plan-switchmode", "completed")
-        conversation.todoStates.set("plan-interview", "completed")
+        conversation.todoStates.set("plan-draft", "completed")
         conversation.todoStates.set("plan-explore", "completed")
+        conversation.todoStates.set("plan-interview", "completed")
         conversation.todoStates.set("plan-metis", "completed")
         conversation.todoStates.set("plan-write", "completed")
-        conversation.todoStates.set("plan-selfreview", "pending")
+        conversation.todoStates.set("plan-review", "pending")
 
         const result = handlers["/stop"](baseStopInput(convId)) as {
           followup_message?: string
         }
 
-        expect(result.followup_message).toContain("plan-selfreview")
+        expect(result.followup_message).toContain("plan-review")
       })
 
       it("allows agent type plan when composerMode is plan, activePlan set, and todos are pending", () => {

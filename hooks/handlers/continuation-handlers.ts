@@ -87,12 +87,12 @@ function detectPlanMode(input: Record<string, unknown>, conversation: Conversati
     }
   }
 
-  if (!conversation.composerMode && conversation.contextHistory.some(e => /plan-switchmode|plan-draft|plan-interview|plan-explore|plan-metis|plan-write/i.test(e))) {
+  if (!conversation.composerMode && conversation.contextHistory.some(e => /plan-draft|plan-explore|plan-interview|plan-metis|plan-write|plan-review|plan-decisions|plan-momus|plan-handoff/i.test(e))) {
     console.log(`[oh-my-cursor][detectPlanMode] branch=contextHistoryFallback | composerMode=null | RESULT=true`)
     return true
   }
 
-  console.log(`[oh-my-cursor][detectPlanMode] inputMode="${inputMode}" | msgStartsPlan=${lowerMsg.startsWith("/plan")} | composerModeSticky=${conversation.composerMode === "plan"} | cursorCommandsPlan=${cursorCommands.toLowerCase().includes("/plan")} | planTodosPresent=${planTodosPresent} | contextHistoryFallback=${!conversation.composerMode && conversation.contextHistory.some(e => /plan-switchmode|plan-draft|plan-interview|plan-explore|plan-metis|plan-write/i.test(e))} | RESULT=false`)
+  console.log(`[oh-my-cursor][detectPlanMode] inputMode="${inputMode}" | msgStartsPlan=${lowerMsg.startsWith("/plan")} | composerModeSticky=${conversation.composerMode === "plan"} | cursorCommandsPlan=${cursorCommands.toLowerCase().includes("/plan")} | planTodosPresent=${planTodosPresent} | contextHistoryFallback=${!conversation.composerMode && conversation.contextHistory.some(e => /plan-draft|plan-explore|plan-interview|plan-metis|plan-write|plan-review|plan-decisions|plan-momus|plan-handoff/i.test(e))} | RESULT=false`)
   return false
 }
 

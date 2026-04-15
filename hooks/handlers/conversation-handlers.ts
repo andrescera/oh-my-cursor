@@ -164,6 +164,8 @@ export function createConversationHandlers(
       conversation.reminderInjected = false
       conversation.recentToolTrail = []
       conversation.toolCallsSinceTaskDispatch = 0
+      conversation.estimatedTokens = 0
+      conversation.tokenWarningEmitted = false
 
       contextCollector.clear(convId)
 
@@ -224,12 +226,14 @@ export function createConversationHandlers(
             ? pending.merged.slice(0, maxChars) +
               "\n\n[oh-my-cursor: additional context truncated to max_context_chars]"
             : pending.merged
+        console.log(`[oh-my-cursor][preCompact] epoch=${conversation.lastCompactionEpoch} entries=${pending.entries.length} user_message_size=${merged.length}`)
         return {
           user_message: merged,
           hookSpecificOutput: { hookEventName: "PreCompact", additionalContext: merged },
         }
       }
 
+      console.log(`[oh-my-cursor][preCompact] epoch=${conversation.lastCompactionEpoch} entries=0 user_message_size=0`)
       return {}
     },
   }

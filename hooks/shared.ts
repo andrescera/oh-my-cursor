@@ -127,6 +127,10 @@ export function extractMeta(
     meta.status = (input.status as string) || ""
   }
 
+  if (event === "/preCompact") {
+    meta.userMessageSize = typeof result.user_message === "string" ? result.user_message.length : 0
+  }
+
   if (result.permission === "deny") {
     meta.reason = (result.userMessage as string) || (result.agentMessage as string) || ""
   }

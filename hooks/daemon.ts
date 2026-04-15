@@ -559,7 +559,7 @@ const fetchHandler = async (req: Request) => {
         sessionId: (parsed.conversation_id as string) || (parsed.session_id as string) || "",
         tool: (parsed.tool_name as string) || undefined,
         agentType: (toolInput.subagent_type as string) || (toolInput.agent_type as string) || (parsed.agent_type as string) || undefined,
-        action: path === "/postToolUseFailure" ? "error" : (result.permission as string) || (result.decision === "block" ? "block" : result.followup_message ? "continue" : "noop"),
+        action: path === "/postToolUseFailure" ? "error" : (result.permission as string) || (result.decision === "block" ? "block" : result.followup_message ? "continue" : (typeof result.user_message === "string" && result.user_message !== "") || (typeof result.additional_context === "string" && result.additional_context !== "") ? "context_injected" : "noop"),
         durationMs: (parsed.duration_ms as number) || undefined,
         error: (parsed.error as string) || (parsed.error_message as string) || ((parsed.tool_response as Record<string, unknown>)?.error as string) || undefined,
         meta: extractMeta(path, parsed, toolInput, result),

@@ -596,7 +596,18 @@ Plans saved to `.cursor/plans/{name}.plan.md` follow this template:
 
 > **Note for users upgrading from v1:** any existing plan files from previous versions will no longer be auto-discovered. Move them to `.cursor/plans/` or reference them manually.
 
+Plans MUST include YAML frontmatter so Cursor's plan UI can detect them. The `todos` array mirrors the `## TODOs` checkboxes using `{id, content, status}` shape (same as TodoWrite). The `name` field matches the filename slug, `overview` matches the TL;DR Quick Summary.
+
 ````markdown
+---
+name: {plan-name-slug}
+overview: {1-2 sentence summary from TL;DR}
+todos:
+  - id: {task-id}
+    content: "{task description from TODOs section}"
+    status: pending
+isProject: false
+---
 # {Plan Title}
 
 ## TL;DR

@@ -12,7 +12,7 @@ Persistent progress lives in `.cursor/state/active-plan-{conversationId}.json` p
 
 ## Step 1: Discover plans
 
-Use **Glob** on `.cursor/plans/*.plan.md` to list plan files. Use **Read** to preview plan headers (first ~20 lines) so the user can identify each plan.
+Use **Glob** on `.cursor/plans/*.plan.md` to list plan files. Use **Read** to preview plan headers (first ~30 lines, accounting for YAML frontmatter) so the user can identify each plan.
 
 ## Step 2: Choose plan
 

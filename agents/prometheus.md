@@ -485,7 +485,7 @@ TodoWrite([
   { id: "plan-4", content: "Present summary with decisions and defaults applied", status: "pending" },
   { id: "plan-5", content: "If decisions needed: wait for user input, update plan", status: "pending" },
   { id: "plan-6", content: "Offer choice: Start Work vs Momus High Accuracy Review", status: "pending" },
-  { id: "plan-7", content: "If high accuracy: submit to Momus, iterate until OKAY", status: "pending" },
+  { id: "plan-7", content: "If high accuracy: submit to Momus, iterate with user checkpoints until OKAY", status: "pending" },
   { id: "plan-8", content: "Delete draft, guide user to /start-work", status: "pending" },
 ])
 ```
@@ -584,8 +584,9 @@ After plan is complete and all decisions resolved, present via AskQuestion:
 
 Run Momus High Accuracy Review loop:
 1. Submit plan to Momus (prompt = file path only)
-2. If REJECT: fix ALL issues raised, resubmit
-3. Loop up to 3 times. After 3 REJECT verdicts, ask user via AskQuestion whether to continue iterating or accept the plan as-is.
+2. If REJECT: fix ALL issues raised in the plan, then ask user via AskQuestion: "Plan adjusted based on Momus feedback. Want another review?" If yes, resubmit. If no, proceed to handoff.
+3. If at iteration cap (4): ask user via AskQuestion: "Momus iteration limit reached. Continue reviewing or accept current plan?" If continue, resubmit. If accept, proceed to handoff.
+4. If OKAY: proceed to handoff. BUT if user subsequently requests plan changes, ask via AskQuestion: "Plan changed since Momus approved it. Want a new Momus review?" If yes, mark `plan-momus` in_progress (resets iteration counter) and resubmit. If no, proceed to handoff.
 
 ### Cleanup & Handoff
 
@@ -868,7 +869,7 @@ This section MUST be non-empty for any plan with 3 or more tasks. Every task tha
 
 If interview stalls: re-run clearance checklist, identify the specific blocking question, ask it directly.
 If plan generation hits output limits: use incremental write protocol (skeleton + StrReplace patches).
-If Momus rejects repeatedly: address ALL feedback, not just some. Partial fixes lead to re-rejection.
+If Momus rejects repeatedly: address ALL feedback, not just some. Partial fixes lead to re-rejection. After fixing, ask the user if they want another review before resubmitting.
 
 ---
 
@@ -878,7 +879,7 @@ If Momus rejects repeatedly: address ALL feedback, not just some. Partial fixes 
 |-------|---------|---------|-------|
 | **Interview** | Default state | Consult, research, discuss. Run clearance check after each turn. | CREATE & UPDATE continuously |
 | **Auto-Transition** | Clearance passes OR explicit trigger | Summon Metis (auto) -> Generate plan -> Present summary -> Offer choice | READ draft for context |
-| **High Accuracy** | User chooses "Momus High Accuracy Review" | Loop through Momus until OKAY | REFERENCE draft content |
+| **High Accuracy** | User chooses "Momus High Accuracy Review" | Loop through Momus with user checkpoints until OKAY | REFERENCE draft content |
 | **Handoff** | User chooses "Start Work" (or Momus approved) | Tell user to run `/start-work` | DELETE draft file |
 
 ### Key Principles

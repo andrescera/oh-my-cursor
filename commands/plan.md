@@ -122,7 +122,11 @@ Mark completed. Proceed immediately.
 8. **Offer choice** -- Mark `plan-momus` in_progress. Ask user via AskQuestion: "How would you like to proceed?" with options:
 - **Start Work**: "Execute now with `/start-work`. Plan looks solid."
 - **Momus High Accuracy Review**: "Have Momus rigorously verify every detail. Adds review loop."
-If Momus: dispatch `Task(subagent_type="momus")` with ONLY the plan file path as the prompt. Do NOT wrap in explanations. Loop up to 3x if rejected. Mark completed.
+If Momus: dispatch `Task(subagent_type="momus")` with ONLY the plan file path as the prompt. Do NOT wrap in explanations.
+  - If REJECT: fix ALL issues raised in the plan, then ask user via AskQuestion: "Plan adjusted based on Momus feedback. Want another review?" If yes, resubmit. If no, proceed to handoff.
+  - If at iteration cap (4): ask user via AskQuestion: "Momus iteration limit reached. Continue reviewing or accept current plan?" If continue, resubmit. If accept, proceed to handoff.
+  - If OKAY: proceed to handoff. BUT if user subsequently requests plan changes, ask via AskQuestion: "Plan changed since Momus approved it. Want a new Momus review?" If yes, mark `plan-momus` in_progress (resets iteration counter) and resubmit. If no, proceed to handoff.
+Mark completed when user chooses Start Work, declines re-review, or Momus says OKAY with no further changes.
 
 9. **Handoff** -- Mark `plan-handoff` in_progress. Delete the draft file (`.cursor/drafts/{sessionId-short}-{name}.md`). Tell user: "Plan ready. Run `/start-work` or switch to Agent mode." Mark completed.
 

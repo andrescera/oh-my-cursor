@@ -2,7 +2,7 @@ import type { ConversationState, HandlerMap } from "../types"
 import { getOrCreateConversation, resolveConversationId, PLAN_PHASE_IDS, transitionFromPlanMode } from "../shared"
 import { loadConfig } from "../config"
 import { resolve } from "node:path"
-import { existsSync } from "node:fs"
+import { existsSync, readFileSync } from "node:fs"
 
 function sendOsNotification(title: string, message: string, urgency: "low" | "normal" | "critical", projectDir?: string) {
   const config = loadConfig(projectDir)
@@ -338,7 +338,7 @@ export function createContinuationHandlers(
           const perConvFile = resolve(projectDir, `.cursor/state/active-plan-${convId}.json`)
           try {
             if (existsSync(perConvFile)) {
-              const state = JSON.parse(Bun.file(perConvFile).textSync())
+              const state = JSON.parse(readFileSync(perConvFile, "utf-8"))
               if (state.path) {
                 conversation.activePlan = {
                   path: state.path,

@@ -1,4 +1,4 @@
-import { existsSync, unlinkSync } from "node:fs"
+import { existsSync, readFileSync, unlinkSync } from "node:fs"
 
 export function isProcessAlive(pid: number): boolean {
   try {
@@ -20,7 +20,7 @@ export function cleanupStaleProcess(
   if (!existsSync(pidFile)) return { cleaned: false }
 
   try {
-    const pidStr = Bun.file(pidFile).textSync().trim()
+    const pidStr = readFileSync(pidFile, "utf-8").trim()
     const pid = parseInt(pidStr, 10)
     if (isNaN(pid)) {
       console.log(`[oh-my-cursor] Removing invalid ${label} PID file`)

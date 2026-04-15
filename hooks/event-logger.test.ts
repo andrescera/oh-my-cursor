@@ -13,20 +13,21 @@ describe("event-logger per-conversation behavior", () => {
 
   it("getEvents filters by sessionId", () => {
     clearLog()
+    const base = Date.now()
     logEvent({
-      ts: new Date().toISOString(),
+      ts: new Date(base).toISOString(),
       event: "/preToolUse",
       sessionId: "session-A",
       tool: "Read",
     })
     logEvent({
-      ts: new Date().toISOString(),
+      ts: new Date(base + 1).toISOString(),
       event: "/preToolUse",
       sessionId: "session-A",
       tool: "Read",
     })
     logEvent({
-      ts: new Date().toISOString(),
+      ts: new Date(base + 2).toISOString(),
       event: "/preToolUse",
       sessionId: "session-B",
       tool: "Read",
@@ -37,26 +38,27 @@ describe("event-logger per-conversation behavior", () => {
 
   it("clearLog with sessionId removes only that conversation", () => {
     clearLog()
+    const base = Date.now()
     logEvent({
-      ts: new Date().toISOString(),
+      ts: new Date(base).toISOString(),
       event: "/preToolUse",
       sessionId: "session-X",
       tool: "Read",
     })
     logEvent({
-      ts: new Date().toISOString(),
+      ts: new Date(base + 1).toISOString(),
       event: "/preToolUse",
       sessionId: "session-X",
       tool: "Read",
     })
     logEvent({
-      ts: new Date().toISOString(),
+      ts: new Date(base + 2).toISOString(),
       event: "/preToolUse",
       sessionId: "session-Y",
       tool: "Read",
     })
     logEvent({
-      ts: new Date().toISOString(),
+      ts: new Date(base + 3).toISOString(),
       event: "/preToolUse",
       sessionId: "session-Y",
       tool: "Read",

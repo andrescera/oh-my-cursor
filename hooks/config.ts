@@ -1,4 +1,4 @@
-import { existsSync } from "node:fs"
+import { existsSync, readFileSync } from "node:fs"
 import { join } from "node:path"
 import { OhMyCursorConfigSchema, DEFAULT_CONFIG } from "./schemas/config"
 import type { OhMyCursorConfig } from "./schemas/config"
@@ -109,7 +109,7 @@ export function deepMerge(
 function parseJsoncFile(filePath: string): Record<string, unknown> | null {
   try {
     if (!existsSync(filePath)) return null
-    const raw = Bun.file(filePath).textSync()
+    const raw = readFileSync(filePath, "utf-8")
     const stripped = stripJsoncComments(raw)
     return JSON.parse(stripped)
   } catch (err) {

@@ -1,4 +1,4 @@
-import { existsSync, mkdirSync, unlinkSync, readdirSync, writeFileSync } from "node:fs"
+import { existsSync, mkdirSync, readFileSync, unlinkSync, readdirSync, writeFileSync } from "node:fs"
 import type { ConversationState } from "./types"
 import { ConversationStateSchema } from "./schemas/conversation"
 
@@ -71,7 +71,7 @@ export class StatePersistence {
     const filePath = `${this.dirPath}/${convId}.json`
     try {
       if (!existsSync(filePath)) return null
-      const text = Bun.file(filePath).textSync()
+      const text = readFileSync(filePath, "utf-8")
       if (!text.trim()) return null
       const data = JSON.parse(text)
       const backwardCompatDefaults = {
@@ -115,7 +115,7 @@ export class StatePersistence {
     const indexPath = `${this.dirPath}/index.json`
     try {
       if (!existsSync(indexPath)) return new Map()
-      const text = Bun.file(indexPath).textSync()
+      const text = readFileSync(indexPath, "utf-8")
       if (!text.trim()) return new Map()
       const data = JSON.parse(text)
       if (!Array.isArray(data)) return new Map()
@@ -156,7 +156,7 @@ export class StatePersistence {
         const convId = file.slice(0, -5)
         const filePath = `${this.dirPath}/${file}`
         try {
-          const text = Bun.file(filePath).textSync()
+          const text = readFileSync(filePath, "utf-8")
           const data = JSON.parse(text)
           if (data && typeof data.startedAt === "string") {
             const ageMs = now - new Date(data.startedAt).getTime()

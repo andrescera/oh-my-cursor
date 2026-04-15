@@ -1,4 +1,4 @@
-import { existsSync, mkdirSync, appendFileSync, readdirSync, statSync, unlinkSync } from "node:fs"
+import { existsSync, mkdirSync, appendFileSync, readFileSync, readdirSync, statSync, unlinkSync } from "node:fs"
 import { join } from "node:path"
 
 export type EventEntry = {
@@ -60,7 +60,7 @@ function parseEventLogFile(filePath: string): EventEntry[] {
   const out: EventEntry[] = []
   try {
     if (!existsSync(filePath)) return out
-    const text = Bun.file(filePath).textSync()
+    const text = readFileSync(filePath, "utf-8")
     if (!text.trim()) return out
     for (const line of text.trim().split("\n")) {
       try {
@@ -122,7 +122,7 @@ function flushPending(): void {
 
 function rotateIfNeeded(filePath: string): void {
   try {
-    const text = Bun.file(filePath).textSync()
+    const text = readFileSync(filePath, "utf-8")
     const lines = text.trim().split("\n")
     if (lines.length > MAX_FILE_LINES) {
       Bun.write(filePath, lines.slice(-FILE_TRIM_TO).join("\n") + "\n")

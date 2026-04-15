@@ -13,13 +13,19 @@ alwaysApply: true
 
 ## Model Routing
 
-Frontmatter model names are definition-time signals. At runtime, Task only accepts `model: 'fast'` or inherits parent.
+Agent YAML frontmatter `model:` defines the default. At runtime, Task accepts these model slugs (enum-enforced):
 
-| Tier | Signal | Runtime |
-| --- | --- | --- |
-| Lightweight | fast, gemini-3-flash | model: 'fast' |
-| Standard | claude-4.6-sonnet-*, gpt-5.4-medium | Inherit (omit) |
-| Heavy | claude-4.6-opus-*, gpt-5.4-high | Inherit (omit) |
+| Slug | Tier |
+| --- | --- |
+| `fast` | Lightweight |
+| `composer-2-fast` | Lightweight+ |
+| `gpt-5.4-medium` | Standard |
+| `claude-4.6-sonnet-medium-thinking` | Standard+ |
+| `gpt-5.3-codex-high-fast` | Heavy |
+| `claude-4.6-opus-high-thinking` | Heavy+ |
+| `gemini-3.1-pro` | Multimodal |
+
+If `model` is omitted, the task inherits the parent's model. Cursor may fall back to a different model at runtime; the requested slug is a preference, not a guarantee.
 
 # Agent Tool Restrictions
 

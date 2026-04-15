@@ -26,23 +26,21 @@ Orchestration mode is injected via `additional_context` on session start. Defaul
 
 ## Agent Routing
 
-> Model IDs below are verified against `cursor agent models` (2026-04-13). The Task tool accepts `model: 'fast'` or inherits the parent model. Agent YAML frontmatter (`agents/*.md`) accepts specific model IDs.
+> The Task tool accepts `model: 'fast'` or any of the 7 valid Cursor slugs listed in `agent-tool-restrictions.mdc`.
 
 | Agent | Model | Fire When |
 |-------|-------|-----------|
-| **explore** | `gemini-3-flash` | Any search, exploration, "how does X work", docs lookup |
+| **explore** | `fast` | Any search, exploration, "how does X work", docs lookup |
 | **librarian** | `fast` | External docs, library APIs, OSS code search |
-| **sisyphus-junior** | `claude-4.6-sonnet-medium-thinking` | Simple single-file changes, quick focused tasks |
-| **sisyphus** | `dynamic (see below)` | Complex multi-file work, architecture + implementation |
-| **hephaestus** | `gpt-5.4-high` | Sustained deep work on a single complex problem |
+| **sisyphus-junior** | `composer-2-fast` | Simple single-file changes, quick focused tasks |
+| **sisyphus** | `claude-4.6-opus-high-thinking` | Complex multi-file work, architecture + implementation |
+| **hephaestus** | `gpt-5.3-codex-high-fast` | Sustained deep work on a single complex problem |
 | **atlas** | `claude-4.6-sonnet-medium-thinking` | Plan exists -> executes plan step-by-step via delegation |
-| **oracle** | `gpt-5.4-high` | Need architecture advice, debugging consultation |
-| **prometheus** | `claude-4.6-opus-max-thinking` | Complex planning, ambiguous scope analysis |
+| **oracle** | `gpt-5.4-medium` | Need architecture advice, debugging consultation |
+| **prometheus** | `claude-4.6-opus-high-thinking` | Complex planning, ambiguous scope analysis |
 | **metis** | `gpt-5.4-medium` | Pre-planning gap analysis, risk assessment |
-| **momus** | `gpt-5.4-high` | Plan review, quality audit |
+| **momus** | `gpt-5.3-codex-high-fast` | Plan review, quality audit |
 | **multimodal-looker** | `gemini-3.1-pro` | Images, PDFs, diagrams, visual analysis |
-
-**Sisyphus model:** Dynamic based on task complexity. Simple coordination uses `claude-4.6-sonnet-medium-thinking`; complex multi-file architecture uses `claude-4.6-opus-max-thinking`. Dispatchers should override the model per task.
 
 ## Model Fallback
 
@@ -61,12 +59,12 @@ When a model is unavailable, Cursor falls back to the next available model:
 
 | Agent | Primary Model | Fallback |
 |-------|--------------|----------|
-| explore | gemini-3-flash | Always available |
+| explore | fast | Always available |
 | librarian | fast | Always available |
-| sisyphus-junior | claude-4.6-sonnet-medium | Retry with fast |
-| sisyphus | claude-4.6-opus-max | Retry with sisyphus-junior |
-| hephaestus | gpt-5.4-high | Retry with sisyphus |
-| oracle | gpt-5.4-high | Retry with sisyphus |
+| sisyphus-junior | composer-2-fast | Retry with fast |
+| sisyphus | claude-4.6-opus-high-thinking | Retry with sisyphus-junior |
+| hephaestus | gpt-5.3-codex-high-fast | Retry with sisyphus |
+| oracle | gpt-5.4-medium | Retry with fast |
 
 ## Hard Constraints
 

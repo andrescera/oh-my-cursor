@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeEach } from "bun:test"
 import { createToolGuardHandlers } from "./tool-guard-handlers"
 import type { BackgroundTracker } from "./background-tracker"
-import { conversations } from "../shared"
+import { conversations, PLAN_PHASE_IDS } from "../shared"
 
 type ActiveTask = { agentId: string; agentType: string; description: string; startTime: number; elapsedMs: number; conversationId: string }
 
@@ -146,6 +146,86 @@ describe("createToolGuardHandlers dispatch count inflation fix", () => {
       expect(conversation.dispatchCounts["subagent:explore"]).toBe(1)
       expect(conversation.dispatchCountsThisTurn["subagent:explore"]).toBe(1)
       expect(conversation.dispatchCountsThisTurn["Task"]).toBe(1)
+    })
+  })
+
+  describe("#plan-complete override", () => {
+    it("allows worker dispatch when all plan todos are completed", () => {
+      const tracker = makeTracker({ [CONV]: [] })
+      const { "/preToolUse": handler } = createToolGuardHandlers(conversations, tracker)
+
+      handler({ tool_name: "Read", conversation_id: CONV, tool_input: { path: "/tmp/x" } })
+      const conversation = conversations.get(CONV)!
+      conversation.composerMode = "plan"
+      for (const id of PLAN_PHASE_IDS) {
+        conversation.todoStates.set(id, "completed")
+      }
+
+      const result = handler({
+        tool_name: "Task",
+        conversation_id: CONV,
+        tool_input: { subagent_type: "sisyphus", description: "Do work after plan" },
+      })
+
+      expect(result.permission).not.toBe("deny")
+      const after = conversations.get(CONV)!
+      expect(after.composerMode).toBe("agent")
+      for (const id of PLAN_PHASE_IDS) {
+        expect(after.todoStates.has(id)).toBe(false)
+      }
+    })
+
+    it("blocks worker dispatch when plan todos are incomplete", () => {
+      const tracker = makeTracker({ [CONV]: [] })
+      const { "/preToolUse": handler } = createToolGuardHandlers(conversations, tracker)
+
+      handler({ tool_name: "Read", conversation_id: CONV, tool_input: { path: "/tmp/x" } })
+      conversations.get(CONV)!.composerMode = "plan"
+      conversations.get(CONV)!.todoStates.set("plan-write", "in_progress")
+
+      const result = handler({
+        tool_name: "Task",
+        conversation_id: CONV,
+        tool_input: { subagent_type: "sisyphus", description: "Forbidden while plan incomplete" },
+      })
+
+      expect(result.permission).toBe("deny")
+    })
+
+    it("allows worker dispatch when no plan todos exist", () => {
+      const tracker = makeTracker({ [CONV]: [] })
+      const { "/preToolUse": handler } = createToolGuardHandlers(conversations, tracker)
+
+      handler({ tool_name: "Read", conversation_id: CONV, tool_input: { path: "/tmp/x" } })
+      conversations.get(CONV)!.composerMode = "plan"
+
+      const result = handler({
+        tool_name: "Task",
+        conversation_id: CONV,
+        tool_input: { subagent_type: "sisyphus", description: "No plan todos in map" },
+      })
+
+      expect(result.permission).not.toBe("deny")
+    })
+
+    it("increments dispatch count after plan-complete override", () => {
+      const tracker = makeTracker({ [CONV]: [] })
+      const { "/preToolUse": handler } = createToolGuardHandlers(conversations, tracker)
+
+      handler({ tool_name: "Read", conversation_id: CONV, tool_input: { path: "/tmp/x" } })
+      const conversation = conversations.get(CONV)!
+      conversation.composerMode = "plan"
+      for (const id of PLAN_PHASE_IDS) {
+        conversation.todoStates.set(id, "completed")
+      }
+
+      handler({
+        tool_name: "Task",
+        conversation_id: CONV,
+        tool_input: { subagent_type: "sisyphus", description: "Counted dispatch" },
+      })
+
+      expect(conversations.get(CONV)!.dispatchCounts["subagent:sisyphus"]).toBe(1)
     })
   })
 })

@@ -121,7 +121,7 @@ describe("createBackgroundTasksHandler", () => {
       tracker.track("agent-2", "librarian", "Fetch docs", "conv-default")
       const handler = createBackgroundTasksHandler(tracker)
 
-      const result = handler({})
+      const result = handler({ conversation_id: "conv-default" })
 
       expect(result.count).toBe(2)
       expect(Array.isArray(result.tasks)).toBe(true)
@@ -149,7 +149,7 @@ describe("createBackgroundTasksHandler", () => {
       tracker.track("fresh-agent", "librarian", "Recent task", "conv-default")
       const handler = createBackgroundTasksHandler(tracker)
 
-      const result = handler({})
+      const result = handler({ conversation_id: "conv-default" })
 
       expect(result.count).toBe(1)
       const tasks = result.tasks as Array<{ agentId: string }>

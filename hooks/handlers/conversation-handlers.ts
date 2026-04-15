@@ -1,3 +1,4 @@
+import type { StatePersistence } from "../state-persistence"
 import type { ConversationState, HandlerMap } from "../types"
 import { getOrCreateConversation, resolveConversationId } from "../shared"
 import { loadConfig } from "../config"
@@ -33,6 +34,7 @@ export function createConversationHandlers(
   conversations: Map<string, ConversationState>,
   getPort: () => number,
   tracker: BackgroundTracker,
+  persistence: StatePersistence,
 ): HandlerMap {
   return {
     "/health": (input) => {
@@ -44,6 +46,7 @@ export function createConversationHandlers(
           conversations.delete(id)
         }
       }
+      persistence.pruneStale(TWO_HOURS)
 
       const filterConvId = (input.conversation as string) || ""
       const scope = filterConvId
@@ -141,6 +144,7 @@ export function createConversationHandlers(
       contextCollector.clear(convId)
       tracker.clearConversation(convId)
       conversations.delete(convId)
+      persistence.removeConversation(convId)
 
       return {}
     },

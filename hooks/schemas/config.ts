@@ -7,7 +7,7 @@ export const SubagentLimitsSchema = z.object({
 
 export const StatePersistenceSchema = z.object({
   enabled: z.boolean().default(true),
-  path: z.string().default("/tmp/oh-my-cursor-state.json"),
+  path: z.string().default("/tmp/oh-my-cursor-state"),
 })
 
 export const DaemonSchema = z.object({

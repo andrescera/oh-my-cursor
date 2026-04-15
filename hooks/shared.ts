@@ -1,10 +1,32 @@
 import type { ConversationState } from "./types"
+import type { StatePersistence } from "./state-persistence"
 
 export const conversations = new Map<string, ConversationState>()
 
+let _persistence: StatePersistence | null = null
+
+export function setPersistence(p: StatePersistence): void {
+  _persistence = p
+}
+
+export function markDirty(convId: string): void {
+  _persistence?.markDirty(convId)
+}
+
 export function getOrCreateConversation(conversationId: string): ConversationState {
-  if (!conversations.has(conversationId)) {
-    conversations.set(conversationId, {
+  if (conversations.has(conversationId)) {
+    return conversations.get(conversationId)!
+  }
+  let state: ConversationState | undefined
+  if (_persistence) {
+    const loaded = _persistence.loadOne(conversationId)
+    if (loaded) {
+      conversations.set(conversationId, loaded)
+      state = loaded
+    }
+  }
+  if (!state) {
+    const created: ConversationState = {
       id: conversationId,
       startedAt: new Date().toISOString(),
       env: {},
@@ -45,9 +67,12 @@ export function getOrCreateConversation(conversationId: string): ConversationSta
       tokenWarningEmitted: false,
       wisdomLearnings: [],
       createdViaFallback: false,
-    })
+    }
+    conversations.set(conversationId, created)
+    state = created
   }
-  return conversations.get(conversationId)!
+  _persistence?.markDirty(conversationId)
+  return state
 }
 
 export function parseInput(body: unknown): Record<string, unknown> {

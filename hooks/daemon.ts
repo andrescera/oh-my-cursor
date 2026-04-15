@@ -25,11 +25,16 @@ const config = loadConfig()
 const tracker = new BackgroundTracker()
 const persistence = new StatePersistence(config.state_persistence.path)
 
-const restored = persistence.load()
-if (restored) {
-  for (const [id, state] of restored) {
-    conversations.set(id, state)
+const maxRestoreAgeMs = 4 * 60 * 60 * 1000
+const now = Date.now()
+for (const [id, meta] of persistence.loadIndex()) {
+  const ageMs = now - new Date(meta.startedAt).getTime()
+  if (ageMs > maxRestoreAgeMs) {
+    console.warn(`[oh-my-cursor] Skipping stale conversation ${id} (age: ${Math.round(ageMs / 60000)}min)`)
+    continue
   }
+  const state = persistence.loadOne(id)
+  if (state) conversations.set(id, state)
 }
 
 try {
@@ -142,7 +147,7 @@ function gracefulShutdown(reason: string): void {
 const startTime = Date.now()
 
 const handlers: HandlerMap = {
-  ...createConversationHandlers(conversations, () => actualPort, tracker),
+  ...createConversationHandlers(conversations, () => actualPort, tracker, persistence),
   ...createToolGuardHandlers(conversations, tracker),
   ...createContinuationHandlers(conversations),
   ...createSafetyHandlers(),

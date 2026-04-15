@@ -1,27 +1,48 @@
-import { existsSync, readFileSync, writeFileSync, renameSync, unlinkSync, mkdirSync } from "node:fs"
-import { dirname } from "node:path"
+import { existsSync, mkdirSync, unlinkSync, readdirSync, writeFileSync } from "node:fs"
 import type { ConversationState } from "./types"
 import { ConversationStateSchema } from "./schemas/conversation"
 
-const DEFAULT_PATH = "/tmp/oh-my-cursor-state.json"
+const DEFAULT_DIR = "/tmp/oh-my-cursor-state"
+const LEGACY_FILE = "/tmp/oh-my-cursor-state.json"
 const DEFAULT_DEBOUNCE_MS = 5000
+
+export type ConversationMetadata = {
+  id: string
+  startedAt: string
+  composerMode: string | null
+  toolCallCount: number
+  errorCount: number
+  stoppedAt: string | null
+}
 
 export class StatePersistence {
   private debounceTimer: ReturnType<typeof setTimeout> | null = null
-  private readonly filePath: string
+  private readonly dirPath: string
   private readonly debounceMs: number
+  private dirty: Set<string> = new Set()
 
-  constructor(filePath = DEFAULT_PATH, debounceMs = DEFAULT_DEBOUNCE_MS) {
-    this.filePath = filePath
+  constructor(dirPath = DEFAULT_DIR, debounceMs = DEFAULT_DEBOUNCE_MS) {
+    this.dirPath = dirPath
     this.debounceMs = debounceMs
+    if (!existsSync(this.dirPath)) {
+      mkdirSync(this.dirPath, { recursive: true })
+    }
+    if (existsSync(LEGACY_FILE)) {
+      try { unlinkSync(LEGACY_FILE) } catch { /* best-effort */ }
+    }
   }
 
-  save(conversations: Map<string, ConversationState>): void {
-    if (this.debounceTimer) return
-    this.debounceTimer = setTimeout(() => {
+  markDirty(convId: string): void {
+    this.dirty.add(convId)
+  }
+
+  save(conversations: Map<string, ConversationState>): Promise<void> {
+    if (this.debounceTimer) return Promise.resolve()
+    this.debounceTimer = setTimeout(async () => {
       this.debounceTimer = null
-      this.writeToDisk(conversations)
+      await this.writeDirty(conversations)
     }, this.debounceMs)
+    return Promise.resolve()
   }
 
   forceFlush(conversations: Map<string, ConversationState>): void {
@@ -29,84 +50,206 @@ export class StatePersistence {
       clearTimeout(this.debounceTimer)
       this.debounceTimer = null
     }
-    this.writeToDisk(conversations)
+    if (!existsSync(this.dirPath)) {
+      mkdirSync(this.dirPath, { recursive: true })
+    }
+    for (const convId of this.dirty) {
+      const conv = conversations.get(convId)
+      if (!conv) continue
+      const filePath = `${this.dirPath}/${convId}.json`
+      try {
+        writeFileSync(filePath, JSON.stringify(this.serializeConversation(conv)), "utf-8")
+      } catch (err) {
+        console.error(`[oh-my-cursor] Failed to flush conversation ${convId}:`, err instanceof Error ? err.message : String(err))
+      }
+    }
+    this.dirty.clear()
+    this.writeIndexSync(conversations)
   }
 
-  load(maxAgeMs = 4 * 60 * 60 * 1000): Map<string, ConversationState> | null {
+  loadOne(convId: string): ConversationState | null {
+    const filePath = `${this.dirPath}/${convId}.json`
     try {
-      if (!existsSync(this.filePath)) return null
-      const text = readFileSync(this.filePath, "utf-8")
+      if (!existsSync(filePath)) return null
+      const text = Bun.file(filePath).textSync()
       if (!text.trim()) return null
-
       const data = JSON.parse(text)
-      if (!Array.isArray(data)) return null
-
-      const now = Date.now()
-      const conversations = new Map<string, ConversationState>()
-      for (const entry of data) {
-        const backwardCompatDefaults = {
-          abortDetectedAt: null,
-          delegateRetryState: {},
-          toolCallCountAtLastStop: 0,
-          consecutiveZeroDeltas: 0,
-          shellFailureCounts: 0,
-          fileEditCounts: {},
-          mcpCallCounts: {},
-          responseCount: 0,
-          estimatedTokens: 0,
-          tokenWarningEmitted: false,
-          wisdomLearnings: [],
-          createdViaFallback: false,
-        }
-        const result = ConversationStateSchema.safeParse({ ...backwardCompatDefaults, ...entry })
-        if (result.success) {
-          const validated = result.data
-          const ageMs = now - new Date(validated.startedAt).getTime()
-          if (ageMs > maxAgeMs) {
-            console.warn(`[oh-my-cursor] Skipping stale conversation ${validated.id} (age: ${Math.round(ageMs / 60000)}min, max: ${Math.round(maxAgeMs / 60000)}min)`)
-            continue
-          }
-          conversations.set(validated.id, {
-            ...validated,
-            readPaths: new Set(validated.readPaths),
-            injectedPaths: new Set(validated.injectedPaths),
-            pendingWriteArgs: new Map(Object.entries(validated.pendingWriteArgs)),
-            todoStates: new Map(Object.entries(validated.todoStates)),
-          })
-        } else {
-          console.warn(
-            "[oh-my-cursor] Skipping invalid persisted conversation entry:",
-            entry.id || "unknown",
-            result.error.issues.map((i) => i.message).join(", "),
-          )
-        }
+      const backwardCompatDefaults = {
+        abortDetectedAt: null,
+        delegateRetryState: {},
+        toolCallCountAtLastStop: 0,
+        consecutiveZeroDeltas: 0,
+        shellFailureCounts: 0,
+        fileEditCounts: {},
+        mcpCallCounts: {},
+        responseCount: 0,
+        estimatedTokens: 0,
+        tokenWarningEmitted: false,
+        wisdomLearnings: [],
+        createdViaFallback: false,
       }
-      return conversations
+      const result = ConversationStateSchema.safeParse({ ...backwardCompatDefaults, ...data })
+      if (!result.success) {
+        console.warn(
+          "[oh-my-cursor] Skipping invalid persisted conversation entry:",
+          convId,
+          result.error.issues.map((i) => i.message).join(", "),
+        )
+        return null
+      }
+      const validated = result.data
+      return {
+        ...validated,
+        readPaths: new Set(validated.readPaths),
+        injectedPaths: new Set(validated.injectedPaths),
+        pendingWriteArgs: new Map(Object.entries(validated.pendingWriteArgs)),
+        todoStates: new Map(Object.entries(validated.todoStates)),
+      }
     } catch (err) {
-      console.error("[oh-my-cursor] Failed to load persisted state:", err instanceof Error ? err.message : String(err))
+      console.error(`[oh-my-cursor] Failed to load conversation ${convId}:`, err instanceof Error ? err.message : String(err))
       return null
     }
   }
 
-  private writeToDisk(conversations: Map<string, ConversationState>): void {
+  loadIndex(): Map<string, ConversationMetadata> {
+    const indexPath = `${this.dirPath}/index.json`
     try {
-      const dir = dirname(this.filePath)
-      if (!existsSync(dir)) mkdirSync(dir, { recursive: true })
-
-      const serialized = Array.from(conversations.values()).map((conversation) => ({
-        ...conversation,
-        readPaths: Array.from(conversation.readPaths),
-        injectedPaths: Array.from(conversation.injectedPaths),
-        pendingWriteArgs: Object.fromEntries(conversation.pendingWriteArgs),
-        todoStates: Object.fromEntries(conversation.todoStates),
-      }))
-
-      const tmpPath = this.filePath + ".tmp"
-      writeFileSync(tmpPath, JSON.stringify(serialized, null, 2), "utf-8")
-      renameSync(tmpPath, this.filePath)
+      if (!existsSync(indexPath)) return new Map()
+      const text = Bun.file(indexPath).textSync()
+      if (!text.trim()) return new Map()
+      const data = JSON.parse(text)
+      if (!Array.isArray(data)) return new Map()
+      const index = new Map<string, ConversationMetadata>()
+      for (const entry of data) {
+        if (entry && typeof entry.id === "string") {
+          index.set(entry.id, entry as ConversationMetadata)
+        }
+      }
+      return index
     } catch (err) {
-      console.error("[oh-my-cursor] Failed to persist state:", err instanceof Error ? err.message : String(err))
-      try { unlinkSync(this.filePath + ".tmp") } catch { /* cleanup best-effort */ }
+      console.error("[oh-my-cursor] Failed to load index:", err instanceof Error ? err.message : String(err))
+      return new Map()
+    }
+  }
+
+  removeConversation(convId: string): void {
+    const filePath = `${this.dirPath}/${convId}.json`
+    try {
+      if (existsSync(filePath)) unlinkSync(filePath)
+    } catch (err) {
+      console.error(`[oh-my-cursor] Failed to remove conversation ${convId}:`, err instanceof Error ? err.message : String(err))
+    }
+    this.dirty.delete(convId)
+    const index = this.loadIndex()
+    index.delete(convId)
+    this.writeIndexFromMap(index)
+  }
+
+  pruneStale(maxAgeMs: number): string[] {
+    const pruned: string[] = []
+    try {
+      if (!existsSync(this.dirPath)) return pruned
+      const files = readdirSync(this.dirPath)
+      const now = Date.now()
+      for (const file of files) {
+        if (!file.endsWith(".json") || file === "index.json") continue
+        const convId = file.slice(0, -5)
+        const filePath = `${this.dirPath}/${file}`
+        try {
+          const text = Bun.file(filePath).textSync()
+          const data = JSON.parse(text)
+          if (data && typeof data.startedAt === "string") {
+            const ageMs = now - new Date(data.startedAt).getTime()
+            if (ageMs > maxAgeMs) {
+              unlinkSync(filePath)
+              this.dirty.delete(convId)
+              pruned.push(convId)
+            }
+          }
+        } catch { /* skip unreadable files */ }
+      }
+    } catch (err) {
+      console.error("[oh-my-cursor] Failed to prune stale conversations:", err instanceof Error ? err.message : String(err))
+    }
+    if (pruned.length > 0) {
+      const index = this.loadIndex()
+      for (const convId of pruned) index.delete(convId)
+      this.writeIndexFromMap(index)
+    }
+    return pruned
+  }
+
+  private async writeDirty(conversations: Map<string, ConversationState>): Promise<void> {
+    if (!existsSync(this.dirPath)) {
+      mkdirSync(this.dirPath, { recursive: true })
+    }
+    const dirtyIds = Array.from(this.dirty)
+    this.dirty.clear()
+    const writes: Promise<void>[] = []
+    for (const convId of dirtyIds) {
+      const conv = conversations.get(convId)
+      if (!conv) continue
+      const filePath = `${this.dirPath}/${convId}.json`
+      writes.push(
+        Bun.write(filePath, JSON.stringify(this.serializeConversation(conv)))
+          .then(() => {})
+          .catch((err) => {
+            console.error(`[oh-my-cursor] Failed to write conversation ${convId}:`, err instanceof Error ? err.message : String(err))
+          }),
+      )
+    }
+    await Promise.all(writes)
+    await this.writeIndexAsync(conversations)
+  }
+
+  private serializeConversation(conv: ConversationState) {
+    return {
+      ...conv,
+      readPaths: Array.from(conv.readPaths),
+      injectedPaths: Array.from(conv.injectedPaths),
+      pendingWriteArgs: Object.fromEntries(conv.pendingWriteArgs),
+      todoStates: Object.fromEntries(conv.todoStates),
+    }
+  }
+
+  private buildMetadata(conv: ConversationState): ConversationMetadata {
+    return {
+      id: conv.id,
+      startedAt: conv.startedAt,
+      composerMode: conv.composerMode,
+      toolCallCount: conv.toolCallCount,
+      errorCount: conv.errorCount,
+      stoppedAt: conv.stoppedAt,
+    }
+  }
+
+  private async writeIndexAsync(conversations: Map<string, ConversationState>): Promise<void> {
+    const indexPath = `${this.dirPath}/index.json`
+    const metadata = Array.from(conversations.values()).map((conv) => this.buildMetadata(conv))
+    try {
+      await Bun.write(indexPath, JSON.stringify(metadata))
+    } catch (err) {
+      console.error("[oh-my-cursor] Failed to write index:", err instanceof Error ? err.message : String(err))
+    }
+  }
+
+  private writeIndexSync(conversations: Map<string, ConversationState>): void {
+    const indexPath = `${this.dirPath}/index.json`
+    const metadata = Array.from(conversations.values()).map((conv) => this.buildMetadata(conv))
+    try {
+      writeFileSync(indexPath, JSON.stringify(metadata), "utf-8")
+    } catch (err) {
+      console.error("[oh-my-cursor] Failed to write index:", err instanceof Error ? err.message : String(err))
+    }
+  }
+
+  private writeIndexFromMap(index: Map<string, ConversationMetadata>): void {
+    const indexPath = `${this.dirPath}/index.json`
+    const metadata = Array.from(index.values())
+    try {
+      writeFileSync(indexPath, JSON.stringify(metadata), "utf-8")
+    } catch (err) {
+      console.error("[oh-my-cursor] Failed to write index:", err instanceof Error ? err.message : String(err))
     }
   }
 }

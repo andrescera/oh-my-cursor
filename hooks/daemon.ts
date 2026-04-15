@@ -143,7 +143,7 @@ function gracefulShutdown(reason: string): void {
 const startTime = Date.now()
 
 const handlers: HandlerMap = {
-  ...createConversationHandlers(conversations, () => actualPort),
+  ...createConversationHandlers(conversations, () => actualPort, tracker),
   ...createToolGuardHandlers(conversations, tracker),
   ...createContinuationHandlers(conversations),
   ...createSafetyHandlers(),

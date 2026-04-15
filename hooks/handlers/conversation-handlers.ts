@@ -2,7 +2,7 @@ import type { ConversationState, HandlerMap } from "../types"
 import { getOrCreateConversation, resolveConversationId } from "../shared"
 import { loadConfig } from "../config"
 import { contextCollector } from "../context-collector"
-import { COMPACTION_CONTEXT_PROMPT } from "../compaction-context-prompt"
+import { buildCompactionContextPrompt } from "../compaction-context-prompt"
 
 function buildCompactionTodoPreservation(conversation: ConversationState): string {
   const lines: string[] = [
@@ -32,6 +32,7 @@ function buildCompactionTodoPreservation(conversation: ConversationState): strin
 export function createConversationHandlers(
   conversations: Map<string, ConversationState>,
   getPort: () => number,
+  tracker: BackgroundTracker,
 ): HandlerMap {
   return {
     "/health": (input) => {
@@ -134,7 +135,11 @@ export function createConversationHandlers(
 
     "/sessionEnd": (input) => {
       const convId = resolveConversationId(input)
+      if (!conversations.has(convId)) {
+        console.warn(`[oh-my-cursor][sessionEnd] Cleanup for unknown conversation ${convId} — possible ID mismatch`)
+      }
       contextCollector.clear(convId)
+      tracker.clearConversation(convId)
       conversations.delete(convId)
 
       return {}
@@ -163,7 +168,7 @@ export function createConversationHandlers(
         contextCollector.register(convId, {
           id: "compaction-prompt",
           source: "compaction-context-injector",
-          content: COMPACTION_CONTEXT_PROMPT,
+          content: buildCompactionContextPrompt(conversation),
           priority: "critical",
         })
 

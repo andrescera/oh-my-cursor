@@ -78,6 +78,14 @@ export class BackgroundTracker {
       }
     }
   }
+
+  clearConversation(conversationId: string): void {
+    for (const [agentId, task] of this.tasks) {
+      if (task.conversationId === conversationId) {
+        this.tasks.delete(agentId)
+      }
+    }
+  }
 }
 
 export function createBackgroundTasksHandler(tracker: BackgroundTracker): HandlerFn {

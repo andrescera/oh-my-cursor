@@ -3,22 +3,6 @@ import { getOrCreateConversation, resolveConversationId } from "../shared"
 import { createThinkingBlockValidator } from "./thinking-block-validator"
 import { loadConfig } from "../config"
 
-const shellFailureCounts = new Map<string, number>()
-const fileEditCounts = new Map<string, number>()
-const mcpCallCounts = new Map<string, number>()
-const responseCount = new Map<string, number>()
-
-export function cleanupSafetyConversation(convId: string): void {
-  shellFailureCounts.delete(convId)
-  responseCount.delete(convId)
-  for (const key of fileEditCounts.keys()) {
-    if (key.startsWith(convId + ":")) fileEditCounts.delete(key)
-  }
-  for (const key of mcpCallCounts.keys()) {
-    if (key.startsWith("mcp:" + convId + ":")) mcpCallCounts.delete(key)
-  }
-}
-
 export function createSafetyHandlers(): HandlerMap {
   const thinkingBlockValidator = createThinkingBlockValidator()
 
@@ -56,14 +40,15 @@ export function createSafetyHandlers(): HandlerMap {
     "/afterShellExecution": (input) => {
       const exitCode = (input.exit_code as number) ?? (input.exitCode as number) ?? 0
       const convId = resolveConversationId(input)
+      const conversation = getOrCreateConversation(convId)
 
       if (exitCode === 0) {
-        shellFailureCounts.delete(convId)
+        conversation.shellFailureCounts = 0
         return {}
       }
 
-      const count = (shellFailureCounts.get(convId) || 0) + 1
-      shellFailureCounts.set(convId, count)
+      const count = conversation.shellFailureCounts + 1
+      conversation.shellFailureCounts = count
 
       if (count >= 3) {
         return {
@@ -107,9 +92,9 @@ export function createSafetyHandlers(): HandlerMap {
 
       if (!filePath) return {}
 
-      const key = `${convId}:${filePath}`
-      const count = (fileEditCounts.get(key) || 0) + 1
-      fileEditCounts.set(key, count)
+      const conversation = getOrCreateConversation(convId)
+      const count = (conversation.fileEditCounts[filePath] || 0) + 1
+      conversation.fileEditCounts[filePath] = count
 
       if (count >= 5) {
         return {
@@ -140,9 +125,9 @@ export function createSafetyHandlers(): HandlerMap {
     "/afterMCPExecution": (input) => {
       const serverName = (input.mcp_server_name as string) || (input.serverName as string) || ""
       const convId = resolveConversationId(input)
+      const conversation = getOrCreateConversation(convId)
 
-      const key = `mcp:${convId}:${serverName}`
-      mcpCallCounts.set(key, (mcpCallCounts.get(key) || 0) + 1)
+      conversation.mcpCallCounts[serverName] = (conversation.mcpCallCounts[serverName] || 0) + 1
 
       return {}
     },
@@ -151,12 +136,12 @@ export function createSafetyHandlers(): HandlerMap {
       const convId = resolveConversationId(input)
       console.log(`[oh-my-cursor][afterAgentResponse] convId=${convId} | inputKeys=${Object.keys(input).join(",")} | hasResponse=${!!input.response} | responseLen=${typeof input.response === "string" ? input.response.length : 0}`)
 
-      const count = (responseCount.get(convId) || 0) + 1
-      responseCount.set(convId, count)
+      const conversation = getOrCreateConversation(convId)
+      conversation.responseCount++
 
-      if (count % 10 === 0) {
+      if (conversation.responseCount % 10 === 0) {
         return {
-          additional_context: `[session-pulse] Responses: ${count} | Session active`,
+          additional_context: `[session-pulse] Responses: ${conversation.responseCount} | Session active`,
         }
       }
 

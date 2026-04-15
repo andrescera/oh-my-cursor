@@ -2,7 +2,7 @@ import { describe, it, expect, beforeEach, afterEach } from "bun:test"
 import { resolveConversationId, getOrCreateConversation, conversations } from "./shared"
 import { ContextCollector } from "./context-collector"
 import { BackgroundTracker, createBackgroundTasksHandler } from "./handlers/background-tracker"
-import { WisdomTracker } from "./handlers/wisdom-tracker"
+import { addWisdomLearning, formatWisdomForInjection } from "./handlers/wisdom-tracker"
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i
 
@@ -152,44 +152,43 @@ describe("conversation isolation", () => {
   })
 })
 
-describe("WisdomTracker conversation isolation", () => {
-  it("should isolate wisdom entries by conversationId even with same plan path", () => {
-    const tracker = new WisdomTracker()
-    const planPath = "/project/.cursor/plans/shared-plan.plan.md"
+describe("wisdomLearnings conversation isolation", () => {
+  it("should isolate wisdom entries per conversation even with same plan path", () => {
+    const convA = getOrCreateConversation("conv-A")
+    const convB = getOrCreateConversation("conv-B")
+    const entry = { source: "worker", learning: "lesson", timestamp: "2024-01-01" }
 
-    tracker.addLearning("conv-A", planPath, { source: "worker-1", learning: "lesson A", timestamp: "2024-01-01" })
-    tracker.addLearning("conv-B", planPath, { source: "worker-2", learning: "lesson B", timestamp: "2024-01-01" })
+    addWisdomLearning(convA, { ...entry, learning: "lesson A" })
+    addWisdomLearning(convB, { ...entry, learning: "lesson B" })
 
-    const learningsA = tracker.getLearnings("conv-A", planPath)
-    const learningsB = tracker.getLearnings("conv-B", planPath)
-
-    expect(learningsA).toHaveLength(1)
-    expect(learningsA[0].learning).toBe("lesson A")
-    expect(learningsB).toHaveLength(1)
-    expect(learningsB[0].learning).toBe("lesson B")
+    expect(convA.wisdomLearnings).toHaveLength(1)
+    expect(convA.wisdomLearnings[0].learning).toBe("lesson A")
+    expect(convB.wisdomLearnings).toHaveLength(1)
+    expect(convB.wisdomLearnings[0].learning).toBe("lesson B")
   })
 
   it("should format injection scoped to conversation", () => {
-    const tracker = new WisdomTracker()
-    const planPath = "/project/.cursor/plans/test.plan.md"
+    const convX = getOrCreateConversation("conv-X")
+    const convY = getOrCreateConversation("conv-Y")
 
-    tracker.addLearning("conv-X", planPath, { source: "explore", learning: "found pattern", timestamp: "2024-01-01" })
+    addWisdomLearning(convX, { source: "explore", learning: "found pattern", timestamp: "2024-01-01" })
 
-    expect(tracker.formatForInjection("conv-X", planPath)).toContain("found pattern")
-    expect(tracker.formatForInjection("conv-Y", planPath)).toBe("")
+    expect(formatWisdomForInjection(convX)).toContain("found pattern")
+    expect(formatWisdomForInjection(convY)).toBe("")
   })
 
-  it("should clear only the target conversation's wisdom entries", () => {
-    const tracker = new WisdomTracker()
-    const planPath = "/project/.cursor/plans/plan.plan.md"
+  it("should drop wisdom when conversation is removed from the map", () => {
+    const conv1 = getOrCreateConversation("conv-1")
+    const conv2 = getOrCreateConversation("conv-2")
 
-    tracker.addLearning("conv-1", planPath, { source: "w1", learning: "L1", timestamp: "2024-01-01" })
-    tracker.addLearning("conv-2", planPath, { source: "w2", learning: "L2", timestamp: "2024-01-01" })
+    addWisdomLearning(conv1, { source: "w1", learning: "L1", timestamp: "2024-01-01" })
+    addWisdomLearning(conv2, { source: "w2", learning: "L2", timestamp: "2024-01-01" })
 
-    tracker.clearConversation("conv-1")
+    conversations.delete("conv-1")
+    const fresh1 = getOrCreateConversation("conv-1")
 
-    expect(tracker.getLearnings("conv-1", planPath)).toHaveLength(0)
-    expect(tracker.getLearnings("conv-2", planPath)).toHaveLength(1)
+    expect(fresh1.wisdomLearnings).toHaveLength(0)
+    expect(conv2.wisdomLearnings).toHaveLength(1)
   })
 })
 

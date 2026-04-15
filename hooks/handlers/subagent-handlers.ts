@@ -1,6 +1,6 @@
 import type { ConversationState, HandlerMap } from "../types"
 import type { BackgroundTracker } from "./background-tracker"
-import type { WisdomTracker } from "./wisdom-tracker"
+import { addWisdomLearning, formatWisdomForInjection } from "./wisdom-tracker"
 import { getOrCreateConversation, resolveConversationId } from "../shared"
 import { createEmptyTaskDetector } from "./empty-task-detector"
 import { contextCollector } from "../context-collector"
@@ -14,7 +14,6 @@ const SUBAGENT_TIMING_LOG = "/tmp/oh-my-cursor-timing.jsonl"
 export function createSubagentHandlers(
   _conversations: Map<string, ConversationState>,
   tracker: BackgroundTracker,
-  wisdom: WisdomTracker,
 ): HandlerMap {
   const emptyTaskDetector = createEmptyTaskDetector()
 
@@ -40,7 +39,7 @@ export function createSubagentHandlers(
       }
 
       if (conversation.activePlan) {
-        const wisdomContext = wisdom.formatForInjection(convId, conversation.activePlan.path)
+        const wisdomContext = formatWisdomForInjection(conversation)
         if (wisdomContext) {
           additional_context = additional_context
             ? `${additional_context}\n\n${wisdomContext}`
@@ -116,7 +115,7 @@ export function createSubagentHandlers(
         conversation.subagentOutcomes = conversation.subagentOutcomes.slice(-20)
       }
       if (isSuccess && conversation.activePlan && output) {
-        wisdom.addLearning(convId, conversation.activePlan.path, {
+        addWisdomLearning(conversation, {
           source: typeKey,
           learning: output.slice(-200).trim(),
           timestamp: new Date().toISOString(),

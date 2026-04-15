@@ -60,6 +60,14 @@ export type ConversationState = {
   subagentOutcomes: SubagentOutcome[]
   subagentFailureCounts: Record<string, number>
   delegateRetryState: Record<string, number>
+  shellFailureCounts: number
+  fileEditCounts: Record<string, number>
+  mcpCallCounts: Record<string, number>
+  responseCount: number
+  estimatedTokens: number
+  tokenWarningEmitted: boolean
+  wisdomLearnings: Array<{ source: string; learning: string; timestamp: string }>
+  createdViaFallback: boolean
 }
 
 export type HandlerFn = (input: Record<string, unknown>) => Record<string, unknown>

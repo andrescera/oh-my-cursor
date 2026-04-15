@@ -38,6 +38,14 @@ export function getOrCreateConversation(conversationId: string): ConversationSta
       subagentOutcomes: [],
       subagentFailureCounts: {},
       delegateRetryState: {},
+      shellFailureCounts: 0,
+      fileEditCounts: {},
+      mcpCallCounts: {},
+      responseCount: 0,
+      estimatedTokens: 0,
+      tokenWarningEmitted: false,
+      wisdomLearnings: [],
+      createdViaFallback: false,
     })
   }
   return conversations.get(conversationId)!
@@ -60,7 +68,11 @@ export function parseInput(body: unknown): Record<string, unknown> {
 }
 
 export function resolveConversationId(input: Record<string, unknown>): string {
-  return (input.conversation_id as string) || (input.session_id as string) || crypto.randomUUID()
+  const convId = (input.conversation_id as string) || (input.session_id as string)
+  if (convId) return convId
+  const fallbackId = crypto.randomUUID()
+  console.warn(`[oh-my-cursor][resolveConversationId] No conversation_id or session_id provided, using fallback UUID: ${fallbackId}`)
+  return fallbackId
 }
 
 export function extractMeta(

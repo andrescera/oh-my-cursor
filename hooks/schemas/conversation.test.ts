@@ -40,6 +40,14 @@ function minimalConversation(overrides: Record<string, unknown> = {}) {
     subagentOutcomes: [],
     subagentFailureCounts: {},
     delegateRetryState: {},
+    shellFailureCounts: 0,
+    fileEditCounts: {},
+    mcpCallCounts: {},
+    responseCount: 0,
+    estimatedTokens: 0,
+    tokenWarningEmitted: false,
+    wisdomLearnings: [],
+    createdViaFallback: false,
     ...overrides,
   }
 }

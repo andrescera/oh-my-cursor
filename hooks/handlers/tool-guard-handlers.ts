@@ -9,7 +9,7 @@ import {
   transitionFromPlanMode,
 } from "../shared"
 import { loadConfig } from "../config"
-import { createContextWindowMonitor, type ContextWindowConversationEntry } from "./context-window-monitor"
+import { createContextWindowMonitor } from "./context-window-monitor"
 import { createCommentChecker } from "./comment-checker"
 import { createToolOutputTruncator } from "./tool-output-truncator"
 import { createDelegateTaskRetry } from "./delegate-task-retry"
@@ -90,17 +90,11 @@ function clipAdditionalContext(text: string, maxChars: number): string {
   )
 }
 
-const conversationTokens = new Map<string, ContextWindowConversationEntry>()
-
-export function cleanupToolGuardConversation(convId: string): void {
-  conversationTokens.delete(convId)
-}
-
 export function createToolGuardHandlers(
   _conversations: Map<string, ConversationState>,
   tracker: BackgroundTracker,
 ): HandlerMap {
-  const contextWindowMonitor = createContextWindowMonitor(conversationTokens)
+  const contextWindowMonitor = createContextWindowMonitor()
   const commentChecker = createCommentChecker()
   const toolOutputTruncator = createToolOutputTruncator()
   const delegateTaskRetry = createDelegateTaskRetry()
@@ -374,7 +368,7 @@ export function createToolGuardHandlers(
 
       console.log(`[oh-my-cursor][postToolUse] convId=${convId} | tool=${toolName} | toolCallCount=${conversation.toolCallCount} | readTracked=${["read", "Read"].includes(toolName) && readFilePath ? resolve(readFilePath) : "n/a"}`)
 
-      const cw = contextWindowMonitor({ conversationId: convId, content: output })
+      const cw = contextWindowMonitor({ conversation, content: output })
       if (cw.additional_context) {
         contextCollector.register(convId, {
           id: "context-window",

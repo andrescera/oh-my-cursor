@@ -1,21 +1,28 @@
 import { describe, it, expect } from "bun:test"
-import { createContextWindowMonitor, type ContextWindowConversationEntry } from "./context-window-monitor"
+import type { ConversationState } from "../types"
+import { createContextWindowMonitor } from "./context-window-monitor"
+
+function stubConversation(
+  estimatedTokens: number,
+  tokenWarningEmitted: boolean,
+): ConversationState {
+  return { estimatedTokens, tokenWarningEmitted } as ConversationState
+}
 
 describe("createContextWindowMonitor", () => {
   describe("#given a fresh monitor", () => {
     it("returns a handler function", () => {
-      const sessionTokens = new Map<string, ContextWindowConversationEntry>()
-      const handler = createContextWindowMonitor(sessionTokens)
+      const handler = createContextWindowMonitor()
       expect(typeof handler).toBe("function")
     })
   })
 
   describe("#when output is small", () => {
     it("does not trigger a warning", () => {
-      const sessionTokens = new Map<string, ContextWindowConversationEntry>()
-      const handler = createContextWindowMonitor(sessionTokens)
+      const handler = createContextWindowMonitor()
+      const conversation = stubConversation(0, false)
 
-      const result = handler({ conversationId: "s1", content: "short output" })
+      const result = handler({ conversation, content: "short output" })
 
       expect(result).toEqual({})
     })
@@ -23,15 +30,12 @@ describe("createContextWindowMonitor", () => {
 
   describe("#when cumulative tokens exceed 80% threshold", () => {
     it("triggers a warning with percentage", () => {
-      const sessionTokens = new Map<string, ContextWindowConversationEntry>()
-      // Pre-seed with tokens just below threshold: 200k * 0.8 = 160k tokens
-      // We need 160k tokens worth of chars already counted
-      sessionTokens.set("s1", { tokens: 159_000, preemptiveWarningEmitted: false })
-      const handler = createContextWindowMonitor(sessionTokens)
+      const conversation = stubConversation(159_000, false)
+      const handler = createContextWindowMonitor()
 
       // Add enough to push over: 1001 tokens = ~4004 chars
       const content = "x".repeat(4_004)
-      const result = handler({ conversationId: "s1", content })
+      const result = handler({ conversation, content })
 
       expect(result.additional_context).toBeDefined()
       expect(result.additional_context).toContain("[context-window-warning]")
@@ -40,20 +44,19 @@ describe("createContextWindowMonitor", () => {
     })
 
     it("emits the preemptive warning only once per session", () => {
-      const sessionTokens = new Map<string, ContextWindowConversationEntry>()
-      sessionTokens.set("s1", { tokens: 159_000, preemptiveWarningEmitted: false })
-      const handler = createContextWindowMonitor(sessionTokens)
+      const conversation = stubConversation(159_000, false)
+      const handler = createContextWindowMonitor()
       const content = "x".repeat(4_004)
 
-      expect(handler({ conversationId: "s1", content }).additional_context).toBeDefined()
-      expect(handler({ conversationId: "s1", content: "y" })).toEqual({})
+      expect(handler({ conversation, content }).additional_context).toBeDefined()
+      expect(handler({ conversation, content: "y" })).toEqual({})
     })
   })
 
   describe("#when multiple calls accumulate tokens", () => {
     it("tracks cumulative token usage across calls", () => {
-      const sessionTokens = new Map<string, ContextWindowConversationEntry>()
-      const handler = createContextWindowMonitor(sessionTokens)
+      const conversation = stubConversation(0, false)
+      const handler = createContextWindowMonitor()
 
       // Each call adds chars / 4 tokens
       // 160k tokens threshold = 640k chars total needed
@@ -61,32 +64,32 @@ describe("createContextWindowMonitor", () => {
       const chunk = "x".repeat(chunkSize)
 
       // Call 4 times = 160k tokens, exactly at threshold
-      handler({ conversationId: "s1", content: chunk })
-      handler({ conversationId: "s1", content: chunk })
-      handler({ conversationId: "s1", content: chunk })
-      const result = handler({ conversationId: "s1", content: chunk })
+      handler({ conversation, content: chunk })
+      handler({ conversation, content: chunk })
+      handler({ conversation, content: chunk })
+      const result = handler({ conversation, content: chunk })
 
       expect(result.additional_context).toBeDefined()
       expect(result.additional_context).toContain("[context-window-warning]")
-      expect(handler({ conversationId: "s1", content: chunk })).toEqual({})
+      expect(handler({ conversation, content: chunk })).toEqual({})
     })
   })
 
   describe("#when content is missing or empty", () => {
     it("handles undefined content gracefully", () => {
-      const sessionTokens = new Map<string, ContextWindowConversationEntry>()
-      const handler = createContextWindowMonitor(sessionTokens)
+      const conversation = stubConversation(0, false)
+      const handler = createContextWindowMonitor()
 
-      const result = handler({ conversationId: "s1" })
+      const result = handler({ conversation })
 
       expect(result).toEqual({})
     })
 
     it("handles empty string content gracefully", () => {
-      const sessionTokens = new Map<string, ContextWindowConversationEntry>()
-      const handler = createContextWindowMonitor(sessionTokens)
+      const conversation = stubConversation(0, false)
+      const handler = createContextWindowMonitor()
 
-      const result = handler({ conversationId: "s1", content: "" })
+      const result = handler({ conversation, content: "" })
 
       expect(result).toEqual({})
     })

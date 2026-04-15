@@ -75,5 +75,13 @@ export const ConversationStateSchema = z.object({
   subagentOutcomes: z.array(SubagentOutcomeSchema),
   subagentFailureCounts: z.record(z.string(), z.number()),
   delegateRetryState: z.record(z.string(), z.number()),
+  shellFailureCounts: z.number(),
+  fileEditCounts: z.record(z.string(), z.number()),
+  mcpCallCounts: z.record(z.string(), z.number()),
+  responseCount: z.number(),
+  estimatedTokens: z.number(),
+  tokenWarningEmitted: z.boolean(),
+  wisdomLearnings: z.array(z.object({ source: z.string(), learning: z.string(), timestamp: z.string() })),
+  createdViaFallback: z.boolean(),
 })
 export type ConversationState = z.infer<typeof ConversationStateSchema>

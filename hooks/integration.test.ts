@@ -1,13 +1,26 @@
 import { describe, test, expect, beforeAll, afterAll } from "bun:test"
 import type { Subprocess } from "bun"
 import { writeFileSync, unlinkSync } from "node:fs"
+import { createServer } from "node:net"
 
-const PORT = 47901
-const BASE = `http://localhost:${PORT}`
+let PORT = 0
+let BASE = ""
 const SESSION_ID = "integration-test-session"
 const GUARD_TEST_FILE = "/tmp/oh-my-cursor-guard-test.txt"
 
 let daemon: Subprocess | null = null
+
+function getFreePort(): Promise<number> {
+  return new Promise((resolve, reject) => {
+    const s = createServer()
+    s.listen(0, () => {
+      const addr = s.address()
+      const p = typeof addr === "object" && addr !== null ? addr.port : 0
+      s.close((err) => (err ? reject(err) : resolve(p)))
+    })
+    s.on("error", reject)
+  })
+}
 
 async function post(path: string, body: Record<string, unknown> = {}) {
   const res = await fetch(`${BASE}${path}`, {
@@ -37,6 +50,8 @@ async function waitForDaemon(maxMs = 5000): Promise<void> {
 }
 
 beforeAll(async () => {
+  PORT = await getFreePort()
+  BASE = `http://localhost:${PORT}`
   daemon = Bun.spawn(["bun", "run", "hooks/daemon.ts"], {
     cwd: import.meta.dir + "/..",
     env: { ...process.env, OH_MY_CURSOR_PORT: String(PORT) },

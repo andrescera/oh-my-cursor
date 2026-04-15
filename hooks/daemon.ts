@@ -14,7 +14,6 @@ import { createSafetyHandlers } from "./handlers/safety-handlers"
 import { createSubagentHandlers } from "./handlers/subagent-handlers"
 import { createConversationHistoryHandler } from "./handlers/conversation-history"
 import { BackgroundTracker, createBackgroundTasksHandler } from "./handlers/background-tracker"
-import { WisdomTracker } from "./handlers/wisdom-tracker"
 import { StatePersistence } from "./state-persistence"
 import { createHeartbeatHandler, startHeartbeatWriter, HEARTBEAT_FILE } from "./handlers/heartbeat"
 import { loadConfig, resetConfigCache } from "./config"
@@ -25,7 +24,6 @@ import type { HandlerMap } from "./types"
 
 const config = loadConfig()
 const tracker = new BackgroundTracker()
-const wisdomTracker = new WisdomTracker()
 const persistence = new StatePersistence(config.state_persistence.path)
 
 const restored = persistence.load()
@@ -145,11 +143,11 @@ function gracefulShutdown(reason: string): void {
 const startTime = Date.now()
 
 const handlers: HandlerMap = {
-  ...createConversationHandlers(conversations, () => actualPort, wisdomTracker),
+  ...createConversationHandlers(conversations, () => actualPort),
   ...createToolGuardHandlers(conversations, tracker),
   ...createContinuationHandlers(conversations),
   ...createSafetyHandlers(),
-  ...createSubagentHandlers(conversations, tracker, wisdomTracker),
+  ...createSubagentHandlers(conversations, tracker),
   "/sessionHistory": createConversationHistoryHandler(conversations),
   "/backgroundTasks": createBackgroundTasksHandler(tracker),
   "/heartbeat": createHeartbeatHandler(startTime),

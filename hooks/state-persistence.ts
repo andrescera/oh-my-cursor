@@ -32,7 +32,7 @@ export class StatePersistence {
     this.writeToDisk(conversations)
   }
 
-  load(): Map<string, ConversationState> | null {
+  load(maxAgeMs = 4 * 60 * 60 * 1000): Map<string, ConversationState> | null {
     try {
       if (!existsSync(this.filePath)) return null
       const text = readFileSync(this.filePath, "utf-8")
@@ -41,12 +41,31 @@ export class StatePersistence {
       const data = JSON.parse(text)
       if (!Array.isArray(data)) return null
 
+      const now = Date.now()
       const conversations = new Map<string, ConversationState>()
       for (const entry of data) {
-        // Provide defaults for nullable fields added after initial persistence (backward compat)
-        const result = ConversationStateSchema.safeParse({ abortDetectedAt: null, delegateRetryState: {}, toolCallCountAtLastStop: 0, consecutiveZeroDeltas: 0, ...entry })
+        const backwardCompatDefaults = {
+          abortDetectedAt: null,
+          delegateRetryState: {},
+          toolCallCountAtLastStop: 0,
+          consecutiveZeroDeltas: 0,
+          shellFailureCounts: 0,
+          fileEditCounts: {},
+          mcpCallCounts: {},
+          responseCount: 0,
+          estimatedTokens: 0,
+          tokenWarningEmitted: false,
+          wisdomLearnings: [],
+          createdViaFallback: false,
+        }
+        const result = ConversationStateSchema.safeParse({ ...backwardCompatDefaults, ...entry })
         if (result.success) {
           const validated = result.data
+          const ageMs = now - new Date(validated.startedAt).getTime()
+          if (ageMs > maxAgeMs) {
+            console.warn(`[oh-my-cursor] Skipping stale conversation ${validated.id} (age: ${Math.round(ageMs / 60000)}min, max: ${Math.round(maxAgeMs / 60000)}min)`)
+            continue
+          }
           conversations.set(validated.id, {
             ...validated,
             readPaths: new Set(validated.readPaths),

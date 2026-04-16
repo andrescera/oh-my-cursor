@@ -1,14 +1,18 @@
-import { describe, test, expect, beforeAll, afterAll, spyOn } from "bun:test"
+import { describe, test, expect, beforeAll } from "bun:test"
+import { Client } from "@modelcontextprotocol/sdk/client/index.js"
+import { InMemoryTransport } from "@modelcontextprotocol/sdk/inMemory.js"
+
+import { buildServer } from "./mcp/server"
 
 const PORT = 47850
 const BASE = `http://localhost:${PORT}`
 
-function jsonrpc(method: string, params: Record<string, unknown> = {}, id = 1) {
-  return fetch(`${BASE}/mcp`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ jsonrpc: "2.0", id, method, params }),
-  }).then((r) => r.json())
+async function harness() {
+  const [clientT, serverT] = InMemoryTransport.createLinkedPair()
+  const server = buildServer()
+  const client = new Client({ name: "test-client", version: "0.0.0" }, { capabilities: {} })
+  await Promise.all([server.connect(serverT), client.connect(clientT)])
+  return { client, server }
 }
 
 beforeAll(async () => {
@@ -17,351 +21,355 @@ beforeAll(async () => {
   await Bun.sleep(500)
 })
 
-afterAll(() => {
+describe("mcp-sidecar via SDK Client", () => {
+  describe("tools/list", () => {
+    test("returns all 8 tools", async () => {
+      const { client } = await harness()
+      const result = await client.listTools()
+      expect(Array.isArray(result.tools)).toBe(true)
+      const names = result.tools.map((t) => t.name).sort()
+      expect(names).toEqual([
+        "daemon_logs",
+        "get_dispatch_stats",
+        "interactive_bash",
+        "look_at",
+        "oh_my_cursor_status",
+        "session_log",
+        "session_transcripts",
+        "skill_mcp",
+      ])
+    })
+
+    test("oh_my_cursor_status has outputSchema with daemon_healthy", async () => {
+      const { client } = await harness()
+      const result = await client.listTools()
+      const status = result.tools.find((t) => t.name === "oh_my_cursor_status")
+      expect(status).toBeDefined()
+      expect(status!.outputSchema).toBeDefined()
+      const props = (status!.outputSchema as any).properties
+      expect(props.daemon_healthy).toBeDefined()
+    })
+
+    test("look_at requires 'goal' parameter", async () => {
+      const { client } = await harness()
+      const result = await client.listTools()
+      const lookAt = result.tools.find((t) => t.name === "look_at")
+      expect(lookAt).toBeDefined()
+      expect(lookAt!.inputSchema.required).toContain("goal")
+    })
+
+    test("interactive_bash requires 'command' parameter", async () => {
+      const { client } = await harness()
+      const result = await client.listTools()
+      const bash = result.tools.find((t) => t.name === "interactive_bash")
+      expect(bash).toBeDefined()
+      expect(bash!.inputSchema.required).toContain("command")
+    })
+
+    test("result root has only spec-allowed keys", async () => {
+      const { client } = await harness()
+      const result = await client.listTools()
+      const keys = Object.keys(result).sort()
+      const allowed = new Set(["tools", "nextCursor", "_meta"])
+      for (const k of keys) expect(allowed.has(k)).toBe(true)
+    })
+  })
+
+  describe("resources/list", () => {
+    test("returns dashboard resource without stray text field", async () => {
+      const { client } = await harness()
+      const result = await client.listResources()
+      expect(Array.isArray(result.resources)).toBe(true)
+      const dash = result.resources.find((r) => r.uri === "ui://oh-my-cursor/dashboard")
+      expect(dash).toBeDefined()
+      expect("text" in dash!).toBe(false)
+      expect(dash!.mimeType).toBe("text/html")
+    })
+
+    test("result root has only spec-allowed keys", async () => {
+      const { client } = await harness()
+      const result = await client.listResources()
+      const keys = Object.keys(result).sort()
+      const allowed = new Set(["resources", "nextCursor", "_meta"])
+      for (const k of keys) expect(allowed.has(k)).toBe(true)
+    })
+  })
+
+  describe("resources/read", () => {
+    test("returns HTML contents for the dashboard URI", async () => {
+      const { client } = await harness()
+      const result = await client.readResource({ uri: "ui://oh-my-cursor/dashboard" })
+      expect(Array.isArray(result.contents)).toBe(true)
+      const c = result.contents[0] as any
+      expect(c.uri).toBe("ui://oh-my-cursor/dashboard")
+      expect(c.mimeType).toBe("text/html")
+      expect(typeof c.text).toBe("string")
+      expect(c.text).toContain("<!DOCTYPE html>")
+    })
+  })
+
+  describe("tools/call oh_my_cursor_status", () => {
+    test("returns content + structuredContent.daemon_healthy (not at root)", async () => {
+      const { client } = await harness()
+      const result = await client.callTool({ name: "oh_my_cursor_status", arguments: {} })
+      expect(Array.isArray(result.content)).toBe(true)
+      const content = result.content as Array<{ type: string; text: string }>
+      expect(content[0].type).toBe("text")
+      expect(content[0].text).toContain("dashboard")
+      const sc = result.structuredContent as { daemon_healthy: boolean } | undefined
+      expect(sc).toBeDefined()
+      expect(typeof sc!.daemon_healthy).toBe("boolean")
+      expect("daemon_healthy" in result).toBe(false)
+      const meta = (result as any)._meta
+      expect(meta?.ui?.resourceUri).toBe("ui://oh-my-cursor/dashboard")
+    })
+  })
+
+  describe("tools/call look_at", () => {
+    test("without file_path returns guidance message", async () => {
+      const { client } = await harness()
+      const result = await client.callTool({ name: "look_at", arguments: { goal: "test" } })
+      const content = result.content as Array<{ type: string; text: string }>
+      expect(content[0].text).toContain("No file_path provided")
+    })
+
+    test("with nonexistent image returns file not found", async () => {
+      const { client } = await harness()
+      const result = await client.callTool({
+        name: "look_at",
+        arguments: { file_path: "/tmp/nonexistent-test-image.png", goal: "analyze" },
+      })
+      const content = result.content as Array<{ type: string; text: string }>
+      expect(content[0].text).toContain("not found")
+    })
+
+    test("with non-image file returns guidance to use Read tool", async () => {
+      const { client } = await harness()
+      const result = await client.callTool({
+        name: "look_at",
+        arguments: { file_path: "/tmp/some-file.txt", goal: "read" },
+      })
+      const content = result.content as Array<{ type: string; text: string }>
+      expect(content[0].text).toContain("Read tool")
+    })
+
+    test("with PDF file returns PDF guidance", async () => {
+      const { client } = await harness()
+      const result = await client.callTool({
+        name: "look_at",
+        arguments: { file_path: "/tmp/document.pdf", goal: "extract text" },
+      })
+      const content = result.content as Array<{ type: string; text: string }>
+      expect(content[0].text).toContain("PDF")
+    })
+  })
+
+  describe("tools/call skill_mcp", () => {
+    test("with empty skill_name returns available skills list", async () => {
+      const { client } = await harness()
+      const result = await client.callTool({ name: "skill_mcp", arguments: { skill_name: "" } })
+      const content = result.content as Array<{ type: string; text: string }>
+      expect(content[0].text).toContain("Available skills")
+    })
+
+    test("with nonexistent skill returns not found", async () => {
+      const { client } = await harness()
+      const result = await client.callTool({
+        name: "skill_mcp",
+        arguments: { skill_name: "nonexistent-skill" },
+      })
+      const content = result.content as Array<{ type: string; text: string }>
+      expect(content[0].text).toContain("not found")
+    })
+
+    test("with status action returns skill status", async () => {
+      const { client } = await harness()
+      const result = await client.callTool({
+        name: "skill_mcp",
+        arguments: { action: "status", skill_name: "dev-browser" },
+      })
+      const content = result.content as Array<{ type: string; text: string }>
+      expect(content[0].text).toContain("dev-browser")
+    })
+  })
+
+  describe("tools/call interactive_bash", () => {
+    test("returns tmux output or error", async () => {
+      const { client } = await harness()
+      const result = await client.callTool({
+        name: "interactive_bash",
+        arguments: { command: "echo test-from-mcp-sidecar" },
+      })
+      const content = result.content as Array<{ type: string; text: string }>
+      expect(
+        content[0].text.includes("Session:") || content[0].text.includes("tmux error"),
+      ).toBe(true)
+    })
+  })
+
+  describe("tools/call get_dispatch_stats", () => {
+    test("returns daemon health or error text", async () => {
+      const { client } = await harness()
+      const result = await client.callTool({ name: "get_dispatch_stats", arguments: {} })
+      const content = result.content as Array<{ type: string; text: string }>
+      expect(content[0].type).toBe("text")
+      expect(typeof content[0].text).toBe("string")
+    })
+  })
+
+  describe("tools/call daemon_logs", () => {
+    test("returns log content or not-found", async () => {
+      const { client } = await harness()
+      const result = await client.callTool({ name: "daemon_logs", arguments: { lines: 10 } })
+      const content = result.content as Array<{ type: string; text: string }>
+      expect(content[0].type).toBe("text")
+    })
+  })
+
+  describe("tools/call session_log", () => {
+    test("with export action returns log file path or daemon offline", async () => {
+      const { client } = await harness()
+      const result = await client.callTool({
+        name: "session_log",
+        arguments: { action: "export" },
+      })
+      const content = result.content as Array<{ type: string; text: string }>
+      expect(
+        content[0].text.includes("Session log file") ||
+          content[0].text.includes("Daemon offline") ||
+          content[0].text.includes("not reachable"),
+      ).toBe(true)
+    })
+
+    test("with invalid action value is rejected by input validation", async () => {
+      const { client } = await harness()
+      // The SDK validates enum values via Zod before the handler runs;
+      // "bogus" is not in the allowed set, so the MCP layer returns -32602 wrapped in content.
+      const result = await client.callTool({ name: "session_log", arguments: { action: "bogus" } })
+      const content = result.content as Array<{ type: string; text: string }>
+      expect(content[0].text).toContain("Input validation error")
+    })
+  })
 })
 
-describe("mcp-sidecar", () => {
-  describe("#given /health endpoint", () => {
-    describe("#when GET /health", () => {
-      test("#then returns ok status and tool names", async () => {
-        const res = await fetch(`${BASE}/health`)
-        const data = await res.json()
-
-        expect(data.status).toBe("ok")
-        expect(Array.isArray(data.tools)).toBe(true)
-        expect(data.tools.length).toBeGreaterThan(0)
-        expect(data.tools).toContain("look_at")
-        expect(data.tools).toContain("interactive_bash")
-        expect(data.tools).toContain("skill_mcp")
-        expect(data.tools).toContain("get_dispatch_stats")
-        expect(data.tools).toContain("session_transcripts")
-        expect(data.tools).toContain("daemon_logs")
-        expect(data.tools).toContain("session_log")
-        expect(data.tools).toContain("oh_my_cursor_status")
-      })
+describe("mcp-sidecar HTTP layer", () => {
+  describe("/health", () => {
+    test("returns ok status and tool names", async () => {
+      const res = await fetch(`${BASE}/health`)
+      const data: any = await res.json()
+      expect(data.status).toBe("ok")
+      expect(Array.isArray(data.tools)).toBe(true)
+      expect(data.tools).toContain("oh_my_cursor_status")
+      expect(data.tools).toContain("look_at")
+      expect(data.tools).toContain("interactive_bash")
+      expect(data.tools).toContain("skill_mcp")
+      expect(typeof data.daemonHealthy).toBe("boolean")
     })
   })
 
-  describe("#given unknown route", () => {
-    describe("#when GET /nonexistent", () => {
-      test("#then returns 404", async () => {
-        const res = await fetch(`${BASE}/nonexistent`)
-        expect(res.status).toBe(404)
-      })
+  describe("unknown route", () => {
+    test("returns 404", async () => {
+      const res = await fetch(`${BASE}/nonexistent`)
+      expect(res.status).toBe(404)
     })
   })
 
-  describe("#given JSON-RPC initialize", () => {
-    describe("#when sending initialize request", () => {
-      test("#then returns protocol version and server info", async () => {
-        const result = await jsonrpc("initialize")
-
-        expect(result.jsonrpc).toBe("2.0")
-        expect(result.id).toBe(1)
-        expect(result.result.protocolVersion).toBe("2024-11-05")
-        expect(result.result.capabilities).toBeDefined()
-        expect(result.result.capabilities.tools).toBeDefined()
-        expect(result.result.capabilities.resources).toBeDefined()
-        expect(result.result.serverInfo.name).toBe("oh-my-cursor")
-        expect(result.result.serverInfo.version).toBe("0.1.0")
+  describe("notifications/initialized", () => {
+    test("after initialize handshake, server returns 202 with empty body", async () => {
+      const initBody = JSON.stringify({
+        jsonrpc: "2.0",
+        id: 1,
+        method: "initialize",
+        params: {
+          protocolVersion: "2025-06-18",
+          capabilities: {},
+          clientInfo: { name: "test", version: "0" },
+        },
       })
+      const initRes = await fetch(`${BASE}/mcp`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Accept: "application/json, text/event-stream",
+        },
+        body: initBody,
+      })
+      const sessionId = initRes.headers.get("mcp-session-id")
+      expect(sessionId).toBeTruthy()
+
+      const notifBody = JSON.stringify({
+        jsonrpc: "2.0",
+        method: "notifications/initialized",
+      })
+      const notifRes = await fetch(`${BASE}/mcp`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Accept: "application/json, text/event-stream",
+          "mcp-session-id": sessionId!,
+        },
+        body: notifBody,
+      })
+      expect(notifRes.status).toBe(202)
+      expect(await notifRes.text()).toBe("")
     })
   })
 
-  describe("#given JSON-RPC tools/list", () => {
-    describe("#when requesting tool list", () => {
-      test("#then returns all registered tools", async () => {
-        const result = await jsonrpc("tools/list")
+  describe("stateful session", () => {
+    test("session id issued on initialize is reused on follow-up", async () => {
+      const initBody = JSON.stringify({
+        jsonrpc: "2.0",
+        id: 1,
+        method: "initialize",
+        params: {
+          protocolVersion: "2025-06-18",
+          capabilities: {},
+          clientInfo: { name: "test-2", version: "0" },
+        },
+      })
+      const initRes = await fetch(`${BASE}/mcp`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Accept: "application/json, text/event-stream",
+        },
+        body: initBody,
+      })
+      const sid = initRes.headers.get("mcp-session-id")
+      expect(sid).toMatch(/^[0-9a-f-]{36}$/i)
 
-        expect(result.jsonrpc).toBe("2.0")
-        expect(result.result.tools).toBeArray()
-        expect(result.result.tools.length).toBeGreaterThanOrEqual(8)
+      await fetch(`${BASE}/mcp`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Accept: "application/json, text/event-stream",
+          "mcp-session-id": sid!,
+        },
+        body: JSON.stringify({ jsonrpc: "2.0", method: "notifications/initialized" }),
       })
 
-      test("#then each tool has name, description, and inputSchema", async () => {
-        const result = await jsonrpc("tools/list")
-
-        for (const tool of result.result.tools) {
-          expect(typeof tool.name).toBe("string")
-          expect(tool.name.length).toBeGreaterThan(0)
-          expect(typeof tool.description).toBe("string")
-          expect(tool.description.length).toBeGreaterThan(0)
-          expect(tool.inputSchema).toBeDefined()
-          expect(tool.inputSchema.type).toBe("object")
-          expect(tool.inputSchema.properties).toBeDefined()
-        }
+      const listRes = await fetch(`${BASE}/mcp`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Accept: "application/json, text/event-stream",
+          "mcp-session-id": sid!,
+        },
+        body: JSON.stringify({ jsonrpc: "2.0", id: 2, method: "tools/list" }),
       })
-
-      test("#then includes the oh_my_cursor_status tool with _meta", async () => {
-        const result = await jsonrpc("tools/list")
-        const statusTool = result.result.tools.find(
-          (t: { name: string }) => t.name === "oh_my_cursor_status",
-        )
-
-        expect(statusTool).toBeDefined()
-        expect(statusTool._meta).toBeDefined()
-        expect(statusTool._meta.ui.resourceUri).toBe("ui://oh-my-cursor/dashboard")
-      })
-
-      test("#then look_at tool requires 'goal' parameter", async () => {
-        const result = await jsonrpc("tools/list")
-        const lookAt = result.result.tools.find(
-          (t: { name: string }) => t.name === "look_at",
-        )
-
-        expect(lookAt).toBeDefined()
-        expect(lookAt.inputSchema.required).toContain("goal")
-      })
-
-      test("#then interactive_bash tool requires 'command' parameter", async () => {
-        const result = await jsonrpc("tools/list")
-        const bash = result.result.tools.find(
-          (t: { name: string }) => t.name === "interactive_bash",
-        )
-
-        expect(bash).toBeDefined()
-        expect(bash.inputSchema.required).toContain("command")
-      })
-    })
-  })
-
-  describe("#given JSON-RPC resources/list", () => {
-    describe("#when requesting resource list", () => {
-      test("#then returns the status dashboard resource", async () => {
-        const result = await jsonrpc("resources/list")
-
-        expect(result.jsonrpc).toBe("2.0")
-        const resources = result.result
-        expect(Array.isArray(resources)).toBe(true)
-        expect(resources.length).toBeGreaterThanOrEqual(1)
-
-        const statusResource = resources.find(
-          (r: { uri: string }) => r.uri === "ui://oh-my-cursor/dashboard",
-        )
-        expect(statusResource).toBeDefined()
-        expect(statusResource.mimeType).toBe("text/html")
-      })
-    })
-  })
-
-  describe("#given JSON-RPC resources/read", () => {
-    describe("#when reading the status resource", () => {
-      test("#then returns HTML content", async () => {
-        const result = await jsonrpc("resources/read", {
-          uri: "ui://oh-my-cursor/dashboard",
-        })
-
-        expect(result.jsonrpc).toBe("2.0")
-        expect(result.result.contents).toBeArray()
-        expect(result.result.contents[0].uri).toBe("ui://oh-my-cursor/dashboard")
-        expect(result.result.contents[0].mimeType).toBe("text/html")
-        expect(result.result.contents[0].text).toContain("<!DOCTYPE html>")
-      })
-    })
-  })
-
-  describe("#given JSON-RPC tools/call", () => {
-    describe("#when calling oh_my_cursor_status", () => {
-      test("#then returns dashboard content with _meta", async () => {
-        const result = await jsonrpc("tools/call", {
-          name: "oh_my_cursor_status",
-          arguments: {},
-        })
-
-        expect(result.jsonrpc).toBe("2.0")
-        expect(result.result.content).toBeArray()
-        expect(result.result.content[0].type).toBe("text")
-        expect(result.result.content[0].text).toContain("dashboard")
-        expect(result.result._meta.ui.resourceUri).toBe("ui://oh-my-cursor/dashboard")
-      })
+      expect(listRes.status).toBe(200)
     })
 
-    describe("#when calling look_at without file_path", () => {
-      test("#then returns guidance message", async () => {
-        const result = await jsonrpc("tools/call", {
-          name: "look_at",
-          arguments: { goal: "test" },
-        })
-
-        expect(result.result.content).toBeArray()
-        expect(result.result.content[0].type).toBe("text")
-        expect(result.result.content[0].text).toContain("No file_path provided")
+    test("request without session id is rejected", async () => {
+      const res = await fetch(`${BASE}/mcp`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Accept: "application/json, text/event-stream",
+        },
+        body: JSON.stringify({ jsonrpc: "2.0", id: 99, method: "tools/list" }),
       })
-    })
-
-    describe("#when calling look_at with nonexistent image file", () => {
-      test("#then returns file not found", async () => {
-        const result = await jsonrpc("tools/call", {
-          name: "look_at",
-          arguments: { file_path: "/tmp/nonexistent-test-image.png", goal: "analyze" },
-        })
-
-        expect(result.result.content).toBeArray()
-        expect(result.result.content[0].type).toBe("text")
-        expect(result.result.content[0].text).toContain("not found")
-      })
-    })
-
-    describe("#when calling look_at with non-image file", () => {
-      test("#then returns guidance to use Read tool", async () => {
-        const result = await jsonrpc("tools/call", {
-          name: "look_at",
-          arguments: { file_path: "/tmp/some-file.txt", goal: "read" },
-        })
-
-        expect(result.result.content).toBeArray()
-        expect(result.result.content[0].text).toContain("Read tool")
-      })
-    })
-
-    describe("#when calling look_at with PDF file", () => {
-      test("#then returns PDF guidance", async () => {
-        const result = await jsonrpc("tools/call", {
-          name: "look_at",
-          arguments: { file_path: "/tmp/document.pdf", goal: "extract text" },
-        })
-
-        expect(result.result.content).toBeArray()
-        expect(result.result.content[0].text).toContain("PDF")
-      })
-    })
-
-    describe("#when calling skill_mcp with empty skill_name", () => {
-      test("#then returns available skills list", async () => {
-        const result = await jsonrpc("tools/call", {
-          name: "skill_mcp",
-          arguments: { skill_name: "" },
-        })
-
-        expect(result.result.content).toBeArray()
-        expect(result.result.content[0].type).toBe("text")
-        expect(result.result.content[0].text).toContain("Available skills")
-      })
-    })
-
-    describe("#when calling skill_mcp with status action", () => {
-      test("#then returns status for the skill", async () => {
-        const result = await jsonrpc("tools/call", {
-          name: "skill_mcp",
-          arguments: { action: "status", skill_name: "dev-browser" },
-        })
-
-        expect(result.result.content[0].text).toContain("dev-browser")
-      })
-    })
-
-    describe("#when calling skill_mcp with nonexistent skill", () => {
-      test("#then returns not found with available skills", async () => {
-        const result = await jsonrpc("tools/call", {
-          name: "skill_mcp",
-          arguments: { skill_name: "nonexistent-skill" },
-        })
-
-        expect(result.result.content[0].text).toContain("not found")
-        expect(result.result.content[0].text).toContain("Available skills")
-      })
-    })
-
-    describe("#when calling interactive_bash", () => {
-      test("#then returns tmux output or error", async () => {
-        const result = await jsonrpc("tools/call", {
-          name: "interactive_bash",
-          arguments: { command: "echo test-from-mcp-sidecar" },
-        })
-
-        expect(result.result.content).toBeArray()
-        expect(result.result.content[0].type).toBe("text")
-        // Either succeeds with session output or fails with tmux error
-        const text = result.result.content[0].text
-        expect(
-          text.includes("Session:") || text.includes("tmux error"),
-        ).toBe(true)
-      })
-    })
-
-    describe("#when calling get_dispatch_stats", () => {
-      test("#then returns daemon health or error", async () => {
-        const result = await jsonrpc("tools/call", {
-          name: "get_dispatch_stats",
-          arguments: {},
-        })
-
-        expect(result.result.content).toBeArray()
-        expect(result.result.content[0].type).toBe("text")
-      })
-    })
-
-    describe("#when calling daemon_logs", () => {
-      test("#then returns log content or not-found message", async () => {
-        const result = await jsonrpc("tools/call", {
-          name: "daemon_logs",
-          arguments: { lines: 10 },
-        })
-
-        expect(result.result.content).toBeArray()
-        expect(result.result.content[0].type).toBe("text")
-      })
-    })
-
-    describe("#when calling session_log with unknown action", () => {
-      test("#then returns unknown action message", async () => {
-        const result = await jsonrpc("tools/call", {
-          name: "session_log",
-          arguments: { action: "bogus" },
-        })
-
-        expect(result.result.content[0].text).toContain("Unknown session_log action")
-      })
-    })
-
-    describe("#when calling session_log with export action", () => {
-      test("#then returns log file path or daemon offline message", async () => {
-        const result = await jsonrpc("tools/call", {
-          name: "session_log",
-          arguments: { action: "export" },
-        })
-
-        expect(result.result.content).toBeArray()
-        expect(result.result.content[0].type).toBe("text")
-        const text = result.result.content[0].text
-        expect(
-          text.includes("Session log file") || text.includes("Daemon offline"),
-        ).toBe(true)
-      })
-    })
-
-    describe("#when calling an unknown tool", () => {
-      test("#then returns unknown tool error", async () => {
-        const result = await jsonrpc("tools/call", {
-          name: "nonexistent_tool",
-          arguments: {},
-        })
-
-        expect(result.result.content[0].text).toContain("Unknown tool")
-      })
-    })
-  })
-
-  describe("#given unknown JSON-RPC method", () => {
-    describe("#when sending unrecognized method", () => {
-      test("#then returns method not found error", async () => {
-        const result = await jsonrpc("unknown/method")
-
-        expect(result.jsonrpc).toBe("2.0")
-        expect(result.error).toBeDefined()
-        expect(result.error.code).toBe(-32601)
-        expect(result.error.message).toBe("Method not found")
-      })
-    })
-  })
-
-  describe("#given JSON-RPC preserves request id", () => {
-    describe("#when sending request with custom id", () => {
-      test("#then response echoes the same id", async () => {
-        const result = await jsonrpc("initialize", {}, 42)
-
-        expect(result.id).toBe(42)
-      })
+      expect([400, 404]).toContain(res.status)
     })
   })
 })

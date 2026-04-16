@@ -1,12 +1,6 @@
 import { describe, test, expect } from "bun:test"
 
-import {
-  STATUS_HTML,
-  getStatusHTML,
-  MCP_APP_TOOL,
-  MCP_APP_RESOURCE,
-  handleStatusToolCall,
-} from "./mcp-app"
+import { STATUS_HTML, getStatusHTML } from "./mcp-app"
 import { renderDashboardHTML } from "./dashboard/render"
 
 describe("mcp-app", () => {
@@ -48,54 +42,6 @@ describe("mcp-app", () => {
     })
   })
 
-  describe("#given MCP_APP_TOOL export", () => {
-    describe("#when inspecting tool definition", () => {
-      test("#then has correct name", () => {
-        expect(MCP_APP_TOOL.name).toBe("oh_my_cursor_status")
-      })
-
-      test("#then has a non-empty description", () => {
-        expect(typeof MCP_APP_TOOL.description).toBe("string")
-        expect(MCP_APP_TOOL.description.length).toBeGreaterThan(0)
-      })
-
-      test("#then has valid inputSchema with object type", () => {
-        expect(MCP_APP_TOOL.inputSchema).toBeDefined()
-        expect(MCP_APP_TOOL.inputSchema.type).toBe("object")
-        expect(MCP_APP_TOOL.inputSchema.properties).toBeDefined()
-      })
-
-      test("#then has _meta with UI resource URI", () => {
-        expect(MCP_APP_TOOL._meta).toBeDefined()
-        expect(MCP_APP_TOOL._meta.ui.resourceUri).toBe("ui://oh-my-cursor/dashboard")
-      })
-    })
-  })
-
-  describe("#given MCP_APP_RESOURCE export", () => {
-    describe("#when inspecting resource definition", () => {
-      test("#then has correct URI matching the tool _meta", () => {
-        expect(MCP_APP_RESOURCE.uri).toBe("ui://oh-my-cursor/dashboard")
-        expect(MCP_APP_RESOURCE.uri).toBe(MCP_APP_TOOL._meta.ui.resourceUri)
-      })
-
-      test("#then has name and description", () => {
-        expect(typeof MCP_APP_RESOURCE.name).toBe("string")
-        expect(MCP_APP_RESOURCE.name.length).toBeGreaterThan(0)
-        expect(typeof MCP_APP_RESOURCE.description).toBe("string")
-        expect(MCP_APP_RESOURCE.description.length).toBeGreaterThan(0)
-      })
-
-      test("#then has text/html mimeType", () => {
-        expect(MCP_APP_RESOURCE.mimeType).toBe("text/html")
-      })
-
-      test("#then contains the STATUS_HTML content", () => {
-        expect(MCP_APP_RESOURCE.text).toBe(STATUS_HTML)
-      })
-    })
-  })
-
   describe("#given getStatusHTML function", () => {
     describe("#when called with a specific port", () => {
       test("#then renderDashboardHTML with that port contains the right localhost URL", () => {
@@ -125,29 +71,6 @@ describe("mcp-app", () => {
       test("#then falls back to a valid port (getDaemonPort or default 47847)", () => {
         const html = getStatusHTML()
         expect(html).toMatch(/http:\/\/localhost:\d+/)
-      })
-    })
-  })
-
-  describe("#given handleStatusToolCall function", () => {
-    describe("#when called with no arguments", () => {
-      test("#then returns content array with dashboard message", () => {
-        const result = handleStatusToolCall()
-        expect(Array.isArray(result.content)).toBe(true)
-        expect(result.content.length).toBeGreaterThan(0)
-        expect(result.content[0].type).toBe("text")
-        expect(result.content[0].text).toContain("status dashboard")
-      })
-
-      test("#then returns _meta with UI resource URI", () => {
-        const result = handleStatusToolCall()
-        expect(result._meta).toBeDefined()
-        expect(result._meta?.ui.resourceUri).toBe("ui://oh-my-cursor/dashboard")
-      })
-
-      test("#then _meta URI matches MCP_APP_RESOURCE URI", () => {
-        const result = handleStatusToolCall()
-        expect(result._meta?.ui.resourceUri).toBe(MCP_APP_RESOURCE.uri)
       })
     })
   })

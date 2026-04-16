@@ -96,7 +96,7 @@ After collecting results, synthesize findings before proceeding. Note what you d
 
 **Step 1: Detect** — dispatch `Task(subagent_type="explore")` to find: test framework (package.json, config files), test patterns (representative files), coverage config, CI integration.
 
-**Step 2: Ask the Test Question via `AskQuestion`** — two scripted variants (byte-aligned with `commands/plan.md`):
+**Step 2: Ask the Test Question via `AskQuestion`** — two scripted variants (byte-aligned across surfaces):
 If test infrastructure EXISTS:
 > I see test infrastructure ([framework]). Should this work include automated tests?
 > - YES (TDD): RED-GREEN-REFACTOR structure

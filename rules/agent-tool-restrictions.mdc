@@ -17,13 +17,15 @@ Agent YAML frontmatter `model:` defines the default. At runtime, Task accepts th
 
 | Slug | Tier |
 | --- | --- |
-| `fast` | Lightweight |
-| `composer-2-fast` | Lightweight+ |
+| `composer-2` | Standard |
+| `composer-2-fast` | Standard |
 | `gpt-5.4-medium` | Standard |
 | `claude-4.6-sonnet-medium-thinking` | Standard+ |
 | `gpt-5.3-codex-high-fast` | Heavy |
-| `claude-4.6-opus-high-thinking` | Heavy+ |
+| `claude-opus-4-7-thinking-high` | Heavy+ |
 | `gemini-3.1-pro` | Multimodal |
+
+Opus 4.6 is still accepted by Cursor but is not recommended; use 4.7 (same cost, newer).
 
 If `model` is omitted, the task inherits the parent's model. Cursor may fall back to a different model at runtime; the requested slug is a preference, not a guarantee.
 

@@ -26,18 +26,18 @@ Orchestration mode is injected via `additional_context` on session start. Defaul
 
 ## Agent Routing
 
-> The Task tool accepts `model: 'fast'` or any of the 7 valid Cursor slugs listed in `agent-tool-restrictions.mdc`.
+> The Task tool accepts only the seven valid Cursor model slugs listed in `rules/agent-tool-restrictions.mdc`.
 
 | Agent | Model | Fire When |
 |-------|-------|-----------|
-| **explore** | `fast` | Any search, exploration, "how does X work", docs lookup |
-| **librarian** | `fast` | External docs, library APIs, OSS code search |
+| **explore** | `composer-2-fast` | Any search, exploration, "how does X work", docs lookup |
+| **librarian** | `composer-2-fast` | External docs, library APIs, OSS code search |
 | **sisyphus-junior** | `composer-2-fast` | Simple single-file changes, quick focused tasks |
-| **sisyphus** | `claude-4.6-opus-high-thinking` | Complex multi-file work, architecture + implementation |
+| **sisyphus** | `claude-opus-4-7-thinking-high` | Complex multi-file work, architecture + implementation |
 | **hephaestus** | `gpt-5.3-codex-high-fast` | Sustained deep work on a single complex problem |
 | **atlas** | `claude-4.6-sonnet-medium-thinking` | Plan exists -> executes plan step-by-step via delegation |
 | **oracle** | `gpt-5.4-medium` | Need architecture advice, debugging consultation |
-| **prometheus** | `claude-4.6-opus-high-thinking` | Complex planning, ambiguous scope analysis |
+| **prometheus** | `claude-opus-4-7-thinking-high` | Complex planning, ambiguous scope analysis |
 | **metis** | `gpt-5.4-medium` | Pre-planning gap analysis, risk assessment |
 | **momus** | `gpt-5.3-codex-high-fast` | Plan review, quality audit |
 | **multimodal-looker** | `gemini-3.1-pro` | Images, PDFs, diagrams, visual analysis |
@@ -46,25 +46,25 @@ Orchestration mode is injected via `additional_context` on session start. Defaul
 
 When a model is unavailable, Cursor falls back to the next available model:
 
-- `fast` model agents (explore, librarian) — always available
-- If a worker fails with a model error, retry with `model: "fast"`
+- `composer-2-fast` model agents (explore, librarian) — always available
+- If a worker fails with a model error, retry with `model: "composer-2-fast"`
 - After 2 model failures on the same agent type, switch to a different agent type
 
 **Retry guidance chain** (mirrors `delegate-task-retry` hook injected into context after Task failures):
 
-1. **Rate limit** — Wait ~30s, retry; if it keeps happening, use `model: "fast"`.
-2. **Model unavailable** — Retry with `model: "fast"`; if the worker was `sisyphus`, consider `sisyphus-junior` as a lighter fallback.
+1. **Rate limit** — Wait ~30s, retry; if it keeps happening, use `model: "composer-2-fast"`.
+2. **Model unavailable** — Retry with `model: "composer-2-fast"`; if the worker was `sisyphus`, consider `sisyphus-junior` as a lighter fallback.
 3. **Timeout** — Split the work into smaller subtasks or delegate with a simpler `subagent_type`.
-4. **Other errors** — Resume the same subagent ID with concrete fix context; after **more than 3** failures for the same agent type, treat as escalation: try another agent type, prefer `model: "fast"`, or ask the user.
+4. **Other errors** — Resume the same subagent ID with concrete fix context; after **more than 3** failures for the same agent type, treat as escalation: try another agent type, prefer `model: "composer-2-fast"`, or ask the user.
 
 | Agent | Primary Model | Fallback |
 |-------|--------------|----------|
-| explore | fast | Always available |
-| librarian | fast | Always available |
-| sisyphus-junior | composer-2-fast | Retry with fast |
-| sisyphus | claude-4.6-opus-high-thinking | Retry with sisyphus-junior |
+| explore | composer-2-fast | Always available |
+| librarian | composer-2-fast | Always available |
+| sisyphus-junior | composer-2-fast | Retry with composer-2-fast |
+| sisyphus | claude-opus-4-7-thinking-high | Retry with sisyphus-junior |
 | hephaestus | gpt-5.3-codex-high-fast | Retry with sisyphus |
-| oracle | gpt-5.4-medium | Retry with fast |
+| oracle | gpt-5.4-medium | Retry with composer-2-fast |
 
 ## Hard Constraints
 

@@ -170,7 +170,7 @@ These remain **unanswered in public Cursor documentation** reviewed for this not
 
 ## MCP Server Audit
 
-**Scope:** MCP servers present in the current Cursor configuration for this workspace, as reflected by on-disk tool descriptors under `/home/andres/.cursor/projects/mnt-development-oh-my-openagent/mcps/`. **Action:** disable duplicates in Cursor MCP settings only if you accept the trade-offs below; this note does not change any configuration.
+**Scope:** MCP servers present in the current Cursor configuration for this workspace, as reflected by on-disk tool descriptors under `<home>/.cursor/projects/mnt-development-oh-my-openagent/mcps/`. **Action:** disable duplicates in Cursor MCP settings only if you accept the trade-offs below; this note does not change any configuration.
 
 ### Per-server summary
 

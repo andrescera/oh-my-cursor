@@ -23,14 +23,17 @@ function listSkillNamesFromPluginRoot(): string[] {
 }
 
 export function register(server: McpServer): void {
-  server.tool(
+  server.registerTool(
     "skill_mcp",
-    "Read a skill's SKILL.md documentation. Returns the full skill definition for the named skill.",
     {
-      skill_name: z
-        .string()
-        .optional()
-        .describe("Name of the skill directory (e.g., 'git-master', 'review-work')"),
+      description:
+        "Read a skill's SKILL.md documentation. Returns the full skill definition for the named skill.",
+      inputSchema: {
+        skill_name: z
+          .string()
+          .optional()
+          .describe("Name of the skill directory (e.g., 'git-master', 'review-work')"),
+      },
     },
     wrapToolHandler("skill_mcp", async (args) => {
       const skillNameRaw = args.skill_name

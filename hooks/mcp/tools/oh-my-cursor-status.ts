@@ -1,6 +1,7 @@
 import { z } from "zod"
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js"
 import { getDaemonHealthy } from "../daemon-health"
+import { wrapToolHandler } from "../validate"
 
 const inputSchema = {}
 
@@ -20,7 +21,7 @@ export function register(server: McpServer): void {
       outputSchema,
       _meta: uiMeta,
     },
-    async () => ({
+    wrapToolHandler("oh_my_cursor_status", async () => ({
       content: [
         {
           type: "text",
@@ -29,6 +30,6 @@ export function register(server: McpServer): void {
       ],
       structuredContent: { daemon_healthy: getDaemonHealthy() },
       _meta: uiMeta,
-    }),
+    })),
   )
 }

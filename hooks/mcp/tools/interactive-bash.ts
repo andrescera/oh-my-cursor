@@ -1,5 +1,6 @@
 import { z } from "zod"
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js"
+import { wrapToolHandler } from "../validate"
 
 const inputSchema = {
   command: z.string().describe("The command to execute in the tmux session"),
@@ -17,7 +18,7 @@ export function register(server: McpServer): void {
         "Execute commands in a persistent tmux session. Use for long-running processes, interactive commands, or when you need persistent terminal state across multiple calls.",
       inputSchema,
     },
-    async (args) => {
+    wrapToolHandler("interactive_bash", async (args) => {
       const command = args.command
       const sessionName = args.session_name ?? "oh-my-cursor"
 
@@ -62,6 +63,6 @@ export function register(server: McpServer): void {
           ],
         }
       }
-    },
+    }),
   )
 }

@@ -2,6 +2,7 @@ import { z } from "zod"
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js"
 import { existsSync, readdirSync } from "node:fs"
 import { join, resolve } from "node:path"
+import { wrapToolHandler } from "../validate"
 
 function collectAgentTranscriptDirs(): string[] {
   const dirs: string[] = []
@@ -45,7 +46,7 @@ export function register(server: McpServer): void {
         limit: z.number().optional().describe("Max results to return (default: 10)"),
       },
     },
-    ({ action, query, limit: limitRaw }) => {
+    wrapToolHandler("session_transcripts", ({ action, query, limit: limitRaw }) => {
       const limit =
         typeof limitRaw === "number" && Number.isFinite(limitRaw) && limitRaw > 0
           ? Math.min(Math.floor(limitRaw), 500)
@@ -141,6 +142,6 @@ export function register(server: McpServer): void {
           },
         ],
       }
-    },
+    }),
   )
 }

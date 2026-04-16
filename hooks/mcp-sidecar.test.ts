@@ -252,6 +252,30 @@ describe("mcp-sidecar via SDK Client", () => {
   })
 })
 
+describe("envelope validation", () => {
+  test("malformed CallToolResult is rejected by wrapToolHandler", async () => {
+    const { wrapToolHandler } = await import("./mcp/validate")
+    const bad = wrapToolHandler("test_tool", async () => ({ content: "not_an_array" }))
+    let threw = false
+    try {
+      await bad({})
+    } catch (e) {
+      threw = true
+      expect(String(e)).toMatch(/invalid CallToolResult shape|content/i)
+    }
+    expect(threw).toBe(true)
+  })
+
+  test("valid CallToolResult passes through wrapToolHandler unchanged", async () => {
+    const { wrapToolHandler } = await import("./mcp/validate")
+    const good = wrapToolHandler("test_tool", async () => ({
+      content: [{ type: "text", text: "ok" }],
+    }))
+    const result = await good({})
+    expect(result).toEqual({ content: [{ type: "text", text: "ok" }] })
+  })
+})
+
 describe("mcp-sidecar HTTP layer", () => {
   describe("/health", () => {
     test("returns ok status and tool names", async () => {

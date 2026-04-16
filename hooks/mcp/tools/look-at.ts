@@ -1,5 +1,6 @@
 import { z } from "zod"
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js"
+import { wrapToolHandler } from "../validate"
 
 const inputSchema = {
   file_path: z.string().optional().describe("Absolute path to the file to analyze"),
@@ -14,7 +15,7 @@ export function register(server: McpServer): void {
         "Analyze a file visually (images, PDFs, diagrams) or extract specific information from a file. Use when you need to understand visual content that cannot be read as plain text.",
       inputSchema,
     },
-    async (args) => {
+    wrapToolHandler("look_at", async (args) => {
       const filePath = args.file_path
       const goal = args.goal
 
@@ -73,6 +74,6 @@ export function register(server: McpServer): void {
           },
         ],
       }
-    },
+    }),
   )
 }

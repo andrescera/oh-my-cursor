@@ -1,6 +1,7 @@
 import { z } from "zod"
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js"
 import { join, resolve } from "node:path"
+import { wrapToolHandler } from "../validate"
 
 const inputSchema = {
   action: z
@@ -39,7 +40,7 @@ export function register(server: McpServer): void {
         "Query the oh-my-cursor conversation event log. Returns structured events from the current or past sessions for analysis, review, and improvement.",
       inputSchema,
     },
-    async ({ action, limit: limitRaw, session_id, event_filter, action_filter, workspace_root }) => {
+    wrapToolHandler("session_log", async ({ action, limit: limitRaw, session_id, event_filter, action_filter, workspace_root }) => {
       const port =
         process.env.OH_MY_CURSOR_DAEMON_PORT || process.env.OH_MY_CURSOR_PORT || "47847"
 
@@ -147,6 +148,6 @@ export function register(server: McpServer): void {
           },
         ],
       }
-    },
+    }),
   )
 }

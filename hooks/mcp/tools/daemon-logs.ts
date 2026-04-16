@@ -1,5 +1,6 @@
 import { z } from "zod"
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js"
+import { wrapToolHandler } from "../validate"
 
 const inputSchema = {
   lines: z.number().optional().describe("Number of recent log lines to show (default: 50)"),
@@ -12,7 +13,7 @@ export function register(server: McpServer): void {
       description: "View recent oh-my-cursor daemon log output for debugging hook behavior.",
       inputSchema,
     },
-    async ({ lines: linesRaw }) => {
+    wrapToolHandler("daemon_logs", async ({ lines: linesRaw }) => {
       const lineCount =
         typeof linesRaw === "number" && Number.isFinite(linesRaw) && linesRaw > 0
           ? Math.min(Math.floor(linesRaw), 10_000)
@@ -41,6 +42,6 @@ export function register(server: McpServer): void {
           ],
         }
       }
-    },
+    }),
   )
 }

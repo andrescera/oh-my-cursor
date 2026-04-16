@@ -2,6 +2,7 @@ import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js"
 import { existsSync, readFileSync, readdirSync } from "node:fs"
 import { join, resolve } from "node:path"
 import { z } from "zod"
+import { wrapToolHandler } from "../validate"
 
 function getPluginRoot(): string {
   return resolve(import.meta.dir, "..", "..", "..")
@@ -31,7 +32,7 @@ export function register(server: McpServer): void {
         .optional()
         .describe("Name of the skill directory (e.g., 'git-master', 'review-work')"),
     },
-    async (args) => {
+    wrapToolHandler("skill_mcp", async (args) => {
       const skillNameRaw = args.skill_name
       const skillName =
         typeof skillNameRaw === "string" ? skillNameRaw.trim() : ""
@@ -91,6 +92,6 @@ export function register(server: McpServer): void {
           ],
         }
       }
-    },
+    }),
   )
 }

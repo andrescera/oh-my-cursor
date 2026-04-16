@@ -1,5 +1,6 @@
 import { z } from "zod"
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js"
+import { wrapToolHandler } from "../validate"
 
 export function register(server: McpServer): void {
   server.registerTool(
@@ -9,7 +10,7 @@ export function register(server: McpServer): void {
         "Get current conversation dispatch statistics including explore/worker counts, tool call counts, and active agents from the oh-my-cursor daemon.",
       inputSchema: {},
     },
-    async () => {
+    wrapToolHandler("get_dispatch_stats", async () => {
       const port = process.env.OH_MY_CURSOR_DAEMON_PORT || process.env.OH_MY_CURSOR_PORT || "47847"
       const url = `http://localhost:${port}/health`
       try {
@@ -43,6 +44,6 @@ export function register(server: McpServer): void {
           ],
         }
       }
-    },
+    }),
   )
 }

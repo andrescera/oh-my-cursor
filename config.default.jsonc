@@ -66,11 +66,11 @@
 
   // Model defaults per subagent type
   // Override to change the default model for specific agent types
-  // Values: "fast" (lightweight, low latency) or "inherit" (uses parent model)
+  // Values: "composer-2-fast" (same capability as composer-2, higher priority) or "inherit" (uses parent model)
   "model_routing": {
     "defaults": {
-      "explore": "fast",
-      "librarian": "fast"
+      "explore": "composer-2-fast",
+      "librarian": "composer-2-fast"
     }
   }
 }

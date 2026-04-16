@@ -44,9 +44,9 @@ function encodeErrorType(t: ErrorType): number {
 function adviceForErrorType(errorType: ErrorType): string {
   switch (errorType) {
     case "rate_limit":
-      return "Rate limit hit. Wait 30s then retry. If persistent, try model: 'fast' parameter."
+      return "Rate limit hit. Wait 30s then retry. If persistent, try model: 'composer-2-fast' parameter."
     case "model_unavailable":
-      return "Model not available. Retry with model: 'fast'. If using sisyphus, consider sisyphus-junior as fallback."
+      return "Model not available. Retry with model: 'composer-2-fast'. If using sisyphus, consider sisyphus-junior as fallback."
     case "timeout":
       return "Task timed out. Break into smaller subtasks or retry with a simpler agent type."
     case "generic":
@@ -100,7 +100,7 @@ export function createDelegateTaskRetry() {
 
     if (agentTotal > 3) {
       parts.push(
-        `ESCALATION: Agent type '${agentType}' has failed ${agentTotal} times. Strongly recommend: 1) Try a different agent type, 2) Use model: 'fast', or 3) Ask the user for guidance.`,
+        `ESCALATION: Agent type '${agentType}' has failed ${agentTotal} times. Strongly recommend: 1) Try a different agent type, 2) Use model: 'composer-2-fast', or 3) Ask the user for guidance.`,
       )
     }
 

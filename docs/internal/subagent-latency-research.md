@@ -1,6 +1,6 @@
 # Subagent Dispatch Latency Research
 
-> Model names updated to valid Cursor Task model slugs (2026-04-15).
+> Model names updated to valid Cursor Task model slugs (2026-04-15); opus 4.6 migrated to 4.7, fast -> composer-2-fast (2026-04-16).
 
 **Date:** 2026-04-13
 
@@ -37,7 +37,7 @@ Research-phase notes on Cursor subagent (Task tool) dispatch and startup latency
 | --- | --- |
 | `name` | Identifier / display name |
 | `description` | Short description; influences when Agent delegates |
-| `model` | `inherit`, `fast`, or a specific model ID |
+| `model` | `inherit`, `composer-2-fast`, or a specific model ID |
 | `readonly` | When `true`, restricted writes and no state-changing shell |
 | `is_background` | When `true`, subagent runs in the background without blocking the parent |
 
@@ -49,7 +49,7 @@ Research-phase notes on Cursor subagent (Task tool) dispatch and startup latency
 
 | Parameter | Summary |
 | --- | --- |
-| `model` | `inherit`, `fast`, or a specific model id |
+| `model` | `inherit`, `composer-2-fast`, or a specific model id |
 | `subagent_type` | Built-in or custom worker type (see table below) |
 | `run_in_background` | Boolean controlling whether the **parent** blocks on the Task call; does not redefine the subagent’s own cold-start characteristics (see §7) |
 | `readonly` | Restricts mutating tools / state-changing shell where enforced |
@@ -140,19 +140,19 @@ Models referenced by oh-my-cursor agent definitions in this repo (`agents/*.md` 
 
 | Agent | Verified model ID |
 | --- | --- |
-| explore | `fast` |
-| librarian | `fast` (Task tool parameter; selects a smaller/faster model — not a row in the CLI model list) |
+| explore | `composer-2-fast` |
+| librarian | `composer-2-fast` (Task tool parameter; selects a smaller/faster model — not a row in the CLI model list) |
 | sisyphus-junior | `composer-2-fast` |
-| sisyphus | `claude-4.6-opus-high-thinking` |
+| sisyphus | `claude-opus-4-7-thinking-high` |
 | hephaestus | `gpt-5.3-codex-high-fast` |
 | atlas | `claude-4.6-sonnet-medium-thinking` |
 | oracle | `gpt-5.4-medium` |
-| prometheus | `claude-4.6-opus-high-thinking` |
+| prometheus | `claude-opus-4-7-thinking-high` |
 | metis | `gpt-5.4-medium` |
 | momus | `gpt-5.3-codex-high-fast` |
 | multimodal-looker | `gemini-3.1-pro` |
 
-**Note:** `fast` is a Task tool parameter (not in the `cursor agent models` list) that selects a smaller/faster model.
+**Note:** `composer-2-fast` is a Task tool parameter (not in the `cursor agent models` list) that selects a smaller/faster model.
 
 ---
 

@@ -28,12 +28,12 @@ describe("mapModel", () => {
     expect(mapModel("gpt-5.4-high")).toBe("gpt-5.3-codex-high-fast")
   })
 
-  test("maps claude-opus-4-6 without variant to claude-4.6-opus-high-thinking", () => {
-    expect(mapModel("claude-opus-4-6")).toBe("claude-4.6-opus-high-thinking")
+  test("maps claude-opus-4-6 without variant to claude-opus-4-7-thinking-high", () => {
+    expect(mapModel("claude-opus-4-6")).toBe("claude-opus-4-7-thinking-high")
   })
 
-  test("maps claude-opus-4-6 with variant high to claude-4.6-opus-high-thinking", () => {
-    expect(mapModel("claude-opus-4-6", "high")).toBe("claude-4.6-opus-high-thinking")
+  test("maps claude-opus-4-6 with variant high to claude-opus-4-7-thinking-high", () => {
+    expect(mapModel("claude-opus-4-6", "high")).toBe("claude-opus-4-7-thinking-high")
   })
 
   test("falls back to base when variant produces invalid slug", () => {
@@ -42,7 +42,7 @@ describe("mapModel", () => {
 
   test("all known model inputs map to valid Cursor slugs", () => {
     const inputs = [
-      "claude-opus-4-6", "claude-sonnet-4-6", "claude-haiku-4-5",
+      "claude-opus-4-6", "claude-opus-4-7", "claude-sonnet-4-6", "claude-haiku-4-5",
       "gpt-5.4", "gpt-5.4-high", "gpt-5-nano",
       "gemini-3.1-pro", "gemini-2.5-flash", "gemini-3-flash", "kimi-k2.5",
     ]
@@ -50,6 +50,14 @@ describe("mapModel", () => {
       const result = mapModel(input)
       expect(VALID_CURSOR_SLUGS.has(result)).toBe(true)
     }
+  })
+
+  test("VALID_CURSOR_SLUGS contains exactly 7 entries", () => {
+    expect(VALID_CURSOR_SLUGS.size).toBe(7)
+  })
+
+  test("mapModel('fast') throws with migration message", () => {
+    expect(() => mapModel("fast")).toThrow("no longer accepted")
   })
 })
 
@@ -85,7 +93,7 @@ describe("config-generator", () => {
     const sisyphusContent = await readFile(join(TEST_DIR, "agents", "sisyphus.md"), "utf-8")
 
     // then
-    expect(sisyphusContent).toContain("model: claude-4.6-opus-high-thinking")
+    expect(sisyphusContent).toContain("model: claude-opus-4-7-thinking-high")
 
     // given - momus is disabled, should not have agent file
     const momusExists = existsSync(join(TEST_DIR, "agents", "momus.md"))

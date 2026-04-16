@@ -77,32 +77,37 @@ interface CategoryConfig {
 }
 
 export const VALID_CURSOR_SLUGS = new Set([
-  "fast", "composer-2-fast", "gpt-5.4-medium",
-  "claude-4.6-sonnet-medium-thinking", "claude-4.6-opus-high-thinking",
+  "composer-2", "composer-2-fast", "gpt-5.4-medium",
+  "claude-4.6-sonnet-medium-thinking", "claude-opus-4-7-thinking-high",
   "gpt-5.3-codex-high-fast", "gemini-3.1-pro",
 ])
 
 /**
  * Maps oh-my-opencode model identifiers to valid Cursor Task model slugs.
  * Cursor's Task tool only accepts these slugs (enum-enforced):
- * fast, gpt-5.4-medium, claude-4.6-sonnet-medium-thinking,
- * claude-4.6-opus-high-thinking, gemini-3.1-pro, composer-2-fast,
- * gpt-5.3-codex-high-fast
+ * composer-2, composer-2-fast, gpt-5.4-medium, claude-4.6-sonnet-medium-thinking,
+ * claude-opus-4-7-thinking-high, gemini-3.1-pro, gpt-5.3-codex-high-fast
  */
 const MODEL_MAP: Record<string, string> = {
-  "claude-opus-4-6": "claude-4.6-opus-high-thinking",
+  "claude-opus-4-6": "claude-opus-4-7-thinking-high",
+  "claude-opus-4-7": "claude-opus-4-7-thinking-high",
   "claude-sonnet-4-6": "claude-4.6-sonnet-medium-thinking",
-  "claude-haiku-4-5": "fast",
+  "claude-haiku-4-5": "composer-2-fast",
   "gpt-5.4": "gpt-5.4-medium",
   "gpt-5.4-high": "gpt-5.3-codex-high-fast",
-  "gpt-5-nano": "fast",
+  "gpt-5-nano": "composer-2-fast",
   "gemini-3.1-pro": "gemini-3.1-pro",
-  "gemini-2.5-flash": "fast",
-  "gemini-3-flash": "fast",
-  "kimi-k2.5": "fast",
+  "gemini-2.5-flash": "composer-2-fast",
+  "gemini-3-flash": "composer-2-fast",
+  "kimi-k2.5": "composer-2-fast",
 }
 
 export function mapModel(openCodeModel: string, variant?: string): string {
+  if (openCodeModel === "fast") {
+    throw new Error(
+      "Input model 'fast' is no longer accepted. Use 'composer-2-fast' explicitly.",
+    )
+  }
   const base =
     MODEL_MAP[openCodeModel] ??
     Object.keys(MODEL_MAP)

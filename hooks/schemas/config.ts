@@ -54,8 +54,8 @@ export const ModelRoutingSchema = z.object({
   retry_on_errors: z.array(z.number().int()).default([429, 500, 502, 503, 504]),
   max_retry_attempts: z.number().positive().default(3),
   defaults: z.record(z.string(), z.string()).default({
-    explore: "fast",
-    librarian: "fast",
+    explore: "composer-2-fast",
+    librarian: "composer-2-fast",
   }),
 })
 
@@ -84,7 +84,7 @@ export const OhMyCursorConfigSchema = z.object({
   model_routing: ModelRoutingSchema.default({
     retry_on_errors: [429, 500, 502, 503, 504],
     max_retry_attempts: 3,
-    defaults: { explore: "fast", librarian: "fast" },
+    defaults: { explore: "composer-2-fast", librarian: "composer-2-fast" },
   }),
 })
 

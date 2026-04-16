@@ -7,16 +7,16 @@ oh-my-cursor uses a **dispatcher root**: the main chat thread only delegates wor
 | Agent | Model | Description |
 |-------|-------|-------------|
 | atlas | claude-4.6-sonnet-medium-thinking | Executes an existing plan step-by-step via delegation; does not implement directly. |
-| explore | fast | Codebase search and structure questions; read-only, often background. |
+| explore | composer-2-fast | Codebase search and structure questions; read-only, often background. |
 | hephaestus | gpt-5.3-codex-high-fast | Sustained deep work on one complex problem until end-to-end completion. |
-| librarian | fast | External docs, APIs, OSS examples; read-only. |
+| librarian | composer-2-fast | External docs, APIs, OSS examples; read-only. |
 | metis | gpt-5.4-medium | Pre-planning gap analysis and risks; read-only. |
 | momus | gpt-5.3-codex-high-fast | Reviews plans for executability and completeness; read-only. |
 | multimodal-looker | gemini-3.1-pro | PDFs, images, diagrams when plain-text read is not enough. |
 | oracle | gpt-5.4-medium | Architecture and debugging consultation; read-only. |
-| prometheus | claude-4.6-opus-high-thinking | Detailed planning only; never implements. |
+| prometheus | claude-opus-4-7-thinking-high | Detailed planning only; never implements. |
 | sisyphus-junior | composer-2-fast | Small bounded tasks; leaf worker; no sub-delegation. |
-| sisyphus | claude-4.6-opus-high-thinking | Main coordinator for complex multi-file work and execution. |
+| sisyphus | claude-opus-4-7-thinking-high | Main coordinator for complex multi-file work and execution. |
 
 Cursor's Task tool accepts only these model slugs at runtime (enum-enforced).
 

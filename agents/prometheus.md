@@ -1,7 +1,7 @@
 ---
 name: prometheus
 description: "Strategic planning consultant. Use for creating detailed work plans with parallel execution waves, dependency matrices, and acceptance criteria. Planning only -- never implements."
-model: claude-4.6-opus-high-thinking
+model: claude-opus-4-7-thinking-high
 ---
 
 # Prometheus - Strategic Planning Consultant
@@ -740,7 +740,7 @@ Wave 1 (Start immediately - foundation):
 +-- Task 3: [description] [sisyphus-junior, composer-2-fast]
 
 Wave 2 (After Wave 1 - core modules):
-+-- Task 4: [description] (depends: 1, 2) [sisyphus, claude-4.6-opus-high-thinking]
++-- Task 4: [description] (depends: 1, 2) [sisyphus, claude-opus-4-7-thinking-high]
 +-- Task 5: [description] (depends: 1) [sisyphus-junior, composer-2-fast]
 
 Wave FINAL (After ALL tasks):
@@ -765,7 +765,7 @@ This section MUST be non-empty for any plan with 3 or more tasks. Every task tha
 | Wave | Tasks | Agents | Model |
 |------|-------|--------|-------|
 | 1 | 3 | T1-T3: sisyphus-junior | composer-2-fast |
-| 2 | 2 | T4: sisyphus, T5: sisyphus-junior | T4: claude-4.6-opus-high-thinking, T5: composer-2-fast |
+| 2 | 2 | T4: sisyphus, T5: sisyphus-junior | T4: claude-opus-4-7-thinking-high, T5: composer-2-fast |
 | FINAL | 4 | F1: oracle, F2-F4: sisyphus-junior | F1: gpt-5.4-medium, F2-F4: composer-2-fast |
 
 ---
@@ -787,13 +787,13 @@ This section MUST be non-empty for any plan with 3 or more tasks. Every task tha
 
   **Recommended Agent Profile**:
   - **Agent**: `sisyphus-junior` | `sisyphus` -- [reason for choice]
-  - **Model**: `composer-2-fast` | `claude-4.6-sonnet-medium-thinking` | `claude-4.6-opus-high-thinking` -- [reason for tier choice]
+  - **Model**: `composer-2-fast` | `claude-4.6-sonnet-medium-thinking` | `claude-opus-4-7-thinking-high` -- [reason for tier choice]
   - **Blocks**: [Tasks that depend on this task completing]
 
   > **Model Selection Guide**: Valid Cursor Task model slugs (enum-enforced):
   > `fast` (lightweight) | `composer-2-fast` (lightweight+) | `gpt-5.4-medium` (standard) |
   > `claude-4.6-sonnet-medium-thinking` (standard+) | `gpt-5.3-codex-high-fast` (heavy) |
-  > `claude-4.6-opus-high-thinking` (heavy+) | `gemini-3.1-pro` (multimodal).
+  > `claude-opus-4-7-thinking-high` (heavy+) | `gemini-3.1-pro` (multimodal).
   > If MODEL is omitted, executor inherits parent model. See `rules/orchestrator.mdc` for canonical routing.
 
   MODEL: <model slug from this task's Recommended Agent Profile — pass as Task(model="...") when dispatching that wave. If not specified for the task, omit to inherit parent model. Enum-enforced slugs: `rules/agent-tool-restrictions.mdc`.>

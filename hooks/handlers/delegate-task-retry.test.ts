@@ -18,12 +18,12 @@ describe("createDelegateTaskRetry", () => {
       {
         label: "rate_limit",
         output: "HTTP 429 too many requests — rate limit exceeded",
-        expectedAdvice: "Rate limit hit. Wait 30s then retry. If persistent, try model: 'fast' parameter.",
+        expectedAdvice: "Rate limit hit. Wait 30s then retry. If persistent, try model: 'composer-2-fast' parameter.",
       },
       {
         label: "model_unavailable",
         output: "Error: model_not_supported for this request",
-        expectedAdvice: "Model not available. Retry with model: 'fast'. If using sisyphus, consider sisyphus-junior as fallback.",
+        expectedAdvice: "Model not available. Retry with model: 'composer-2-fast'. If using sisyphus, consider sisyphus-junior as fallback.",
       },
       {
         label: "timeout",
@@ -110,7 +110,7 @@ describe("createDelegateTaskRetry", () => {
         tool_input: { subagent_type: "worker" },
         output: "model unavailable for subagent_type shell",
       }, delegateRetryState)
-      expect(result.additional_context).toContain("Retry with model: 'fast'")
+      expect(result.additional_context).toContain("Retry with model: 'composer-2-fast'")
     })
 
     it("after two model_unavailable errors for same agent type, advises switching subagent_type entirely", () => {
@@ -169,7 +169,7 @@ describe("createDelegateTaskRetry", () => {
       expect(result.additional_context).toContain("ESCALATION:")
       expect(result.additional_context).toContain("Agent type 'explore' has failed 4 times")
       expect(result.additional_context).toContain("Try a different agent type")
-      expect(result.additional_context).toContain("Use model: 'fast'")
+      expect(result.additional_context).toContain("Use model: 'composer-2-fast'")
       expect(result.additional_context).toContain("Ask the user for guidance")
     })
   })

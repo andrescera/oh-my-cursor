@@ -7,7 +7,7 @@ Activate **Briareus Mode**: decompose the request into many independent micro-ta
    - Completable in isolation without depending on other micro-tasks
    - Small enough for a worker with minimal context
 
-2. **Spawn**: Dispatch up to 10 workers simultaneously via `Task(subagent_type="sisyphus-junior", model="fast")`, one per micro-task. Use the six-section brief format for each worker prompt.
+2. **Spawn**: Dispatch up to 10 workers simultaneously via `Task(subagent_type="sisyphus-junior", model="composer-2-fast")`, one per micro-task. Use the six-section brief format for each worker prompt.
 
 3. **Minimal context**: Each worker receives ONLY:
    - The specific file path to work on

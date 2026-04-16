@@ -791,7 +791,7 @@ This section MUST be non-empty for any plan with 3 or more tasks. Every task tha
   - **Blocks**: [Tasks that depend on this task completing]
 
   > **Model Selection Guide**: Valid Cursor Task model slugs (enum-enforced):
-  > `fast` (lightweight) | `composer-2-fast` (lightweight+) | `gpt-5.4-medium` (standard) |
+  > `composer-2-fast` (lightweight+) | `gpt-5.4-medium` (standard) |
   > `claude-4.6-sonnet-medium-thinking` (standard+) | `gpt-5.3-codex-high-fast` (heavy) |
   > `claude-opus-4-7-thinking-high` (heavy+) | `gemini-3.1-pro` (multimodal).
   > If MODEL is omitted, executor inherits parent model. See `rules/orchestrator.mdc` for canonical routing.

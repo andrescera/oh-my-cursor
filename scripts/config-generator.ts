@@ -117,7 +117,7 @@ export function mapModel(openCodeModel: string, variant?: string): string {
         undefined,
       ) ??
     openCodeModel
-  if (variant && base !== "fast") {
+  if (variant) {
     const parts = base.split("-")
     const levelIdx = parts.findIndex((p) => ["medium", "high", "low", "max"].includes(p))
     if (levelIdx !== -1) {

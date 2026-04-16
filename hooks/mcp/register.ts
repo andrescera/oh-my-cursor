@@ -1,4 +1,4 @@
-import type { Server } from "@modelcontextprotocol/sdk/server/index.js"
+import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js"
 
 import { register as registerLookAt } from "./tools/look-at"
 import { register as registerInteractiveBash } from "./tools/interactive-bash"
@@ -10,7 +10,7 @@ import { register as registerSessionLog } from "./tools/session-log"
 import { register as registerOhMyCursorStatus } from "./tools/oh-my-cursor-status"
 import { register as registerDashboard } from "./resources/dashboard"
 
-export function registerAll(server: Server): void {
+export function registerAll(server: McpServer): void {
   registerLookAt(server)
   registerInteractiveBash(server)
   registerSkillMcp(server)

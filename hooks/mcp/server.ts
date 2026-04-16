@@ -1,6 +1,5 @@
-import type { Server } from "@modelcontextprotocol/sdk/server/index.js"
+import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js"
 
-export function buildServer(): Server {
-  // TODO(wave-3): construct Server with serverInfo + capabilities
-  throw new Error("not yet implemented")
+export function buildServer(): McpServer {
+  throw new Error("not yet implemented (wave-3)")
 }

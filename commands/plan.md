@@ -53,6 +53,8 @@ Tell the user: "I'm recording our discussion in `.cursor/drafts/{name}.md` -- fe
 - Agent-Executed QA: ALWAYS (mandatory regardless of test choice)
 ```
 
+**The `## Test Strategy Decision` section MUST be filled before clearance can pass for non-Trivial intents (see Step 3a below).**
+
 This is your working memory beyond the context window.
 
 **Update Triggers** -- update the draft after:
@@ -84,9 +86,57 @@ Mark completed. Proceed immediately.
 
 After collecting results, synthesize findings before proceeding. Note what you discovered, what it means for the plan, and what you still need to learn from the user. Mark completed. Proceed immediately.
 
-3. **Interview** -- Mark `plan-interview` in_progress. Ask 1-3 scoping questions via AskQuestion, informed by explore findings: "I found pattern X, should we follow it?" or "The codebase uses Y -- should we match that?"
+3. **Interview** -- Mark `plan-interview` in_progress.
 
-Update the draft after EVERY meaningful user response. Run clearance checklist after every turn (see `orchestrator-reference.mdc`). Mark completed when all clearance items pass. Proceed immediately.
+   **3a. Test Strategy Assessment (MANDATORY for Build/Refactor/Mid-sized/Architecture intents)**
+
+   Trivial/Standard/Collaborative: skip the question; record `## Test Strategy Decision: SKIPPED — reason: <brief reason>` in the draft.
+
+   For Build, Refactor, Mid-sized, and Architecture intents, you MUST elicit and record the test strategy before clearance can pass.
+
+**Step 1: Detect** — dispatch `Task(subagent_type="explore")` to find: test framework (package.json, config files), test patterns (representative files), coverage config, CI integration.
+
+**Step 2: Ask the Test Question via `AskQuestion`** — two scripted variants (byte-aligned with `commands/plan.md`):
+If test infrastructure EXISTS:
+> I see test infrastructure ([framework]). Should this work include automated tests?
+> - YES (TDD): RED-GREEN-REFACTOR structure
+> - YES (Tests after): Test tasks follow implementation tasks
+> - NO: No unit/integration tests
+> Regardless, every task includes agent-executed QA scenarios.
+
+If test infrastructure DOES NOT exist:
+> I don't see test infrastructure. Would you like to set up testing?
+> - YES: Infrastructure setup included in plan (framework selection, config, example test)
+> - NO: No unit tests
+> Either way, every task includes agent-executed QA scenarios.
+
+**Step 3: Record** in `.cursor/drafts/{name}.md` immediately:
+```
+## Test Strategy Decision
+- Infrastructure exists: YES/NO
+- Automated tests: YES (TDD) / YES (after) / NO
+- Framework: [discovered or TBD]
+- Agent-Executed QA: ALWAYS (mandatory regardless of test choice)
+```
+
+   Source of truth: `rules/prometheus-plan-brief.mdc` (always-applied rule). The drift-guard test in `hooks/drift-guard.test.ts` enforces alignment between this script and the brief.
+
+   **3b. Scoping Questions**
+
+   Ask 1-3 scoping questions via AskQuestion, informed by explore findings: "I found pattern X, should we follow it?" or "The codebase uses Y -- should we match that?"
+
+**Clearance checklist** — evaluate after every interview turn. ALL YES → auto-transition to plan generation without user prompt:
+
+- [ ] Core objective clearly defined?
+- [ ] Scope boundaries established (IN/OUT)?
+- [ ] No critical ambiguities remaining?
+- [ ] Technical approach decided?
+- [ ] Test strategy confirmed?
+- [ ] No blocking questions outstanding?
+
+> **Auto-transition rule:** When every item is YES, advance directly to plan generation without prompting the user. If any item is NO, resolve it first via interview or explore.
+
+Update the draft after EVERY meaningful user response. Mark completed when all clearance items pass. Proceed immediately. (See also: `rules/orchestrator-reference.mdc` for the full Plan-mode clearance reference.)
 
 4. **Gap analysis (NEVER skip)** -- Mark `plan-metis` in_progress. Dispatch `Task(subagent_type="metis")` with explore results using this structured context template:
 

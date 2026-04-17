@@ -17,7 +17,7 @@ import { StatePersistence, type ConversationMetadata } from "./state-persistence
 import { createHeartbeatHandler, startHeartbeatWriter, HEARTBEAT_FILE } from "./handlers/heartbeat"
 import { loadConfig, resetConfigCache } from "./config"
 import { OhMyCursorConfigSchema } from "./schemas/config"
-import { cleanupStaleProcess } from "./process-guard"
+import { cleanupStaleProcess, killPortSquatter } from "./process-guard"
 import { writePortCoordination } from "./port-manager"
 import type { HandlerMap } from "./types"
 
@@ -86,7 +86,6 @@ const ENV_PORT = process.env.OH_MY_CURSOR_PORT
 const DEFAULT_PORT = config.daemon.port
 const PID_FILE = "/tmp/oh-my-cursor-daemon.pid"
 const PORT_FILE = "/tmp/oh-my-cursor-daemon.port"
-const MAX_PORT_ATTEMPTS = 11
 
 function writePidFile(): void {
   writeFileSync(PID_FILE, String(process.pid), "utf-8")
@@ -129,11 +128,6 @@ function removeHeartbeatFile(): void {
   }
 }
 
-function isPortInUseError(err: unknown): boolean {
-  if (!(err instanceof Error)) return false
-  const msg = err.message.toLowerCase()
-  return msg.includes("eaddrinuse") || msg.includes("address already in use")
-}
 
 let server: Server | null = null
 let isShuttingDown = false
@@ -620,30 +614,27 @@ let actualPort = Number.isNaN(envPort) ? DEFAULT_PORT : envPort
 
 if (ENV_PORT) {
   console.log(`[oh-my-cursor] Hook daemon starting on port ${actualPort} (env override)...`)
-  server = serve({ port: actualPort, fetch: fetchHandler })
+  try {
+    server = serve({ port: actualPort, fetch: fetchHandler })
+  } catch (err) {
+    console.error(`[oh-my-cursor] Failed to bind daemon on port ${actualPort} (env override):`, err instanceof Error ? err.message : String(err))
+    process.exit(1)
+  }
 } else {
   console.log(`[oh-my-cursor] Hook daemon starting on port ${actualPort}...`)
-  let started = false
-  for (let offset = 0; offset < MAX_PORT_ATTEMPTS; offset++) {
-    const tryPort = DEFAULT_PORT + offset
-    try {
-      server = serve({ port: tryPort, fetch: fetchHandler })
-      actualPort = tryPort
-      started = true
-      if (offset > 0) {
-        console.log(`[oh-my-cursor] Default port ${DEFAULT_PORT} in use, using port ${actualPort}`)
-      }
-      break
-    } catch (err) {
-      if (isPortInUseError(err)) {
-        console.log(`[oh-my-cursor] Port ${tryPort} in use, trying next...`)
-        continue
-      }
-      throw err
-    }
+  const killResult = await killPortSquatter(DEFAULT_PORT, "daemon")
+  if (killResult === "not_us") {
+    console.error(`[oh-my-cursor] Daemon canonical port ${DEFAULT_PORT} is held by a foreign process; aborting.`)
+    process.exit(1)
   }
-  if (!started) {
-    console.error(`[oh-my-cursor] Could not find available port in range ${DEFAULT_PORT}-${DEFAULT_PORT + MAX_PORT_ATTEMPTS - 1}`)
+  try {
+    server = serve({ port: DEFAULT_PORT, fetch: fetchHandler })
+    actualPort = DEFAULT_PORT
+  } catch (err) {
+    console.error(
+      `[oh-my-cursor] Failed to bind daemon on canonical port ${DEFAULT_PORT} (squatter kill returned "${killResult}"):`,
+      err instanceof Error ? err.message : String(err),
+    )
     process.exit(1)
   }
 }

@@ -4,7 +4,7 @@ import { resolve } from "node:path"
 import { serve } from "bun"
 
 import { loadConfig } from "../config"
-import { cleanupStaleProcess } from "../process-guard"
+import { cleanupStaleProcess, killPortSquatter } from "../process-guard"
 import { readPortCoordination, writePortCoordination } from "../port-manager"
 
 function getPluginRoot(): string {
@@ -14,7 +14,6 @@ function getPluginRoot(): string {
 const MCP_PORT_FILE = "/tmp/oh-my-cursor-sidecar.port"
 const MCP_PID_FILE = "/tmp/oh-my-cursor-sidecar.pid"
 const DAEMON_PORT_FILE = "/tmp/oh-my-cursor-daemon.port"
-const MAX_PORT_ATTEMPTS = 11
 
 function resolvePreferredMcpPortFromDaemonFile(fallbackMcpPort: number): number {
   try {
@@ -30,11 +29,6 @@ function resolvePreferredMcpPortFromDaemonFile(fallbackMcpPort: number): number 
   return fallbackMcpPort
 }
 
-function isPortInUseError(err: unknown): boolean {
-  if (!(err instanceof Error)) return false
-  const msg = err.message.toLowerCase()
-  return msg.includes("eaddrinuse") || msg.includes("address already in use")
-}
 
 function writePortFile(port: number): void {
   writeFileSync(MCP_PORT_FILE, String(port), "utf-8")
@@ -73,35 +67,32 @@ export async function startSidecar(
   if (envMcpPort) {
     actualMcpPort = parseInt(envMcpPort)
     console.log(`[oh-my-cursor] MCP sidecar starting on port ${actualMcpPort} (env override)...`)
-    serve({ port: actualMcpPort, fetch, idleTimeout: 0 })
-  } else {
-    const scanBaseMcpPort = resolvePreferredMcpPortFromDaemonFile(defaultMcpPort)
-    actualMcpPort = scanBaseMcpPort
-    console.log(`[oh-my-cursor] MCP sidecar starting on port ${actualMcpPort}...`)
-    let started = false
-    for (let offset = 0; offset < MAX_PORT_ATTEMPTS; offset++) {
-      const tryPort = scanBaseMcpPort + offset
-      try {
-        serve({ port: tryPort, fetch, idleTimeout: 0 })
-        actualMcpPort = tryPort
-        started = true
-        if (offset > 0) {
-          console.log(
-            `[oh-my-cursor] Preferred MCP port ${scanBaseMcpPort} in use, using port ${actualMcpPort}`,
-          )
-        }
-        break
-      } catch (err) {
-        if (isPortInUseError(err)) {
-          console.log(`[oh-my-cursor] MCP port ${tryPort} in use, trying next...`)
-          continue
-        }
-        throw err
-      }
-    }
-    if (!started) {
+    try {
+      serve({ port: actualMcpPort, fetch, idleTimeout: 0 })
+    } catch (err) {
       console.error(
-        `[oh-my-cursor] Could not find available MCP port in range ${scanBaseMcpPort}-${scanBaseMcpPort + MAX_PORT_ATTEMPTS - 1}`,
+        `[oh-my-cursor] Failed to bind MCP sidecar on port ${actualMcpPort} (env override):`,
+        err instanceof Error ? err.message : String(err),
+      )
+      process.exit(1)
+    }
+  } else {
+    const preferred = resolvePreferredMcpPortFromDaemonFile(defaultMcpPort)
+    console.log(`[oh-my-cursor] MCP sidecar starting on port ${preferred}...`)
+    const killResult = await killPortSquatter(preferred, "sidecar")
+    if (killResult === "not_us") {
+      console.error(
+        `[oh-my-cursor] MCP sidecar canonical port ${preferred} is held by a foreign process; aborting.`,
+      )
+      process.exit(1)
+    }
+    try {
+      serve({ port: preferred, fetch, idleTimeout: 0 })
+      actualMcpPort = preferred
+    } catch (err) {
+      console.error(
+        `[oh-my-cursor] Failed to bind MCP sidecar on port ${preferred} (squatter kill returned "${killResult}"):`,
+        err instanceof Error ? err.message : String(err),
       )
       process.exit(1)
     }

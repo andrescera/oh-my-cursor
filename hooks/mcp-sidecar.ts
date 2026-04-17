@@ -1,6 +1,6 @@
 import { startSidecar } from "./mcp/runtime"
 import { startDaemonHealthMonitor, getDaemonHealthy } from "./mcp/daemon-health"
-import { getOrCreateSession } from "./mcp/server"
+import { getOrCreateSession, isUnknownSession } from "./mcp/server"
 
 const TOOL_NAMES = [
   "look_at",
@@ -28,8 +28,18 @@ const fetchHandler = async (req: Request): Promise<Response> => {
 
   if (url.pathname === "/mcp") {
     const sessionId = req.headers.get("mcp-session-id") ?? undefined
-    const { transport } = await getOrCreateSession(sessionId)
-    return transport.handleRequest(req)
+    const result = await getOrCreateSession(sessionId)
+    if (isUnknownSession(result)) {
+      return new Response(
+        JSON.stringify({
+          jsonrpc: "2.0",
+          error: { code: -32000, message: "Session not found" },
+          id: null,
+        }),
+        { status: 404, headers: { "Content-Type": "application/json" } },
+      )
+    }
+    return result.transport.handleRequest(req)
   }
 
   return new Response("Not Found", { status: 404 })

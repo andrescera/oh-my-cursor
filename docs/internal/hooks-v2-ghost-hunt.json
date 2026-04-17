@@ -1,0 +1,68 @@
+{
+  "binary": "/usr/share/cursor/resources/app/out/vs/workbench/workbench.desktop.main.js",
+  "binary_sha256": "29aa9ec0549fa55452794c29f50f6d3ad3c1d5b24c51b068fd371a0a2aec44ef",
+  "ts": "2026-04-17T15:41:11Z",
+  "methodology": "Offline binary strings sweep. Extracted event-name-like tokens from a 200-line window around the `bv` enum literal in workbench.desktop.main.js; classified each against the canonical 20-event set.",
+  "canonical_set": [
+    "beforeShellExecution",
+    "beforeMCPExecution",
+    "afterShellExecution",
+    "afterMCPExecution",
+    "beforeReadFile",
+    "afterFileEdit",
+    "beforeTabFileRead",
+    "afterTabFileEdit",
+    "stop",
+    "beforeSubmitPrompt",
+    "afterAgentResponse",
+    "afterAgentThought",
+    "sessionStart",
+    "sessionEnd",
+    "preCompact",
+    "subagentStart",
+    "subagentStop",
+    "preToolUse",
+    "postToolUse",
+    "postToolUseFailure"
+  ],
+  "candidates_extracted": 50,
+  "plausible_ghosts": [
+    {
+      "name": "beforeFullFileContent",
+      "source": "near bv enum",
+      "classification": "plausible_ghost"
+    },
+    {
+      "name": "afterFullFileContent",
+      "source": "near bv enum",
+      "classification": "plausible_ghost"
+    }
+  ],
+  "snake_case_hits": [
+    "post_tool_use",
+    "post_tool_use_failure",
+    "pre_compact",
+    "pre_tool_use",
+    "session_start",
+    "stop",
+    "subagent_start",
+    "subagent_stop"
+  ],
+  "pascal_case_hits": [
+    "AfterFileEdit",
+    "AfterTabFileEdit",
+    "BeforeSubmitPrompt",
+    "BeforeTabFileRead",
+    "PostToolUse",
+    "PostToolUseFailure",
+    "PreCompact",
+    "PreToolUse",
+    "SessionEnd",
+    "SessionStart",
+    "Stop",
+    "SubagentStart",
+    "SubagentStop"
+  ],
+  "noise_count": 44,
+  "conclusion": "Regex scan near `bv` enum: 50 unique tokens (cap 50); 4 skipped as canonical; 2 plausible_ghost surplus (`beforeFullFileContent`, `afterFullFileContent`); 44 noise (mostly `*Response` RPC fields and session/subagent metadata). Snake_case (word-boundary): eight underscore forms appear including `stop` (ambiguous common word) and hook-related fragments like `pre_tool_use`, `session_start`. PascalCase substrings appear (often inside longer identifiers, e.g. `executeAfterFileEditHook`). v1 hooks-empirical-report.md already confirmed parser fail-fast: `beforeToolUse`, `onError`, `BeforeCompact`, `sessionResume`, `userPromptSubmit` logged `Unknown hook type`."
+}

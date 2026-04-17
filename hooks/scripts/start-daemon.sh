@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-PORT="${OH_MY_CURSOR_PORT:-47847}"
-MCP_PORT="${OH_MY_CURSOR_MCP_PORT:-47848}"
+PORT="${OH_MY_CURSOR_PORT:-27847}"
+MCP_PORT="${OH_MY_CURSOR_MCP_PORT:-27848}"
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 DAEMON_SCRIPT="$SCRIPT_DIR/../daemon.ts"
 SIDECAR_SCRIPT="$SCRIPT_DIR/../mcp-sidecar.ts"

@@ -68,7 +68,7 @@ describe("mcp-app", () => {
         expect(html).toContain("<!DOCTYPE html>")
       })
 
-      test("#then falls back to a valid port (getDaemonPort or default 47847)", () => {
+      test("#then falls back to a valid port (getDaemonPort or default 27847)", () => {
         const html = getStatusHTML()
         expect(html).toMatch(/http:\/\/localhost:\d+/)
       })

@@ -11,8 +11,8 @@ export const StatePersistenceSchema = z.object({
 })
 
 export const DaemonSchema = z.object({
-  port: z.number().int().min(1024).max(65535).default(47847),
-  mcp_port: z.number().int().min(1024).max(65535).default(47848),
+  port: z.number().int().min(1024).max(65535).default(27847),
+  mcp_port: z.number().int().min(1024).max(65535).default(27848),
 })
 
 export const ContextCollectorSchema = z.object({
@@ -68,7 +68,7 @@ export const OhMyCursorConfigSchema = z.object({
     enabled: true,
     path: "/tmp/oh-my-cursor-state.json",
   }),
-  daemon: DaemonSchema.default({ port: 47847, mcp_port: 47848 }),
+  daemon: DaemonSchema.default({ port: 27847, mcp_port: 27848 }),
   context_collector: ContextCollectorSchema.default({ enabled: true, max_context_chars: 50000 }),
   compaction: CompactionSchema.default({ prompt_enabled: true }),
   experimental: ExperimentalSchema.default({

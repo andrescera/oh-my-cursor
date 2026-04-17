@@ -11,7 +11,7 @@ export function register(server: McpServer): void {
       inputSchema: {},
     },
     wrapToolHandler("get_dispatch_stats", async () => {
-      const port = process.env.OH_MY_CURSOR_DAEMON_PORT || process.env.OH_MY_CURSOR_PORT || "47847"
+      const port = process.env.OH_MY_CURSOR_DAEMON_PORT || process.env.OH_MY_CURSOR_PORT || "27847"
       const url = `http://localhost:${port}/health`
       try {
         const res = await fetch(url, { signal: AbortSignal.timeout(8000) })

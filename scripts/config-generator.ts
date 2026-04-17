@@ -199,7 +199,7 @@ async function generatePlugin(configPath: string, outputDir: string): Promise<vo
       version: 1,
       hooks: {
         stop: [{
-          command: "curl -s -X POST http://localhost:${OH_MY_CURSOR_DAEMON_PORT:-47847}/stop -H 'Content-Type: application/json' -d \"$(cat)\"",
+          command: "curl -s -X POST http://localhost:${OH_MY_CURSOR_DAEMON_PORT:-27847}/stop -H 'Content-Type: application/json' -d \"$(cat)\"",
           loop_limit: config.ralph_loop.max_iterations,
         }],
       },

@@ -159,8 +159,8 @@ describe("config", () => {
           expect(config.subagent_limits.explore).toBe(6)
           expect(config.subagent_limits.worker).toBe(8)
           expect(config.state_persistence.enabled).toBe(true)
-          expect(config.daemon.port).toBe(47847)
-          expect(config.daemon.mcp_port).toBe(47848)
+          expect(config.daemon.port).toBe(27847)
+          expect(config.daemon.mcp_port).toBe(27848)
           expect(config.experimental).toEqual({
             cloud_agents: false,
             webhooks: false,
@@ -199,7 +199,7 @@ describe("config", () => {
             expect(config.subagent_limits.explore).toBe(10)
             expect(config.subagent_limits.worker).toBe(12)
             expect(config.disabled_hooks).toEqual(["/health"])
-            expect(config.daemon.port).toBe(47847)
+            expect(config.daemon.port).toBe(27847)
           } finally {
             process.chdir(origCwd)
           }
@@ -250,8 +250,8 @@ describe("config", () => {
           expect(DEFAULT_CONFIG).toHaveProperty("subagent_limits")
           expect(DEFAULT_CONFIG).toHaveProperty("state_persistence")
           expect(DEFAULT_CONFIG).toHaveProperty("daemon")
-          expect(DEFAULT_CONFIG.daemon.port).toBe(47847)
-          expect(DEFAULT_CONFIG.daemon.mcp_port).toBe(47848)
+          expect(DEFAULT_CONFIG.daemon.port).toBe(27847)
+          expect(DEFAULT_CONFIG.daemon.mcp_port).toBe(27848)
           expect(DEFAULT_CONFIG.experimental.cloud_agents).toBe(false)
           expect(DEFAULT_CONFIG.experimental.webhooks).toBe(false)
           expect(DEFAULT_CONFIG.experimental.automations).toBe(false)
@@ -297,7 +297,7 @@ describe("config", () => {
           const result = validateConfig({ version: 99 })
           expect(result.version).toBe(99)
           expect(result.disabled_hooks).toEqual([])
-          expect(result.daemon.port).toBe(47847)
+          expect(result.daemon.port).toBe(27847)
           expect(result.mcp_allowlist).toEqual(["*"])
         })
 

@@ -2,7 +2,7 @@
 set -euo pipefail
 
 ROUTE="${1:?usage: post-daemon.sh /route}"
-PORT="${OH_MY_CURSOR_DAEMON_PORT:-${OH_MY_CURSOR_PORT:-47847}}"
+PORT="${OH_MY_CURSOR_DAEMON_PORT:-${OH_MY_CURSOR_PORT:-27847}}"
 PORT_FILE="/tmp/oh-my-cursor-daemon.port"
 
 input=$(cat)

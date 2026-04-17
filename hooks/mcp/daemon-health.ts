@@ -13,7 +13,7 @@ export function startDaemonHealthMonitor(): void {
 
   setInterval(async () => {
     try {
-      const daemonPort = getDaemonPort(47847)
+      const daemonPort = getDaemonPort(27847)
       const res = await fetch(`http://localhost:${daemonPort}/health`, {
         signal: AbortSignal.timeout(5000),
       })

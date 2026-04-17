@@ -1,12 +1,12 @@
 import { renderDashboardHTML } from "./dashboard/render"
 import { getDaemonPort } from "./port-manager"
 
-const DEFAULT_PORT = parseInt(process.env.OH_MY_CURSOR_PORT || "47847")
+const DEFAULT_PORT = parseInt(process.env.OH_MY_CURSOR_PORT || "27847")
 
 let statusHtmlCache: string | null = null
 
 export function getStatusHTML(port?: number): string {
-  const effectivePort = port ?? getDaemonPort(Number.isNaN(DEFAULT_PORT) ? 47847 : DEFAULT_PORT)
+  const effectivePort = port ?? getDaemonPort(Number.isNaN(DEFAULT_PORT) ? 27847 : DEFAULT_PORT)
   statusHtmlCache = renderDashboardHTML(effectivePort)
   return statusHtmlCache
 }

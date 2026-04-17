@@ -42,7 +42,7 @@ export function register(server: McpServer): void {
     },
     wrapToolHandler("session_log", async ({ action, limit: limitRaw, session_id, event_filter, action_filter, workspace_root }) => {
       const port =
-        process.env.OH_MY_CURSOR_DAEMON_PORT || process.env.OH_MY_CURSOR_PORT || "47847"
+        process.env.OH_MY_CURSOR_DAEMON_PORT || process.env.OH_MY_CURSOR_PORT || "27847"
 
       if (action === "export") {
         try {

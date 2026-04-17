@@ -65,7 +65,7 @@ async function waitForPort(port: number, timeoutMs = 3000): Promise<boolean> {
 // which would kill the runner before this block could execute if placed after.
 describe("daemon hard-claim port", () => {
   test(
-    "hard-claim: same-uid squatter on DEFAULT_PORT 47847 is evicted or daemon fails cleanly",
+    "hard-claim: same-uid squatter on DEFAULT_PORT 27847 is evicted or daemon fails cleanly",
     async () => {
       const PID_FILE = "/tmp/oh-my-cursor-daemon.pid"
       const PORT_FILE = "/tmp/oh-my-cursor-daemon.port"
@@ -80,24 +80,24 @@ describe("daemon hard-claim port", () => {
         }
       }
 
-      // Occupy port 47847 with a same-uid squatter process
+      // Occupy port 27847 with a same-uid squatter process
       const squatter = Bun.spawn(
         [
           "bun",
           "-e",
-          `Bun.serve({ port: 47847, hostname: "127.0.0.1", fetch: () => new Response("sq") })\nawait new Promise(r => setTimeout(r, 30000))`,
+          `Bun.serve({ port: 27847, hostname: "127.0.0.1", fetch: () => new Response("sq") })\nawait new Promise(r => setTimeout(r, 30000))`,
         ],
         { stdout: "pipe", stderr: "pipe" },
       )
 
       // Give the squatter time to bind. Polling with fetch would leave an open socket that
-      // lsof -ti :47847 sees, causing killPortSquatter to SIGTERM the test runner itself.
-      const squatterReady = await waitForPort(47847, 3000)
+      // lsof -ti :27847 sees, causing killPortSquatter to SIGTERM the test runner itself.
+      const squatterReady = await waitForPort(27847, 3000)
       if (!squatterReady) console.warn("[daemon hard-claim test] squatter did not bind in time; continuing anyway")
 
       let daemon: ReturnType<typeof Bun.spawn> | null = null
       try {
-        // Strip OH_MY_CURSOR_PORT so daemon.ts falls through to DEFAULT_PORT (47847)
+        // Strip OH_MY_CURSOR_PORT so daemon.ts falls through to DEFAULT_PORT (27847)
         const { OH_MY_CURSOR_PORT: _omit, ...envWithoutPort } = process.env
         daemon = Bun.spawn(["bun", "run", "hooks/daemon.ts"], {
           cwd: resolve(import.meta.dir, ".."),
@@ -115,11 +115,11 @@ describe("daemon hard-claim port", () => {
           // Daemon detected a foreign-uid process or failed to bind after killing same-uid squatter
           expect(result.code).not.toBe(0)
           const stderr = await new Response(daemon.stderr).text()
-          expect(stderr).toContain("47847")
+          expect(stderr).toContain("27847")
           daemon = null
         } else {
           // Same-uid squatter was killed by killPortSquatter; daemon took over - also valid Wave 2 behaviour
-          const health = await fetch("http://127.0.0.1:47847/health")
+          const health = await fetch("http://127.0.0.1:27847/health")
             .then((r) => r.status)
             .catch(() => -1)
           expect([200, -1]).toContain(health)

@@ -7,7 +7,7 @@ Display the current merged oh-my-cursor configuration. Read-only: do not edit co
 1. Query the daemon config endpoint (use **Shell** with `curl` or equivalent):
 
    ```bash
-   curl -s "http://localhost:${OH_MY_CURSOR_DAEMON_PORT:-47847}/config"
+   curl -s "http://localhost:${OH_MY_CURSOR_DAEMON_PORT:-27847}/config"
    ```
 
 2. Parse the response and show it as **formatted JSON** (pretty-printed, valid structure). If the request fails, report the error and remind the user the daemon must be running.

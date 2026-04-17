@@ -6,12 +6,12 @@ Display the current oh-my-cursor system health and session statistics.
 
 1. Query the daemon status endpoint:
    ```
-   curl -s http://localhost:${OH_MY_CURSOR_DAEMON_PORT:-47847}/status
+   curl -s http://localhost:${OH_MY_CURSOR_DAEMON_PORT:-27847}/status
    ```
 
 2. Query the MCP sidecar health:
    ```
-   curl -s http://localhost:${OH_MY_CURSOR_SIDECAR_PORT:-47848}/health
+   curl -s http://localhost:${OH_MY_CURSOR_SIDECAR_PORT:-27848}/health
    ```
 
 3. Display both results formatted clearly:
@@ -22,4 +22,4 @@ Display the current oh-my-cursor system health and session statistics.
 
 ## Port Coordination
 
-Port assignments are tracked in `/tmp/oh-my-cursor-ports.json`. If the default ports (47847/47848) don't work, check this file for the actual ports.
+Port assignments are tracked in `/tmp/oh-my-cursor-ports.json`. If the default ports (27847/27848) don't work, check this file for the actual ports.

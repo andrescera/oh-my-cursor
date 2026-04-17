@@ -101,7 +101,7 @@ describe("OhMyCursorConfigSchema", () => {
       expect(r.data.notifications.sound).toBe(true)
       expect(r.data.momus.max_iterations).toBe(7)
       expect(r.data.orchestration.mode).toBe("native")
-      expect(r.data.daemon.port).toBe(47847)
+      expect(r.data.daemon.port).toBe(27847)
     }
   })
 })

@@ -16,8 +16,8 @@ $ErrorActionPreference = 'Stop'
 
 $PluginName = "oh-my-cursor"
 $ScriptDir = Split-Path -Parent $MyInvocation.MyCommand.Path
-$DefaultDaemonPort = 47847
-$DefaultMcpPort = 47848
+$DefaultDaemonPort = 27847
+$DefaultMcpPort = 27848
 $OurMcpKeys = @("websearch", "context7", "grep_app", "oh-my-cursor")
 
 $TempDir = if ($env:TEMP) { $env:TEMP } else { "/tmp" }

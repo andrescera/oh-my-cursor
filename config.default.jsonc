@@ -21,8 +21,8 @@
 
   // Hook daemon ports
   "daemon": {
-    "port": 47847,
-    "mcp_port": 47848
+    "port": 27847,
+    "mcp_port": 27848
   },
 
   // Context collector settings

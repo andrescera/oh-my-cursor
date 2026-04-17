@@ -2,8 +2,8 @@
 set -euo pipefail
 
 PLUGIN_NAME="oh-my-cursor"
-DEFAULT_DAEMON_PORT=47847
-DEFAULT_MCP_PORT=47848
+DEFAULT_DAEMON_PORT=27847
+DEFAULT_MCP_PORT=27848
 LOCK_FILE="/tmp/oh-my-cursor-install.lock"
 
 TEMP_FILES=(
@@ -48,8 +48,8 @@ Options:
   --help           Show this help message
 
 Environment variables:
-  OH_MY_CURSOR_PORT       Daemon port (default: 47847)
-  OH_MY_CURSOR_MCP_PORT   MCP sidecar port (default: 47848)
+  OH_MY_CURSOR_PORT       Daemon port (default: 27847)
+  OH_MY_CURSOR_MCP_PORT   MCP sidecar port (default: 27848)
 USAGE
 }
 

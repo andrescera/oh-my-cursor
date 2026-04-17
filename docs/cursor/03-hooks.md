@@ -3,7 +3,7 @@
 ```
 cursor_version:     3.1.15
 binary_sha256:      29aa9ec0549fa55452794c29f50f6d3ad3c1d5b24c51b068fd371a0a2aec44ef
-plugin_version:     0.4.0
+plugin_version:     0.5.0
 git_sha:            bab260429411f0fc3156c0d045557b7fc4d0f085
 experiments_count:  116
 evidence_count:     459  (docs/internal/hooks-evidence-v2.jsonl)
@@ -1159,7 +1159,7 @@ Two token sequences were found near the `bv` enum in `workbench.desktop.main.js:
 
 **Methodology:** An offline `rg`/strings sweep extracted 50 unique event-name-like tokens from the 200-line window around the `bv` enum. 20 matched the canonical set; 2 were classified as plausible ghosts; 44 were noise (RPC field names, session metadata fragments, PascalCase substrings inside longer identifiers such as `executeAfterFileEditHook`).
 
-**Prior art:** v1 hooks-empirical-report.md confirmed that the Cursor parser returns `Unknown hook type` for: `beforeToolUse`, `onError`, `BeforeCompact`, `sessionResume`, `userPromptSubmit`. These are confirmed non-events in 3.1.15.
+**Prior art:** v1 docs/internal/hooks-empirical-report.v1.md confirmed that the Cursor parser returns `Unknown hook type` for: `beforeToolUse`, `onError`, `BeforeCompact`, `sessionResume`, `userPromptSubmit`. These are confirmed non-events in 3.1.15.
 
 ---
 

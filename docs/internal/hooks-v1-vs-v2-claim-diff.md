@@ -2,7 +2,7 @@
 
 Cursor version pinned: `3.1.15` (workbench bundle sha256 `29aa9ec0549fa55452794c29f50f6d3ad3c1d5b24c51b068fd371a0a2aec44ef`).
 
-v1 source: `docs/hooks-empirical-report.md` (664 lines, cycles 1+2).  
+v1 source: `docs/internal/hooks-empirical-report.v1.md` (664 lines, cycles 1+2).  
 v2 evidence: `docs/internal/hooks-evidence-v2.jsonl` (459 records, 55 experiment_ids), `docs/internal/hooks-v2-ghost-hunt.json`, hooks experiment registry (116 cells, blocked by hook at read time — cross-referenced via experiment_id prefix pattern).
 
 Status legend:

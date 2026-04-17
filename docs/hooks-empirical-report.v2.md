@@ -1,6 +1,6 @@
 # Cursor Hooks Empirical Report — v2
 
-> **SUPERSEDES** cycle 2 of `docs/hooks-empirical-report.md` (v1); v1 is preserved as historical ground truth.
+> **SUPERSEDES** cycle 2 of `docs/internal/hooks-empirical-report.v1.md` (v1); v1 is preserved as historical ground truth.
 > See `docs/internal/hooks-v1-vs-v2-claim-diff.md` for claim-by-claim reconciliation (forthcoming as TDOC.1).
 
 ## Header
@@ -9,7 +9,7 @@
 |---|---|
 | Cursor version | 3.1.15 |
 | Workbench bundle sha256 | `29aa9ec0549fa55452794c29f50f6d3ad3c1d5b24c51b068fd371a0a2aec44ef` |
-| Plugin version | 0.4.0 |
+| Plugin version | 0.5.0 |
 | Git SHA at run | `bab260429411f0fc3156c0d045557b7fc4d0f085` |
 | Generated | 2026-04-17 |
 | Evidence JSONL | `docs/internal/hooks-evidence-v2.jsonl` (459 redacted records) |
@@ -282,7 +282,7 @@ The 14/14 agent-triggerable coverage is a hard improvement over v1's partial cov
 | Watchdog drill | `/tmp/cursor-hooks-evidence/_watchdog-drill.json` |
 | Raw per-invocation captures (local only) | `/tmp/cursor-hooks-evidence/<uuid>.json` |
 | Mega-config registry | `hooks/hooks.experiment.v2.registry.json` (116 cells) |
-| v1 (historical, preserved verbatim) | `docs/hooks-empirical-report.md` |
+| v1 (historical, preserved verbatim) | `docs/internal/hooks-empirical-report.v1.md` |
 
 ---
 

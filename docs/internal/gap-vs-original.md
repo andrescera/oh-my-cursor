@@ -3,7 +3,7 @@
 _Generated: 2026-04-17T13:18:20Z_
 _Plan: `<home>/.cursor/plans/gap_vs_original_plus_top_3_ports_36338f6a.plan.md`_
 _Cross-references:_
-- _Cycle-1 hook empirical report: [docs/hooks-empirical-report.md](../hooks-empirical-report.md)_
+- _Cycle-1 hook empirical report: [docs/internal/hooks-empirical-report.v1.md](./hooks-empirical-report.v1.md)_
 - _Cycle-2 field catalog plan: `<home>/.cursor/plans/hooks_cycle_2_field_catalog_2b74fe6d.plan.md`_
 - _Prior audit: [docs/internal/agent-nativeness-audit.md](./agent-nativeness-audit.md)_
 

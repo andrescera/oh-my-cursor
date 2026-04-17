@@ -15,7 +15,7 @@ Path: `.cursor-plugin/plugin.json`. [repro-local]
 ```json
 {
   "name": "oh-my-cursor",
-  "version": "0.3.0",
+  "version": "0.5.0",
   "description": "Multi-agent orchestration for Cursor. 11 specialized agents, persistent hook daemon, dynamic context injection, and continuation loops. Ported from oh-my-openagent.",
   "author": {
     "name": "oh-my-openagent contributors"

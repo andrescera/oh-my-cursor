@@ -13,7 +13,7 @@ _Generated: 2026-04-17_
 
 Cursor's hook surface (`~/.cursor/hooks.json`) is undocumented. No public schema beyond basic examples exists. The only reliable way to determine which response fields take effect, which are silently ignored, and how the runtime behaves in edge cases is to run controlled experiments against a pinned Cursor version.
 
-**v1 (Oct 2025)** — documented in `docs/hooks-empirical-report.md` (664 lines, Cycles 1+2). Confirmed 20 canonical event names via parser-acceptance testing and source analysis of the workbench bundle. Response-field semantics were mostly inferred from source analysis, not live firing.
+**v1 (Oct 2025)** — documented in `docs/internal/hooks-empirical-report.v1.md` (664 lines, Cycles 1+2). Confirmed 20 canonical event names via parser-acceptance testing and source analysis of the workbench bundle. Response-field semantics were mostly inferred from source analysis, not live firing.
 
 **v2 (Apr 2026)** — ran live agent sessions to confirm response-field semantics end-to-end. 459 records captured across 55 experiment IDs. Confirmed `stop.followup_message`, `postToolUse.additional_context`, `beforeShellExecution.permission=deny`, exit-code-2 blocking, and the dual-role (`always-local` / `agent-exec`) environment. See `docs/internal/hooks-v1-vs-v2-claim-diff.md` for the full diff.
 

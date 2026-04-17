@@ -18,4 +18,6 @@ export type EvidenceRecord = {
   finished_at: string
   duration_ms: number
   schema_version: "v2"
+  /** Raw hook payloads may include nested objects; consolidator redacts all strings. */
+  tool_input?: unknown
 }

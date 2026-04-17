@@ -94,6 +94,33 @@ describe("consolidate", () => {
     expect(out.stdin_preview).toContain("<email>")
   })
 
+  test("masks env_cursor.CURSOR_USER_EMAIL as <email>", async () => {
+    const r = makeRecord({
+      env_cursor: { CURSOR_FOO: "bar", CURSOR_USER_EMAIL: "test@example.com" },
+    })
+    writeFileSync(join(SOURCE_DIR, "aaaaaaaa-0001-0000-0000-000000000001.json"), JSON.stringify(r))
+
+    await runConsolidator()
+    const lines = readFileSync(OUT_FILE, "utf8").trim().split("\n")
+    const out = JSON.parse(lines[0]) as EvidenceRecord
+    expect(out.env_cursor.CURSOR_USER_EMAIL).toBe("<email>")
+    expect(JSON.stringify(out)).not.toContain("test@example.com")
+  })
+
+  test("redacts email in nested tool_input.stdin_preview", async () => {
+    const r = makeRecord({
+      tool_input: { stdin_preview: "reach me at nested@example.com please" },
+    })
+    writeFileSync(join(SOURCE_DIR, "aaaaaaaa-0001-0000-0000-000000000001.json"), JSON.stringify(r))
+
+    await runConsolidator()
+    const lines = readFileSync(OUT_FILE, "utf8").trim().split("\n")
+    const out = JSON.parse(lines[0]) as EvidenceRecord & { tool_input?: { stdin_preview?: string } }
+    expect(out.tool_input?.stdin_preview).toBeDefined()
+    expect(out.tool_input?.stdin_preview).not.toContain("nested@example.com")
+    expect(out.tool_input?.stdin_preview).toContain("<email>")
+  })
+
   test("skips _header.json, _watchdog-drill.json, _preflight.json, content-*.json", async () => {
     const r = makeRecord({ event: "real" })
     writeFileSync(join(SOURCE_DIR, "aaaaaaaa-0001-0000-0000-000000000001.json"), JSON.stringify(r))

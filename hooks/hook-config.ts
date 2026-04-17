@@ -6,10 +6,10 @@ const ALL_HOOKS = [
   "/stop", "/beforeSubmitPrompt",
   "/beforeShellExecution", "/afterShellExecution",
   "/beforeReadFile", "/afterFileEdit",
+  "/beforeTabFileRead", "/afterTabFileEdit",
   "/beforeMCPExecution", "/afterMCPExecution",
   "/afterAgentResponse", "/afterAgentThought",
   "/subagentStart", "/subagentStop",
-  "/sessionHistory", "/backgroundTasks",
 ]
 
 let cachedDisabled: Set<string> | null = null

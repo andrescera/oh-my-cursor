@@ -1,6 +1,30 @@
 import { describe, test, expect, beforeEach, afterEach } from "bun:test"
 import { isHookEnabled, getHookConfig, resetHookConfigCache } from "./hook-config"
 
+/** Canonical 20 Cursor hook event paths (leading slash). Order matches docs/internal/hooks-v1-vs-v2-claim-diff.md Claim 21. */
+const CANONICAL_CURSOR_HOOKS = [
+  "/sessionStart",
+  "/sessionEnd",
+  "/preToolUse",
+  "/postToolUse",
+  "/postToolUseFailure",
+  "/subagentStart",
+  "/subagentStop",
+  "/beforeShellExecution",
+  "/afterShellExecution",
+  "/beforeMCPExecution",
+  "/afterMCPExecution",
+  "/beforeReadFile",
+  "/afterFileEdit",
+  "/afterAgentResponse",
+  "/afterAgentThought",
+  "/preCompact",
+  "/stop",
+  "/beforeSubmitPrompt",
+  "/beforeTabFileRead",
+  "/afterTabFileEdit",
+] as const
+
 let originalEnv: string | undefined
 
 describe("hook-config", () => {
@@ -26,6 +50,20 @@ describe("hook-config", () => {
         expect(isHookEnabled("/preToolUse")).toBe(true)
         expect(isHookEnabled("/stop")).toBe(true)
         expect(isHookEnabled("/subagentStart")).toBe(true)
+      })
+    })
+
+    describe("#when getHookConfig is called", () => {
+      test("#then enabled includes all 20 canonical Cursor hooks and Tab hooks; excludes daemon-only routes", () => {
+        const { enabled } = getHookConfig()
+
+        for (const hook of CANONICAL_CURSOR_HOOKS) {
+          expect(enabled).toContain(hook)
+        }
+        expect(enabled).not.toContain("/sessionHistory")
+        expect(enabled).not.toContain("/backgroundTasks")
+        expect(enabled).toContain("/beforeTabFileRead")
+        expect(enabled).toContain("/afterTabFileEdit")
       })
     })
   })

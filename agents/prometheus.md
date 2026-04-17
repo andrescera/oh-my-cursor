@@ -1093,6 +1093,36 @@ When invoked from Cursor's Plan mode, plan output integrates natively with the p
 
 ---
 
+## Model-specific planner guidance
+
+The Prometheus prompt is model-aware. The same 10-phase workflow applies everywhere, but interview depth, tool-call enforcement, and output verbosity are tuned per model family.
+
+### GPT (GPT-5.4 / GPT-5.3-codex)
+
+- Structure system prompt with XML-tagged blocks (`<identity>`, `<phases>`, `<scope_constraints>`) — GPT-5.4 parses structural tags reliably. (ref: src/agents/prometheus/gpt.ts:14)
+- Set explicit verbosity limits: interview turns 3-6 sentences + 1-3 questions; research summaries ≤5 bullets. (ref: src/agents/prometheus/gpt.ts:45-53)
+- Fire minimum 2 explore agents before the first user question; GPT rarely needs more than 2. (ref: src/agents/prometheus/gpt.ts:99-106)
+- No thinking checkpoints required — GPT-5.4 handles internal reasoning without forced intermediate output. (ref: src/agents/prometheus/system-prompt.ts:51-53)
+- Configure `reasoningEffort` via model config; avoid redundant "think step by step" instructions in the prompt. (ref: src/agents/prometheus/gpt.ts:1-9)
+- Emphasize the "Decision Complete" north star metric early and prominently — GPT responds well to explicit success criteria. (ref: src/agents/prometheus/gpt.ts:26-28)
+- Strip `Question({...})` tool code blocks when the `question` tool is disabled in the deployment context. (ref: src/agents/prometheus/system-prompt.ts:72-84)
+
+### Gemini (Gemini 3.x)
+
+- Include a `TOOL_CALL_MANDATE` block — Gemini's failure mode is reasoning from internal knowledge rather than using tools. (ref: src/agents/prometheus/gemini.ts:28-40)
+- Require minimum 3 explore agents before any user question — Gemini skims 1-2 files and jumps to conclusions without this gate. (ref: src/agents/prometheus/gemini.ts:97-107)
+- Mandate `🔍 Thinking Checkpoint` output after exploration with structured "discovered / means for plan / still need" format. (ref: src/agents/prometheus/gemini.ts:115-140)
+- Mandate `📝 Thinking Checkpoint` after each interview turn to prevent silent skipping of the clearance check. (ref: src/agents/prometheus/gemini.ts:163-178)
+- Reinforce "NOT an implementer" framing aggressively: "If you feel the urge to write code — STOP." (ref: src/agents/prometheus/gemini.ts:24-25)
+- Frame model cost explicitly: "You are the most expensive model in the pipeline; value = planning quality, not speed." (ref: src/agents/prometheus/gemini.ts:25-26)
+- Every phase transition must be accompanied by actual tool calls — state this as MANDATORY, not a guideline. (ref: src/agents/prometheus/gemini.ts:31)
+
+### Claude (default)
+
+Default planner behavior as defined in this document applies. Claude handles reasoning naturally without forced thinking checkpoints or aggressive tool-call mandates. The modular prompt structure (identity-constraints → interview-mode → plan-generation → high-accuracy-mode → plan-template → behavioral-summary) is the Claude-native assembly. No extra enforcement sections needed. (ref: src/agents/prometheus/system-prompt.ts:15-20)
+
+---
+
 ## Pattern Provenance
 
 This agent's plan template and workflow are adapted from the oh-my-opencode project. Key alignment points:

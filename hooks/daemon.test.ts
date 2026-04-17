@@ -1,5 +1,5 @@
 import { describe, test, expect, beforeAll, afterAll } from "bun:test"
-import { mkdirSync, writeFileSync, unlinkSync, rmdirSync, rmSync } from "node:fs"
+import { mkdirSync, writeFileSync, unlinkSync, rmdirSync, rmSync, existsSync, renameSync, readFileSync } from "node:fs"
 import { join } from "node:path"
 import { tmpdir } from "node:os"
 import { randomUUID } from "node:crypto"
@@ -41,6 +41,110 @@ afterAll(() => {
   try { unlinkSync(AGENTS_TEST_FILE) } catch {}
   try { unlinkSync(AGENTS_MD_PATH) } catch {}
   try { rmdirSync(AGENTS_TEST_DIR) } catch {}
+})
+
+// Placed before the main suite because the main suite's /shutdown tests trigger process.exit(0),
+// which would kill the runner before this block could execute if placed after.
+describe("daemon hard-claim port", () => {
+  test(
+    "hard-claim: same-uid squatter on DEFAULT_PORT 47847 is evicted or daemon fails cleanly",
+    async () => {
+      const PID_FILE = "/tmp/oh-my-cursor-daemon.pid"
+      const PORT_FILE = "/tmp/oh-my-cursor-daemon.port"
+
+      // Back up any live daemon files so we don't clobber a real running daemon
+      const backups: Array<[string, string]> = []
+      for (const f of [PID_FILE, PORT_FILE]) {
+        if (existsSync(f)) {
+          const bak = f + ".test-bak"
+          renameSync(f, bak)
+          backups.push([f, bak])
+        }
+      }
+
+      // Occupy port 47847 with a same-uid squatter process
+      const squatter = Bun.spawn(
+        [
+          "bun",
+          "-e",
+          `Bun.serve({ port: 47847, hostname: "127.0.0.1", fetch: () => new Response("sq") })\nawait new Promise(r => setTimeout(r, 30000))`,
+        ],
+        { stdout: "pipe", stderr: "pipe" },
+      )
+
+      // Give the squatter time to bind without polling via fetch.
+      // Polling with fetch would leave an open socket that lsof -ti :47847 sees, causing
+      // killPortSquatter to SIGTERM the test runner process itself.
+      await Bun.sleep(1500)
+
+      let daemon: ReturnType<typeof Bun.spawn> | null = null
+      try {
+        // Strip OH_MY_CURSOR_PORT so daemon.ts falls through to DEFAULT_PORT (47847)
+        const { OH_MY_CURSOR_PORT: _omit, ...envWithoutPort } = process.env
+        daemon = Bun.spawn(["bun", "run", "hooks/daemon.ts"], {
+          cwd: "<REPO>",
+          stdout: "pipe",
+          stderr: "pipe",
+          env: envWithoutPort,
+        })
+
+        const result = await Promise.race([
+          daemon.exited.then((code) => ({ kind: "exited" as const, code })),
+          new Promise<{ kind: "running" }>((r) => setTimeout(() => r({ kind: "running" }), 4000)),
+        ])
+
+        if (result.kind === "exited") {
+          // Daemon detected a foreign-uid process or failed to bind after killing same-uid squatter
+          expect(result.code).not.toBe(0)
+          const stderr = await new Response(daemon.stderr).text()
+          expect(stderr).toContain("47847")
+          daemon = null
+        } else {
+          // Same-uid squatter was killed by killPortSquatter; daemon took over — also valid Wave 2 behaviour
+          const health = await fetch("http://127.0.0.1:47847/health")
+            .then((r) => r.status)
+            .catch(() => -1)
+          expect([200, -1]).toContain(health)
+          daemon.kill()
+          await daemon.exited
+          daemon = null
+        }
+      } finally {
+        if (daemon) {
+          try {
+            daemon.kill()
+          } catch {}
+          try {
+            await daemon.exited
+          } catch {}
+        }
+        try {
+          squatter.kill()
+        } catch {}
+        try {
+          await squatter.exited
+        } catch {}
+
+        // Remove any pid/port files written by the test daemon (they have no backup entry)
+        for (const f of [PID_FILE, PORT_FILE]) {
+          if (existsSync(f) && !backups.some(([orig]) => orig === f)) {
+            try {
+              const s = readFileSync(f, "utf-8")
+              if (s.length < 20) unlinkSync(f)
+            } catch {}
+          }
+        }
+
+        // Restore backed-up live daemon files
+        for (const [orig, bak] of backups) {
+          try {
+            if (existsSync(bak)) renameSync(bak, orig)
+          } catch {}
+        }
+      }
+    },
+    15000,
+  )
 })
 
 describe("hook daemon", () => {

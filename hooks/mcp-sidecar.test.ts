@@ -395,5 +395,25 @@ describe("mcp-sidecar HTTP layer", () => {
       })
       expect([400, 404]).toContain(res.status)
     })
+
+    test("POST /mcp with unknown mcp-session-id returns HTTP 404 with JSON-RPC error", async () => {
+      const stranger = crypto.randomUUID()
+      const res = await fetch(`${BASE}/mcp`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Accept: "application/json, text/event-stream",
+          "mcp-session-id": stranger,
+        },
+        body: JSON.stringify({ jsonrpc: "2.0", method: "tools/list", id: 1 }),
+      })
+      expect(res.status).toBe(404)
+      const body = await res.json()
+      expect(body).toMatchObject({
+        jsonrpc: "2.0",
+        error: { code: -32000, message: "Session not found" },
+        id: null,
+      })
+    })
   })
 })

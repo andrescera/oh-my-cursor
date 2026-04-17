@@ -98,7 +98,7 @@ if ! $daemon_alive; then
         fi
         sleep 1
       done
-    ' >/tmp/oh-my-cursor-daemon.log 2>&1 &
+    ' >>/tmp/oh-my-cursor-daemon.log 2>&1 &
     if ! wait_for_health "$PORT"; then
       ACTUAL_PORT="$(read_port_file "$PORT_FILE" "$PORT")"
       if ! wait_for_health "$ACTUAL_PORT"; then
@@ -146,7 +146,7 @@ if ! curl -s "http://localhost:${ACTUAL_MCP_PORT}/health" >/dev/null 2>&1; then
         fi
         sleep 1
       done
-    ' >/tmp/oh-my-cursor-sidecar.log 2>&1 &
+    ' >>/tmp/oh-my-cursor-sidecar.log 2>&1 &
     if ! wait_for_health "$MCP_PORT"; then
       ACTUAL_MCP_PORT="$(read_port_file "$MCP_PORT_FILE" "$MCP_PORT")"
       if ! wait_for_health "$ACTUAL_MCP_PORT"; then

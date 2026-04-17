@@ -44,7 +44,7 @@ export async function getOrCreateSession(
     return UNKNOWN_SESSION
   }
 
-  // sessionId is undefined — fresh initialize handshake
+  // sessionId is undefined: fresh initialize handshake
   const server = buildServer()
   let transport!: WebStandardStreamableHTTPServerTransport
   transport = new WebStandardStreamableHTTPServerTransport({

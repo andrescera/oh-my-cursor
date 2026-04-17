@@ -56,7 +56,7 @@ describe("killPortSquatter", () => {
     const result = await killPortSquatter(port, "test-kill")
     expect(result).toBe("killed")
 
-    // Child should exit within 500ms — it gets SIGTERM during killPortSquatter
+    // Child should exit within 500ms; it gets SIGTERM during killPortSquatter
     const exitCode = await Promise.race([
       squatter.exited,
       Bun.sleep(500).then(() => "timeout" as const),
@@ -72,7 +72,7 @@ describe("killPortSquatter", () => {
     expect(["absent", "lsof_missing"]).toContain(result)
   })
 
-  // Integration-only — requires a second uid to run
+  // Integration-only: requires a second uid to run
   test.skip("skips foreign-owned processes and returns 'not_us'", async () => {
     // Cannot test without root or a second uid. Would require spawning a process
     // as a different user and verifying the ownership guard fires.

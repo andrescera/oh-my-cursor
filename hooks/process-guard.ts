@@ -60,7 +60,7 @@ export async function killPortSquatter(port: number, label: string): Promise<Kil
     const raw = await new Response(proc.stdout).text()
     await proc.exited
     lsofOutput = raw.trim()
-    // lsof exits 1 with empty stdout when nothing matches — treat as absent
+    // lsof exits 1 with empty stdout when nothing matches - treat as absent
     if (!lsofOutput) return "absent"
   } catch (err) {
     const code = err instanceof Error && "code" in err ? (err as { code?: string }).code : undefined
@@ -89,7 +89,7 @@ export async function killPortSquatter(port: number, label: string): Promise<Kil
         squatterUid = parseInt(parts[1], 10)
       }
     } catch {
-      // Process already gone — count as successful kill
+      // Process already gone; count as successful kill
       anyKilled = true
       continue
     }

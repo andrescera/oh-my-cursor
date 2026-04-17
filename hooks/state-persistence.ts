@@ -104,6 +104,12 @@ export class StatePersistence {
         injectedPaths: new Set(validated.injectedPaths),
         pendingWriteArgs: new Map(Object.entries(validated.pendingWriteArgs)),
         todoStates: new Map(Object.entries(validated.todoStates)),
+        ralphState: validated.ralphState
+          ? {
+              ...validated.ralphState,
+              lastProcessedIndex: validated.ralphState.lastProcessedIndex ?? 0,
+            }
+          : null,
       }
     } catch (err) {
       console.error(`[oh-my-cursor] Failed to load conversation ${convId}:`, err instanceof Error ? err.message : String(err))

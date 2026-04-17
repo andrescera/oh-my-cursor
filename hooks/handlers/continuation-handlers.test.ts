@@ -40,6 +40,7 @@ describe("createContinuationHandlers", () => {
           iteration: 0,
           maxIterations: 0,
           startedAt: new Date().toISOString(),
+          lastProcessedIndex: 0,
         }
         conversation.contextHistory = ["some work"]
 
@@ -61,8 +62,51 @@ describe("createContinuationHandlers", () => {
           iteration: 1,
           maxIterations: 0,
           startedAt: new Date().toISOString(),
+          lastProcessedIndex: 0,
         }
         conversation.contextHistory = ["done <promise>DONE</promise>"]
+
+        const result = handlers["/stop"](baseStopInput(convId))
+
+        expect(conversation.ralphState).toBeNull()
+        expect(result).toEqual({})
+      })
+
+      it("continues ralph when context has DONE only as accidental substring (not <promise>DONE</promise>)", () => {
+        const startedAt = "2026-01-01T00:00:00.000Z"
+        const conversation = getOrCreateConversation(convId)
+        conversation.contextHistory = ["[12:00] Read /tmp/TODO.md completed", "follow-up: UNDONE"]
+        conversation.ralphState = {
+          active: true,
+          iteration: 5,
+          maxIterations: 100,
+          startedAt,
+          lastProcessedIndex: 0,
+        }
+
+        const result = handlers["/stop"](baseStopInput(convId)) as {
+          followup_message?: string
+          decision?: string
+        }
+
+        expect(result.followup_message).toBeDefined()
+        expect(result.followup_message).toContain("Continue working")
+        expect(result.decision).toBe("block")
+        expect(conversation.ralphState).not.toBeNull()
+        expect(conversation.ralphState?.iteration).toBe(6)
+      })
+
+      it("clears ralph when context includes exact <promise>DONE</promise> token", () => {
+        const startedAt = "2026-01-01T00:00:00.000Z"
+        const conversation = getOrCreateConversation(convId)
+        conversation.contextHistory = ["<promise>DONE</promise>"]
+        conversation.ralphState = {
+          active: true,
+          iteration: 5,
+          maxIterations: 100,
+          startedAt,
+          lastProcessedIndex: 0,
+        }
 
         const result = handlers["/stop"](baseStopInput(convId))
 
@@ -77,6 +121,7 @@ describe("createContinuationHandlers", () => {
           iteration: 1,
           maxIterations: 2,
           startedAt: new Date().toISOString(),
+          lastProcessedIndex: 0,
         }
         conversation.contextHistory = []
 
@@ -358,6 +403,17 @@ describe("createContinuationHandlers", () => {
       expect(result.additional_context).toContain("[ralph-loop]")
     })
 
+    it("initializes ralph lastProcessedIndex to 0 for /ralph-loop", () => {
+      const conversation = getOrCreateConversation(convId)
+
+      handlers["/beforeSubmitPrompt"]({
+        prompt: "/ralph-loop --max-iterations 50",
+        conversation_id: convId,
+      })
+
+      expect(conversation.ralphState?.lastProcessedIndex).toBe(0)
+    })
+
     it("clears continuation state for /stop-continuation", () => {
       const conversation = getOrCreateConversation(convId)
       conversation.ralphState = {
@@ -365,6 +421,7 @@ describe("createContinuationHandlers", () => {
         iteration: 2,
         maxIterations: 0,
         startedAt: new Date().toISOString(),
+        lastProcessedIndex: 0,
       }
       conversation.boulderState = { active: true, failureCount: 1, lastContinuationAt: "x" }
       conversation.activePlan = { path: "/p.md", phase: "x", completedTasks: [] }

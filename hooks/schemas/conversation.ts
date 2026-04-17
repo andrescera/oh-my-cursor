@@ -5,6 +5,7 @@ export const RalphLoopStateSchema = z.object({
   iteration: z.number(),
   maxIterations: z.number(),
   startedAt: z.string(),
+  lastProcessedIndex: z.number().default(0),
 })
 export type RalphLoopState = z.infer<typeof RalphLoopStateSchema>
 

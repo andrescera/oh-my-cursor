@@ -3,6 +3,7 @@ export type RalphLoopState = {
   iteration: number
   maxIterations: number
   startedAt: string
+  lastProcessedIndex: number
 }
 
 export type BoulderState = {

@@ -176,3 +176,20 @@ Lead with the result ("Fixed the auth bug - the token was expiring before the re
 
 - **TodoWrite**: Track progress during sustained deep work. Register milestones and update as each is completed.
 - **SwitchMode(debug)**: Switch to debug mode when hitting persistent errors during deep implementation work.
+
+## Model-specific guidance
+
+### GPT-5.4 / GPT-5.3-codex
+
+- **reasoningEffort "medium"** is set at agent creation for all GPT and Codex variants; do not request higher effort unless there is a concrete reason. (ref: src/agents/hephaestus/agent.ts:131)
+- **GPT-5.4 uses prose-style instructions** — minimal imperative rhetoric and caps; the model follows instructions well, so fewer threats are needed. (ref: src/agents/hephaestus/gpt-5-4.ts:7-10)
+- **GPT-5.4 prompt is XML-tagged** — nine sequential blocks: `<identity>` → `<intent>` → `<explore>` → `<constraints>` → `<execution>` → `<tracking>` → `<progress>` → `<delegation>` → `<communication>`. (ref: src/agents/hephaestus/gpt-5-4.ts:13-22)
+- **GPT-5.4 tool-call philosophy** — "Ten tool calls that build a complete picture beat three that leave gaps; treat every call as investment in correctness, not a cost to minimize." (ref: src/agents/hephaestus/gpt-5-4.ts:186-190)
+- **GPT-5.4: no chained bash** — never combine shell commands with `&&`, `;`, or `|`; each command must be a separate tool invocation. (ref: src/agents/hephaestus/gpt-5-4.ts:224)
+- **GPT-5.3-codex uses apply_patch** — `GPT_APPLY_PATCH_GUIDANCE` is injected into the code-quality section; prefer `apply_patch` over direct file writes. (ref: src/agents/hephaestus/gpt-5-3-codex.ts:452)
+- **GPT-5.3-codex turn-end self-check** — before ending turn verify: implied action taken? "I'll do X" executed? No mid-work permission requests made? (ref: src/agents/hephaestus/gpt-5-3-codex.ts:479-488)
+- **GPT-5.3-codex completion guarantee** — done = implemented 100% + verified with real tools (not "it should work") + evidence for every step + re-read original request. (ref: src/agents/hephaestus/gpt-5-3-codex.ts:468-498)
+
+### Other models (default)
+
+Deep-worker behavior as described above applies without model-specific adjustments for Claude and Gemini. The core execution loop (explore → plan → decide → execute → verify), tool persistence, delegation discipline, and failure recovery are model-agnostic and sufficient.

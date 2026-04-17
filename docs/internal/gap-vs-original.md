@@ -206,7 +206,7 @@ Sorted ROI descending:
 - `model-fallback` — unbridgeable-by-architecture, cycle-2-dep N, ROI 4 — High value for reliability but stuck on `chat.message` mutation unless redesigned for `preToolUse`.
 - `session-recovery` — portable-with-cycle-2, cycle-2-dep Y, ROI 4 — Recovers from assistant errors; port needs explicit `sessionStart` or env contract.
 - `write-existing-file-guard` — portable-with-cycle-2, cycle-2-dep Y, ROI 4 — Prevents destructive overwrites; deny path is straightforward.
-- `ralph-loop` — partially-portable-with-caveats, cycle-2-dep N, ROI 4 — Strong automation value; only partial parity with Cursor `stop` and follow-ups.
+- `ralph-loop` — partially-portable-with-caveats, cycle-2-dep Y, ROI 4 — Strong automation value; only partial parity with Cursor `stop` and `subagentStop.followup_message` (cycle-2 field).
 - `start-work` — partially-portable-with-caveats, cycle-2-dep N, ROI 4 — Core Sisyphus workflow; `beforeSubmitPrompt` approximates `chat.message` plus `command.execute.before`.
 
 ## Surface S6 — MCP
@@ -359,9 +359,9 @@ _Placeholder for W3.1 Oracle to validate tier assignments and rank. Seeded with 
 1. `rules-injector` — partially-portable-with-caveats, cycle-2-dep Y, ROI 5 — High leverage for plan or policy injection via `postToolUse.additional_context`.
 2. `todo-continuation-enforcer` — portable-with-cycle-2, cycle-2-dep Y, ROI 5 — Directly improves long-run task completion via `subagentStop.followup_message`.
 3. `prometheus-md-only` — portable-with-cycle-2, cycle-2-dep Y, ROI 5 — Clear deny policy for Prometheus markdown plans via `preToolUse.permission`.
-4. `session-recovery` — portable-with-cycle-2, cycle-2-dep Y, ROI 4 — Recovers from assistant errors; approximate via `sessionStart.user_message` or `env`.
+4. `session-recovery` — portable-with-cycle-2, cycle-2-dep Y, ROI 4 — Recovers from assistant errors; approximate via `sessionStart.env + additional_context` (user_message accepted-but-not-enforced per cycle-2 findings).
 5. `write-existing-file-guard` — portable-with-cycle-2, cycle-2-dep Y, ROI 4 — Prevents destructive overwrites via `preToolUse.permission` deny.
-6. `ralph-loop` — partially-portable-with-caveats, cycle-2-dep N, ROI 4 — Strong automation value; partial parity via Cursor `stop` and follow-ups.
+6. `ralph-loop` — partially-portable-with-caveats, cycle-2-dep Y, ROI 4 — Strong automation value; partial parity via Cursor `stop` and `subagentStop.followup_message` (cycle-2 field).
 7. `start-work` — partially-portable-with-caveats, cycle-2-dep N, ROI 4 — Core Sisyphus workflow; `beforeSubmitPrompt` approximates `chat.message` + `command.execute.before`.
 8. `playwright-cli` skill — portable-without-cycle-2, cycle-2-dep N, ROI 2 — Missing config-switch skill; merges into `skills/playwright/SKILL.md` with `browserProvider` flag.
 
@@ -369,13 +369,15 @@ _Oracle at W3.1 will validate tier assignments, enforce at-most-one-hook-respons
 
 ## Top-3 Selected Ports
 
-_Placeholder for W3.2 user ratification. To be filled after Oracle top-5 selection._
+User ratified (W3.2) the following top-3 from Oracle's ranked top-5 candidates at `.cursor/notepads/gap-vs-original/oracle-top5.md`. Selection prioritized zero cycle-2 dependency to decouple from the independent cycle-2 field catalog plan.
 
-| Port | Item | Tier | Cycle-2 required | Notes |
-|---|---|---|---|---|
-| Port 1 | TBD | TBD | TBD | — |
-| Port 2 | TBD | TBD | TBD | — |
-| Port 3 | TBD | TBD | TBD | — |
+| Rank | Port | Surface | Tier | Cycle-2-dep | Source | Target | Commit |
+|---:|---|---|---|---|---|---|---|
+| 1 | Sisyphus agent model-variant prompts | S1 | portable-without-cycle-2 | N | `src/agents/sisyphus/{default,gpt,gemini}.ts` | `agents/sisyphus.md` | `7cb5ef0b` |
+| 2 | Hephaestus agent model-variant prompts | S1 | portable-without-cycle-2 | N | `src/agents/hephaestus/{default,gpt,gpt-5-4,gpt-5-3-codex}.ts` | `agents/hephaestus.md` | `818b8c5d` |
+| 3 | Prometheus agent model-variant prompts | S1 | portable-without-cycle-2 | N | `src/agents/prometheus/{system-prompt,default,gpt,gemini}.ts` | `agents/prometheus.md` | `d260c890` |
+
+Port acceptance bar: intent-equivalence (not behavioral). Each port added a `## Model-specific guidance` (or `## Model-specific planner guidance` for Prometheus) section to its target file with GPT + Gemini + Claude subsections. Intent-equivalence tests: `rg -n '^### GPT'` and `rg -n '^### Gemini'` return expected match counts; GPT/Gemini keyword presence tests pass. See commit bodies for exact assertions.
 
 ## Methodology Addendum
 

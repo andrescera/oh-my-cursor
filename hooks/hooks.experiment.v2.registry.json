@@ -1662,7 +1662,7 @@
         "W-H-postToolUse-allow-002",
         "postToolUse"
       ],
-      "expected_outcome": "postToolUse allow negative control — no additional_context injected"
+      "expected_outcome": "postToolUse allow negative control \u2014 no additional_context injected"
     },
     {
       "experiment_id": "W-EK-stop-followup-message-001",
@@ -1818,6 +1818,189 @@
       "prompt": "Return {\"ok\": true, \"reason\": \"approved\"} if the command contains APPROVE_ME, else {\"ok\": false, \"reason\": \"denied\"}",
       "responder_args": [],
       "expected_outcome": "prompt-type hook with model override (haiku)"
+    },
+    {
+      "experiment_id": "W-X-afterAgentResponse-reliability-001",
+      "wave": "X",
+      "event": "afterAgentResponse",
+      "decision": "logger",
+      "matcher": "",
+      "sentinel": null,
+      "needs_gate": false,
+      "command": "bash \"<REPO>/hooks/scripts/experiment-logger-v2.sh\" \"afterAgentResponse\" --experiment-id \"W-X-afterAgentResponse-reliability-001\"",
+      "responder_args": [
+        "afterAgentResponse",
+        "--experiment-id",
+        "W-X-afterAgentResponse-reliability-001"
+      ],
+      "expected_outcome": "Firing #1: confirm afterAgentResponse fires; capture Object.keys(payload) and first 500 chars of response/text/content field",
+      "purpose": "E1 \u2014 confirm afterAgentResponse fires \u22655 times in a normal session; record payload field names"
+    },
+    {
+      "experiment_id": "W-X-afterAgentResponse-reliability-002",
+      "wave": "X",
+      "event": "afterAgentResponse",
+      "decision": "logger",
+      "matcher": "",
+      "sentinel": null,
+      "needs_gate": false,
+      "command": "bash \"<REPO>/hooks/scripts/experiment-logger-v2.sh\" \"afterAgentResponse\" --experiment-id \"W-X-afterAgentResponse-reliability-002\"",
+      "responder_args": [
+        "afterAgentResponse",
+        "--experiment-id",
+        "W-X-afterAgentResponse-reliability-002"
+      ],
+      "expected_outcome": "Firing #2: confirm afterAgentResponse fires; capture Object.keys(payload) and first 500 chars of response/text/content field",
+      "purpose": "E1 \u2014 confirm afterAgentResponse fires \u22655 times in a normal session; record payload field names"
+    },
+    {
+      "experiment_id": "W-X-afterAgentResponse-reliability-003",
+      "wave": "X",
+      "event": "afterAgentResponse",
+      "decision": "logger",
+      "matcher": "",
+      "sentinel": null,
+      "needs_gate": false,
+      "command": "bash \"<REPO>/hooks/scripts/experiment-logger-v2.sh\" \"afterAgentResponse\" --experiment-id \"W-X-afterAgentResponse-reliability-003\"",
+      "responder_args": [
+        "afterAgentResponse",
+        "--experiment-id",
+        "W-X-afterAgentResponse-reliability-003"
+      ],
+      "expected_outcome": "Firing #3: confirm afterAgentResponse fires; capture Object.keys(payload) and first 500 chars of response/text/content field",
+      "purpose": "E1 \u2014 confirm afterAgentResponse fires \u22655 times in a normal session; record payload field names"
+    },
+    {
+      "experiment_id": "W-X-afterAgentResponse-reliability-004",
+      "wave": "X",
+      "event": "afterAgentResponse",
+      "decision": "logger",
+      "matcher": "",
+      "sentinel": null,
+      "needs_gate": false,
+      "command": "bash \"<REPO>/hooks/scripts/experiment-logger-v2.sh\" \"afterAgentResponse\" --experiment-id \"W-X-afterAgentResponse-reliability-004\"",
+      "responder_args": [
+        "afterAgentResponse",
+        "--experiment-id",
+        "W-X-afterAgentResponse-reliability-004"
+      ],
+      "expected_outcome": "Firing #4: confirm afterAgentResponse fires; capture Object.keys(payload) and first 500 chars of response/text/content field",
+      "purpose": "E1 \u2014 confirm afterAgentResponse fires \u22655 times in a normal session; record payload field names"
+    },
+    {
+      "experiment_id": "W-X-afterAgentResponse-reliability-005",
+      "wave": "X",
+      "event": "afterAgentResponse",
+      "decision": "logger",
+      "matcher": "",
+      "sentinel": null,
+      "needs_gate": false,
+      "command": "bash \"<REPO>/hooks/scripts/experiment-logger-v2.sh\" \"afterAgentResponse\" --experiment-id \"W-X-afterAgentResponse-reliability-005\"",
+      "responder_args": [
+        "afterAgentResponse",
+        "--experiment-id",
+        "W-X-afterAgentResponse-reliability-005"
+      ],
+      "expected_outcome": "Firing #5: confirm afterAgentResponse fires; capture Object.keys(payload) and first 500 chars of response/text/content field",
+      "purpose": "E1 \u2014 confirm afterAgentResponse fires \u22655 times in a normal session; record payload field names"
+    },
+    {
+      "experiment_id": "W-X-subagentStop-followup-message-001",
+      "wave": "X",
+      "event": "subagentStop",
+      "decision": "followup-message",
+      "matcher": "",
+      "sentinel": "CURSOR_HOOK_V2_X_SUBSTOP_001",
+      "needs_gate": false,
+      "command": "bash \"<REPO>/hooks/experiments/responders/followup-message.sh\" \"ULW-PROBE-FOLLOWUP-CURSOR_HOOK_V2_X_SUBSTOP_001\" \"subagentStop\"",
+      "responder_args": [
+        "ULW-PROBE-FOLLOWUP-CURSOR_HOOK_V2_X_SUBSTOP_001",
+        "subagentStop"
+      ],
+      "expected_outcome": "subagentStop followup_message: observe whether agent resumes after Task subagent completes with followup_message present",
+      "purpose": "E2 \u2014 DEMOTED (nice-to-have, does not gate W3b): probe whether subagentStop followup_message resumes parent agent turn",
+      "notes": "DEMOTED \u2014 nice-to-have; does not gate W3b-T10 or any other wave-gated task"
+    },
+    {
+      "experiment_id": "W-X-stop-followup-merge-001",
+      "wave": "X",
+      "event": "stop",
+      "decision": "followup-message",
+      "matcher": "",
+      "sentinel": "CURSOR_HOOK_V2_X_STOP_MERGE_001",
+      "needs_gate": false,
+      "command": "bash \"<REPO>/hooks/experiments/responders/followup-message.sh\" \"STOP-MERGE-PROBE-CURSOR_HOOK_V2_X_STOP_001\" \"stop\"",
+      "responder_args": [
+        "STOP-MERGE-PROBE-CURSOR_HOOK_V2_X_STOP_001",
+        "stop"
+      ],
+      "expected_outcome": "stop followup_message cell 1 of 2; observe Cursor merge order/strategy when both stop entries return distinct followup_message strings",
+      "purpose": "E3 \u2014 extend N5 finding: when multiple stop hook entries each return followup_message, observe whether Cursor concatenates, picks first, picks last, or errors"
+    },
+    {
+      "experiment_id": "W-X-stop-followup-merge-002",
+      "wave": "X",
+      "event": "stop",
+      "decision": "followup-message",
+      "matcher": "",
+      "sentinel": "CURSOR_HOOK_V2_X_STOP_MERGE_002",
+      "needs_gate": false,
+      "command": "bash \"<REPO>/hooks/experiments/responders/followup-message.sh\" \"STOP-MERGE-PROBE-CURSOR_HOOK_V2_X_STOP_002\" \"stop\"",
+      "responder_args": [
+        "STOP-MERGE-PROBE-CURSOR_HOOK_V2_X_STOP_002",
+        "stop"
+      ],
+      "expected_outcome": "stop followup_message cell 2 of 2; observe Cursor merge order/strategy when both stop entries return distinct followup_message strings",
+      "purpose": "E3 \u2014 extend N5 finding: when multiple stop hook entries each return followup_message, observe whether Cursor concatenates, picks first, picks last, or errors"
+    },
+    {
+      "experiment_id": "W-X-subagentStop-transcript-path-001",
+      "wave": "X",
+      "event": "subagentStop",
+      "decision": "logger",
+      "matcher": "",
+      "sentinel": null,
+      "needs_gate": false,
+      "command": "bash \"<REPO>/hooks/experiments/responders/transcript-probe.sh\" \"W-X-subagentStop-transcript-path-001\"",
+      "responder_args": [
+        "W-X-subagentStop-transcript-path-001"
+      ],
+      "expected_outcome": "Record agent_transcript_path value, file format (file -b), and first 200 bytes (base64) to confirm transcript format (JSON Lines / text / binary)",
+      "purpose": "E5 \u2014 confirm format of the subagent transcript file referenced in subagentStop payload; unblocks decisions about reading transcripts in production hooks"
+    },
+    {
+      "experiment_id": "W-X-session-id-cross-role-001",
+      "wave": "X",
+      "event": "subagentStart",
+      "decision": "logger",
+      "matcher": "",
+      "sentinel": null,
+      "needs_gate": false,
+      "command": "bash \"<REPO>/hooks/scripts/experiment-logger-v2.sh\" \"subagentStart\" --experiment-id \"W-X-session-id-cross-role-001\"",
+      "responder_args": [
+        "subagentStart",
+        "--experiment-id",
+        "W-X-session-id-cross-role-001"
+      ],
+      "expected_outcome": "subagentStart fires in agent-exec role; capture session_id, conversation_id, agent_id, env_cursor.CURSOR_EXTENSION_HOST_ROLE; confirm session_id matches counterpart (W-X-session-id-cross-role-002)",
+      "purpose": "E6 \u2014 confirm session_id equality across roles: agent-exec (subagentStart) vs always-local (subagentStop) per N11 finding"
+    },
+    {
+      "experiment_id": "W-X-session-id-cross-role-002",
+      "wave": "X",
+      "event": "subagentStop",
+      "decision": "logger",
+      "matcher": "",
+      "sentinel": null,
+      "needs_gate": false,
+      "command": "bash \"<REPO>/hooks/scripts/experiment-logger-v2.sh\" \"subagentStop\" --experiment-id \"W-X-session-id-cross-role-002\"",
+      "responder_args": [
+        "subagentStop",
+        "--experiment-id",
+        "W-X-session-id-cross-role-002"
+      ],
+      "expected_outcome": "subagentStop fires in always-local role; capture session_id, conversation_id, agent_id, env_cursor.CURSOR_EXTENSION_HOST_ROLE; confirm session_id matches counterpart (W-X-session-id-cross-role-001)",
+      "purpose": "E6 \u2014 confirm session_id equality across roles: agent-exec (subagentStart) vs always-local (subagentStop) per N11 finding"
     }
   ]
 }

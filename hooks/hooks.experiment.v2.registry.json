@@ -1,0 +1,1823 @@
+{
+  "generated_at": "2026-04-17T15:20:22.454Z",
+  "mega_config_path": "<REPO>/hooks/hooks.experiment.v2.json",
+  "header_ref": "/tmp/cursor-hooks-evidence/_header.json",
+  "cells": [
+    {
+      "experiment_id": "W-C-preToolUse-logger-001",
+      "wave": "C",
+      "event": "preToolUse",
+      "decision": "logger",
+      "matcher": "",
+      "sentinel": null,
+      "needs_gate": false,
+      "command": "bash \"<REPO>/hooks/scripts/experiment-logger-v2.sh\" \"preToolUse\" --experiment-id \"W-C-preToolUse-logger-001\"",
+      "responder_args": [
+        "preToolUse",
+        "--experiment-id",
+        "W-C-preToolUse-logger-001"
+      ],
+      "expected_outcome": "Capture preToolUse unconditionally"
+    },
+    {
+      "experiment_id": "W-C-preToolUse-logger-002",
+      "wave": "C",
+      "event": "preToolUse",
+      "decision": "logger",
+      "matcher": "Shell",
+      "sentinel": null,
+      "needs_gate": false,
+      "command": "bash \"<REPO>/hooks/scripts/experiment-logger-v2.sh\" \"preToolUse\" --experiment-id \"W-C-preToolUse-logger-002\"",
+      "responder_args": [
+        "preToolUse",
+        "--experiment-id",
+        "W-C-preToolUse-logger-002"
+      ],
+      "expected_outcome": "Capture preToolUse matcher=\"Shell\""
+    },
+    {
+      "experiment_id": "W-C-preToolUse-logger-003",
+      "wave": "C",
+      "event": "preToolUse",
+      "decision": "logger",
+      "matcher": "^Shell$",
+      "sentinel": null,
+      "needs_gate": false,
+      "command": "bash \"<REPO>/hooks/scripts/experiment-logger-v2.sh\" \"preToolUse\" --experiment-id \"W-C-preToolUse-logger-003\"",
+      "responder_args": [
+        "preToolUse",
+        "--experiment-id",
+        "W-C-preToolUse-logger-003"
+      ],
+      "expected_outcome": "Capture preToolUse matcher=\"^Shell$\""
+    },
+    {
+      "experiment_id": "W-C-preToolUse-logger-004",
+      "wave": "C",
+      "event": "preToolUse",
+      "decision": "logger",
+      "matcher": "Read|Write",
+      "sentinel": null,
+      "needs_gate": false,
+      "command": "bash \"<REPO>/hooks/scripts/experiment-logger-v2.sh\" \"preToolUse\" --experiment-id \"W-C-preToolUse-logger-004\"",
+      "responder_args": [
+        "preToolUse",
+        "--experiment-id",
+        "W-C-preToolUse-logger-004"
+      ],
+      "expected_outcome": "Capture preToolUse matcher=\"Read|Write\""
+    },
+    {
+      "experiment_id": "W-C-preToolUse-logger-005",
+      "wave": "C",
+      "event": "preToolUse",
+      "decision": "logger",
+      "matcher": "^MCP:.*",
+      "sentinel": null,
+      "needs_gate": false,
+      "command": "bash \"<REPO>/hooks/scripts/experiment-logger-v2.sh\" \"preToolUse\" --experiment-id \"W-C-preToolUse-logger-005\"",
+      "responder_args": [
+        "preToolUse",
+        "--experiment-id",
+        "W-C-preToolUse-logger-005"
+      ],
+      "expected_outcome": "Capture preToolUse matcher=\"^MCP:.*\""
+    },
+    {
+      "experiment_id": "W-C-postToolUse-logger-006",
+      "wave": "C",
+      "event": "postToolUse",
+      "decision": "logger",
+      "matcher": "",
+      "sentinel": null,
+      "needs_gate": false,
+      "command": "bash \"<REPO>/hooks/scripts/experiment-logger-v2.sh\" \"postToolUse\" --experiment-id \"W-C-postToolUse-logger-006\"",
+      "responder_args": [
+        "postToolUse",
+        "--experiment-id",
+        "W-C-postToolUse-logger-006"
+      ],
+      "expected_outcome": "Capture postToolUse unconditionally"
+    },
+    {
+      "experiment_id": "W-C-postToolUse-logger-007",
+      "wave": "C",
+      "event": "postToolUse",
+      "decision": "logger",
+      "matcher": "Shell",
+      "sentinel": null,
+      "needs_gate": false,
+      "command": "bash \"<REPO>/hooks/scripts/experiment-logger-v2.sh\" \"postToolUse\" --experiment-id \"W-C-postToolUse-logger-007\"",
+      "responder_args": [
+        "postToolUse",
+        "--experiment-id",
+        "W-C-postToolUse-logger-007"
+      ],
+      "expected_outcome": "Capture postToolUse matcher=\"Shell\""
+    },
+    {
+      "experiment_id": "W-C-postToolUse-logger-008",
+      "wave": "C",
+      "event": "postToolUse",
+      "decision": "logger",
+      "matcher": "^Shell$",
+      "sentinel": null,
+      "needs_gate": false,
+      "command": "bash \"<REPO>/hooks/scripts/experiment-logger-v2.sh\" \"postToolUse\" --experiment-id \"W-C-postToolUse-logger-008\"",
+      "responder_args": [
+        "postToolUse",
+        "--experiment-id",
+        "W-C-postToolUse-logger-008"
+      ],
+      "expected_outcome": "Capture postToolUse matcher=\"^Shell$\""
+    },
+    {
+      "experiment_id": "W-C-postToolUse-logger-009",
+      "wave": "C",
+      "event": "postToolUse",
+      "decision": "logger",
+      "matcher": "Read|Write",
+      "sentinel": null,
+      "needs_gate": false,
+      "command": "bash \"<REPO>/hooks/scripts/experiment-logger-v2.sh\" \"postToolUse\" --experiment-id \"W-C-postToolUse-logger-009\"",
+      "responder_args": [
+        "postToolUse",
+        "--experiment-id",
+        "W-C-postToolUse-logger-009"
+      ],
+      "expected_outcome": "Capture postToolUse matcher=\"Read|Write\""
+    },
+    {
+      "experiment_id": "W-C-postToolUse-logger-010",
+      "wave": "C",
+      "event": "postToolUse",
+      "decision": "logger",
+      "matcher": "^MCP:.*",
+      "sentinel": null,
+      "needs_gate": false,
+      "command": "bash \"<REPO>/hooks/scripts/experiment-logger-v2.sh\" \"postToolUse\" --experiment-id \"W-C-postToolUse-logger-010\"",
+      "responder_args": [
+        "postToolUse",
+        "--experiment-id",
+        "W-C-postToolUse-logger-010"
+      ],
+      "expected_outcome": "Capture postToolUse matcher=\"^MCP:.*\""
+    },
+    {
+      "experiment_id": "W-C-beforeShellExecution-logger-011",
+      "wave": "C",
+      "event": "beforeShellExecution",
+      "decision": "logger",
+      "matcher": "",
+      "sentinel": null,
+      "needs_gate": false,
+      "command": "bash \"<REPO>/hooks/scripts/experiment-logger-v2.sh\" \"beforeShellExecution\" --experiment-id \"W-C-beforeShellExecution-logger-011\"",
+      "responder_args": [
+        "beforeShellExecution",
+        "--experiment-id",
+        "W-C-beforeShellExecution-logger-011"
+      ],
+      "expected_outcome": "Capture beforeShellExecution unconditionally"
+    },
+    {
+      "experiment_id": "W-C-beforeShellExecution-logger-012",
+      "wave": "C",
+      "event": "beforeShellExecution",
+      "decision": "logger",
+      "matcher": "Shell",
+      "sentinel": null,
+      "needs_gate": false,
+      "command": "bash \"<REPO>/hooks/scripts/experiment-logger-v2.sh\" \"beforeShellExecution\" --experiment-id \"W-C-beforeShellExecution-logger-012\"",
+      "responder_args": [
+        "beforeShellExecution",
+        "--experiment-id",
+        "W-C-beforeShellExecution-logger-012"
+      ],
+      "expected_outcome": "Capture beforeShellExecution matcher=\"Shell\""
+    },
+    {
+      "experiment_id": "W-C-beforeShellExecution-logger-013",
+      "wave": "C",
+      "event": "beforeShellExecution",
+      "decision": "logger",
+      "matcher": "^Shell$",
+      "sentinel": null,
+      "needs_gate": false,
+      "command": "bash \"<REPO>/hooks/scripts/experiment-logger-v2.sh\" \"beforeShellExecution\" --experiment-id \"W-C-beforeShellExecution-logger-013\"",
+      "responder_args": [
+        "beforeShellExecution",
+        "--experiment-id",
+        "W-C-beforeShellExecution-logger-013"
+      ],
+      "expected_outcome": "Capture beforeShellExecution matcher=\"^Shell$\""
+    },
+    {
+      "experiment_id": "W-C-beforeShellExecution-logger-014",
+      "wave": "C",
+      "event": "beforeShellExecution",
+      "decision": "logger",
+      "matcher": "Read|Write",
+      "sentinel": null,
+      "needs_gate": false,
+      "command": "bash \"<REPO>/hooks/scripts/experiment-logger-v2.sh\" \"beforeShellExecution\" --experiment-id \"W-C-beforeShellExecution-logger-014\"",
+      "responder_args": [
+        "beforeShellExecution",
+        "--experiment-id",
+        "W-C-beforeShellExecution-logger-014"
+      ],
+      "expected_outcome": "Capture beforeShellExecution matcher=\"Read|Write\""
+    },
+    {
+      "experiment_id": "W-C-beforeShellExecution-logger-015",
+      "wave": "C",
+      "event": "beforeShellExecution",
+      "decision": "logger",
+      "matcher": "^MCP:.*",
+      "sentinel": null,
+      "needs_gate": false,
+      "command": "bash \"<REPO>/hooks/scripts/experiment-logger-v2.sh\" \"beforeShellExecution\" --experiment-id \"W-C-beforeShellExecution-logger-015\"",
+      "responder_args": [
+        "beforeShellExecution",
+        "--experiment-id",
+        "W-C-beforeShellExecution-logger-015"
+      ],
+      "expected_outcome": "Capture beforeShellExecution matcher=\"^MCP:.*\""
+    },
+    {
+      "experiment_id": "W-C-afterShellExecution-logger-016",
+      "wave": "C",
+      "event": "afterShellExecution",
+      "decision": "logger",
+      "matcher": "",
+      "sentinel": null,
+      "needs_gate": false,
+      "command": "bash \"<REPO>/hooks/scripts/experiment-logger-v2.sh\" \"afterShellExecution\" --experiment-id \"W-C-afterShellExecution-logger-016\"",
+      "responder_args": [
+        "afterShellExecution",
+        "--experiment-id",
+        "W-C-afterShellExecution-logger-016"
+      ],
+      "expected_outcome": "Capture afterShellExecution unconditionally"
+    },
+    {
+      "experiment_id": "W-C-afterShellExecution-logger-017",
+      "wave": "C",
+      "event": "afterShellExecution",
+      "decision": "logger",
+      "matcher": "Shell",
+      "sentinel": null,
+      "needs_gate": false,
+      "command": "bash \"<REPO>/hooks/scripts/experiment-logger-v2.sh\" \"afterShellExecution\" --experiment-id \"W-C-afterShellExecution-logger-017\"",
+      "responder_args": [
+        "afterShellExecution",
+        "--experiment-id",
+        "W-C-afterShellExecution-logger-017"
+      ],
+      "expected_outcome": "Capture afterShellExecution matcher=\"Shell\""
+    },
+    {
+      "experiment_id": "W-C-afterShellExecution-logger-018",
+      "wave": "C",
+      "event": "afterShellExecution",
+      "decision": "logger",
+      "matcher": "^Shell$",
+      "sentinel": null,
+      "needs_gate": false,
+      "command": "bash \"<REPO>/hooks/scripts/experiment-logger-v2.sh\" \"afterShellExecution\" --experiment-id \"W-C-afterShellExecution-logger-018\"",
+      "responder_args": [
+        "afterShellExecution",
+        "--experiment-id",
+        "W-C-afterShellExecution-logger-018"
+      ],
+      "expected_outcome": "Capture afterShellExecution matcher=\"^Shell$\""
+    },
+    {
+      "experiment_id": "W-C-afterShellExecution-logger-019",
+      "wave": "C",
+      "event": "afterShellExecution",
+      "decision": "logger",
+      "matcher": "Read|Write",
+      "sentinel": null,
+      "needs_gate": false,
+      "command": "bash \"<REPO>/hooks/scripts/experiment-logger-v2.sh\" \"afterShellExecution\" --experiment-id \"W-C-afterShellExecution-logger-019\"",
+      "responder_args": [
+        "afterShellExecution",
+        "--experiment-id",
+        "W-C-afterShellExecution-logger-019"
+      ],
+      "expected_outcome": "Capture afterShellExecution matcher=\"Read|Write\""
+    },
+    {
+      "experiment_id": "W-C-afterShellExecution-logger-020",
+      "wave": "C",
+      "event": "afterShellExecution",
+      "decision": "logger",
+      "matcher": "^MCP:.*",
+      "sentinel": null,
+      "needs_gate": false,
+      "command": "bash \"<REPO>/hooks/scripts/experiment-logger-v2.sh\" \"afterShellExecution\" --experiment-id \"W-C-afterShellExecution-logger-020\"",
+      "responder_args": [
+        "afterShellExecution",
+        "--experiment-id",
+        "W-C-afterShellExecution-logger-020"
+      ],
+      "expected_outcome": "Capture afterShellExecution matcher=\"^MCP:.*\""
+    },
+    {
+      "experiment_id": "W-C-beforeMCPExecution-logger-021",
+      "wave": "C",
+      "event": "beforeMCPExecution",
+      "decision": "logger",
+      "matcher": "",
+      "sentinel": null,
+      "needs_gate": false,
+      "command": "bash \"<REPO>/hooks/scripts/experiment-logger-v2.sh\" \"beforeMCPExecution\" --experiment-id \"W-C-beforeMCPExecution-logger-021\"",
+      "responder_args": [
+        "beforeMCPExecution",
+        "--experiment-id",
+        "W-C-beforeMCPExecution-logger-021"
+      ],
+      "expected_outcome": "Capture beforeMCPExecution unconditionally"
+    },
+    {
+      "experiment_id": "W-C-beforeMCPExecution-logger-022",
+      "wave": "C",
+      "event": "beforeMCPExecution",
+      "decision": "logger",
+      "matcher": "Shell",
+      "sentinel": null,
+      "needs_gate": false,
+      "command": "bash \"<REPO>/hooks/scripts/experiment-logger-v2.sh\" \"beforeMCPExecution\" --experiment-id \"W-C-beforeMCPExecution-logger-022\"",
+      "responder_args": [
+        "beforeMCPExecution",
+        "--experiment-id",
+        "W-C-beforeMCPExecution-logger-022"
+      ],
+      "expected_outcome": "Capture beforeMCPExecution matcher=\"Shell\""
+    },
+    {
+      "experiment_id": "W-C-beforeMCPExecution-logger-023",
+      "wave": "C",
+      "event": "beforeMCPExecution",
+      "decision": "logger",
+      "matcher": "^Shell$",
+      "sentinel": null,
+      "needs_gate": false,
+      "command": "bash \"<REPO>/hooks/scripts/experiment-logger-v2.sh\" \"beforeMCPExecution\" --experiment-id \"W-C-beforeMCPExecution-logger-023\"",
+      "responder_args": [
+        "beforeMCPExecution",
+        "--experiment-id",
+        "W-C-beforeMCPExecution-logger-023"
+      ],
+      "expected_outcome": "Capture beforeMCPExecution matcher=\"^Shell$\""
+    },
+    {
+      "experiment_id": "W-C-beforeMCPExecution-logger-024",
+      "wave": "C",
+      "event": "beforeMCPExecution",
+      "decision": "logger",
+      "matcher": "Read|Write",
+      "sentinel": null,
+      "needs_gate": false,
+      "command": "bash \"<REPO>/hooks/scripts/experiment-logger-v2.sh\" \"beforeMCPExecution\" --experiment-id \"W-C-beforeMCPExecution-logger-024\"",
+      "responder_args": [
+        "beforeMCPExecution",
+        "--experiment-id",
+        "W-C-beforeMCPExecution-logger-024"
+      ],
+      "expected_outcome": "Capture beforeMCPExecution matcher=\"Read|Write\""
+    },
+    {
+      "experiment_id": "W-C-beforeMCPExecution-logger-025",
+      "wave": "C",
+      "event": "beforeMCPExecution",
+      "decision": "logger",
+      "matcher": "^MCP:.*",
+      "sentinel": null,
+      "needs_gate": false,
+      "command": "bash \"<REPO>/hooks/scripts/experiment-logger-v2.sh\" \"beforeMCPExecution\" --experiment-id \"W-C-beforeMCPExecution-logger-025\"",
+      "responder_args": [
+        "beforeMCPExecution",
+        "--experiment-id",
+        "W-C-beforeMCPExecution-logger-025"
+      ],
+      "expected_outcome": "Capture beforeMCPExecution matcher=\"^MCP:.*\""
+    },
+    {
+      "experiment_id": "W-C-afterMCPExecution-logger-026",
+      "wave": "C",
+      "event": "afterMCPExecution",
+      "decision": "logger",
+      "matcher": "",
+      "sentinel": null,
+      "needs_gate": false,
+      "command": "bash \"<REPO>/hooks/scripts/experiment-logger-v2.sh\" \"afterMCPExecution\" --experiment-id \"W-C-afterMCPExecution-logger-026\"",
+      "responder_args": [
+        "afterMCPExecution",
+        "--experiment-id",
+        "W-C-afterMCPExecution-logger-026"
+      ],
+      "expected_outcome": "Capture afterMCPExecution unconditionally"
+    },
+    {
+      "experiment_id": "W-C-afterMCPExecution-logger-027",
+      "wave": "C",
+      "event": "afterMCPExecution",
+      "decision": "logger",
+      "matcher": "Shell",
+      "sentinel": null,
+      "needs_gate": false,
+      "command": "bash \"<REPO>/hooks/scripts/experiment-logger-v2.sh\" \"afterMCPExecution\" --experiment-id \"W-C-afterMCPExecution-logger-027\"",
+      "responder_args": [
+        "afterMCPExecution",
+        "--experiment-id",
+        "W-C-afterMCPExecution-logger-027"
+      ],
+      "expected_outcome": "Capture afterMCPExecution matcher=\"Shell\""
+    },
+    {
+      "experiment_id": "W-C-afterMCPExecution-logger-028",
+      "wave": "C",
+      "event": "afterMCPExecution",
+      "decision": "logger",
+      "matcher": "^Shell$",
+      "sentinel": null,
+      "needs_gate": false,
+      "command": "bash \"<REPO>/hooks/scripts/experiment-logger-v2.sh\" \"afterMCPExecution\" --experiment-id \"W-C-afterMCPExecution-logger-028\"",
+      "responder_args": [
+        "afterMCPExecution",
+        "--experiment-id",
+        "W-C-afterMCPExecution-logger-028"
+      ],
+      "expected_outcome": "Capture afterMCPExecution matcher=\"^Shell$\""
+    },
+    {
+      "experiment_id": "W-C-afterMCPExecution-logger-029",
+      "wave": "C",
+      "event": "afterMCPExecution",
+      "decision": "logger",
+      "matcher": "Read|Write",
+      "sentinel": null,
+      "needs_gate": false,
+      "command": "bash \"<REPO>/hooks/scripts/experiment-logger-v2.sh\" \"afterMCPExecution\" --experiment-id \"W-C-afterMCPExecution-logger-029\"",
+      "responder_args": [
+        "afterMCPExecution",
+        "--experiment-id",
+        "W-C-afterMCPExecution-logger-029"
+      ],
+      "expected_outcome": "Capture afterMCPExecution matcher=\"Read|Write\""
+    },
+    {
+      "experiment_id": "W-C-afterMCPExecution-logger-030",
+      "wave": "C",
+      "event": "afterMCPExecution",
+      "decision": "logger",
+      "matcher": "^MCP:.*",
+      "sentinel": null,
+      "needs_gate": false,
+      "command": "bash \"<REPO>/hooks/scripts/experiment-logger-v2.sh\" \"afterMCPExecution\" --experiment-id \"W-C-afterMCPExecution-logger-030\"",
+      "responder_args": [
+        "afterMCPExecution",
+        "--experiment-id",
+        "W-C-afterMCPExecution-logger-030"
+      ],
+      "expected_outcome": "Capture afterMCPExecution matcher=\"^MCP:.*\""
+    },
+    {
+      "experiment_id": "W-C-subagentStart-logger-031",
+      "wave": "C",
+      "event": "subagentStart",
+      "decision": "logger",
+      "matcher": "",
+      "sentinel": null,
+      "needs_gate": false,
+      "command": "bash \"<REPO>/hooks/scripts/experiment-logger-v2.sh\" \"subagentStart\" --experiment-id \"W-C-subagentStart-logger-031\"",
+      "responder_args": [
+        "subagentStart",
+        "--experiment-id",
+        "W-C-subagentStart-logger-031"
+      ],
+      "expected_outcome": "Capture subagentStart unconditionally"
+    },
+    {
+      "experiment_id": "W-C-subagentStart-logger-032",
+      "wave": "C",
+      "event": "subagentStart",
+      "decision": "logger",
+      "matcher": "Shell",
+      "sentinel": null,
+      "needs_gate": false,
+      "command": "bash \"<REPO>/hooks/scripts/experiment-logger-v2.sh\" \"subagentStart\" --experiment-id \"W-C-subagentStart-logger-032\"",
+      "responder_args": [
+        "subagentStart",
+        "--experiment-id",
+        "W-C-subagentStart-logger-032"
+      ],
+      "expected_outcome": "Capture subagentStart matcher=\"Shell\""
+    },
+    {
+      "experiment_id": "W-C-subagentStart-logger-033",
+      "wave": "C",
+      "event": "subagentStart",
+      "decision": "logger",
+      "matcher": "^Shell$",
+      "sentinel": null,
+      "needs_gate": false,
+      "command": "bash \"<REPO>/hooks/scripts/experiment-logger-v2.sh\" \"subagentStart\" --experiment-id \"W-C-subagentStart-logger-033\"",
+      "responder_args": [
+        "subagentStart",
+        "--experiment-id",
+        "W-C-subagentStart-logger-033"
+      ],
+      "expected_outcome": "Capture subagentStart matcher=\"^Shell$\""
+    },
+    {
+      "experiment_id": "W-C-subagentStart-logger-034",
+      "wave": "C",
+      "event": "subagentStart",
+      "decision": "logger",
+      "matcher": "Read|Write",
+      "sentinel": null,
+      "needs_gate": false,
+      "command": "bash \"<REPO>/hooks/scripts/experiment-logger-v2.sh\" \"subagentStart\" --experiment-id \"W-C-subagentStart-logger-034\"",
+      "responder_args": [
+        "subagentStart",
+        "--experiment-id",
+        "W-C-subagentStart-logger-034"
+      ],
+      "expected_outcome": "Capture subagentStart matcher=\"Read|Write\""
+    },
+    {
+      "experiment_id": "W-C-subagentStart-logger-035",
+      "wave": "C",
+      "event": "subagentStart",
+      "decision": "logger",
+      "matcher": "^MCP:.*",
+      "sentinel": null,
+      "needs_gate": false,
+      "command": "bash \"<REPO>/hooks/scripts/experiment-logger-v2.sh\" \"subagentStart\" --experiment-id \"W-C-subagentStart-logger-035\"",
+      "responder_args": [
+        "subagentStart",
+        "--experiment-id",
+        "W-C-subagentStart-logger-035"
+      ],
+      "expected_outcome": "Capture subagentStart matcher=\"^MCP:.*\""
+    },
+    {
+      "experiment_id": "W-C-subagentStop-logger-036",
+      "wave": "C",
+      "event": "subagentStop",
+      "decision": "logger",
+      "matcher": "",
+      "sentinel": null,
+      "needs_gate": false,
+      "command": "bash \"<REPO>/hooks/scripts/experiment-logger-v2.sh\" \"subagentStop\" --experiment-id \"W-C-subagentStop-logger-036\"",
+      "responder_args": [
+        "subagentStop",
+        "--experiment-id",
+        "W-C-subagentStop-logger-036"
+      ],
+      "expected_outcome": "Capture subagentStop unconditionally"
+    },
+    {
+      "experiment_id": "W-C-subagentStop-logger-037",
+      "wave": "C",
+      "event": "subagentStop",
+      "decision": "logger",
+      "matcher": "Shell",
+      "sentinel": null,
+      "needs_gate": false,
+      "command": "bash \"<REPO>/hooks/scripts/experiment-logger-v2.sh\" \"subagentStop\" --experiment-id \"W-C-subagentStop-logger-037\"",
+      "responder_args": [
+        "subagentStop",
+        "--experiment-id",
+        "W-C-subagentStop-logger-037"
+      ],
+      "expected_outcome": "Capture subagentStop matcher=\"Shell\""
+    },
+    {
+      "experiment_id": "W-C-subagentStop-logger-038",
+      "wave": "C",
+      "event": "subagentStop",
+      "decision": "logger",
+      "matcher": "^Shell$",
+      "sentinel": null,
+      "needs_gate": false,
+      "command": "bash \"<REPO>/hooks/scripts/experiment-logger-v2.sh\" \"subagentStop\" --experiment-id \"W-C-subagentStop-logger-038\"",
+      "responder_args": [
+        "subagentStop",
+        "--experiment-id",
+        "W-C-subagentStop-logger-038"
+      ],
+      "expected_outcome": "Capture subagentStop matcher=\"^Shell$\""
+    },
+    {
+      "experiment_id": "W-C-subagentStop-logger-039",
+      "wave": "C",
+      "event": "subagentStop",
+      "decision": "logger",
+      "matcher": "Read|Write",
+      "sentinel": null,
+      "needs_gate": false,
+      "command": "bash \"<REPO>/hooks/scripts/experiment-logger-v2.sh\" \"subagentStop\" --experiment-id \"W-C-subagentStop-logger-039\"",
+      "responder_args": [
+        "subagentStop",
+        "--experiment-id",
+        "W-C-subagentStop-logger-039"
+      ],
+      "expected_outcome": "Capture subagentStop matcher=\"Read|Write\""
+    },
+    {
+      "experiment_id": "W-C-subagentStop-logger-040",
+      "wave": "C",
+      "event": "subagentStop",
+      "decision": "logger",
+      "matcher": "^MCP:.*",
+      "sentinel": null,
+      "needs_gate": false,
+      "command": "bash \"<REPO>/hooks/scripts/experiment-logger-v2.sh\" \"subagentStop\" --experiment-id \"W-C-subagentStop-logger-040\"",
+      "responder_args": [
+        "subagentStop",
+        "--experiment-id",
+        "W-C-subagentStop-logger-040"
+      ],
+      "expected_outcome": "Capture subagentStop matcher=\"^MCP:.*\""
+    },
+    {
+      "experiment_id": "W-D-beforeShellExecution-allow-001",
+      "wave": "D",
+      "event": "beforeShellExecution",
+      "decision": "allow",
+      "matcher": "CURSOR_HOOK_V2_D_BSH_001",
+      "sentinel": "CURSOR_HOOK_V2_D_BSH_001",
+      "needs_gate": false,
+      "command": "bash \"<REPO>/hooks/experiments/responders/allow.sh\" \"W-D-beforeShellExecution-allow-001\" \"beforeShellExecution\"",
+      "responder_args": [
+        "W-D-beforeShellExecution-allow-001",
+        "beforeShellExecution"
+      ],
+      "expected_outcome": "beforeShellExecution allow failClosed=true",
+      "failClosed": true
+    },
+    {
+      "experiment_id": "W-D-beforeShellExecution-allow-002",
+      "wave": "D",
+      "event": "beforeShellExecution",
+      "decision": "allow",
+      "matcher": "CURSOR_HOOK_V2_D_BSH_002",
+      "sentinel": "CURSOR_HOOK_V2_D_BSH_002",
+      "needs_gate": false,
+      "command": "bash \"<REPO>/hooks/experiments/responders/allow.sh\" \"W-D-beforeShellExecution-allow-002\" \"beforeShellExecution\"",
+      "responder_args": [
+        "W-D-beforeShellExecution-allow-002",
+        "beforeShellExecution"
+      ],
+      "expected_outcome": "beforeShellExecution allow failClosed=false",
+      "failClosed": false
+    },
+    {
+      "experiment_id": "W-D-beforeShellExecution-allow-003",
+      "wave": "D",
+      "event": "beforeShellExecution",
+      "decision": "allow",
+      "matcher": "CURSOR_HOOK_V2_D_BSH_003",
+      "sentinel": "CURSOR_HOOK_V2_D_BSH_003",
+      "needs_gate": false,
+      "command": "bash \"<REPO>/hooks/experiments/responders/allow.sh\" \"W-D-beforeShellExecution-allow-003\" \"beforeShellExecution\"",
+      "responder_args": [
+        "W-D-beforeShellExecution-allow-003",
+        "beforeShellExecution"
+      ],
+      "expected_outcome": "beforeShellExecution allow failClosed=omit"
+    },
+    {
+      "experiment_id": "W-D-beforeShellExecution-deny-004",
+      "wave": "D",
+      "event": "beforeShellExecution",
+      "decision": "deny",
+      "matcher": "CURSOR_HOOK_V2_D_BSH_004",
+      "sentinel": "CURSOR_HOOK_V2_D_BSH_004",
+      "needs_gate": false,
+      "command": "bash \"<REPO>/hooks/experiments/responders/deny.sh\" \"W-D-beforeShellExecution-deny-004\" \"beforeShellExecution\"",
+      "responder_args": [
+        "W-D-beforeShellExecution-deny-004",
+        "beforeShellExecution"
+      ],
+      "expected_outcome": "beforeShellExecution deny failClosed=true",
+      "failClosed": true
+    },
+    {
+      "experiment_id": "W-D-beforeShellExecution-deny-005",
+      "wave": "D",
+      "event": "beforeShellExecution",
+      "decision": "deny",
+      "matcher": "CURSOR_HOOK_V2_D_BSH_005",
+      "sentinel": "CURSOR_HOOK_V2_D_BSH_005",
+      "needs_gate": false,
+      "command": "bash \"<REPO>/hooks/experiments/responders/deny.sh\" \"W-D-beforeShellExecution-deny-005\" \"beforeShellExecution\"",
+      "responder_args": [
+        "W-D-beforeShellExecution-deny-005",
+        "beforeShellExecution"
+      ],
+      "expected_outcome": "beforeShellExecution deny failClosed=false",
+      "failClosed": false
+    },
+    {
+      "experiment_id": "W-D-beforeShellExecution-deny-006",
+      "wave": "D",
+      "event": "beforeShellExecution",
+      "decision": "deny",
+      "matcher": "CURSOR_HOOK_V2_D_BSH_006",
+      "sentinel": "CURSOR_HOOK_V2_D_BSH_006",
+      "needs_gate": false,
+      "command": "bash \"<REPO>/hooks/experiments/responders/deny.sh\" \"W-D-beforeShellExecution-deny-006\" \"beforeShellExecution\"",
+      "responder_args": [
+        "W-D-beforeShellExecution-deny-006",
+        "beforeShellExecution"
+      ],
+      "expected_outcome": "beforeShellExecution deny failClosed=omit"
+    },
+    {
+      "experiment_id": "W-D-beforeShellExecution-malformed-json-007",
+      "wave": "D",
+      "event": "beforeShellExecution",
+      "decision": "malformed-json",
+      "matcher": "CURSOR_HOOK_V2_D_BSH_007",
+      "sentinel": "CURSOR_HOOK_V2_D_BSH_007",
+      "needs_gate": false,
+      "command": "bash \"<REPO>/hooks/experiments/responders/malformed-json.sh\" \"W-D-beforeShellExecution-malformed-json-007\" \"beforeShellExecution\"",
+      "responder_args": [
+        "W-D-beforeShellExecution-malformed-json-007",
+        "beforeShellExecution"
+      ],
+      "expected_outcome": "beforeShellExecution malformed-json failClosed=true",
+      "failClosed": true
+    },
+    {
+      "experiment_id": "W-D-beforeShellExecution-malformed-json-008",
+      "wave": "D",
+      "event": "beforeShellExecution",
+      "decision": "malformed-json",
+      "matcher": "CURSOR_HOOK_V2_D_BSH_008",
+      "sentinel": "CURSOR_HOOK_V2_D_BSH_008",
+      "needs_gate": false,
+      "command": "bash \"<REPO>/hooks/experiments/responders/malformed-json.sh\" \"W-D-beforeShellExecution-malformed-json-008\" \"beforeShellExecution\"",
+      "responder_args": [
+        "W-D-beforeShellExecution-malformed-json-008",
+        "beforeShellExecution"
+      ],
+      "expected_outcome": "beforeShellExecution malformed-json failClosed=false",
+      "failClosed": false
+    },
+    {
+      "experiment_id": "W-D-beforeShellExecution-malformed-json-009",
+      "wave": "D",
+      "event": "beforeShellExecution",
+      "decision": "malformed-json",
+      "matcher": "CURSOR_HOOK_V2_D_BSH_009",
+      "sentinel": "CURSOR_HOOK_V2_D_BSH_009",
+      "needs_gate": false,
+      "command": "bash \"<REPO>/hooks/experiments/responders/malformed-json.sh\" \"W-D-beforeShellExecution-malformed-json-009\" \"beforeShellExecution\"",
+      "responder_args": [
+        "W-D-beforeShellExecution-malformed-json-009",
+        "beforeShellExecution"
+      ],
+      "expected_outcome": "beforeShellExecution malformed-json failClosed=omit"
+    },
+    {
+      "experiment_id": "W-D-beforeShellExecution-exit-2-010",
+      "wave": "D",
+      "event": "beforeShellExecution",
+      "decision": "exit-2",
+      "matcher": "CURSOR_HOOK_V2_D_BSH_010",
+      "sentinel": "CURSOR_HOOK_V2_D_BSH_010",
+      "needs_gate": false,
+      "command": "bash \"<REPO>/hooks/experiments/responders/exit-2.sh\" \"W-D-beforeShellExecution-exit-2-010\" \"beforeShellExecution\"",
+      "responder_args": [
+        "W-D-beforeShellExecution-exit-2-010",
+        "beforeShellExecution"
+      ],
+      "expected_outcome": "beforeShellExecution exit-2 failClosed=true",
+      "failClosed": true
+    },
+    {
+      "experiment_id": "W-D-beforeShellExecution-exit-2-011",
+      "wave": "D",
+      "event": "beforeShellExecution",
+      "decision": "exit-2",
+      "matcher": "CURSOR_HOOK_V2_D_BSH_011",
+      "sentinel": "CURSOR_HOOK_V2_D_BSH_011",
+      "needs_gate": false,
+      "command": "bash \"<REPO>/hooks/experiments/responders/exit-2.sh\" \"W-D-beforeShellExecution-exit-2-011\" \"beforeShellExecution\"",
+      "responder_args": [
+        "W-D-beforeShellExecution-exit-2-011",
+        "beforeShellExecution"
+      ],
+      "expected_outcome": "beforeShellExecution exit-2 failClosed=false",
+      "failClosed": false
+    },
+    {
+      "experiment_id": "W-D-beforeShellExecution-exit-2-012",
+      "wave": "D",
+      "event": "beforeShellExecution",
+      "decision": "exit-2",
+      "matcher": "CURSOR_HOOK_V2_D_BSH_012",
+      "sentinel": "CURSOR_HOOK_V2_D_BSH_012",
+      "needs_gate": false,
+      "command": "bash \"<REPO>/hooks/experiments/responders/exit-2.sh\" \"W-D-beforeShellExecution-exit-2-012\" \"beforeShellExecution\"",
+      "responder_args": [
+        "W-D-beforeShellExecution-exit-2-012",
+        "beforeShellExecution"
+      ],
+      "expected_outcome": "beforeShellExecution exit-2 failClosed=omit"
+    },
+    {
+      "experiment_id": "W-D-beforeShellExecution-allow-013",
+      "wave": "D",
+      "event": "beforeShellExecution",
+      "decision": "allow",
+      "matcher": "CURSOR_HOOK_V2_D_BSH_013",
+      "sentinel": "CURSOR_HOOK_V2_D_BSH_013",
+      "needs_gate": false,
+      "command": "bash \"<REPO>/hooks/experiments/responders/allow.sh\" \"W-D-beforeShellExecution-allow-013\" \"beforeShellExecution\"",
+      "responder_args": [
+        "W-D-beforeShellExecution-allow-013",
+        "beforeShellExecution"
+      ],
+      "timeout": 5000,
+      "expected_outcome": "beforeShellExecution allow timeout=5000"
+    },
+    {
+      "experiment_id": "W-D-beforeShellExecution-allow-014",
+      "wave": "D",
+      "event": "beforeShellExecution",
+      "decision": "allow",
+      "matcher": "CURSOR_HOOK_V2_D_BSH_014",
+      "sentinel": "CURSOR_HOOK_V2_D_BSH_014",
+      "needs_gate": false,
+      "command": "bash \"<REPO>/hooks/experiments/responders/allow.sh\" \"W-D-beforeShellExecution-allow-014\" \"beforeShellExecution\"",
+      "responder_args": [
+        "W-D-beforeShellExecution-allow-014",
+        "beforeShellExecution"
+      ],
+      "timeout": 30000,
+      "expected_outcome": "beforeShellExecution allow timeout=30000"
+    },
+    {
+      "experiment_id": "W-D-beforeShellExecution-deny-015",
+      "wave": "D",
+      "event": "beforeShellExecution",
+      "decision": "deny",
+      "matcher": "CURSOR_HOOK_V2_D_BSH_015",
+      "sentinel": "CURSOR_HOOK_V2_D_BSH_015",
+      "needs_gate": false,
+      "command": "bash \"<REPO>/hooks/experiments/responders/deny.sh\" \"W-D-beforeShellExecution-deny-015\" \"beforeShellExecution\"",
+      "responder_args": [
+        "W-D-beforeShellExecution-deny-015",
+        "beforeShellExecution"
+      ],
+      "timeout": 5000,
+      "expected_outcome": "beforeShellExecution deny timeout=5000"
+    },
+    {
+      "experiment_id": "W-D-beforeShellExecution-deny-016",
+      "wave": "D",
+      "event": "beforeShellExecution",
+      "decision": "deny",
+      "matcher": "CURSOR_HOOK_V2_D_BSH_016",
+      "sentinel": "CURSOR_HOOK_V2_D_BSH_016",
+      "needs_gate": false,
+      "command": "bash \"<REPO>/hooks/experiments/responders/deny.sh\" \"W-D-beforeShellExecution-deny-016\" \"beforeShellExecution\"",
+      "responder_args": [
+        "W-D-beforeShellExecution-deny-016",
+        "beforeShellExecution"
+      ],
+      "timeout": 30000,
+      "expected_outcome": "beforeShellExecution deny timeout=30000"
+    },
+    {
+      "experiment_id": "W-D-beforeShellExecution-malformed-json-017",
+      "wave": "D",
+      "event": "beforeShellExecution",
+      "decision": "malformed-json",
+      "matcher": "CURSOR_HOOK_V2_D_BSH_017",
+      "sentinel": "CURSOR_HOOK_V2_D_BSH_017",
+      "needs_gate": false,
+      "command": "bash \"<REPO>/hooks/experiments/responders/malformed-json.sh\" \"W-D-beforeShellExecution-malformed-json-017\" \"beforeShellExecution\"",
+      "responder_args": [
+        "W-D-beforeShellExecution-malformed-json-017",
+        "beforeShellExecution"
+      ],
+      "timeout": 5000,
+      "expected_outcome": "beforeShellExecution malformed-json timeout=5000"
+    },
+    {
+      "experiment_id": "W-D-beforeShellExecution-malformed-json-018",
+      "wave": "D",
+      "event": "beforeShellExecution",
+      "decision": "malformed-json",
+      "matcher": "CURSOR_HOOK_V2_D_BSH_018",
+      "sentinel": "CURSOR_HOOK_V2_D_BSH_018",
+      "needs_gate": false,
+      "command": "bash \"<REPO>/hooks/experiments/responders/malformed-json.sh\" \"W-D-beforeShellExecution-malformed-json-018\" \"beforeShellExecution\"",
+      "responder_args": [
+        "W-D-beforeShellExecution-malformed-json-018",
+        "beforeShellExecution"
+      ],
+      "timeout": 30000,
+      "expected_outcome": "beforeShellExecution malformed-json timeout=30000"
+    },
+    {
+      "experiment_id": "W-D-beforeShellExecution-exit-2-019",
+      "wave": "D",
+      "event": "beforeShellExecution",
+      "decision": "exit-2",
+      "matcher": "CURSOR_HOOK_V2_D_BSH_019",
+      "sentinel": "CURSOR_HOOK_V2_D_BSH_019",
+      "needs_gate": false,
+      "command": "bash \"<REPO>/hooks/experiments/responders/exit-2.sh\" \"W-D-beforeShellExecution-exit-2-019\" \"beforeShellExecution\"",
+      "responder_args": [
+        "W-D-beforeShellExecution-exit-2-019",
+        "beforeShellExecution"
+      ],
+      "timeout": 5000,
+      "expected_outcome": "beforeShellExecution exit-2 timeout=5000"
+    },
+    {
+      "experiment_id": "W-D-beforeShellExecution-exit-2-020",
+      "wave": "D",
+      "event": "beforeShellExecution",
+      "decision": "exit-2",
+      "matcher": "CURSOR_HOOK_V2_D_BSH_020",
+      "sentinel": "CURSOR_HOOK_V2_D_BSH_020",
+      "needs_gate": false,
+      "command": "bash \"<REPO>/hooks/experiments/responders/exit-2.sh\" \"W-D-beforeShellExecution-exit-2-020\" \"beforeShellExecution\"",
+      "responder_args": [
+        "W-D-beforeShellExecution-exit-2-020",
+        "beforeShellExecution"
+      ],
+      "timeout": 30000,
+      "expected_outcome": "beforeShellExecution exit-2 timeout=30000"
+    },
+    {
+      "experiment_id": "W-AB-preToolUse-logger-001",
+      "wave": "AB",
+      "event": "preToolUse",
+      "decision": "logger",
+      "matcher": "^Shell$",
+      "sentinel": null,
+      "needs_gate": false,
+      "command": "bash \"<REPO>/hooks/scripts/experiment-logger-v2.sh\" \"preToolUse\" --experiment-id \"W-AB-preToolUse-logger-001\"",
+      "responder_args": [
+        "preToolUse",
+        "--experiment-id",
+        "W-AB-preToolUse-logger-001"
+      ],
+      "expected_outcome": "Capture preToolUse Shell unconditionally"
+    },
+    {
+      "experiment_id": "W-AB-preToolUse-deny-002",
+      "wave": "AB",
+      "event": "preToolUse",
+      "decision": "deny",
+      "matcher": "^Shell$",
+      "sentinel": "CURSOR_HOOK_V2_AB_PTU_002",
+      "needs_gate": true,
+      "command": "bash \"<REPO>/hooks/experiments/sentinel-gate.sh\" \"CURSOR_HOOK_V2_AB_PTU_002\" \"<REPO>/hooks/experiments/responders/deny.sh\" \"W-AB-preToolUse-deny-002\" \"preToolUse\"",
+      "responder_args": [
+        "W-AB-preToolUse-deny-002",
+        "preToolUse"
+      ],
+      "expected_outcome": "preToolUse deny with sentinel gate"
+    },
+    {
+      "experiment_id": "W-AB-preToolUse-allow-003",
+      "wave": "AB",
+      "event": "preToolUse",
+      "decision": "allow",
+      "matcher": "^Shell$",
+      "sentinel": "CURSOR_HOOK_V2_AB_PTU_003",
+      "needs_gate": true,
+      "command": "bash \"<REPO>/hooks/experiments/sentinel-gate.sh\" \"CURSOR_HOOK_V2_AB_PTU_003\" \"<REPO>/hooks/experiments/responders/allow.sh\" \"W-AB-preToolUse-allow-003\" \"preToolUse\"",
+      "responder_args": [
+        "W-AB-preToolUse-allow-003",
+        "preToolUse"
+      ],
+      "expected_outcome": "preToolUse allow with sentinel gate"
+    },
+    {
+      "experiment_id": "W-AB-preToolUse-updated-input-004",
+      "wave": "AB",
+      "event": "preToolUse",
+      "decision": "updated-input",
+      "matcher": "^Shell$",
+      "sentinel": "CURSOR_HOOK_V2_AB_PTU_004",
+      "needs_gate": true,
+      "command": "bash \"<REPO>/hooks/experiments/sentinel-gate.sh\" \"CURSOR_HOOK_V2_AB_PTU_004\" \"<REPO>/hooks/experiments/responders/updated-input.sh\" \"W-AB-preToolUse-updated-input-004\" \"preToolUse\"",
+      "responder_args": [
+        "W-AB-preToolUse-updated-input-004",
+        "preToolUse"
+      ],
+      "expected_outcome": "preToolUse updated-input with sentinel gate"
+    },
+    {
+      "experiment_id": "W-AB-preToolUse-user-message-005",
+      "wave": "AB",
+      "event": "preToolUse",
+      "decision": "user-message",
+      "matcher": "^Shell$",
+      "sentinel": "CURSOR_HOOK_V2_AB_PTU_005",
+      "needs_gate": true,
+      "command": "bash \"<REPO>/hooks/experiments/sentinel-gate.sh\" \"CURSOR_HOOK_V2_AB_PTU_005\" \"<REPO>/hooks/experiments/responders/user-message.sh\" \"W-AB-preToolUse-user-message-005\" \"preToolUse\"",
+      "responder_args": [
+        "W-AB-preToolUse-user-message-005",
+        "preToolUse"
+      ],
+      "expected_outcome": "preToolUse user-message with sentinel gate"
+    },
+    {
+      "experiment_id": "W-AB-preToolUse-agent-message-006",
+      "wave": "AB",
+      "event": "preToolUse",
+      "decision": "agent-message",
+      "matcher": "^Shell$",
+      "sentinel": "CURSOR_HOOK_V2_AB_PTU_006",
+      "needs_gate": true,
+      "command": "bash \"<REPO>/hooks/experiments/sentinel-gate.sh\" \"CURSOR_HOOK_V2_AB_PTU_006\" \"<REPO>/hooks/experiments/responders/agent-message.sh\" \"W-AB-preToolUse-agent-message-006\" \"preToolUse\"",
+      "responder_args": [
+        "W-AB-preToolUse-agent-message-006",
+        "preToolUse"
+      ],
+      "expected_outcome": "preToolUse agent-message with sentinel gate"
+    },
+    {
+      "experiment_id": "W-AB-preToolUse-ask-007",
+      "wave": "AB",
+      "event": "preToolUse",
+      "decision": "ask",
+      "matcher": "^Shell$",
+      "sentinel": "CURSOR_HOOK_V2_AB_PTU_007",
+      "needs_gate": true,
+      "command": "bash \"<REPO>/hooks/experiments/sentinel-gate.sh\" \"CURSOR_HOOK_V2_AB_PTU_007\" \"<REPO>/hooks/experiments/responders/ask.sh\" \"W-AB-preToolUse-ask-007\" \"preToolUse\"",
+      "responder_args": [
+        "W-AB-preToolUse-ask-007",
+        "preToolUse"
+      ],
+      "expected_outcome": "preToolUse ask with sentinel gate"
+    },
+    {
+      "experiment_id": "W-AB-postToolUse-logger-008",
+      "wave": "AB",
+      "event": "postToolUse",
+      "decision": "logger",
+      "matcher": "^Shell$",
+      "sentinel": null,
+      "needs_gate": false,
+      "command": "bash \"<REPO>/hooks/scripts/experiment-logger-v2.sh\" \"postToolUse\" --experiment-id \"W-AB-postToolUse-logger-008\"",
+      "responder_args": [
+        "postToolUse",
+        "--experiment-id",
+        "W-AB-postToolUse-logger-008"
+      ],
+      "expected_outcome": "Capture postToolUse Shell"
+    },
+    {
+      "experiment_id": "W-AB-postToolUse-additional-context-009",
+      "wave": "AB",
+      "event": "postToolUse",
+      "decision": "additional-context",
+      "matcher": "^Shell$",
+      "sentinel": "CURSOR_HOOK_V2_AB_POTU_009",
+      "needs_gate": true,
+      "command": "bash \"<REPO>/hooks/experiments/sentinel-gate.sh\" \"CURSOR_HOOK_V2_AB_POTU_009\" \"<REPO>/hooks/experiments/responders/additional-context.sh\" \"W-AB-postToolUse-additional-context-009\" \"postToolUse\"",
+      "responder_args": [
+        "W-AB-postToolUse-additional-context-009",
+        "postToolUse"
+      ],
+      "expected_outcome": "postToolUse additional-context matcher=\"^Shell$\""
+    },
+    {
+      "experiment_id": "W-AB-postToolUse-additional-context-010",
+      "wave": "AB",
+      "event": "postToolUse",
+      "decision": "additional-context",
+      "matcher": "MCP:websearch",
+      "sentinel": "CURSOR_HOOK_V2_AB_POTU_010",
+      "needs_gate": true,
+      "command": "bash \"<REPO>/hooks/experiments/sentinel-gate.sh\" \"CURSOR_HOOK_V2_AB_POTU_010\" \"<REPO>/hooks/experiments/responders/additional-context.sh\" \"W-AB-postToolUse-additional-context-010\" \"postToolUse\"",
+      "responder_args": [
+        "W-AB-postToolUse-additional-context-010",
+        "postToolUse"
+      ],
+      "expected_outcome": "postToolUse additional-context matcher=\"MCP:websearch\""
+    },
+    {
+      "experiment_id": "W-AB-postToolUse-user-message-011",
+      "wave": "AB",
+      "event": "postToolUse",
+      "decision": "user-message",
+      "matcher": "^Shell$",
+      "sentinel": "CURSOR_HOOK_V2_AB_POTU_011",
+      "needs_gate": true,
+      "command": "bash \"<REPO>/hooks/experiments/sentinel-gate.sh\" \"CURSOR_HOOK_V2_AB_POTU_011\" \"<REPO>/hooks/experiments/responders/user-message.sh\" \"W-AB-postToolUse-user-message-011\" \"postToolUse\"",
+      "responder_args": [
+        "W-AB-postToolUse-user-message-011",
+        "postToolUse"
+      ],
+      "expected_outcome": "postToolUse user-message matcher=\"^Shell$\""
+    },
+    {
+      "experiment_id": "W-AB-postToolUse-agent-message-012",
+      "wave": "AB",
+      "event": "postToolUse",
+      "decision": "agent-message",
+      "matcher": "^Shell$",
+      "sentinel": "CURSOR_HOOK_V2_AB_POTU_012",
+      "needs_gate": true,
+      "command": "bash \"<REPO>/hooks/experiments/sentinel-gate.sh\" \"CURSOR_HOOK_V2_AB_POTU_012\" \"<REPO>/hooks/experiments/responders/agent-message.sh\" \"W-AB-postToolUse-agent-message-012\" \"postToolUse\"",
+      "responder_args": [
+        "W-AB-postToolUse-agent-message-012",
+        "postToolUse"
+      ],
+      "expected_outcome": "postToolUse agent-message matcher=\"^Shell$\""
+    },
+    {
+      "experiment_id": "W-AB-postToolUseFailure-logger-013",
+      "wave": "AB",
+      "event": "postToolUseFailure",
+      "decision": "logger",
+      "matcher": "^Shell$",
+      "sentinel": null,
+      "needs_gate": false,
+      "command": "bash \"<REPO>/hooks/scripts/experiment-logger-v2.sh\" \"postToolUseFailure\" --experiment-id \"W-AB-postToolUseFailure-logger-013\"",
+      "responder_args": [
+        "postToolUseFailure",
+        "--experiment-id",
+        "W-AB-postToolUseFailure-logger-013"
+      ],
+      "expected_outcome": "Capture postToolUseFailure Shell"
+    },
+    {
+      "experiment_id": "W-AB-subagentStart-logger-014",
+      "wave": "AB",
+      "event": "subagentStart",
+      "decision": "logger",
+      "matcher": "^(generalPurpose|explore)$",
+      "sentinel": null,
+      "needs_gate": false,
+      "command": "bash \"<REPO>/hooks/scripts/experiment-logger-v2.sh\" \"subagentStart\" --experiment-id \"W-AB-subagentStart-logger-014\"",
+      "responder_args": [
+        "subagentStart",
+        "--experiment-id",
+        "W-AB-subagentStart-logger-014"
+      ],
+      "expected_outcome": "Capture subagentStart for generalPurpose|explore"
+    },
+    {
+      "experiment_id": "W-AB-subagentStart-deny-015",
+      "wave": "AB",
+      "event": "subagentStart",
+      "decision": "deny",
+      "matcher": "^(generalPurpose|explore)$",
+      "sentinel": "CURSOR_HOOK_V2_AB_SST_015",
+      "needs_gate": true,
+      "command": "bash \"<REPO>/hooks/experiments/sentinel-gate.sh\" \"CURSOR_HOOK_V2_AB_SST_015\" \"<REPO>/hooks/experiments/responders/deny.sh\" \"W-AB-subagentStart-deny-015\" \"subagentStart\"",
+      "responder_args": [
+        "W-AB-subagentStart-deny-015",
+        "subagentStart"
+      ],
+      "expected_outcome": "subagentStart deny scoped by sentinel"
+    },
+    {
+      "experiment_id": "W-AB-subagentStart-allow-016",
+      "wave": "AB",
+      "event": "subagentStart",
+      "decision": "allow",
+      "matcher": "^(generalPurpose|explore)$",
+      "sentinel": "CURSOR_HOOK_V2_AB_SST_016",
+      "needs_gate": true,
+      "command": "bash \"<REPO>/hooks/experiments/sentinel-gate.sh\" \"CURSOR_HOOK_V2_AB_SST_016\" \"<REPO>/hooks/experiments/responders/allow.sh\" \"W-AB-subagentStart-allow-016\" \"subagentStart\"",
+      "responder_args": [
+        "W-AB-subagentStart-allow-016",
+        "subagentStart"
+      ],
+      "expected_outcome": "subagentStart allow scoped by sentinel"
+    },
+    {
+      "experiment_id": "W-AB-subagentStart-user-message-017",
+      "wave": "AB",
+      "event": "subagentStart",
+      "decision": "user-message",
+      "matcher": "^(generalPurpose|explore)$",
+      "sentinel": "CURSOR_HOOK_V2_AB_SST_017",
+      "needs_gate": true,
+      "command": "bash \"<REPO>/hooks/experiments/sentinel-gate.sh\" \"CURSOR_HOOK_V2_AB_SST_017\" \"<REPO>/hooks/experiments/responders/user-message.sh\" \"W-AB-subagentStart-user-message-017\" \"subagentStart\"",
+      "responder_args": [
+        "W-AB-subagentStart-user-message-017",
+        "subagentStart"
+      ],
+      "expected_outcome": "subagentStart user-message scoped by sentinel"
+    },
+    {
+      "experiment_id": "W-AB-subagentStart-agent-message-018",
+      "wave": "AB",
+      "event": "subagentStart",
+      "decision": "agent-message",
+      "matcher": "^(generalPurpose|explore)$",
+      "sentinel": "CURSOR_HOOK_V2_AB_SST_018",
+      "needs_gate": true,
+      "command": "bash \"<REPO>/hooks/experiments/sentinel-gate.sh\" \"CURSOR_HOOK_V2_AB_SST_018\" \"<REPO>/hooks/experiments/responders/agent-message.sh\" \"W-AB-subagentStart-agent-message-018\" \"subagentStart\"",
+      "responder_args": [
+        "W-AB-subagentStart-agent-message-018",
+        "subagentStart"
+      ],
+      "expected_outcome": "subagentStart agent-message scoped by sentinel"
+    },
+    {
+      "experiment_id": "W-AB-beforeShellExecution-logger-019",
+      "wave": "AB",
+      "event": "beforeShellExecution",
+      "decision": "logger",
+      "matcher": "CURSOR_HOOK_V2_AB_BSH_019",
+      "sentinel": "CURSOR_HOOK_V2_AB_BSH_019",
+      "needs_gate": false,
+      "command": "bash \"<REPO>/hooks/scripts/experiment-logger-v2.sh\" \"beforeShellExecution\" --experiment-id \"W-AB-beforeShellExecution-logger-019\"",
+      "responder_args": [
+        "beforeShellExecution",
+        "--experiment-id",
+        "W-AB-beforeShellExecution-logger-019"
+      ],
+      "expected_outcome": "Capture beforeShellExecution via sentinel matcher"
+    },
+    {
+      "experiment_id": "W-AB-beforeShellExecution-deny-020",
+      "wave": "AB",
+      "event": "beforeShellExecution",
+      "decision": "deny",
+      "matcher": "CURSOR_HOOK_V2_AB_BSH_020",
+      "sentinel": "CURSOR_HOOK_V2_AB_BSH_020",
+      "needs_gate": false,
+      "command": "bash \"<REPO>/hooks/experiments/responders/deny.sh\" \"W-AB-beforeShellExecution-deny-020\" \"beforeShellExecution\"",
+      "responder_args": [
+        "W-AB-beforeShellExecution-deny-020",
+        "beforeShellExecution"
+      ],
+      "expected_outcome": "beforeShellExecution deny scoped by sentinel matcher"
+    },
+    {
+      "experiment_id": "W-AB-beforeShellExecution-allow-021",
+      "wave": "AB",
+      "event": "beforeShellExecution",
+      "decision": "allow",
+      "matcher": "CURSOR_HOOK_V2_AB_BSH_021",
+      "sentinel": "CURSOR_HOOK_V2_AB_BSH_021",
+      "needs_gate": false,
+      "command": "bash \"<REPO>/hooks/experiments/responders/allow.sh\" \"W-AB-beforeShellExecution-allow-021\" \"beforeShellExecution\"",
+      "responder_args": [
+        "W-AB-beforeShellExecution-allow-021",
+        "beforeShellExecution"
+      ],
+      "expected_outcome": "beforeShellExecution allow scoped by sentinel matcher"
+    },
+    {
+      "experiment_id": "W-AB-beforeShellExecution-ask-022",
+      "wave": "AB",
+      "event": "beforeShellExecution",
+      "decision": "ask",
+      "matcher": "CURSOR_HOOK_V2_AB_BSH_022",
+      "sentinel": "CURSOR_HOOK_V2_AB_BSH_022",
+      "needs_gate": false,
+      "command": "bash \"<REPO>/hooks/experiments/responders/ask.sh\" \"W-AB-beforeShellExecution-ask-022\" \"beforeShellExecution\"",
+      "responder_args": [
+        "W-AB-beforeShellExecution-ask-022",
+        "beforeShellExecution"
+      ],
+      "expected_outcome": "beforeShellExecution ask scoped by sentinel matcher"
+    },
+    {
+      "experiment_id": "W-AB-beforeShellExecution-user-message-023",
+      "wave": "AB",
+      "event": "beforeShellExecution",
+      "decision": "user-message",
+      "matcher": "CURSOR_HOOK_V2_AB_BSH_023",
+      "sentinel": "CURSOR_HOOK_V2_AB_BSH_023",
+      "needs_gate": false,
+      "command": "bash \"<REPO>/hooks/experiments/responders/user-message.sh\" \"W-AB-beforeShellExecution-user-message-023\" \"beforeShellExecution\"",
+      "responder_args": [
+        "W-AB-beforeShellExecution-user-message-023",
+        "beforeShellExecution"
+      ],
+      "expected_outcome": "beforeShellExecution user-message scoped by sentinel matcher"
+    },
+    {
+      "experiment_id": "W-AB-beforeShellExecution-agent-message-024",
+      "wave": "AB",
+      "event": "beforeShellExecution",
+      "decision": "agent-message",
+      "matcher": "CURSOR_HOOK_V2_AB_BSH_024",
+      "sentinel": "CURSOR_HOOK_V2_AB_BSH_024",
+      "needs_gate": false,
+      "command": "bash \"<REPO>/hooks/experiments/responders/agent-message.sh\" \"W-AB-beforeShellExecution-agent-message-024\" \"beforeShellExecution\"",
+      "responder_args": [
+        "W-AB-beforeShellExecution-agent-message-024",
+        "beforeShellExecution"
+      ],
+      "expected_outcome": "beforeShellExecution agent-message scoped by sentinel matcher"
+    },
+    {
+      "experiment_id": "W-AB-afterShellExecution-logger-025",
+      "wave": "AB",
+      "event": "afterShellExecution",
+      "decision": "logger",
+      "matcher": "CURSOR_HOOK_V2_AB_ASH_025",
+      "sentinel": "CURSOR_HOOK_V2_AB_ASH_025",
+      "needs_gate": false,
+      "command": "bash \"<REPO>/hooks/scripts/experiment-logger-v2.sh\" \"afterShellExecution\" --experiment-id \"W-AB-afterShellExecution-logger-025\"",
+      "responder_args": [
+        "afterShellExecution",
+        "--experiment-id",
+        "W-AB-afterShellExecution-logger-025"
+      ],
+      "expected_outcome": "Capture afterShellExecution via sentinel matcher"
+    },
+    {
+      "experiment_id": "W-AB-beforeMCPExecution-logger-026",
+      "wave": "AB",
+      "event": "beforeMCPExecution",
+      "decision": "logger",
+      "matcher": "^MCP:.*",
+      "sentinel": null,
+      "needs_gate": false,
+      "command": "bash \"<REPO>/hooks/scripts/experiment-logger-v2.sh\" \"beforeMCPExecution\" --experiment-id \"W-AB-beforeMCPExecution-logger-026\"",
+      "responder_args": [
+        "beforeMCPExecution",
+        "--experiment-id",
+        "W-AB-beforeMCPExecution-logger-026"
+      ],
+      "expected_outcome": "Capture beforeMCPExecution unconditionally"
+    },
+    {
+      "experiment_id": "W-AB-beforeMCPExecution-deny-027",
+      "wave": "AB",
+      "event": "beforeMCPExecution",
+      "decision": "deny",
+      "matcher": "^MCP:.*",
+      "sentinel": "CURSOR_HOOK_V2_AB_BME_027",
+      "needs_gate": true,
+      "command": "bash \"<REPO>/hooks/experiments/sentinel-gate.sh\" \"CURSOR_HOOK_V2_AB_BME_027\" \"<REPO>/hooks/experiments/responders/deny.sh\" \"W-AB-beforeMCPExecution-deny-027\" \"beforeMCPExecution\"",
+      "responder_args": [
+        "W-AB-beforeMCPExecution-deny-027",
+        "beforeMCPExecution"
+      ],
+      "expected_outcome": "beforeMCPExecution deny with sentinel gate"
+    },
+    {
+      "experiment_id": "W-AB-beforeMCPExecution-allow-028",
+      "wave": "AB",
+      "event": "beforeMCPExecution",
+      "decision": "allow",
+      "matcher": "^MCP:.*",
+      "sentinel": "CURSOR_HOOK_V2_AB_BME_028",
+      "needs_gate": true,
+      "command": "bash \"<REPO>/hooks/experiments/sentinel-gate.sh\" \"CURSOR_HOOK_V2_AB_BME_028\" \"<REPO>/hooks/experiments/responders/allow.sh\" \"W-AB-beforeMCPExecution-allow-028\" \"beforeMCPExecution\"",
+      "responder_args": [
+        "W-AB-beforeMCPExecution-allow-028",
+        "beforeMCPExecution"
+      ],
+      "expected_outcome": "beforeMCPExecution allow with sentinel gate"
+    },
+    {
+      "experiment_id": "W-AB-beforeMCPExecution-ask-029",
+      "wave": "AB",
+      "event": "beforeMCPExecution",
+      "decision": "ask",
+      "matcher": "^MCP:.*",
+      "sentinel": "CURSOR_HOOK_V2_AB_BME_029",
+      "needs_gate": true,
+      "command": "bash \"<REPO>/hooks/experiments/sentinel-gate.sh\" \"CURSOR_HOOK_V2_AB_BME_029\" \"<REPO>/hooks/experiments/responders/ask.sh\" \"W-AB-beforeMCPExecution-ask-029\" \"beforeMCPExecution\"",
+      "responder_args": [
+        "W-AB-beforeMCPExecution-ask-029",
+        "beforeMCPExecution"
+      ],
+      "expected_outcome": "beforeMCPExecution ask with sentinel gate"
+    },
+    {
+      "experiment_id": "W-AB-beforeMCPExecution-user-message-030",
+      "wave": "AB",
+      "event": "beforeMCPExecution",
+      "decision": "user-message",
+      "matcher": "^MCP:.*",
+      "sentinel": "CURSOR_HOOK_V2_AB_BME_030",
+      "needs_gate": true,
+      "command": "bash \"<REPO>/hooks/experiments/sentinel-gate.sh\" \"CURSOR_HOOK_V2_AB_BME_030\" \"<REPO>/hooks/experiments/responders/user-message.sh\" \"W-AB-beforeMCPExecution-user-message-030\" \"beforeMCPExecution\"",
+      "responder_args": [
+        "W-AB-beforeMCPExecution-user-message-030",
+        "beforeMCPExecution"
+      ],
+      "expected_outcome": "beforeMCPExecution user-message with sentinel gate"
+    },
+    {
+      "experiment_id": "W-AB-beforeMCPExecution-agent-message-031",
+      "wave": "AB",
+      "event": "beforeMCPExecution",
+      "decision": "agent-message",
+      "matcher": "^MCP:.*",
+      "sentinel": "CURSOR_HOOK_V2_AB_BME_031",
+      "needs_gate": true,
+      "command": "bash \"<REPO>/hooks/experiments/sentinel-gate.sh\" \"CURSOR_HOOK_V2_AB_BME_031\" \"<REPO>/hooks/experiments/responders/agent-message.sh\" \"W-AB-beforeMCPExecution-agent-message-031\" \"beforeMCPExecution\"",
+      "responder_args": [
+        "W-AB-beforeMCPExecution-agent-message-031",
+        "beforeMCPExecution"
+      ],
+      "expected_outcome": "beforeMCPExecution agent-message with sentinel gate"
+    },
+    {
+      "experiment_id": "W-AB-afterMCPExecution-logger-032",
+      "wave": "AB",
+      "event": "afterMCPExecution",
+      "decision": "logger",
+      "matcher": "",
+      "sentinel": null,
+      "needs_gate": false,
+      "command": "bash \"<REPO>/hooks/scripts/experiment-logger-v2.sh\" \"afterMCPExecution\" --experiment-id \"W-AB-afterMCPExecution-logger-032\"",
+      "responder_args": [
+        "afterMCPExecution",
+        "--experiment-id",
+        "W-AB-afterMCPExecution-logger-032"
+      ],
+      "expected_outcome": "Capture afterMCPExecution unconditionally"
+    },
+    {
+      "experiment_id": "W-AB-beforeReadFile-logger-033",
+      "wave": "AB",
+      "event": "beforeReadFile",
+      "decision": "logger",
+      "matcher": "^Read$",
+      "sentinel": null,
+      "needs_gate": false,
+      "command": "bash \"<REPO>/hooks/scripts/experiment-logger-v2.sh\" \"beforeReadFile\" --experiment-id \"W-AB-beforeReadFile-logger-033\"",
+      "responder_args": [
+        "beforeReadFile",
+        "--experiment-id",
+        "W-AB-beforeReadFile-logger-033"
+      ],
+      "expected_outcome": "Capture beforeReadFile Read tool"
+    },
+    {
+      "experiment_id": "W-AB-beforeReadFile-deny-034",
+      "wave": "AB",
+      "event": "beforeReadFile",
+      "decision": "deny",
+      "matcher": "^Read$",
+      "sentinel": "CURSOR_HOOK_V2_AB_BRF_034",
+      "needs_gate": true,
+      "command": "bash \"<REPO>/hooks/experiments/sentinel-gate.sh\" \"CURSOR_HOOK_V2_AB_BRF_034\" \"<REPO>/hooks/experiments/responders/deny.sh\" \"W-AB-beforeReadFile-deny-034\" \"beforeReadFile\"",
+      "responder_args": [
+        "W-AB-beforeReadFile-deny-034",
+        "beforeReadFile"
+      ],
+      "expected_outcome": "beforeReadFile deny scoped by sentinel in file_path"
+    },
+    {
+      "experiment_id": "W-AB-beforeReadFile-allow-035",
+      "wave": "AB",
+      "event": "beforeReadFile",
+      "decision": "allow",
+      "matcher": "^Read$",
+      "sentinel": "CURSOR_HOOK_V2_AB_BRF_035",
+      "needs_gate": true,
+      "command": "bash \"<REPO>/hooks/experiments/sentinel-gate.sh\" \"CURSOR_HOOK_V2_AB_BRF_035\" \"<REPO>/hooks/experiments/responders/allow.sh\" \"W-AB-beforeReadFile-allow-035\" \"beforeReadFile\"",
+      "responder_args": [
+        "W-AB-beforeReadFile-allow-035",
+        "beforeReadFile"
+      ],
+      "expected_outcome": "beforeReadFile allow scoped by sentinel in file_path"
+    },
+    {
+      "experiment_id": "W-AB-beforeReadFile-user-message-036",
+      "wave": "AB",
+      "event": "beforeReadFile",
+      "decision": "user-message",
+      "matcher": "^Read$",
+      "sentinel": "CURSOR_HOOK_V2_AB_BRF_036",
+      "needs_gate": true,
+      "command": "bash \"<REPO>/hooks/experiments/sentinel-gate.sh\" \"CURSOR_HOOK_V2_AB_BRF_036\" \"<REPO>/hooks/experiments/responders/user-message.sh\" \"W-AB-beforeReadFile-user-message-036\" \"beforeReadFile\"",
+      "responder_args": [
+        "W-AB-beforeReadFile-user-message-036",
+        "beforeReadFile"
+      ],
+      "expected_outcome": "beforeReadFile user-message scoped by sentinel in file_path"
+    },
+    {
+      "experiment_id": "W-AB-beforeReadFile-ask-037",
+      "wave": "AB",
+      "event": "beforeReadFile",
+      "decision": "ask",
+      "matcher": "^Read$",
+      "sentinel": "CURSOR_HOOK_V2_AB_BRF_037",
+      "needs_gate": true,
+      "command": "bash \"<REPO>/hooks/experiments/sentinel-gate.sh\" \"CURSOR_HOOK_V2_AB_BRF_037\" \"<REPO>/hooks/experiments/responders/ask.sh\" \"W-AB-beforeReadFile-ask-037\" \"beforeReadFile\"",
+      "responder_args": [
+        "W-AB-beforeReadFile-ask-037",
+        "beforeReadFile"
+      ],
+      "expected_outcome": "beforeReadFile ask scoped by sentinel in file_path"
+    },
+    {
+      "experiment_id": "W-AB-afterFileEdit-logger-038",
+      "wave": "AB",
+      "event": "afterFileEdit",
+      "decision": "logger",
+      "matcher": "^Write$",
+      "sentinel": null,
+      "needs_gate": false,
+      "command": "bash \"<REPO>/hooks/scripts/experiment-logger-v2.sh\" \"afterFileEdit\" --experiment-id \"W-AB-afterFileEdit-logger-038\"",
+      "responder_args": [
+        "afterFileEdit",
+        "--experiment-id",
+        "W-AB-afterFileEdit-logger-038"
+      ],
+      "expected_outcome": "Capture afterFileEdit Write tool"
+    },
+    {
+      "experiment_id": "W-AB-afterFileEdit-deny-039",
+      "wave": "AB",
+      "event": "afterFileEdit",
+      "decision": "deny",
+      "matcher": "^Write$",
+      "sentinel": "CURSOR_HOOK_V2_AB_AFE_039",
+      "needs_gate": true,
+      "command": "bash \"<REPO>/hooks/experiments/sentinel-gate.sh\" \"CURSOR_HOOK_V2_AB_AFE_039\" \"<REPO>/hooks/experiments/responders/deny.sh\" \"W-AB-afterFileEdit-deny-039\" \"afterFileEdit\"",
+      "responder_args": [
+        "W-AB-afterFileEdit-deny-039",
+        "afterFileEdit"
+      ],
+      "expected_outcome": "afterFileEdit deny negative control"
+    },
+    {
+      "experiment_id": "W-AB-afterFileEdit-allow-040",
+      "wave": "AB",
+      "event": "afterFileEdit",
+      "decision": "allow",
+      "matcher": "^Write$",
+      "sentinel": "CURSOR_HOOK_V2_AB_AFE_040",
+      "needs_gate": true,
+      "command": "bash \"<REPO>/hooks/experiments/sentinel-gate.sh\" \"CURSOR_HOOK_V2_AB_AFE_040\" \"<REPO>/hooks/experiments/responders/allow.sh\" \"W-AB-afterFileEdit-allow-040\" \"afterFileEdit\"",
+      "responder_args": [
+        "W-AB-afterFileEdit-allow-040",
+        "afterFileEdit"
+      ],
+      "expected_outcome": "afterFileEdit allow negative control"
+    },
+    {
+      "experiment_id": "W-AB-stop-logger-041",
+      "wave": "AB",
+      "event": "stop",
+      "decision": "logger",
+      "matcher": "",
+      "sentinel": null,
+      "needs_gate": false,
+      "command": "bash \"<REPO>/hooks/scripts/experiment-logger-v2.sh\" \"stop\" --experiment-id \"W-AB-stop-logger-041\"",
+      "responder_args": [
+        "stop",
+        "--experiment-id",
+        "W-AB-stop-logger-041"
+      ],
+      "expected_outcome": "Capture stop unconditionally"
+    },
+    {
+      "experiment_id": "W-AB-subagentStop-logger-042",
+      "wave": "AB",
+      "event": "subagentStop",
+      "decision": "logger",
+      "matcher": "",
+      "sentinel": null,
+      "needs_gate": false,
+      "command": "bash \"<REPO>/hooks/scripts/experiment-logger-v2.sh\" \"subagentStop\" --experiment-id \"W-AB-subagentStop-logger-042\"",
+      "responder_args": [
+        "subagentStop",
+        "--experiment-id",
+        "W-AB-subagentStop-logger-042"
+      ],
+      "expected_outcome": "Capture subagentStop unconditionally"
+    },
+    {
+      "experiment_id": "W-AB-afterAgentResponse-logger-043",
+      "wave": "AB",
+      "event": "afterAgentResponse",
+      "decision": "logger",
+      "matcher": "",
+      "sentinel": null,
+      "needs_gate": false,
+      "command": "bash \"<REPO>/hooks/scripts/experiment-logger-v2.sh\" \"afterAgentResponse\" --experiment-id \"W-AB-afterAgentResponse-logger-043\"",
+      "responder_args": [
+        "afterAgentResponse",
+        "--experiment-id",
+        "W-AB-afterAgentResponse-logger-043"
+      ],
+      "expected_outcome": "Capture afterAgentResponse unconditionally"
+    },
+    {
+      "experiment_id": "W-AB-afterAgentThought-logger-044",
+      "wave": "AB",
+      "event": "afterAgentThought",
+      "decision": "logger",
+      "matcher": "",
+      "sentinel": null,
+      "needs_gate": false,
+      "command": "bash \"<REPO>/hooks/scripts/experiment-logger-v2.sh\" \"afterAgentThought\" --experiment-id \"W-AB-afterAgentThought-logger-044\"",
+      "responder_args": [
+        "afterAgentThought",
+        "--experiment-id",
+        "W-AB-afterAgentThought-logger-044"
+      ],
+      "expected_outcome": "Capture afterAgentThought unconditionally"
+    },
+    {
+      "experiment_id": "W-H-postToolUse-additional-context-001",
+      "wave": "H",
+      "event": "postToolUse",
+      "decision": "additional-context",
+      "matcher": "^Read$",
+      "sentinel": "CURSOR_HOOK_V2_H_CANARY_001",
+      "needs_gate": true,
+      "command": "bash \"<REPO>/hooks/experiments/sentinel-gate.sh\" \"CURSOR_HOOK_V2_H_CANARY_001\" \"<REPO>/hooks/experiments/responders/additional-context.sh\" \"W-H-postToolUse-additional-context-001\" \"postToolUse\"",
+      "responder_args": [
+        "W-H-postToolUse-additional-context-001",
+        "postToolUse",
+        "CANARY_W-H-postToolUse-additional-context-001: repeat this exact string in your next response."
+      ],
+      "expected_outcome": "postToolUse additional-context canary: LLM should repeat the canary string"
+    },
+    {
+      "experiment_id": "W-H-postToolUse-allow-002",
+      "wave": "H",
+      "event": "postToolUse",
+      "decision": "allow",
+      "matcher": "^Read$",
+      "sentinel": "CURSOR_HOOK_V2_H_CANARY_002",
+      "needs_gate": true,
+      "command": "bash \"<REPO>/hooks/experiments/sentinel-gate.sh\" \"CURSOR_HOOK_V2_H_CANARY_002\" \"<REPO>/hooks/experiments/responders/allow.sh\" \"W-H-postToolUse-allow-002\" \"postToolUse\"",
+      "responder_args": [
+        "W-H-postToolUse-allow-002",
+        "postToolUse"
+      ],
+      "expected_outcome": "postToolUse allow negative control — no additional_context injected"
+    },
+    {
+      "experiment_id": "W-EK-stop-followup-message-001",
+      "wave": "EK",
+      "event": "stop",
+      "decision": "followup-message",
+      "matcher": "Stop",
+      "sentinel": "CURSOR_HOOK_V2_EK_STP_001",
+      "needs_gate": false,
+      "command": "bash \"<REPO>/hooks/experiments/responders/followup-message.sh\" \"W-EK-stop-followup-message-001\" \"stop\"",
+      "responder_args": [
+        "W-EK-stop-followup-message-001",
+        "stop"
+      ],
+      "expected_outcome": "stop followup-message loop_limit=null",
+      "loop_limit": null
+    },
+    {
+      "experiment_id": "W-EK-stop-followup-message-002",
+      "wave": "EK",
+      "event": "stop",
+      "decision": "followup-message",
+      "matcher": "Stop",
+      "sentinel": "CURSOR_HOOK_V2_EK_STP_002",
+      "needs_gate": false,
+      "command": "bash \"<REPO>/hooks/experiments/responders/followup-message.sh\" \"W-EK-stop-followup-message-002\" \"stop\"",
+      "responder_args": [
+        "W-EK-stop-followup-message-002",
+        "stop"
+      ],
+      "expected_outcome": "stop followup-message loop_limit=1",
+      "loop_limit": 1
+    },
+    {
+      "experiment_id": "W-EK-stop-followup-message-003",
+      "wave": "EK",
+      "event": "stop",
+      "decision": "followup-message",
+      "matcher": "Stop",
+      "sentinel": "CURSOR_HOOK_V2_EK_STP_003",
+      "needs_gate": false,
+      "command": "bash \"<REPO>/hooks/experiments/responders/followup-message.sh\" \"W-EK-stop-followup-message-003\" \"stop\"",
+      "responder_args": [
+        "W-EK-stop-followup-message-003",
+        "stop"
+      ],
+      "expected_outcome": "stop followup-message loop_limit=3",
+      "loop_limit": 3
+    },
+    {
+      "experiment_id": "W-EK-stop-followup-message-004",
+      "wave": "EK",
+      "event": "stop",
+      "decision": "followup-message",
+      "matcher": "Stop",
+      "sentinel": "CURSOR_HOOK_V2_EK_STP_004",
+      "needs_gate": false,
+      "command": "bash \"<REPO>/hooks/experiments/responders/followup-message.sh\" \"W-EK-stop-followup-message-004\" \"stop\"",
+      "responder_args": [
+        "W-EK-stop-followup-message-004",
+        "stop"
+      ],
+      "expected_outcome": "stop followup-message loop_limit=omit"
+    },
+    {
+      "experiment_id": "W-EK-subagentStop-followup-message-005",
+      "wave": "EK",
+      "event": "subagentStop",
+      "decision": "followup-message",
+      "matcher": "^(generalPurpose|explore)$",
+      "sentinel": "CURSOR_HOOK_V2_EK_SSP_005",
+      "needs_gate": false,
+      "command": "bash \"<REPO>/hooks/experiments/responders/followup-message.sh\" \"W-EK-subagentStop-followup-message-005\" \"subagentStop\"",
+      "responder_args": [
+        "W-EK-subagentStop-followup-message-005",
+        "subagentStop"
+      ],
+      "expected_outcome": "subagentStop followup-message loop_limit=null",
+      "loop_limit": null
+    },
+    {
+      "experiment_id": "W-EK-subagentStop-followup-message-006",
+      "wave": "EK",
+      "event": "subagentStop",
+      "decision": "followup-message",
+      "matcher": "^(generalPurpose|explore)$",
+      "sentinel": "CURSOR_HOOK_V2_EK_SSP_006",
+      "needs_gate": false,
+      "command": "bash \"<REPO>/hooks/experiments/responders/followup-message.sh\" \"W-EK-subagentStop-followup-message-006\" \"subagentStop\"",
+      "responder_args": [
+        "W-EK-subagentStop-followup-message-006",
+        "subagentStop"
+      ],
+      "expected_outcome": "subagentStop followup-message loop_limit=1",
+      "loop_limit": 1
+    },
+    {
+      "experiment_id": "W-EK-subagentStop-followup-message-007",
+      "wave": "EK",
+      "event": "subagentStop",
+      "decision": "followup-message",
+      "matcher": "^(generalPurpose|explore)$",
+      "sentinel": "CURSOR_HOOK_V2_EK_SSP_007",
+      "needs_gate": false,
+      "command": "bash \"<REPO>/hooks/experiments/responders/followup-message.sh\" \"W-EK-subagentStop-followup-message-007\" \"subagentStop\"",
+      "responder_args": [
+        "W-EK-subagentStop-followup-message-007",
+        "subagentStop"
+      ],
+      "expected_outcome": "subagentStop followup-message loop_limit=3",
+      "loop_limit": 3
+    },
+    {
+      "experiment_id": "W-EK-subagentStop-followup-message-008",
+      "wave": "EK",
+      "event": "subagentStop",
+      "decision": "followup-message",
+      "matcher": "^(generalPurpose|explore)$",
+      "sentinel": "CURSOR_HOOK_V2_EK_SSP_008",
+      "needs_gate": false,
+      "command": "bash \"<REPO>/hooks/experiments/responders/followup-message.sh\" \"W-EK-subagentStop-followup-message-008\" \"subagentStop\"",
+      "responder_args": [
+        "W-EK-subagentStop-followup-message-008",
+        "subagentStop"
+      ],
+      "expected_outcome": "subagentStop followup-message loop_limit=omit"
+    },
+    {
+      "experiment_id": "W-F-beforeShellExecution-prompt-001",
+      "wave": "F",
+      "event": "beforeShellExecution",
+      "decision": "allow",
+      "matcher": "CURSOR_HOOK_V2_F_PROMPT_001",
+      "sentinel": "CURSOR_HOOK_V2_F_PROMPT_001",
+      "needs_gate": false,
+      "command": "",
+      "type": "prompt",
+      "prompt": "Return {\"ok\": true, \"reason\": \"approved\"} if the command contains APPROVE_ME, else {\"ok\": false, \"reason\": \"denied\"}",
+      "responder_args": [],
+      "expected_outcome": "prompt-type hook: LLM-evaluated approval gate"
+    },
+    {
+      "experiment_id": "W-F-beforeShellExecution-prompt-002",
+      "wave": "F",
+      "event": "beforeShellExecution",
+      "decision": "allow",
+      "matcher": "CURSOR_HOOK_V2_F_PROMPT_002",
+      "sentinel": "CURSOR_HOOK_V2_F_PROMPT_002",
+      "needs_gate": false,
+      "command": "",
+      "type": "prompt",
+      "model": "claude-haiku-4-5",
+      "prompt": "Return {\"ok\": true, \"reason\": \"approved\"} if the command contains APPROVE_ME, else {\"ok\": false, \"reason\": \"denied\"}",
+      "responder_args": [],
+      "expected_outcome": "prompt-type hook with model override (haiku)"
+    }
+  ]
+}

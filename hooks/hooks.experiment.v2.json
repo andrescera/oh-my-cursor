@@ -1,0 +1,509 @@
+{
+  "version": 1,
+  "hooks": {
+    "preToolUse": [
+      {
+        "command": "bash \"<REPO>/hooks/scripts/experiment-logger-v2.sh\" \"preToolUse\" --experiment-id \"W-C-preToolUse-logger-001\""
+      },
+      {
+        "command": "bash \"<REPO>/hooks/scripts/experiment-logger-v2.sh\" \"preToolUse\" --experiment-id \"W-C-preToolUse-logger-002\"",
+        "matcher": "Shell"
+      },
+      {
+        "command": "bash \"<REPO>/hooks/scripts/experiment-logger-v2.sh\" \"preToolUse\" --experiment-id \"W-C-preToolUse-logger-003\"",
+        "matcher": "^Shell$"
+      },
+      {
+        "command": "bash \"<REPO>/hooks/scripts/experiment-logger-v2.sh\" \"preToolUse\" --experiment-id \"W-C-preToolUse-logger-004\"",
+        "matcher": "Read|Write"
+      },
+      {
+        "command": "bash \"<REPO>/hooks/scripts/experiment-logger-v2.sh\" \"preToolUse\" --experiment-id \"W-C-preToolUse-logger-005\"",
+        "matcher": "^MCP:.*"
+      },
+      {
+        "command": "bash \"<REPO>/hooks/scripts/experiment-logger-v2.sh\" \"preToolUse\" --experiment-id \"W-AB-preToolUse-logger-001\"",
+        "matcher": "^Shell$"
+      },
+      {
+        "command": "bash \"<REPO>/hooks/experiments/sentinel-gate.sh\" \"CURSOR_HOOK_V2_AB_PTU_002\" \"<REPO>/hooks/experiments/responders/deny.sh\" \"W-AB-preToolUse-deny-002\" \"preToolUse\"",
+        "matcher": "^Shell$"
+      },
+      {
+        "command": "bash \"<REPO>/hooks/experiments/sentinel-gate.sh\" \"CURSOR_HOOK_V2_AB_PTU_003\" \"<REPO>/hooks/experiments/responders/allow.sh\" \"W-AB-preToolUse-allow-003\" \"preToolUse\"",
+        "matcher": "^Shell$"
+      },
+      {
+        "command": "bash \"<REPO>/hooks/experiments/sentinel-gate.sh\" \"CURSOR_HOOK_V2_AB_PTU_004\" \"<REPO>/hooks/experiments/responders/updated-input.sh\" \"W-AB-preToolUse-updated-input-004\" \"preToolUse\"",
+        "matcher": "^Shell$"
+      },
+      {
+        "command": "bash \"<REPO>/hooks/experiments/sentinel-gate.sh\" \"CURSOR_HOOK_V2_AB_PTU_005\" \"<REPO>/hooks/experiments/responders/user-message.sh\" \"W-AB-preToolUse-user-message-005\" \"preToolUse\"",
+        "matcher": "^Shell$"
+      },
+      {
+        "command": "bash \"<REPO>/hooks/experiments/sentinel-gate.sh\" \"CURSOR_HOOK_V2_AB_PTU_006\" \"<REPO>/hooks/experiments/responders/agent-message.sh\" \"W-AB-preToolUse-agent-message-006\" \"preToolUse\"",
+        "matcher": "^Shell$"
+      },
+      {
+        "command": "bash \"<REPO>/hooks/experiments/sentinel-gate.sh\" \"CURSOR_HOOK_V2_AB_PTU_007\" \"<REPO>/hooks/experiments/responders/ask.sh\" \"W-AB-preToolUse-ask-007\" \"preToolUse\"",
+        "matcher": "^Shell$"
+      }
+    ],
+    "postToolUse": [
+      {
+        "command": "bash \"<REPO>/hooks/scripts/experiment-logger-v2.sh\" \"postToolUse\" --experiment-id \"W-C-postToolUse-logger-006\""
+      },
+      {
+        "command": "bash \"<REPO>/hooks/scripts/experiment-logger-v2.sh\" \"postToolUse\" --experiment-id \"W-C-postToolUse-logger-007\"",
+        "matcher": "Shell"
+      },
+      {
+        "command": "bash \"<REPO>/hooks/scripts/experiment-logger-v2.sh\" \"postToolUse\" --experiment-id \"W-C-postToolUse-logger-008\"",
+        "matcher": "^Shell$"
+      },
+      {
+        "command": "bash \"<REPO>/hooks/scripts/experiment-logger-v2.sh\" \"postToolUse\" --experiment-id \"W-C-postToolUse-logger-009\"",
+        "matcher": "Read|Write"
+      },
+      {
+        "command": "bash \"<REPO>/hooks/scripts/experiment-logger-v2.sh\" \"postToolUse\" --experiment-id \"W-C-postToolUse-logger-010\"",
+        "matcher": "^MCP:.*"
+      },
+      {
+        "command": "bash \"<REPO>/hooks/scripts/experiment-logger-v2.sh\" \"postToolUse\" --experiment-id \"W-AB-postToolUse-logger-008\"",
+        "matcher": "^Shell$"
+      },
+      {
+        "command": "bash \"<REPO>/hooks/experiments/sentinel-gate.sh\" \"CURSOR_HOOK_V2_AB_POTU_009\" \"<REPO>/hooks/experiments/responders/additional-context.sh\" \"W-AB-postToolUse-additional-context-009\" \"postToolUse\"",
+        "matcher": "^Shell$"
+      },
+      {
+        "command": "bash \"<REPO>/hooks/experiments/sentinel-gate.sh\" \"CURSOR_HOOK_V2_AB_POTU_010\" \"<REPO>/hooks/experiments/responders/additional-context.sh\" \"W-AB-postToolUse-additional-context-010\" \"postToolUse\"",
+        "matcher": "MCP:websearch"
+      },
+      {
+        "command": "bash \"<REPO>/hooks/experiments/sentinel-gate.sh\" \"CURSOR_HOOK_V2_AB_POTU_011\" \"<REPO>/hooks/experiments/responders/user-message.sh\" \"W-AB-postToolUse-user-message-011\" \"postToolUse\"",
+        "matcher": "^Shell$"
+      },
+      {
+        "command": "bash \"<REPO>/hooks/experiments/sentinel-gate.sh\" \"CURSOR_HOOK_V2_AB_POTU_012\" \"<REPO>/hooks/experiments/responders/agent-message.sh\" \"W-AB-postToolUse-agent-message-012\" \"postToolUse\"",
+        "matcher": "^Shell$"
+      },
+      {
+        "command": "bash \"<REPO>/hooks/experiments/sentinel-gate.sh\" \"CURSOR_HOOK_V2_H_CANARY_001\" \"<REPO>/hooks/experiments/responders/additional-context.sh\" \"W-H-postToolUse-additional-context-001\" \"postToolUse\"",
+        "matcher": "^Read$"
+      },
+      {
+        "command": "bash \"<REPO>/hooks/experiments/sentinel-gate.sh\" \"CURSOR_HOOK_V2_H_CANARY_002\" \"<REPO>/hooks/experiments/responders/allow.sh\" \"W-H-postToolUse-allow-002\" \"postToolUse\"",
+        "matcher": "^Read$"
+      }
+    ],
+    "beforeShellExecution": [
+      {
+        "command": "bash \"<REPO>/hooks/scripts/experiment-logger-v2.sh\" \"beforeShellExecution\" --experiment-id \"W-C-beforeShellExecution-logger-011\""
+      },
+      {
+        "command": "bash \"<REPO>/hooks/scripts/experiment-logger-v2.sh\" \"beforeShellExecution\" --experiment-id \"W-C-beforeShellExecution-logger-012\"",
+        "matcher": "Shell"
+      },
+      {
+        "command": "bash \"<REPO>/hooks/scripts/experiment-logger-v2.sh\" \"beforeShellExecution\" --experiment-id \"W-C-beforeShellExecution-logger-013\"",
+        "matcher": "^Shell$"
+      },
+      {
+        "command": "bash \"<REPO>/hooks/scripts/experiment-logger-v2.sh\" \"beforeShellExecution\" --experiment-id \"W-C-beforeShellExecution-logger-014\"",
+        "matcher": "Read|Write"
+      },
+      {
+        "command": "bash \"<REPO>/hooks/scripts/experiment-logger-v2.sh\" \"beforeShellExecution\" --experiment-id \"W-C-beforeShellExecution-logger-015\"",
+        "matcher": "^MCP:.*"
+      },
+      {
+        "command": "bash \"<REPO>/hooks/experiments/responders/allow.sh\" \"W-D-beforeShellExecution-allow-001\" \"beforeShellExecution\"",
+        "matcher": "CURSOR_HOOK_V2_D_BSH_001",
+        "failClosed": true
+      },
+      {
+        "command": "bash \"<REPO>/hooks/experiments/responders/allow.sh\" \"W-D-beforeShellExecution-allow-002\" \"beforeShellExecution\"",
+        "matcher": "CURSOR_HOOK_V2_D_BSH_002",
+        "failClosed": false
+      },
+      {
+        "command": "bash \"<REPO>/hooks/experiments/responders/allow.sh\" \"W-D-beforeShellExecution-allow-003\" \"beforeShellExecution\"",
+        "matcher": "CURSOR_HOOK_V2_D_BSH_003"
+      },
+      {
+        "command": "bash \"<REPO>/hooks/experiments/responders/deny.sh\" \"W-D-beforeShellExecution-deny-004\" \"beforeShellExecution\"",
+        "matcher": "CURSOR_HOOK_V2_D_BSH_004",
+        "failClosed": true
+      },
+      {
+        "command": "bash \"<REPO>/hooks/experiments/responders/deny.sh\" \"W-D-beforeShellExecution-deny-005\" \"beforeShellExecution\"",
+        "matcher": "CURSOR_HOOK_V2_D_BSH_005",
+        "failClosed": false
+      },
+      {
+        "command": "bash \"<REPO>/hooks/experiments/responders/deny.sh\" \"W-D-beforeShellExecution-deny-006\" \"beforeShellExecution\"",
+        "matcher": "CURSOR_HOOK_V2_D_BSH_006"
+      },
+      {
+        "command": "bash \"<REPO>/hooks/experiments/responders/malformed-json.sh\" \"W-D-beforeShellExecution-malformed-json-007\" \"beforeShellExecution\"",
+        "matcher": "CURSOR_HOOK_V2_D_BSH_007",
+        "failClosed": true
+      },
+      {
+        "command": "bash \"<REPO>/hooks/experiments/responders/malformed-json.sh\" \"W-D-beforeShellExecution-malformed-json-008\" \"beforeShellExecution\"",
+        "matcher": "CURSOR_HOOK_V2_D_BSH_008",
+        "failClosed": false
+      },
+      {
+        "command": "bash \"<REPO>/hooks/experiments/responders/malformed-json.sh\" \"W-D-beforeShellExecution-malformed-json-009\" \"beforeShellExecution\"",
+        "matcher": "CURSOR_HOOK_V2_D_BSH_009"
+      },
+      {
+        "command": "bash \"<REPO>/hooks/experiments/responders/exit-2.sh\" \"W-D-beforeShellExecution-exit-2-010\" \"beforeShellExecution\"",
+        "matcher": "CURSOR_HOOK_V2_D_BSH_010",
+        "failClosed": true
+      },
+      {
+        "command": "bash \"<REPO>/hooks/experiments/responders/exit-2.sh\" \"W-D-beforeShellExecution-exit-2-011\" \"beforeShellExecution\"",
+        "matcher": "CURSOR_HOOK_V2_D_BSH_011",
+        "failClosed": false
+      },
+      {
+        "command": "bash \"<REPO>/hooks/experiments/responders/exit-2.sh\" \"W-D-beforeShellExecution-exit-2-012\" \"beforeShellExecution\"",
+        "matcher": "CURSOR_HOOK_V2_D_BSH_012"
+      },
+      {
+        "command": "bash \"<REPO>/hooks/experiments/responders/allow.sh\" \"W-D-beforeShellExecution-allow-013\" \"beforeShellExecution\"",
+        "matcher": "CURSOR_HOOK_V2_D_BSH_013",
+        "timeout": 5000
+      },
+      {
+        "command": "bash \"<REPO>/hooks/experiments/responders/allow.sh\" \"W-D-beforeShellExecution-allow-014\" \"beforeShellExecution\"",
+        "matcher": "CURSOR_HOOK_V2_D_BSH_014",
+        "timeout": 30000
+      },
+      {
+        "command": "bash \"<REPO>/hooks/experiments/responders/deny.sh\" \"W-D-beforeShellExecution-deny-015\" \"beforeShellExecution\"",
+        "matcher": "CURSOR_HOOK_V2_D_BSH_015",
+        "timeout": 5000
+      },
+      {
+        "command": "bash \"<REPO>/hooks/experiments/responders/deny.sh\" \"W-D-beforeShellExecution-deny-016\" \"beforeShellExecution\"",
+        "matcher": "CURSOR_HOOK_V2_D_BSH_016",
+        "timeout": 30000
+      },
+      {
+        "command": "bash \"<REPO>/hooks/experiments/responders/malformed-json.sh\" \"W-D-beforeShellExecution-malformed-json-017\" \"beforeShellExecution\"",
+        "matcher": "CURSOR_HOOK_V2_D_BSH_017",
+        "timeout": 5000
+      },
+      {
+        "command": "bash \"<REPO>/hooks/experiments/responders/malformed-json.sh\" \"W-D-beforeShellExecution-malformed-json-018\" \"beforeShellExecution\"",
+        "matcher": "CURSOR_HOOK_V2_D_BSH_018",
+        "timeout": 30000
+      },
+      {
+        "command": "bash \"<REPO>/hooks/experiments/responders/exit-2.sh\" \"W-D-beforeShellExecution-exit-2-019\" \"beforeShellExecution\"",
+        "matcher": "CURSOR_HOOK_V2_D_BSH_019",
+        "timeout": 5000
+      },
+      {
+        "command": "bash \"<REPO>/hooks/experiments/responders/exit-2.sh\" \"W-D-beforeShellExecution-exit-2-020\" \"beforeShellExecution\"",
+        "matcher": "CURSOR_HOOK_V2_D_BSH_020",
+        "timeout": 30000
+      },
+      {
+        "command": "bash \"<REPO>/hooks/scripts/experiment-logger-v2.sh\" \"beforeShellExecution\" --experiment-id \"W-AB-beforeShellExecution-logger-019\"",
+        "matcher": "CURSOR_HOOK_V2_AB_BSH_019"
+      },
+      {
+        "command": "bash \"<REPO>/hooks/experiments/responders/deny.sh\" \"W-AB-beforeShellExecution-deny-020\" \"beforeShellExecution\"",
+        "matcher": "CURSOR_HOOK_V2_AB_BSH_020"
+      },
+      {
+        "command": "bash \"<REPO>/hooks/experiments/responders/allow.sh\" \"W-AB-beforeShellExecution-allow-021\" \"beforeShellExecution\"",
+        "matcher": "CURSOR_HOOK_V2_AB_BSH_021"
+      },
+      {
+        "command": "bash \"<REPO>/hooks/experiments/responders/ask.sh\" \"W-AB-beforeShellExecution-ask-022\" \"beforeShellExecution\"",
+        "matcher": "CURSOR_HOOK_V2_AB_BSH_022"
+      },
+      {
+        "command": "bash \"<REPO>/hooks/experiments/responders/user-message.sh\" \"W-AB-beforeShellExecution-user-message-023\" \"beforeShellExecution\"",
+        "matcher": "CURSOR_HOOK_V2_AB_BSH_023"
+      },
+      {
+        "command": "bash \"<REPO>/hooks/experiments/responders/agent-message.sh\" \"W-AB-beforeShellExecution-agent-message-024\" \"beforeShellExecution\"",
+        "matcher": "CURSOR_HOOK_V2_AB_BSH_024"
+      },
+      {
+        "type": "prompt",
+        "matcher": "CURSOR_HOOK_V2_F_PROMPT_001",
+        "prompt": "Return {\"ok\": true, \"reason\": \"approved\"} if the command contains APPROVE_ME, else {\"ok\": false, \"reason\": \"denied\"}"
+      },
+      {
+        "type": "prompt",
+        "matcher": "CURSOR_HOOK_V2_F_PROMPT_002",
+        "prompt": "Return {\"ok\": true, \"reason\": \"approved\"} if the command contains APPROVE_ME, else {\"ok\": false, \"reason\": \"denied\"}",
+        "model": "claude-haiku-4-5"
+      }
+    ],
+    "afterShellExecution": [
+      {
+        "command": "bash \"<REPO>/hooks/scripts/experiment-logger-v2.sh\" \"afterShellExecution\" --experiment-id \"W-C-afterShellExecution-logger-016\""
+      },
+      {
+        "command": "bash \"<REPO>/hooks/scripts/experiment-logger-v2.sh\" \"afterShellExecution\" --experiment-id \"W-C-afterShellExecution-logger-017\"",
+        "matcher": "Shell"
+      },
+      {
+        "command": "bash \"<REPO>/hooks/scripts/experiment-logger-v2.sh\" \"afterShellExecution\" --experiment-id \"W-C-afterShellExecution-logger-018\"",
+        "matcher": "^Shell$"
+      },
+      {
+        "command": "bash \"<REPO>/hooks/scripts/experiment-logger-v2.sh\" \"afterShellExecution\" --experiment-id \"W-C-afterShellExecution-logger-019\"",
+        "matcher": "Read|Write"
+      },
+      {
+        "command": "bash \"<REPO>/hooks/scripts/experiment-logger-v2.sh\" \"afterShellExecution\" --experiment-id \"W-C-afterShellExecution-logger-020\"",
+        "matcher": "^MCP:.*"
+      },
+      {
+        "command": "bash \"<REPO>/hooks/scripts/experiment-logger-v2.sh\" \"afterShellExecution\" --experiment-id \"W-AB-afterShellExecution-logger-025\"",
+        "matcher": "CURSOR_HOOK_V2_AB_ASH_025"
+      }
+    ],
+    "beforeMCPExecution": [
+      {
+        "command": "bash \"<REPO>/hooks/scripts/experiment-logger-v2.sh\" \"beforeMCPExecution\" --experiment-id \"W-C-beforeMCPExecution-logger-021\""
+      },
+      {
+        "command": "bash \"<REPO>/hooks/scripts/experiment-logger-v2.sh\" \"beforeMCPExecution\" --experiment-id \"W-C-beforeMCPExecution-logger-022\"",
+        "matcher": "Shell"
+      },
+      {
+        "command": "bash \"<REPO>/hooks/scripts/experiment-logger-v2.sh\" \"beforeMCPExecution\" --experiment-id \"W-C-beforeMCPExecution-logger-023\"",
+        "matcher": "^Shell$"
+      },
+      {
+        "command": "bash \"<REPO>/hooks/scripts/experiment-logger-v2.sh\" \"beforeMCPExecution\" --experiment-id \"W-C-beforeMCPExecution-logger-024\"",
+        "matcher": "Read|Write"
+      },
+      {
+        "command": "bash \"<REPO>/hooks/scripts/experiment-logger-v2.sh\" \"beforeMCPExecution\" --experiment-id \"W-C-beforeMCPExecution-logger-025\"",
+        "matcher": "^MCP:.*"
+      },
+      {
+        "command": "bash \"<REPO>/hooks/scripts/experiment-logger-v2.sh\" \"beforeMCPExecution\" --experiment-id \"W-AB-beforeMCPExecution-logger-026\"",
+        "matcher": "^MCP:.*"
+      },
+      {
+        "command": "bash \"<REPO>/hooks/experiments/sentinel-gate.sh\" \"CURSOR_HOOK_V2_AB_BME_027\" \"<REPO>/hooks/experiments/responders/deny.sh\" \"W-AB-beforeMCPExecution-deny-027\" \"beforeMCPExecution\"",
+        "matcher": "^MCP:.*"
+      },
+      {
+        "command": "bash \"<REPO>/hooks/experiments/sentinel-gate.sh\" \"CURSOR_HOOK_V2_AB_BME_028\" \"<REPO>/hooks/experiments/responders/allow.sh\" \"W-AB-beforeMCPExecution-allow-028\" \"beforeMCPExecution\"",
+        "matcher": "^MCP:.*"
+      },
+      {
+        "command": "bash \"<REPO>/hooks/experiments/sentinel-gate.sh\" \"CURSOR_HOOK_V2_AB_BME_029\" \"<REPO>/hooks/experiments/responders/ask.sh\" \"W-AB-beforeMCPExecution-ask-029\" \"beforeMCPExecution\"",
+        "matcher": "^MCP:.*"
+      },
+      {
+        "command": "bash \"<REPO>/hooks/experiments/sentinel-gate.sh\" \"CURSOR_HOOK_V2_AB_BME_030\" \"<REPO>/hooks/experiments/responders/user-message.sh\" \"W-AB-beforeMCPExecution-user-message-030\" \"beforeMCPExecution\"",
+        "matcher": "^MCP:.*"
+      },
+      {
+        "command": "bash \"<REPO>/hooks/experiments/sentinel-gate.sh\" \"CURSOR_HOOK_V2_AB_BME_031\" \"<REPO>/hooks/experiments/responders/agent-message.sh\" \"W-AB-beforeMCPExecution-agent-message-031\" \"beforeMCPExecution\"",
+        "matcher": "^MCP:.*"
+      }
+    ],
+    "afterMCPExecution": [
+      {
+        "command": "bash \"<REPO>/hooks/scripts/experiment-logger-v2.sh\" \"afterMCPExecution\" --experiment-id \"W-C-afterMCPExecution-logger-026\""
+      },
+      {
+        "command": "bash \"<REPO>/hooks/scripts/experiment-logger-v2.sh\" \"afterMCPExecution\" --experiment-id \"W-C-afterMCPExecution-logger-027\"",
+        "matcher": "Shell"
+      },
+      {
+        "command": "bash \"<REPO>/hooks/scripts/experiment-logger-v2.sh\" \"afterMCPExecution\" --experiment-id \"W-C-afterMCPExecution-logger-028\"",
+        "matcher": "^Shell$"
+      },
+      {
+        "command": "bash \"<REPO>/hooks/scripts/experiment-logger-v2.sh\" \"afterMCPExecution\" --experiment-id \"W-C-afterMCPExecution-logger-029\"",
+        "matcher": "Read|Write"
+      },
+      {
+        "command": "bash \"<REPO>/hooks/scripts/experiment-logger-v2.sh\" \"afterMCPExecution\" --experiment-id \"W-C-afterMCPExecution-logger-030\"",
+        "matcher": "^MCP:.*"
+      },
+      {
+        "command": "bash \"<REPO>/hooks/scripts/experiment-logger-v2.sh\" \"afterMCPExecution\" --experiment-id \"W-AB-afterMCPExecution-logger-032\""
+      }
+    ],
+    "subagentStart": [
+      {
+        "command": "bash \"<REPO>/hooks/scripts/experiment-logger-v2.sh\" \"subagentStart\" --experiment-id \"W-C-subagentStart-logger-031\""
+      },
+      {
+        "command": "bash \"<REPO>/hooks/scripts/experiment-logger-v2.sh\" \"subagentStart\" --experiment-id \"W-C-subagentStart-logger-032\"",
+        "matcher": "Shell"
+      },
+      {
+        "command": "bash \"<REPO>/hooks/scripts/experiment-logger-v2.sh\" \"subagentStart\" --experiment-id \"W-C-subagentStart-logger-033\"",
+        "matcher": "^Shell$"
+      },
+      {
+        "command": "bash \"<REPO>/hooks/scripts/experiment-logger-v2.sh\" \"subagentStart\" --experiment-id \"W-C-subagentStart-logger-034\"",
+        "matcher": "Read|Write"
+      },
+      {
+        "command": "bash \"<REPO>/hooks/scripts/experiment-logger-v2.sh\" \"subagentStart\" --experiment-id \"W-C-subagentStart-logger-035\"",
+        "matcher": "^MCP:.*"
+      },
+      {
+        "command": "bash \"<REPO>/hooks/scripts/experiment-logger-v2.sh\" \"subagentStart\" --experiment-id \"W-AB-subagentStart-logger-014\"",
+        "matcher": "^(generalPurpose|explore)$"
+      },
+      {
+        "command": "bash \"<REPO>/hooks/experiments/sentinel-gate.sh\" \"CURSOR_HOOK_V2_AB_SST_015\" \"<REPO>/hooks/experiments/responders/deny.sh\" \"W-AB-subagentStart-deny-015\" \"subagentStart\"",
+        "matcher": "^(generalPurpose|explore)$"
+      },
+      {
+        "command": "bash \"<REPO>/hooks/experiments/sentinel-gate.sh\" \"CURSOR_HOOK_V2_AB_SST_016\" \"<REPO>/hooks/experiments/responders/allow.sh\" \"W-AB-subagentStart-allow-016\" \"subagentStart\"",
+        "matcher": "^(generalPurpose|explore)$"
+      },
+      {
+        "command": "bash \"<REPO>/hooks/experiments/sentinel-gate.sh\" \"CURSOR_HOOK_V2_AB_SST_017\" \"<REPO>/hooks/experiments/responders/user-message.sh\" \"W-AB-subagentStart-user-message-017\" \"subagentStart\"",
+        "matcher": "^(generalPurpose|explore)$"
+      },
+      {
+        "command": "bash \"<REPO>/hooks/experiments/sentinel-gate.sh\" \"CURSOR_HOOK_V2_AB_SST_018\" \"<REPO>/hooks/experiments/responders/agent-message.sh\" \"W-AB-subagentStart-agent-message-018\" \"subagentStart\"",
+        "matcher": "^(generalPurpose|explore)$"
+      }
+    ],
+    "subagentStop": [
+      {
+        "command": "bash \"<REPO>/hooks/scripts/experiment-logger-v2.sh\" \"subagentStop\" --experiment-id \"W-C-subagentStop-logger-036\""
+      },
+      {
+        "command": "bash \"<REPO>/hooks/scripts/experiment-logger-v2.sh\" \"subagentStop\" --experiment-id \"W-C-subagentStop-logger-037\"",
+        "matcher": "Shell"
+      },
+      {
+        "command": "bash \"<REPO>/hooks/scripts/experiment-logger-v2.sh\" \"subagentStop\" --experiment-id \"W-C-subagentStop-logger-038\"",
+        "matcher": "^Shell$"
+      },
+      {
+        "command": "bash \"<REPO>/hooks/scripts/experiment-logger-v2.sh\" \"subagentStop\" --experiment-id \"W-C-subagentStop-logger-039\"",
+        "matcher": "Read|Write"
+      },
+      {
+        "command": "bash \"<REPO>/hooks/scripts/experiment-logger-v2.sh\" \"subagentStop\" --experiment-id \"W-C-subagentStop-logger-040\"",
+        "matcher": "^MCP:.*"
+      },
+      {
+        "command": "bash \"<REPO>/hooks/scripts/experiment-logger-v2.sh\" \"subagentStop\" --experiment-id \"W-AB-subagentStop-logger-042\""
+      },
+      {
+        "command": "bash \"<REPO>/hooks/experiments/responders/followup-message.sh\" \"W-EK-subagentStop-followup-message-005\" \"subagentStop\"",
+        "matcher": "^(generalPurpose|explore)$",
+        "loop_limit": null
+      },
+      {
+        "command": "bash \"<REPO>/hooks/experiments/responders/followup-message.sh\" \"W-EK-subagentStop-followup-message-006\" \"subagentStop\"",
+        "matcher": "^(generalPurpose|explore)$",
+        "loop_limit": 1
+      },
+      {
+        "command": "bash \"<REPO>/hooks/experiments/responders/followup-message.sh\" \"W-EK-subagentStop-followup-message-007\" \"subagentStop\"",
+        "matcher": "^(generalPurpose|explore)$",
+        "loop_limit": 3
+      },
+      {
+        "command": "bash \"<REPO>/hooks/experiments/responders/followup-message.sh\" \"W-EK-subagentStop-followup-message-008\" \"subagentStop\"",
+        "matcher": "^(generalPurpose|explore)$"
+      }
+    ],
+    "postToolUseFailure": [
+      {
+        "command": "bash \"<REPO>/hooks/scripts/experiment-logger-v2.sh\" \"postToolUseFailure\" --experiment-id \"W-AB-postToolUseFailure-logger-013\"",
+        "matcher": "^Shell$"
+      }
+    ],
+    "beforeReadFile": [
+      {
+        "command": "bash \"<REPO>/hooks/scripts/experiment-logger-v2.sh\" \"beforeReadFile\" --experiment-id \"W-AB-beforeReadFile-logger-033\"",
+        "matcher": "^Read$"
+      },
+      {
+        "command": "bash \"<REPO>/hooks/experiments/sentinel-gate.sh\" \"CURSOR_HOOK_V2_AB_BRF_034\" \"<REPO>/hooks/experiments/responders/deny.sh\" \"W-AB-beforeReadFile-deny-034\" \"beforeReadFile\"",
+        "matcher": "^Read$"
+      },
+      {
+        "command": "bash \"<REPO>/hooks/experiments/sentinel-gate.sh\" \"CURSOR_HOOK_V2_AB_BRF_035\" \"<REPO>/hooks/experiments/responders/allow.sh\" \"W-AB-beforeReadFile-allow-035\" \"beforeReadFile\"",
+        "matcher": "^Read$"
+      },
+      {
+        "command": "bash \"<REPO>/hooks/experiments/sentinel-gate.sh\" \"CURSOR_HOOK_V2_AB_BRF_036\" \"<REPO>/hooks/experiments/responders/user-message.sh\" \"W-AB-beforeReadFile-user-message-036\" \"beforeReadFile\"",
+        "matcher": "^Read$"
+      },
+      {
+        "command": "bash \"<REPO>/hooks/experiments/sentinel-gate.sh\" \"CURSOR_HOOK_V2_AB_BRF_037\" \"<REPO>/hooks/experiments/responders/ask.sh\" \"W-AB-beforeReadFile-ask-037\" \"beforeReadFile\"",
+        "matcher": "^Read$"
+      }
+    ],
+    "afterFileEdit": [
+      {
+        "command": "bash \"<REPO>/hooks/scripts/experiment-logger-v2.sh\" \"afterFileEdit\" --experiment-id \"W-AB-afterFileEdit-logger-038\"",
+        "matcher": "^Write$"
+      },
+      {
+        "command": "bash \"<REPO>/hooks/experiments/sentinel-gate.sh\" \"CURSOR_HOOK_V2_AB_AFE_039\" \"<REPO>/hooks/experiments/responders/deny.sh\" \"W-AB-afterFileEdit-deny-039\" \"afterFileEdit\"",
+        "matcher": "^Write$"
+      },
+      {
+        "command": "bash \"<REPO>/hooks/experiments/sentinel-gate.sh\" \"CURSOR_HOOK_V2_AB_AFE_040\" \"<REPO>/hooks/experiments/responders/allow.sh\" \"W-AB-afterFileEdit-allow-040\" \"afterFileEdit\"",
+        "matcher": "^Write$"
+      }
+    ],
+    "stop": [
+      {
+        "command": "bash \"<REPO>/hooks/scripts/experiment-logger-v2.sh\" \"stop\" --experiment-id \"W-AB-stop-logger-041\""
+      },
+      {
+        "command": "bash \"<REPO>/hooks/experiments/responders/followup-message.sh\" \"W-EK-stop-followup-message-001\" \"stop\"",
+        "matcher": "Stop",
+        "loop_limit": null
+      },
+      {
+        "command": "bash \"<REPO>/hooks/experiments/responders/followup-message.sh\" \"W-EK-stop-followup-message-002\" \"stop\"",
+        "matcher": "Stop",
+        "loop_limit": 1
+      },
+      {
+        "command": "bash \"<REPO>/hooks/experiments/responders/followup-message.sh\" \"W-EK-stop-followup-message-003\" \"stop\"",
+        "matcher": "Stop",
+        "loop_limit": 3
+      },
+      {
+        "command": "bash \"<REPO>/hooks/experiments/responders/followup-message.sh\" \"W-EK-stop-followup-message-004\" \"stop\"",
+        "matcher": "Stop"
+      }
+    ],
+    "afterAgentResponse": [
+      {
+        "command": "bash \"<REPO>/hooks/scripts/experiment-logger-v2.sh\" \"afterAgentResponse\" --experiment-id \"W-AB-afterAgentResponse-logger-043\""
+      }
+    ],
+    "afterAgentThought": [
+      {
+        "command": "bash \"<REPO>/hooks/scripts/experiment-logger-v2.sh\" \"afterAgentThought\" --experiment-id \"W-AB-afterAgentThought-logger-044\""
+      }
+    ]
+  }
+}

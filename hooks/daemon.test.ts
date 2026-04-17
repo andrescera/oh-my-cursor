@@ -1,6 +1,6 @@
 import { describe, test, expect, beforeAll, afterAll } from "bun:test"
 import { mkdirSync, writeFileSync, unlinkSync, rmdirSync, rmSync, existsSync, renameSync, readFileSync } from "node:fs"
-import { join } from "node:path"
+import { join, resolve } from "node:path"
 import { tmpdir } from "node:os"
 import { randomUUID } from "node:crypto"
 import { DEFAULT_CONFIG } from "./config"
@@ -43,6 +43,24 @@ afterAll(() => {
   try { rmdirSync(AGENTS_TEST_DIR) } catch {}
 })
 
+async function waitForPort(port: number, timeoutMs = 3000): Promise<boolean> {
+  const deadline = Date.now() + timeoutMs
+  while (Date.now() < deadline) {
+    try {
+      const sock = await Bun.connect({
+        hostname: "127.0.0.1",
+        port,
+        socket: { data() {}, open(s) { s.end() }, close() {}, error() {} },
+      })
+      sock.end()
+      return true
+    } catch {
+      await Bun.sleep(50)
+    }
+  }
+  return false
+}
+
 // Placed before the main suite because the main suite's /shutdown tests trigger process.exit(0),
 // which would kill the runner before this block could execute if placed after.
 describe("daemon hard-claim port", () => {
@@ -72,17 +90,17 @@ describe("daemon hard-claim port", () => {
         { stdout: "pipe", stderr: "pipe" },
       )
 
-      // Give the squatter time to bind without polling via fetch.
-      // Polling with fetch would leave an open socket that lsof -ti :47847 sees, causing
-      // killPortSquatter to SIGTERM the test runner process itself.
-      await Bun.sleep(1500)
+      // Give the squatter time to bind. Polling with fetch would leave an open socket that
+      // lsof -ti :47847 sees, causing killPortSquatter to SIGTERM the test runner itself.
+      const squatterReady = await waitForPort(47847, 3000)
+      if (!squatterReady) console.warn("[daemon hard-claim test] squatter did not bind in time; continuing anyway")
 
       let daemon: ReturnType<typeof Bun.spawn> | null = null
       try {
         // Strip OH_MY_CURSOR_PORT so daemon.ts falls through to DEFAULT_PORT (47847)
         const { OH_MY_CURSOR_PORT: _omit, ...envWithoutPort } = process.env
         daemon = Bun.spawn(["bun", "run", "hooks/daemon.ts"], {
-          cwd: "<REPO>",
+          cwd: resolve(import.meta.dir, ".."),
           stdout: "pipe",
           stderr: "pipe",
           env: envWithoutPort,
@@ -100,7 +118,7 @@ describe("daemon hard-claim port", () => {
           expect(stderr).toContain("47847")
           daemon = null
         } else {
-          // Same-uid squatter was killed by killPortSquatter; daemon took over — also valid Wave 2 behaviour
+          // Same-uid squatter was killed by killPortSquatter; daemon took over - also valid Wave 2 behaviour
           const health = await fetch("http://127.0.0.1:47847/health")
             .then((r) => r.status)
             .catch(() => -1)

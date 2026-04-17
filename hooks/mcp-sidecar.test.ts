@@ -405,15 +405,31 @@ describe("mcp-sidecar HTTP layer", () => {
           Accept: "application/json, text/event-stream",
           "mcp-session-id": stranger,
         },
-        body: JSON.stringify({ jsonrpc: "2.0", method: "tools/list", id: 1 }),
+        body: JSON.stringify({ jsonrpc: "2.0", method: "tools/list", id: 7 }),
       })
       expect(res.status).toBe(404)
       const body = await res.json()
-      expect(body).toMatchObject({
-        jsonrpc: "2.0",
-        error: { code: -32000, message: "Session not found" },
-        id: null,
+      expect(body.jsonrpc).toBe("2.0")
+      expect(body.error).toMatchObject({ code: -32000, message: "Session not found" })
+      expect(body.id).toBe(7)
+    })
+
+    test("POST /mcp with unknown session id and no request id returns 404 with id null", async () => {
+      const stranger = crypto.randomUUID()
+      const res = await fetch(`${BASE}/mcp`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Accept: "application/json, text/event-stream",
+          "mcp-session-id": stranger,
+        },
+        body: JSON.stringify({ jsonrpc: "2.0", method: "notifications/initialized" }),
       })
+      expect(res.status).toBe(404)
+      const body = await res.json()
+      expect(body.jsonrpc).toBe("2.0")
+      expect(body.error).toMatchObject({ code: -32000, message: "Session not found" })
+      expect(body.id).toBeNull()
     })
   })
 })

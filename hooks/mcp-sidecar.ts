@@ -28,13 +28,23 @@ const fetchHandler = async (req: Request): Promise<Response> => {
 
   if (url.pathname === "/mcp") {
     const sessionId = req.headers.get("mcp-session-id") ?? undefined
+    const reqClone = req.clone()
     const result = await getOrCreateSession(sessionId)
     if (isUnknownSession(result)) {
+      let echoedId: unknown = null
+      try {
+        const body = (await reqClone.json()) as { id?: unknown }
+        if (body && typeof body === "object" && "id" in body) {
+          echoedId = (body as { id?: unknown }).id ?? null
+        }
+      } catch {
+        // body unparseable; leave id as null
+      }
       return new Response(
         JSON.stringify({
           jsonrpc: "2.0",
           error: { code: -32000, message: "Session not found" },
-          id: null,
+          id: echoedId,
         }),
         { status: 404, headers: { "Content-Type": "application/json" } },
       )

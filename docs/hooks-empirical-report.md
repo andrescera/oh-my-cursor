@@ -1,3 +1,12 @@
+> [!IMPORTANT]
+> **SUPERSEDED — v1 historical record (Apr 17, 2026 — 01:57Z).**
+> For the current canonical picture see:
+> - `docs/internal/hooks-v1-vs-v2-claim-diff.md` — v2 claim-by-claim audit
+> - `docs/internal/hooks-evidence-v2.jsonl` — 459 v2 hook records
+> - `docs/cursor/03-hooks.md` — operator-facing reference
+>
+> Many "hook" names listed below are intentionally FAKE (parser-rejected) — this document is the negative-testing record. Use it for reproducing rejection behavior, not as a list of available hooks.
+
 # Cursor Hooks Empirical Report
 
 Generated: 2026-04-17T01:57:07Z

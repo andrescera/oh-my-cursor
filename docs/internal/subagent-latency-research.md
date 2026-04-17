@@ -82,7 +82,9 @@ Research-phase notes on Cursor subagent (Task tool) dispatch and startup latency
 
 **Confirmed (official docs).** `subagentStart` is called **before** spawning a subagent (Task tool) and can allow or deny creation. Input includes `subagent_id`, `subagent_type`, `task`, `subagent_model`, `is_parallel_worker`, and related fields. The response `permission` field must be `"allow"` to proceed or `"deny"` to block; `"ask"` is **not** supported and is treated as `"deny"`. ([Cursor Hooks — subagentStart](https://cursor.com/docs/hooks))
 
-**Confirmed (official docs).** `subagentStop` runs after completion, error, or abort, with fields such as summary, counts, modified files, and optional follow-up messaging (subject to loop limits). ([Cursor Hooks — subagentStop](https://cursor.com/docs/hooks))
+**Confirmed (official docs).** `subagentStop` runs after completion, error, or abort, with fields such as summary, counts, modified files, and optional follow-up messaging (subject to loop limits). ([Cursor Hooks — subagentStop](https://cursor.com/docs/hooks))[^hook-role-split]
+
+[^hook-role-split]: Empirical v2: `subagentStart` vs `subagentStop` can fire from different extension-host roles (`agent-exec` vs `always-local`). See New-in-v2 rows **N9** and **N11** in [hooks-v1-vs-v2-claim-diff.md](./hooks-v1-vs-v2-claim-diff.md).
 
 **Inference (engineering).** Hook commands are external processes. Any synchronous work in `subagentStart` sits on the path before spawn completes. **Not documented as a latency budget:** no official ms figures for hook overhead.
 

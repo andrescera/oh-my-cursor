@@ -43,6 +43,29 @@ Cursor 3.1.15 exposes 20 canonical hook events enumerated by the `bv` enum at `w
 | 19 | `afterAgentThought` | agent-triggerable / observe | not enforced | 19 | verified |
 | 20 | `preCompact` | manual-UI / session | N/A | 0 | source-cited |
 
+## Response fields — empirical status
+
+Operator-facing response fields (what your hook returns) have been
+empirically classified by the v2 experiments. See the per-event x per-field
+catalog in [docs/internal/hook-response-fields.md](../internal/hook-response-fields.md).
+
+Quick reference for the most-used fields:
+
+| Event | Field | Status |
+|---|---|---|
+| stop | followup_message | TAKES-EFFECT |
+| postToolUse | additional_context | TAKES-EFFECT |
+| beforeShellExecution | permission=deny | TAKES-EFFECT |
+| beforeShellExecution | permission=ask | ACCEPTED-BUT-IGNORED |
+| beforeShellExecution | exit code 2 | TAKES-EFFECT (regardless of failClosed) |
+| subagentStop | followup_message | UNCONFIRMED |
+| afterAgentResponse | response payload field | UNCONFIRMED reliability |
+| afterFileEdit | typed override | UNCONFIRMED |
+| sessionStart | env / additional_context | UNCONFIRMED (no v2 records) |
+| stop_hook_loop_limit (config) | DEPRECATED | warn-and-ignore |
+
+See [docs/internal/hook-response-fields.md](../internal/hook-response-fields.md) for the full table with evidence IDs.
+
 ---
 
 ## Environment Variables
@@ -100,7 +123,7 @@ Fires at the start of an agent session. Requires a manual session boundary (new 
 
 **Output:** Not empirically tested in this pass. Per docs, session hooks do not enforce a response contract.
 
-**Status:** Untested in this pass; requires manual UI trigger.
+**Status:** Untested in this pass; requires manual UI trigger. (See `docs/internal/hook-response-fields.md` for current status.)
 
 ---
 
@@ -125,7 +148,7 @@ Fires at session end. Requires manual session termination.
 
 **Output:** Not empirically tested in this pass. Per docs, session hooks do not enforce a response contract.
 
-**Status:** Untested in this pass; requires manual UI trigger.
+**Status:** Untested in this pass; requires manual UI trigger. (See `docs/internal/hook-response-fields.md` for current status.)
 
 ---
 
@@ -169,8 +192,8 @@ Fires at session end. Requires manual session termination.
 | Field | Type | Accepted by parser? | Enforced? | Notes |
 |-------|------|--------------------|---------|----|
 | `decision` | `"allow"\|"deny"\|"ask"` | yes | yes (allow/deny); ask = deny | Omit or `"allow"` = pass through |
-| `user_message` | string | yes | untested | Shown to user on deny |
-| `agent_message` | string | yes | untested | Injected into agent context |
+| `user_message` | string | yes | untested | Shown to user on deny (See `docs/internal/hook-response-fields.md` for current status.) |
+| `agent_message` | string | yes | untested | Injected into agent context (See `docs/internal/hook-response-fields.md` for current status.) |
 | `updated_input` | object | yes | yes | Replaces `tool_input` before execution; registry cell W-AB-preToolUse-updated-input-004 |
 
 ### Matcher target
@@ -377,7 +400,7 @@ A logger hook on Shell (matcher `^Shell$`) captured the failure payload that occ
 
 ### Matcher target
 
-Matcher target for `subagentStart` is untested in this pass. Based on registry cell patterns, likely matched against `subagent_type` or a literal string. Wave C logger cells used empty matcher (unconditional).
+Matcher target for `subagentStart` is untested in this pass. Based on registry cell patterns, likely matched against `subagent_type` or a literal string. Wave C logger cells used empty matcher (unconditional). (See `docs/internal/hook-response-fields.md` for current status.)
 
 ### Env vars
 
@@ -637,7 +660,7 @@ Unconditional logger hook captured shell command output including `exitCode` emb
 | Field | Type | Accepted by parser? | Enforced? | Notes |
 |-------|------|--------------------|---------|----|
 | `decision` | `"deny"\|"allow"` | yes | partially tested | Deny cells exist in registry; enforcement not confirmed in this pass |
-| `decision` | `"ask"` | yes | untested | Registry cell W-AB-beforeMCPExecution-ask-029 |
+| `decision` | `"ask"` | yes | untested | Registry cell W-AB-beforeMCPExecution-ask-029 (See `docs/internal/hook-response-fields.md` for current status.) |
 | `user_message` | string | yes | untested | Registry cell W-AB-beforeMCPExecution-user-message-030 |
 | `agent_message` | string | yes | untested | Registry cell W-AB-beforeMCPExecution-agent-message-031 |
 
@@ -761,7 +784,7 @@ Unconditional logger captured MCP result after a `ping` call to `websearch`. `du
 | Field | Type | Accepted by parser? | Enforced? | Notes |
 |-------|------|--------------------|---------|----|
 | `decision` | `"deny"` | yes | partially tested | Registry cell W-AB-beforeReadFile-deny-034; enforcement not confirmed in this pass |
-| `decision` | `"ask"` | yes | untested | Registry cell W-AB-beforeReadFile-ask-037 |
+| `decision` | `"ask"` | yes | untested | Registry cell W-AB-beforeReadFile-ask-037 (See `docs/internal/hook-response-fields.md` for current status.) |
 
 ### Matcher target
 
@@ -959,7 +982,7 @@ Followup-message hook with `loop_limit=null` and `matcher="Stop"`. Fired when th
 
 Fires before the user submits a prompt in the Cursor UI. Requires manual prompt submission; does not fire for agent-generated follow-up messages in the automated loop. No automated probe was possible.
 
-**Status:** Untested in this pass; requires manual UI trigger.
+**Status:** Untested in this pass; requires manual UI trigger. (See `docs/internal/hook-response-fields.md` for current status.)
 
 **Input schema (from docs, unverified):**
 

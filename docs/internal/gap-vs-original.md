@@ -7,6 +7,8 @@ _Cross-references:_
 - _Cycle-2 field catalog plan: `<home>/.cursor/plans/hooks_cycle_2_field_catalog_2b74fe6d.plan.md`_
 - _Prior audit: [docs/internal/agent-nativeness-audit.md](./agent-nativeness-audit.md)_
 
+_See also: [hook-response-fields.md](./hook-response-fields.md) for empirical response-field semantics._
+
 ## Executive Summary
 
 The reference (`oh-my-openagent-original`) is a Bun/TypeScript OpenCode plugin (oh-my-opencode v3.17.0) with 52 programmatic hooks, 11 named agents, 9 builtin commands, 8 builtin skills, 3 MCPs, and GitHub Actions CI; this repo is a Cursor plugin with a 20-event `hooks.json` surface where agents, commands, skills, and rules are static markdown. The agent personas and command set are equivalent at the markdown level, and all 3 original MCPs are already-ported declaratively. The critical gap is the OpenCode programmatic-hook surface: of 52 original hooks, 6 are already-ported, 19 require cycle-2 field-catalog knowledge to port, and 15 are unbridgeable by architecture (attached to OpenCode-only events such as `chat.message` mutation, `chat.params`, `experimental.chat.messages.transform`, and `tool.definition`).
@@ -143,70 +145,70 @@ The hooks surface is the largest (52 rows) and the primary driver of the gap. Cu
 
 | surface | original-path | current-path-or-— | tier | cycle-2-dep | ROI | rationale |
 |---|---|---|---|---|---|---|
-| `handler` + `session.idle` + `session.error` + `session.compacted` + `message.*` + `tool.*` (non-idle) | src/hooks/todo-continuation-enforcer/ (`index.ts`, `handler.ts`) | hooks/hooks.json → `post-daemon.sh`; no dedicated `todo-continuation-enforcer` handler file | portable-with-cycle-2 | Y | 5 | Injects continuation via subagent follow-up; maps to `subagentStop.followup_message`. |
+| `handler` + `session.idle` + `session.error` + `session.compacted` + `message.*` + `tool.*` (non-idle) | src/hooks/todo-continuation-enforcer/ (`index.ts`, `handler.ts`) | hooks/hooks.json → `post-daemon.sh`; no dedicated `todo-continuation-enforcer` handler file | portable-with-cycle-2 | Y | 5 | Injects continuation via subagent follow-up; maps to `subagentStop.followup_message`. ; status UNCONFIRMED — see hook-response-fields.md |
 | `tool.execute.after` + `event` (`message.updated` for token cache, `session.deleted`) | src/hooks/context-window-monitor.ts | hooks/hooks.json + hooks/handlers/context-window-monitor.ts | already-ported | N | 1 | Appends reminder to tool output when usage crosses threshold; ported as `postToolUse.additional_context`. |
-| Plugin `event.ts` + SDK resume (`handleSessionRecovery`) | src/hooks/session-recovery/ (`hook.ts` exports API; wired from plugin) | — | portable-with-cycle-2 | Y | 4 | Recovery state injected via sessionStart.env variables; user_message field accepted-but-not-enforced per cycle-2 findings. |
+| Plugin `event.ts` + SDK resume (`handleSessionRecovery`) | src/hooks/session-recovery/ (`hook.ts` exports API; wired from plugin) | — | portable-with-cycle-2 | Y | 4 | Recovery state injected via sessionStart.env variables; user_message field accepted-but-not-enforced per cycle-2 findings. ; status UNCONFIRMED — see hook-response-fields.md |
 | `event` (`session.created`, `session.idle`, `message.updated`, `permission.*`, `tool.execute.*`, `session.deleted`) | src/hooks/session-notification.ts | — | portable-without-cycle-2 | N | 2 | Desktop or OS notifications from idle and activity; file logging or `sessionStart` suffices without response mutation. |
 | `tool.execute.before` + `tool.execute.after` | src/hooks/comment-checker/ (`hook.ts`) | hooks/hooks.json + hooks/handlers/comment-checker.ts | already-ported | N | 4 | Blocks or rewrites tool args and output; uses `preToolUse` / `postToolUse` response fields in Cursor port. |
 | `tool.execute.after` | src/hooks/tool-output-truncator.ts | hooks/hooks.json + hooks/handlers/tool-output-truncator.ts | already-ported | N | 3 | Truncates long outputs; `postToolUse.additional_context` or output shaping. |
-| `tool.execute.before` | src/hooks/question-label-truncator/hook.ts | — | portable-with-cycle-2 | Y | 3 | Rewrites args before execution; `preToolUse.updated_input`. |
-| `tool.execute.before` + `tool.execute.after` | src/hooks/directory-agents-injector/hook.ts | — | portable-with-cycle-2 | Y | 3 | Injects directory agent hints after reads; `postToolUse.additional_context`. |
-| `tool.execute.before` + `tool.execute.after` | src/hooks/directory-readme-injector/hook.ts | — | portable-with-cycle-2 | Y | 3 | Injects README summaries; `postToolUse.additional_context`. |
+| `tool.execute.before` | src/hooks/question-label-truncator/hook.ts | — | portable-with-cycle-2 | Y | 3 | Rewrites args before execution; `preToolUse.updated_input`. ; status UNCONFIRMED — see hook-response-fields.md |
+| `tool.execute.before` + `tool.execute.after` | src/hooks/directory-agents-injector/hook.ts | — | portable-with-cycle-2 | Y | 3 | Injects directory agent hints after reads; `postToolUse.additional_context`. ; resolved by hook-response-fields.md |
+| `tool.execute.before` + `tool.execute.after` | src/hooks/directory-readme-injector/hook.ts | — | portable-with-cycle-2 | Y | 3 | Injects README summaries; `postToolUse.additional_context`. ; resolved by hook-response-fields.md |
 | `tool.execute.after` | src/hooks/empty-task-response-detector.ts | hooks/hooks.json + hooks/handlers/empty-task-detector.ts | already-ported | N | 3 | Fills empty Task output; `postToolUse` output or `additional_context`. |
 | `chat.message` + `event` (`session.deleted`) | src/hooks/think-mode/hook.ts | — | unbridgeable-by-architecture | N | 1 | Mutates user message parts; `chat.message` not on Cursor twenty-event list for this behavior. |
 | `chat.message` only | src/hooks/model-fallback/hook.ts | — | unbridgeable-by-architecture | N | 4 | Applies pending fallback by mutating `chat.message` only; no `preToolUse.updated_input` path in original. Reclassified from pre-planning Tier 3 hint; see Methodology Addendum. |
 | `event` (`session.error`, `session.deleted`, …) + SDK compact | src/hooks/anthropic-context-window-limit-recovery/recovery-hook.ts | — | unbridgeable-by-architecture | N | 1 | Provider-specific token-limit recovery via OpenCode session APIs. |
 | `tool.execute.after` + `event` (`message.updated`, `session.compacted`, `session.deleted`) + `session.summarize` | src/hooks/preemptive-compaction.ts | — | unbridgeable-by-architecture | N | 2 | Drives preemptive compaction via SDK; `session.compacted` and summarize not in Cursor hooks. |
-| `tool.execute.before` + `tool.execute.after` | src/hooks/rules-injector/hook.ts | — | partially-portable-with-caveats | Y | 5 | Injects rules text; `additional_context` approximates true prompt injection timing. Dual-listed in S4 (injection mechanism); cycle-2-dep unified to Y from W1d. |
+| `tool.execute.before` + `tool.execute.after` | src/hooks/rules-injector/hook.ts | — | partially-portable-with-caveats | Y | 5 | Injects rules text; `additional_context` approximates true prompt injection timing. Dual-listed in S4 (injection mechanism); cycle-2-dep unified to Y from W1d. ; resolved by hook-response-fields.md |
 | `chat.message` + `event` | src/hooks/background-notification/hook.ts | — | portable-without-cycle-2 | N | 2 | Routes background events; optional chat injection can be dropped or logged for parity. |
 | `event` (`session.created`) | src/hooks/auto-update-checker/hook.ts | — | portable-without-cycle-2 | N | 2 | One-shot startup checks and toasts; maps to `sessionStart` logging or toast script. |
 | Config flag (`isHookEnabled("startup-toast")` inside auto-update) | src/hooks/auto-update-checker/hook.ts + src/hooks/auto-update-checker/hook/startup-toasts.ts | — | portable-without-cycle-2 | N | 1 | Not a standalone module; gates startup toasts only. |
 | `chat.message` | src/hooks/keyword-detector/hook.ts | — | unbridgeable-by-architecture | N | 1 | Rewrites message parts from keywords; `chat.message` mutation. |
-| `tool.execute.after` | src/hooks/agent-usage-reminder/hook.ts | — | portable-with-cycle-2 | Y | 3 | Appends delegation reminders; `postToolUse.additional_context`. |
-| `tool.execute.before` | src/hooks/non-interactive-env/hook.ts | — | portable-with-cycle-2 | Y | 3 | Injects non-interactive env into shell args; `preToolUse.updated_input`. |
+| `tool.execute.after` | src/hooks/agent-usage-reminder/hook.ts | — | portable-with-cycle-2 | Y | 3 | Appends delegation reminders; `postToolUse.additional_context`. ; resolved by hook-response-fields.md |
+| `tool.execute.before` | src/hooks/non-interactive-env/hook.ts | — | portable-with-cycle-2 | Y | 3 | Injects non-interactive env into shell args; `preToolUse.updated_input`. ; status UNCONFIRMED — see hook-response-fields.md |
 | `tool.execute.after` + `event` (`session.deleted`) | src/hooks/interactive-bash-session/hook.ts | — | unbridgeable-by-architecture | N | 1 | Tmux and `interactive_bash` tool integration; OpenCode-specific runtime. |
 | `experimental.chat.messages.transform` | src/hooks/thinking-block-validator/hook.ts | hooks/hooks.json + hooks/handlers/thinking-block-validator.ts | already-ported | N | 2 | Validates thinking blocks on transform hook; Cursor uses safety handler variant. |
 | `experimental.chat.messages.transform` | src/hooks/tool-pair-validator/hook.ts | — | unbridgeable-by-architecture | N | 2 | Validates tool pairs on transform only; no Cursor `experimental.chat.messages.transform`. |
-| `event` (loop state machine) | src/hooks/ralph-loop/ralph-loop-hook.ts | — | partially-portable-with-caveats | Y | 4 | Long-running loop orchestration; partial via `stop` plus `subagentStop.followup_message` (cycle-2 field). |
-| `tool.execute.after` | src/hooks/category-skill-reminder/hook.ts | — | portable-with-cycle-2 | Y | 3 | Skill reminders after tools; `postToolUse.additional_context`. |
+| `event` (loop state machine) | src/hooks/ralph-loop/ralph-loop-hook.ts | — | partially-portable-with-caveats | Y | 4 | Long-running loop orchestration; partial via `stop` plus `subagentStop.followup_message` (cycle-2 field). ; `stop.followup_message` resolved by hook-response-fields.md; `subagentStop.followup_message` status UNCONFIRMED — see hook-response-fields.md |
+| `tool.execute.after` | src/hooks/category-skill-reminder/hook.ts | — | portable-with-cycle-2 | Y | 3 | Skill reminders after tools; `postToolUse.additional_context`. ; resolved by hook-response-fields.md |
 | `capture` + `event` (`session.compacted`, `session.idle`, `message.*` parts) | src/hooks/compaction-context-injector/hook.ts | — | unbridgeable-by-architecture | N | 1 | Relies on `session.compacted`, `message.part.delta` or `updated`, idle tail tracking. |
 | `capture` + `event` (`session.compacted`, `session.deleted`) + SDK `Todo.update` | src/hooks/compaction-todo-preserver/hook.ts | — | unbridgeable-by-architecture | N | 1 | Restores todos after compaction via OpenCode todo API. |
 | `experimental.session.compacting` + `chat.message` + `tool.execute.*` + `event` | src/hooks/claude-code-hooks/claude-code-hooks-hook.ts | — | partially-portable-with-caveats | N | 3 | Mix of pre-compact experimental hook and tool or message guards; only part maps to `preCompact` or `preToolUse`. |
 | `chat.message` + `command.execute.before` | src/hooks/auto-slash-command/hook.ts | — | unbridgeable-by-architecture | N | 2 | Slash and command executor injection; `command.execute.before` not in Cursor twenty. |
-| `tool.execute.after` | src/hooks/edit-error-recovery/hook.ts | — | portable-with-cycle-2 | Y | 3 | Rewrites failed edit output; `postToolUse.additional_context`. |
-| `tool.execute.after` | src/hooks/json-error-recovery/hook.ts | — | portable-with-cycle-2 | Y | 3 | Appends JSON fix hints; `postToolUse.additional_context`. |
+| `tool.execute.after` | src/hooks/edit-error-recovery/hook.ts | — | portable-with-cycle-2 | Y | 3 | Rewrites failed edit output; `postToolUse.additional_context`. ; resolved by hook-response-fields.md |
+| `tool.execute.after` | src/hooks/json-error-recovery/hook.ts | — | portable-with-cycle-2 | Y | 3 | Appends JSON fix hints; `postToolUse.additional_context`. ; resolved by hook-response-fields.md |
 | `tool.execute.after` | src/hooks/delegate-task-retry/hook.ts | hooks/hooks.json + hooks/handlers/delegate-task-retry.ts | already-ported | N | 3 | Retries or annotates Task output; ported handler exists. |
-| `tool.execute.before` | src/hooks/prometheus-md-only/hook.ts | — | portable-with-cycle-2 | Y | 5 | Denies non-md writes for Prometheus plans; `preToolUse.permission` = deny. |
-| `tool.execute.before` | src/hooks/sisyphus-junior-notepad/hook.ts | — | portable-with-cycle-2 | Y | 4 | Inject notepad directive via subagentStart permission/message response; matcher scoped to task-dispatching agents. |
+| `tool.execute.before` | src/hooks/prometheus-md-only/hook.ts | — | portable-with-cycle-2 | Y | 5 | Denies non-md writes for Prometheus plans; `preToolUse.permission` = deny. ; status UNCONFIRMED — see hook-response-fields.md |
+| `tool.execute.before` | src/hooks/sisyphus-junior-notepad/hook.ts | — | portable-with-cycle-2 | Y | 4 | Inject notepad directive via subagentStart permission/message response; matcher scoped to task-dispatching agents. ; status UNCONFIRMED — see hook-response-fields.md |
 | `chat.message` | src/hooks/no-sisyphus-gpt/hook.ts | — | unbridgeable-by-architecture | N | 1 | Forces agent or model via message mutation. |
 | `chat.message` | src/hooks/no-hephaestus-non-gpt/hook.ts | — | unbridgeable-by-architecture | N | 1 | Same pattern for Hephaestus routing. |
 | `chat.message` + `command.execute.before` | src/hooks/start-work/start-work-hook.ts | — | partially-portable-with-caveats | N | 4 | Injects start-work template context; approximate via `beforeSubmitPrompt` with timing caveats. |
 | `handler` + `tool.execute.before` + `tool.execute.after` | src/hooks/atlas/atlas-hook.ts | — | partially-portable-with-caveats | N | 4 | Multi-surface Atlas orchestration; partial via `subagentStart` or `subagentStop` plus tool guards. |
-| `event` (rich stream) + SDK `session.prompt` | src/hooks/unstable-agent-babysitter/unstable-agent-babysitter-hook.ts | — | partially-portable-with-caveats | Y | 3 | Watches idle or errors and nudges agents; partial via `subagentStop.followup_message` (cycle-2 field). |
-| `tool.execute.after` | src/hooks/task-resume-info/hook.ts | — | partially-portable-with-caveats | Y | 3 | Tool-level resume info approximated via subagentStop response; event granularity mismatch. |
+| `event` (rich stream) + SDK `session.prompt` | src/hooks/unstable-agent-babysitter/unstable-agent-babysitter-hook.ts | — | partially-portable-with-caveats | Y | 3 | Watches idle or errors and nudges agents; partial via `subagentStop.followup_message` (cycle-2 field). ; status UNCONFIRMED — see hook-response-fields.md |
+| `tool.execute.after` | src/hooks/task-resume-info/hook.ts | — | partially-portable-with-caveats | Y | 3 | Tool-level resume info approximated via subagentStop response; event granularity mismatch. ; status UNCONFIRMED — see hook-response-fields.md |
 | `event` (`session.deleted`) + `chat.message` (no-op) + imperative `stop` | src/hooks/stop-continuation-guard/hook.ts | — | partially-portable-with-caveats | N | 3 | Continuation stop state; overlaps Cursor `stop` hook but uses OpenCode background manager APIs. |
-| `tool.execute.before` | src/hooks/tasks-todowrite-disabler/hook.ts | — | portable-with-cycle-2 | Y | 4 | Denies TodoWrite; `preToolUse.permission` deny with TodoWrite matcher. |
+| `tool.execute.before` | src/hooks/tasks-todowrite-disabler/hook.ts | — | portable-with-cycle-2 | Y | 4 | Denies TodoWrite; `preToolUse.permission` deny with TodoWrite matcher. ; status UNCONFIRMED — see hook-response-fields.md |
 | `event` + `chat.message` | src/hooks/runtime-fallback/hook.ts | — | unbridgeable-by-architecture | N | 1 | Heavy `message.updated` and session status orchestration plus chat mutation. |
-| `tool.execute.before` + `event` (`session.deleted`) | src/hooks/write-existing-file-guard/hook.ts | — | portable-with-cycle-2 | Y | 4 | Blocks writes to existing files; `preToolUse.permission` deny. |
-| `tool.execute.before` (bash only) | src/hooks/bash-file-read-guard.ts | — | portable-with-cycle-2 | Y | 3 | Warns on cat or head or tail reads; Cursor port targets `beforeShellExecution.permission` or `preToolUse` deny path for Shell. |
+| `tool.execute.before` + `event` (`session.deleted`) | src/hooks/write-existing-file-guard/hook.ts | — | portable-with-cycle-2 | Y | 4 | Blocks writes to existing files; `preToolUse.permission` deny. ; status UNCONFIRMED — see hook-response-fields.md |
+| `tool.execute.before` (bash only) | src/hooks/bash-file-read-guard.ts | — | portable-with-cycle-2 | Y | 3 | Warns on cat or head or tail reads; Cursor port targets `beforeShellExecution.permission` or `preToolUse` deny path for Shell. ; resolved by hook-response-fields.md |
 | `chat.params` | src/hooks/anthropic-effort/hook.ts | — | unbridgeable-by-architecture | N | 1 | Provider effort injection; `chat.params` not on Cursor surface. |
-| `tool.execute.after` | src/hooks/hashline-read-enhancer/hook.ts | — | portable-with-cycle-2 | Y | 2 | Annotates Read output with hashes; `postToolUse.additional_context`. |
-| `tool.execute.after` | src/hooks/read-image-resizer/hook.ts | — | portable-with-cycle-2 | Y | 2 | Rewrites image read output; `postToolUse.additional_context`. |
+| `tool.execute.after` | src/hooks/hashline-read-enhancer/hook.ts | — | portable-with-cycle-2 | Y | 2 | Annotates Read output with hashes; `postToolUse.additional_context`. ; resolved by hook-response-fields.md |
+| `tool.execute.after` | src/hooks/read-image-resizer/hook.ts | — | portable-with-cycle-2 | Y | 2 | Rewrites image read output; `postToolUse.additional_context`. ; resolved by hook-response-fields.md |
 | `tool.definition` | src/hooks/todo-description-override/hook.ts | — | unbridgeable-by-architecture | N | 1 | Mutates tool definitions for todo display. |
-| `tool.execute.before` + `tool.execute.after` | src/hooks/webfetch-redirect-guard/hook.ts | — | portable-with-cycle-2 | Y | 3 | Rewrites redirecting webfetch args or output; `preToolUse.updated_input` or post output notes. |
+| `tool.execute.before` + `tool.execute.after` | src/hooks/webfetch-redirect-guard/hook.ts | — | portable-with-cycle-2 | Y | 3 | Rewrites redirecting webfetch args or output; `preToolUse.updated_input` or post output notes. ; status UNCONFIRMED — see hook-response-fields.md |
 | `event` (`session.created`) | src/hooks/legacy-plugin-toast/hook.ts | — | portable-without-cycle-2 | N | 1 | One-shot migration toast on session create; `sessionStart` side channel. |
 
 ### Top-ROI hook candidates (from W1e, for Oracle review at W3.1)
 
 Sorted ROI descending:
 
-- `rules-injector` — partially-portable-with-caveats, cycle-2-dep Y, ROI 5 — High leverage for plan or policy injection; only caveat is prompt-injection timing versus `additional_context`.
-- `todo-continuation-enforcer` — portable-with-cycle-2, cycle-2-dep Y, ROI 5 — Directly improves long-run task completion; needs `subagentStop.followup_message`.
-- `prometheus-md-only` — portable-with-cycle-2, cycle-2-dep Y, ROI 5 — Clear deny policy for markdown plans; maps cleanly to `preToolUse.permission`.
+- `rules-injector` — partially-portable-with-caveats, cycle-2-dep Y, ROI 5 — High leverage for plan or policy injection; only caveat is prompt-injection timing versus `additional_context`. — _Catalog: `postToolUse.additional_context` is TAKES-EFFECT ([hook-response-fields.md](./hook-response-fields.md))._
+- `todo-continuation-enforcer` — portable-with-cycle-2, cycle-2-dep Y, ROI 5 — Directly improves long-run task completion; needs `subagentStop.followup_message`. — _Catalog: `subagentStop.followup_message` is UNCONFIRMED ([hook-response-fields.md](./hook-response-fields.md))._
+- `prometheus-md-only` — portable-with-cycle-2, cycle-2-dep Y, ROI 5 — Clear deny policy for markdown plans; maps cleanly to `preToolUse.permission`. — _Catalog: `preToolUse.permission` deny is UNCONFIRMED ([hook-response-fields.md](./hook-response-fields.md))._
 - `model-fallback` — unbridgeable-by-architecture, cycle-2-dep N, ROI 4 — High value for reliability but stuck on `chat.message` mutation unless redesigned for `preToolUse`.
-- `session-recovery` — portable-with-cycle-2, cycle-2-dep Y, ROI 4 — Recovers from assistant errors; port needs explicit `sessionStart` or env contract.
-- `write-existing-file-guard` — portable-with-cycle-2, cycle-2-dep Y, ROI 4 — Prevents destructive overwrites; deny path is straightforward.
-- `ralph-loop` — partially-portable-with-caveats, cycle-2-dep Y, ROI 4 — Strong automation value; only partial parity with Cursor `stop` and `subagentStop.followup_message` (cycle-2 field).
+- `session-recovery` — portable-with-cycle-2, cycle-2-dep Y, ROI 4 — Recovers from assistant errors; port needs explicit `sessionStart` or env contract. — _Catalog: `sessionStart.env` / `additional_context` UNCONFIRMED ([hook-response-fields.md](./hook-response-fields.md))._
+- `write-existing-file-guard` — portable-with-cycle-2, cycle-2-dep Y, ROI 4 — Prevents destructive overwrites; deny path is straightforward. — _Catalog: `preToolUse.permission` deny is UNCONFIRMED ([hook-response-fields.md](./hook-response-fields.md))._
+- `ralph-loop` — partially-portable-with-caveats, cycle-2-dep Y, ROI 4 — Strong automation value; only partial parity with Cursor `stop` and `subagentStop.followup_message` (cycle-2 field). — _Catalog: `stop.followup_message` is TAKES-EFFECT; `subagentStop.followup_message` UNCONFIRMED ([hook-response-fields.md](./hook-response-fields.md))._
 - `start-work` — partially-portable-with-caveats, cycle-2-dep N, ROI 4 — Core Sisyphus workflow; `beforeSubmitPrompt` approximates `chat.message` plus `command.execute.before`.
 
 ## Surface S6 — MCP
@@ -408,3 +410,4 @@ Port acceptance bar: intent-equivalence (not behavioral). Each port added a `## 
 - S5 task-resume-info: reclassified Tier 3 → Tier 4 (no clean event mapping; subagentStop approximation).
 - S5 ralph-loop, unstable-agent-babysitter: cycle-2-dep corrected N → Y (both rely on subagentStop.followup_message).
 - S5 session-recovery: field corrected from sessionStart.user_message (accepted-but-not-enforced per cycle-2) to sessionStart.env + additional_context.
+- 2026-04-17 update: cycle-2 field semantics now empirically catalogued in `hook-response-fields.md`; rows above annotated.

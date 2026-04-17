@@ -16,9 +16,9 @@ The reference (`oh-my-openagent-original`) is a Bun/TypeScript OpenCode plugin (
 | Tier | Count | % of 104 |
 |---|---:|---:|
 | already-ported | 32 | 30.8% |
-| portable-without-cycle-2 | 6 | 5.8% |
-| portable-with-cycle-2 | 19 | 18.3% |
-| partially-portable-with-caveats | 15 | 14.4% |
+| portable-without-cycle-2 | 13 | 12.5% |
+| portable-with-cycle-2 | 18 | 17.3% |
+| partially-portable-with-caveats | 9 | 8.7% |
 | unbridgeable-by-architecture | 32 | 30.8% |
 | **TOTAL** | **104** | **100%** |
 
@@ -26,14 +26,14 @@ The reference (`oh-my-openagent-original`) is a Bun/TypeScript OpenCode plugin (
 
 | Surface | Total | 1-already | 2-w/o-c2 | 3-with-c2 | 4-partial | 5-unbridgeable |
 |---|---:|---:|---:|---:|---:|---:|
-| S1 Agents | 16 | 5 | 0 | 0 | 7 | 4 |
+| S1 Agents | 16 | 5 | 7 | 0 | 0 | 4 |
 | S2 Commands | 9 | 9 | 0 | 0 | 0 | 0 |
 | S3 Skills | 8 | 7 | 1 | 0 | 0 | 0 |
 | S4 Rules | 2 | 1 | 0 | 0 | 1 | 0 |
-| S5 Hooks | 52 | 6 | 5 | 19 | 7 | 15 |
+| S5 Hooks | 52 | 6 | 5 | 18 | 8 | 15 |
 | S6 MCP | 4 | 4 | 0 | 0 | 0 | 0 |
 | S7 CI+Pkg | 13 | 0 | 0 | 0 | 0 | 13 |
-| **TOTAL** | **104** | **32** | **6** | **19** | **15** | **32** |
+| **TOTAL** | **104** | **32** | **13** | **18** | **9** | **32** |
 
 ## Method & Scope
 
@@ -78,17 +78,17 @@ Eleven named agent TypeScript sources in the original repo map to twelve markdow
 
 | surface | original-path | current-path-or-— | tier | cycle-2-dep | ROI | rationale |
 |---|---|---|---|---|---|---|
-| agents | src/agents/atlas/agent.ts | agents/atlas.md | partially-portable-with-caveats | N | 4 | Model-variant prompts (GPT/Gemini) present in original; Cursor .md has single-variant prompt only. |
+| agents | src/agents/atlas/agent.ts | agents/atlas.md | portable-without-cycle-2 | N | 4 | Port = add sibling markdown files or extend .md with model-variant sections. |
 | agents | src/agents/explore.ts | agents/explore.md | already-ported | N | 0 | Single embedded prompt; markdown file present with equivalent agent intent. |
-| agents | src/agents/hephaestus/agent.ts | agents/hephaestus.md | partially-portable-with-caveats | N | 4 | Multiple GPT-family prompt variants in original; Cursor .md is single static prompt only. |
+| agents | src/agents/hephaestus/agent.ts | agents/hephaestus.md | portable-without-cycle-2 | N | 4 | Port = add sibling markdown files or extend .md with model-variant sections. |
 | agents | src/agents/librarian.ts | agents/librarian.md | already-ported | N | 0 | Single embedded prompt; markdown file present with equivalent agent intent. |
 | agents | src/agents/metis.ts | agents/metis.md | already-ported | N | 0 | Single exported system prompt; markdown captures pre-planning consultant intent. |
-| agents | src/agents/momus.ts | agents/momus.md | partially-portable-with-caveats | N | 4 | Default and GPT-optimized prompt variants in original; Cursor .md has single-variant prompt only. |
+| agents | src/agents/momus.ts | agents/momus.md | portable-without-cycle-2 | N | 4 | Port = add sibling markdown files or extend .md with model-variant sections. |
 | agents | src/agents/multimodal-looker.ts | agents/multimodal-looker.md | already-ported | N | 0 | Single embedded prompt; markdown file present with equivalent agent intent. |
-| agents | src/agents/oracle.ts | agents/oracle.md | partially-portable-with-caveats | N | 4 | Default and GPT-optimized prompt variants in original; Cursor .md has single-variant prompt only. |
-| agents | src/agents/prometheus/system-prompt.ts | agents/prometheus.md | partially-portable-with-caveats | N | 4 | Model-variant prompts (GPT/Gemini) present in original; Cursor .md has single-variant prompt only. |
-| agents | src/agents/sisyphus/default.ts | agents/sisyphus.md | partially-portable-with-caveats | N | 4 | Model-variant prompts (default, Gemini, GPT-5.4) in original; Cursor .md has single-variant prompt only. |
-| agents | src/agents/sisyphus-junior/agent.ts | agents/sisyphus-junior.md | partially-portable-with-caveats | N | 4 | Multiple model-specific prompt source files in original; Cursor .md has single-variant prompt only. |
+| agents | src/agents/oracle.ts | agents/oracle.md | portable-without-cycle-2 | N | 4 | Port = add sibling markdown files or extend .md with model-variant sections. |
+| agents | src/agents/prometheus/system-prompt.ts | agents/prometheus.md | portable-without-cycle-2 | N | 4 | Port = add sibling markdown files or extend .md with model-variant sections. |
+| agents | src/agents/sisyphus/default.ts | agents/sisyphus.md | portable-without-cycle-2 | N | 4 | Port = add sibling markdown files or extend .md with model-variant sections. |
+| agents | src/agents/sisyphus-junior/agent.ts | agents/sisyphus-junior.md | portable-without-cycle-2 | N | 4 | Port = add sibling markdown files or extend .md with model-variant sections. |
 | agents | — | agents/protocols/coordinator.md | already-ported | N | 0 | Cursor-native addition, no original equivalent. |
 | agents | src/agents/agent-builder.ts | — | unbridgeable-by-architecture | N | 0 | No Cursor equivalent for programmatic agent construction. |
 | agents | src/agents/builtin-agents/*.ts | — | unbridgeable-by-architecture | N | 0 | OpenCode TS agent-builder scaffolding; Cursor agents are static markdown. |
@@ -145,7 +145,7 @@ The hooks surface is the largest (52 rows) and the primary driver of the gap. Cu
 |---|---|---|---|---|---|---|
 | `handler` + `session.idle` + `session.error` + `session.compacted` + `message.*` + `tool.*` (non-idle) | src/hooks/todo-continuation-enforcer/ (`index.ts`, `handler.ts`) | hooks/hooks.json → `post-daemon.sh`; no dedicated `todo-continuation-enforcer` handler file | portable-with-cycle-2 | Y | 5 | Injects continuation via subagent follow-up; maps to `subagentStop.followup_message`. |
 | `tool.execute.after` + `event` (`message.updated` for token cache, `session.deleted`) | src/hooks/context-window-monitor.ts | hooks/hooks.json + hooks/handlers/context-window-monitor.ts | already-ported | N | 1 | Appends reminder to tool output when usage crosses threshold; ported as `postToolUse.additional_context`. |
-| Plugin `event.ts` + SDK resume (`handleSessionRecovery`) | src/hooks/session-recovery/ (`hook.ts` exports API; wired from plugin) | — | portable-with-cycle-2 | Y | 4 | Needs recovery prompt or env injection; approximate via `sessionStart.user_message` or `env`. |
+| Plugin `event.ts` + SDK resume (`handleSessionRecovery`) | src/hooks/session-recovery/ (`hook.ts` exports API; wired from plugin) | — | portable-with-cycle-2 | Y | 4 | Recovery state injected via sessionStart.env variables; user_message field accepted-but-not-enforced per cycle-2 findings. |
 | `event` (`session.created`, `session.idle`, `message.updated`, `permission.*`, `tool.execute.*`, `session.deleted`) | src/hooks/session-notification.ts | — | portable-without-cycle-2 | N | 2 | Desktop or OS notifications from idle and activity; file logging or `sessionStart` suffices without response mutation. |
 | `tool.execute.before` + `tool.execute.after` | src/hooks/comment-checker/ (`hook.ts`) | hooks/hooks.json + hooks/handlers/comment-checker.ts | already-ported | N | 4 | Blocks or rewrites tool args and output; uses `preToolUse` / `postToolUse` response fields in Cursor port. |
 | `tool.execute.after` | src/hooks/tool-output-truncator.ts | hooks/hooks.json + hooks/handlers/tool-output-truncator.ts | already-ported | N | 3 | Truncates long outputs; `postToolUse.additional_context` or output shaping. |
@@ -167,7 +167,7 @@ The hooks surface is the largest (52 rows) and the primary driver of the gap. Cu
 | `tool.execute.after` + `event` (`session.deleted`) | src/hooks/interactive-bash-session/hook.ts | — | unbridgeable-by-architecture | N | 1 | Tmux and `interactive_bash` tool integration; OpenCode-specific runtime. |
 | `experimental.chat.messages.transform` | src/hooks/thinking-block-validator/hook.ts | hooks/hooks.json + hooks/handlers/thinking-block-validator.ts | already-ported | N | 2 | Validates thinking blocks on transform hook; Cursor uses safety handler variant. |
 | `experimental.chat.messages.transform` | src/hooks/tool-pair-validator/hook.ts | — | unbridgeable-by-architecture | N | 2 | Validates tool pairs on transform only; no Cursor `experimental.chat.messages.transform`. |
-| `event` (loop state machine) | src/hooks/ralph-loop/ralph-loop-hook.ts | — | partially-portable-with-caveats | N | 4 | Long-running loop orchestration; partial via `stop` plus `subagentStop.followup_message`. |
+| `event` (loop state machine) | src/hooks/ralph-loop/ralph-loop-hook.ts | — | partially-portable-with-caveats | Y | 4 | Long-running loop orchestration; partial via `stop` plus `subagentStop.followup_message` (cycle-2 field). |
 | `tool.execute.after` | src/hooks/category-skill-reminder/hook.ts | — | portable-with-cycle-2 | Y | 3 | Skill reminders after tools; `postToolUse.additional_context`. |
 | `capture` + `event` (`session.compacted`, `session.idle`, `message.*` parts) | src/hooks/compaction-context-injector/hook.ts | — | unbridgeable-by-architecture | N | 1 | Relies on `session.compacted`, `message.part.delta` or `updated`, idle tail tracking. |
 | `capture` + `event` (`session.compacted`, `session.deleted`) + SDK `Todo.update` | src/hooks/compaction-todo-preserver/hook.ts | — | unbridgeable-by-architecture | N | 1 | Restores todos after compaction via OpenCode todo API. |
@@ -177,13 +177,13 @@ The hooks surface is the largest (52 rows) and the primary driver of the gap. Cu
 | `tool.execute.after` | src/hooks/json-error-recovery/hook.ts | — | portable-with-cycle-2 | Y | 3 | Appends JSON fix hints; `postToolUse.additional_context`. |
 | `tool.execute.after` | src/hooks/delegate-task-retry/hook.ts | hooks/hooks.json + hooks/handlers/delegate-task-retry.ts | already-ported | N | 3 | Retries or annotates Task output; ported handler exists. |
 | `tool.execute.before` | src/hooks/prometheus-md-only/hook.ts | — | portable-with-cycle-2 | Y | 5 | Denies non-md writes for Prometheus plans; `preToolUse.permission` = deny. |
-| `tool.execute.before` | src/hooks/sisyphus-junior-notepad/hook.ts | — | portable-with-cycle-2 | Y | 4 | Rewrites Task tool input for notepad paths; `preToolUse.updated_input` when matcher Task. |
+| `tool.execute.before` | src/hooks/sisyphus-junior-notepad/hook.ts | — | portable-with-cycle-2 | Y | 4 | Inject notepad directive via subagentStart permission/message response; matcher scoped to task-dispatching agents. |
 | `chat.message` | src/hooks/no-sisyphus-gpt/hook.ts | — | unbridgeable-by-architecture | N | 1 | Forces agent or model via message mutation. |
 | `chat.message` | src/hooks/no-hephaestus-non-gpt/hook.ts | — | unbridgeable-by-architecture | N | 1 | Same pattern for Hephaestus routing. |
 | `chat.message` + `command.execute.before` | src/hooks/start-work/start-work-hook.ts | — | partially-portable-with-caveats | N | 4 | Injects start-work template context; approximate via `beforeSubmitPrompt` with timing caveats. |
 | `handler` + `tool.execute.before` + `tool.execute.after` | src/hooks/atlas/atlas-hook.ts | — | partially-portable-with-caveats | N | 4 | Multi-surface Atlas orchestration; partial via `subagentStart` or `subagentStop` plus tool guards. |
-| `event` (rich stream) + SDK `session.prompt` | src/hooks/unstable-agent-babysitter/unstable-agent-babysitter-hook.ts | — | partially-portable-with-caveats | N | 3 | Watches idle or errors and nudges agents; needs `stop` plus follow-up or manual policy. |
-| `tool.execute.after` | src/hooks/task-resume-info/hook.ts | — | portable-with-cycle-2 | Y | 3 | Adds resume hints after Task; `postToolUse.additional_context`. |
+| `event` (rich stream) + SDK `session.prompt` | src/hooks/unstable-agent-babysitter/unstable-agent-babysitter-hook.ts | — | partially-portable-with-caveats | Y | 3 | Watches idle or errors and nudges agents; partial via `subagentStop.followup_message` (cycle-2 field). |
+| `tool.execute.after` | src/hooks/task-resume-info/hook.ts | — | partially-portable-with-caveats | Y | 3 | Tool-level resume info approximated via subagentStop response; event granularity mismatch. |
 | `event` (`session.deleted`) + `chat.message` (no-op) + imperative `stop` | src/hooks/stop-continuation-guard/hook.ts | — | partially-portable-with-caveats | N | 3 | Continuation stop state; overlaps Cursor `stop` hook but uses OpenCode background manager APIs. |
 | `tool.execute.before` | src/hooks/tasks-todowrite-disabler/hook.ts | — | portable-with-cycle-2 | Y | 4 | Denies TodoWrite; `preToolUse.permission` deny with TodoWrite matcher. |
 | `event` + `chat.message` | src/hooks/runtime-fallback/hook.ts | — | unbridgeable-by-architecture | N | 1 | Heavy `message.updated` and session status orchestration plus chat mutation. |
@@ -399,3 +399,10 @@ _Placeholder for W3.2 user ratification. To be filled after Oracle top-5 selecti
 - CI+Packaging table (S7) normalized from W1g's column order (Artifact/Original/Current/Tier/ROI/cycle-2-dep/Rationale) to standard schema order; presence indicators (Yes/No) converted to paths and em-dashes.
 - Total additions enumerated: 18 (7 commands + 6 rules + 1 MCP + 3 CI/packaging + 1 agent = 18); satisfies acceptance criterion #10 (≥7 rows).
 - `agent-nativeness-audit.md` cross-reference cited in the header; that audit covers Cursor tool-use nativeness patterns, not the gap-vs-original comparison documented here.
+
+## Oracle review reconciliations (applied post-W3.1)
+- S1 agents: 7 model-variant prompt rows reclassified Tier 4 → Tier 2 (port = add sibling markdown, not behavioral divergence).
+- S5 sisyphus-junior-notepad: event mapping corrected (Task fires via subagentStart, not preToolUse).
+- S5 task-resume-info: reclassified Tier 3 → Tier 4 (no clean event mapping; subagentStop approximation).
+- S5 ralph-loop, unstable-agent-babysitter: cycle-2-dep corrected N → Y (both rely on subagentStop.followup_message).
+- S5 session-recovery: field corrected from sessionStart.user_message (accepted-but-not-enforced per cycle-2) to sessionStart.env + additional_context.

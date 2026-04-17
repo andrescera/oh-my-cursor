@@ -73,7 +73,7 @@ export async function startSidecar(
   if (envMcpPort) {
     actualMcpPort = parseInt(envMcpPort)
     console.log(`[oh-my-cursor] MCP sidecar starting on port ${actualMcpPort} (env override)...`)
-    serve({ port: actualMcpPort, fetch })
+    serve({ port: actualMcpPort, fetch, idleTimeout: 0 })
   } else {
     const scanBaseMcpPort = resolvePreferredMcpPortFromDaemonFile(defaultMcpPort)
     actualMcpPort = scanBaseMcpPort
@@ -82,7 +82,7 @@ export async function startSidecar(
     for (let offset = 0; offset < MAX_PORT_ATTEMPTS; offset++) {
       const tryPort = scanBaseMcpPort + offset
       try {
-        serve({ port: tryPort, fetch })
+        serve({ port: tryPort, fetch, idleTimeout: 0 })
         actualMcpPort = tryPort
         started = true
         if (offset > 0) {

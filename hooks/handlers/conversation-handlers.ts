@@ -1,6 +1,11 @@
 import type { StatePersistence } from "../state-persistence"
 import type { ConversationState, HandlerMap } from "../types"
-import { getOrCreateConversation, resolveConversationId } from "../shared"
+import {
+  getOrCreateConversation,
+  getFallbackConversationsCreatedSinceBoot,
+  resolveConversationId,
+  wasResolvedViaFallback,
+} from "../shared"
 import { loadConfig } from "../config"
 import { contextCollector } from "../context-collector"
 import { buildCompactionContextPrompt } from "../compaction-context-prompt"
@@ -94,12 +99,13 @@ export function createConversationHandlers(
         workerCounts,
         ralphActive,
         allDispatchCounts,
+        fallbackConversationsCreatedSinceBoot: getFallbackConversationsCreatedSinceBoot(),
       }
     },
 
     "/sessionStart": (input) => {
       const convId = resolveConversationId(input)
-      const conversation = getOrCreateConversation(convId)
+      const conversation = getOrCreateConversation(convId, wasResolvedViaFallback(input))
       const projectDir = ((input.workspace_roots as string[])?.[0]) || (input.cwd as string) || process.cwd()
 
       conversation.env.OH_MY_CURSOR_SESSION_ID = convId
@@ -151,7 +157,7 @@ export function createConversationHandlers(
 
     "/preCompact": (input) => {
       const convId = resolveConversationId(input)
-      const conversation = getOrCreateConversation(convId)
+      const conversation = getOrCreateConversation(convId, wasResolvedViaFallback(input))
 
       conversation.lastCompactionEpoch++
       conversation.compactionSnapshot = {

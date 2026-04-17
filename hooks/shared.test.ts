@@ -1,5 +1,12 @@
-import { describe, test, expect } from "bun:test"
-import { classifyAction, extractMeta } from "./shared"
+import { describe, test, expect, beforeEach } from "bun:test"
+import {
+  classifyAction,
+  extractMeta,
+  getOrCreateConversation,
+  resolveConversationId,
+  wasResolvedViaFallback,
+  conversations,
+} from "./shared"
 
 describe("classifyAction", () => {
   test("returns 'error' for /postToolUseFailure", () => {
@@ -138,5 +145,25 @@ describe("extractMeta", () => {
   test("returns undefined when no meta to extract", () => {
     const meta = extractMeta("/postToolUse", {}, {}, {})
     expect(meta).toBeUndefined()
+  })
+})
+
+describe("getOrCreateConversation + wasResolvedViaFallback", () => {
+  beforeEach(() => {
+    conversations.clear()
+  })
+
+  test("sets createdViaFallback true when newly created from fallback resolution path", () => {
+    const input: Record<string, unknown> = {}
+    const convId = resolveConversationId(input)
+    const conv = getOrCreateConversation(convId, wasResolvedViaFallback(input))
+    expect(conv.createdViaFallback).toBe(true)
+  })
+
+  test("sets createdViaFallback false when session_id is present (non-fallback)", () => {
+    const input: Record<string, unknown> = { session_id: "explicit-session" }
+    const convId = resolveConversationId(input)
+    const conv = getOrCreateConversation(convId, wasResolvedViaFallback(input))
+    expect(conv.createdViaFallback).toBe(false)
   })
 })

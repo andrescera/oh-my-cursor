@@ -1,7 +1,7 @@
 import type { ConversationState, HandlerMap } from "../types"
 import type { BackgroundTracker } from "./background-tracker"
 import { addWisdomLearning, formatWisdomForInjection } from "./wisdom-tracker"
-import { getOrCreateConversation, resolveConversationId } from "../shared"
+import { getOrCreateConversation, resolveConversationId, wasResolvedViaFallback } from "../shared"
 import { createEmptyTaskDetector } from "./empty-task-detector"
 import { contextCollector } from "../context-collector"
 import { loadConfig } from "../config"
@@ -25,7 +25,7 @@ export function createSubagentHandlers(
       const description = (input.description as string) || ""
       const convId = resolveConversationId(input)
       tracker.track(agentId, agentType, description, convId)
-      const conversation = getOrCreateConversation(convId)
+      const conversation = getOrCreateConversation(convId, wasResolvedViaFallback(input))
 
       let additional_context: string | undefined
       const recentOutcomes = conversation.subagentOutcomes.slice(-5)
@@ -87,7 +87,7 @@ export function createSubagentHandlers(
       const status = (input.status as string) || ""
       const stopHookActive = Boolean(input.stop_hook_active)
       const loopCount = (input.loop_count as number) || 0
-      const conversation = getOrCreateConversation(convId)
+      const conversation = getOrCreateConversation(convId, wasResolvedViaFallback(input))
 
       const summary = (input.summary as string) || ""
       const duration_ms = typeof input.duration_ms === "number" ? input.duration_ms : undefined

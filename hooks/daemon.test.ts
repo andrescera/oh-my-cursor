@@ -172,6 +172,18 @@ describe("hook daemon", () => {
       const data = await res.json()
       expect(data.status).toBe("ok")
       expect(typeof data.uptime).toBe("number")
+      expect(typeof data.fallbackConversationsCreatedSinceBoot).toBe("number")
+    })
+
+    test("fallbackConversationsCreatedSinceBoot increments for each hook without session_id or conversation_id", async () => {
+      const healthJson = async () => (await fetch(`${BASE}/health`)).json() as { fallbackConversationsCreatedSinceBoot: number }
+      const before = (await healthJson()).fallbackConversationsCreatedSinceBoot
+      await post("/afterShellExecution", { exit_code: 0 })
+      const afterFirst = (await healthJson()).fallbackConversationsCreatedSinceBoot
+      expect(afterFirst).toBe(before + 1)
+      await post("/afterShellExecution", { exit_code: 0 })
+      const afterSecond = (await healthJson()).fallbackConversationsCreatedSinceBoot
+      expect(afterSecond).toBe(before + 2)
     })
   })
 

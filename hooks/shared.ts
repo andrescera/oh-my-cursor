@@ -3,7 +3,13 @@ import type { StatePersistence } from "./state-persistence"
 
 export const conversations = new Map<string, ConversationState>()
 
+let fallbackConversationsCreatedSinceBoot = 0
+
 let _persistence: StatePersistence | null = null
+
+export function getFallbackConversationsCreatedSinceBoot(): number {
+  return fallbackConversationsCreatedSinceBoot
+}
 
 export function setPersistence(p: StatePersistence): void {
   _persistence = p
@@ -13,7 +19,7 @@ export function markDirty(convId: string): void {
   _persistence?.markDirty(convId)
 }
 
-export function getOrCreateConversation(conversationId: string): ConversationState {
+export function getOrCreateConversation(conversationId: string, viaFallback?: boolean): ConversationState {
   if (conversations.has(conversationId)) {
     return conversations.get(conversationId)!
   }
@@ -26,6 +32,10 @@ export function getOrCreateConversation(conversationId: string): ConversationSta
     }
   }
   if (!state) {
+    const createdViaFb = Boolean(viaFallback)
+    if (createdViaFb) {
+      fallbackConversationsCreatedSinceBoot++
+    }
     const created: ConversationState = {
       id: conversationId,
       startedAt: new Date().toISOString(),
@@ -66,7 +76,7 @@ export function getOrCreateConversation(conversationId: string): ConversationSta
       estimatedTokens: 0,
       tokenWarningEmitted: false,
       wisdomLearnings: [],
-      createdViaFallback: false,
+      createdViaFallback: createdViaFb,
     }
     conversations.set(conversationId, created)
     state = created
@@ -89,6 +99,11 @@ export function parseInput(body: unknown): Record<string, unknown> {
   if (Array.isArray(body)) return {}
   if (typeof body === "object") return body as Record<string, unknown>
   return {}
+}
+
+export function wasResolvedViaFallback(input: Record<string, unknown>): boolean {
+  const convId = (input.conversation_id as string) || (input.session_id as string)
+  return !convId
 }
 
 export function resolveConversationId(input: Record<string, unknown>): string {

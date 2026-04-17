@@ -1,5 +1,11 @@
 import type { ConversationState, HandlerMap } from "../types"
-import { getOrCreateConversation, resolveConversationId, PLAN_PHASE_IDS, transitionFromPlanMode } from "../shared"
+import {
+  getOrCreateConversation,
+  resolveConversationId,
+  wasResolvedViaFallback,
+  PLAN_PHASE_IDS,
+  transitionFromPlanMode,
+} from "../shared"
 import { loadConfig } from "../config"
 import { resolve } from "node:path"
 import { existsSync, readFileSync } from "node:fs"
@@ -104,7 +110,7 @@ export function createContinuationHandlers(
       const status = (input.status as string) || ""
       const stopHookActive = Boolean(input.stop_hook_active)
       const convId = resolveConversationId(input)
-      const conversation = getOrCreateConversation(convId)
+      const conversation = getOrCreateConversation(convId, wasResolvedViaFallback(input))
 
       const isAbort = status === "aborted" || Boolean(input.aborted) || Boolean(input.abort_signal)
       if (isAbort) {
@@ -131,7 +137,7 @@ export function createContinuationHandlers(
         const ralph = conversation.ralphState
         const contextStr = conversation.contextHistory.join(" ")
 
-        if (contextStr.includes("<promise>DONE</promise>") || contextStr.includes("DONE")) {
+        if (contextStr.includes("<promise>DONE</promise>")) {
           conversation.ralphState = null
           console.log(`[oh-my-cursor][/stop] RESULT=noop reason=ralphDone`)
           return {}
@@ -229,7 +235,7 @@ export function createContinuationHandlers(
     "/beforeSubmitPrompt": (input) => {
       const userMessage = (input.prompt as string) || (input.user_message as string) || ""
       const convId = resolveConversationId(input)
-      const conversation = getOrCreateConversation(convId)
+      const conversation = getOrCreateConversation(convId, wasResolvedViaFallback(input))
 
       let additionalContext = [
         "[oh-my-cursor] Identity: Plan=Prometheus | Agent=Orchestrator/Atlas | Debug=Diagnostic | Ask=Advisor",
@@ -309,6 +315,7 @@ export function createContinuationHandlers(
           iteration: 0,
           maxIterations: maxIter,
           startedAt: new Date().toISOString(),
+          lastProcessedIndex: 0,
         }
         additionalContext += "\n[ralph-loop] Ralph loop activated. Work until done, then output <promise>DONE</promise>."
       }

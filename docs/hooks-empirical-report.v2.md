@@ -210,8 +210,8 @@ Every hook invocation in v2 captured `env_cursor` from the hook process environm
 | `CURSOR_EXTENSION_HOST_ROLE` | `always-local` | Prior v1 Oracle Risk #1 feared `agent-exec` would block response contract; `always-local` observed instead |
 | `CURSOR_LAYOUT` | `unifiedAgent` | Unified agent mode confirmed |
 | `CURSOR_WORKSPACE_LABEL` | `oh-my-openagent` | Matches workspace |
-| `CURSOR_PROJECT_DIR` | `<REPO>` | Set by Cursor |
-| `CLAUDE_PROJECT_DIR` | `<REPO>` | Claude-Code compatibility alias for `CURSOR_PROJECT_DIR` |
+| `CURSOR_PROJECT_DIR` | `<repo>` | Set by Cursor |
+| `CLAUDE_PROJECT_DIR` | `<repo>` | Claude-Code compatibility alias for `CURSOR_PROJECT_DIR` |
 | `CURSOR_USER_EMAIL` | `<redacted>` | Redacted in JSONL; present in raw captures |
 
 **`CURSOR_EXTENSION_HOST_ROLE=always-local`**: this value is distinct from `agent-exec` which v1 speculated might be set during agentic sessions and might block response-contract enforcement. The observed value `always-local` means the extension host runs locally (not in a remote/cloud container). Oracle Risk #1 from v1 is therefore resolved: the response contract IS observable and enforceable in the `always-local` role.

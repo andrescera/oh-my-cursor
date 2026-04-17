@@ -2,7 +2,7 @@
 set -euo pipefail
 
 EVIDENCE_DIR="/tmp/cursor-hooks-evidence"
-REPO_ROOT="<REPO>"
+REPO_ROOT="${REPO_ROOT:-$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)}"
 WORKBENCH_PATH="/usr/share/cursor/resources/app/out/vs/workbench/workbench.desktop.main.js"
 PLUGIN_VERSION_FILE="${HOME}/.cursor/plugins/local/oh-my-cursor/.version"
 

@@ -13,20 +13,20 @@ Generated: 2026-04-17T01:57:07Z
 
 ## Methodology
 
-- Test workspace: `<REPO>`.
+- Test workspace: `<repo>`.
 - Cursor version observed in hook payloads: `3.1.15`.
 - Hook package manifest in repo + installed plugin: `hooks/package.json` (name `oh-my-cursor-hooks`, dependencies `@modelcontextprotocol/sdk ^1.29.0`, `zod ^4.3.6`; no explicit package version field).
 - Install/reload approach:
-  - Ran `bash <REPO>/install.sh` in early cycles.
+  - Ran `bash <repo>/install.sh` in early cycles.
   - Also directly copied experimental config into installed hook path for deterministic control.
 - Backup/restore:
   - Repo backup: `/tmp/hooks.json.original-repo-20260417T000818470Z`
   - Installed backup: `/tmp/hooks.json.original-installed-20260417T000818470Z`
   - Restored and verified with `cmp -s` (command returned `RESTORE_OK`).
 - Experimental files created:
-  - `<REPO>/hooks/scripts/experiment-logger.sh`
-  - `<REPO>/hooks/hooks.experiment.json`
-  - `<REPO>/hooks/hooks.experiment.valid.json`
+  - `<repo>/hooks/scripts/experiment-logger.sh`
+  - `<repo>/hooks/hooks.experiment.json`
+  - `<repo>/hooks/hooks.experiment.valid.json`
   - `/tmp/cursor-hook-experiment-failclosed.sh`
 - Main evidence logs:
   - Experiment logger JSONL: `/tmp/cursor-hook-experiment.log`
@@ -210,7 +210,7 @@ These are redacted real stdin payload samples captured by `/hooks/scripts/experi
   "conversation_id": "<redacted>",
   "generation_id": "<redacted>",
   "model": "gpt-5.3-codex-high-fast",
-  "file_path": "<REPO>/hooks/hooks.experiment.valid.json",
+  "file_path": "<repo>/hooks/hooks.experiment.valid.json",
   "edits": [
     {
       "old_string": "        \"prompt\": \"EXPERIMENTAL prompt hook probe. Always respond with APPROVE.\",",
@@ -221,7 +221,7 @@ These are redacted real stdin payload samples captured by `/hooks/scripts/experi
   "hook_event_name": "afterFileEdit",
   "cursor_version": "3.1.15",
   "workspace_roots": [
-    "<REPO>"
+    "<repo>"
   ],
   "user_email": "<redacted>",
   "transcript_path": null
@@ -243,7 +243,7 @@ These are redacted real stdin payload samples captured by `/hooks/scripts/experi
   "hook_event_name": "afterMCPExecution",
   "cursor_version": "3.1.15",
   "workspace_roots": [
-    "<REPO>"
+    "<repo>"
   ],
   "user_email": "<redacted>",
   "transcript_path": null
@@ -265,7 +265,7 @@ These are redacted real stdin payload samples captured by `/hooks/scripts/experi
   "hook_event_name": "afterShellExecution",
   "cursor_version": "3.1.15",
   "workspace_roots": [
-    "<REPO>"
+    "<repo>"
   ],
   "user_email": "<redacted>",
   "transcript_path": null
@@ -286,7 +286,7 @@ These are redacted real stdin payload samples captured by `/hooks/scripts/experi
   "hook_event_name": "beforeMCPExecution",
   "cursor_version": "3.1.15",
   "workspace_roots": [
-    "<REPO>"
+    "<repo>"
   ],
   "user_email": "<redacted>",
   "transcript_path": null
@@ -300,14 +300,14 @@ These are redacted real stdin payload samples captured by `/hooks/scripts/experi
   "conversation_id": "<redacted>",
   "generation_id": "<redacted>",
   "model": "gpt-5.3-codex-high-fast",
-  "content": "{\"role\":\"user\",\"message\":{\"content\":[{\"type\":\"text\",\"text\":\"<user_query>\\nTASK: Search for \\\"sessionStart\\\" in <REPO>/hooks and return first 3 matches.\\nE...<truncated>",
+  "content": "{\"role\":\"user\",\"message\":{\"content\":[{\"type\":\"text\",\"text\":\"<user_query>\\nTASK: Search for \\\"sessionStart\\\" in <repo>/hooks and return first 3 matches.\\nE...<truncated>",
   "file_path": "<home>/.cursor/projects/mnt-development-oh-my-openagent/agent-transcripts/<session-id>/subagents/<subagent-id>.jsonl",
   "attachments": [],
   "session_id": "<redacted>",
   "hook_event_name": "beforeReadFile",
   "cursor_version": "3.1.15",
   "workspace_roots": [
-    "<REPO>"
+    "<repo>"
   ],
   "user_email": "<redacted>",
   "transcript_path": null
@@ -328,7 +328,7 @@ These are redacted real stdin payload samples captured by `/hooks/scripts/experi
   "hook_event_name": "beforeShellExecution",
   "cursor_version": "3.1.15",
   "workspace_roots": [
-    "<REPO>"
+    "<repo>"
   ],
   "user_email": "<redacted>",
   "transcript_path": null
@@ -345,7 +345,7 @@ These are redacted real stdin payload samples captured by `/hooks/scripts/experi
   "tool_name": "Grep",
   "tool_input": {
     "pattern": "beforeSubmitPrompt",
-    "file_path": "<REPO>/docs",
+    "file_path": "<repo>/docs",
     "output_mode": "count"
   },
   "tool_output": "{\"pattern\":\"beforeSubmitPrompt\",\"success\":true}",
@@ -355,7 +355,7 @@ These are redacted real stdin payload samples captured by `/hooks/scripts/experi
   "hook_event_name": "postToolUse",
   "cursor_version": "3.1.15",
   "workspace_roots": [
-    "<REPO>"
+    "<repo>"
   ],
   "user_email": "<redacted>",
   "transcript_path": null
@@ -385,7 +385,7 @@ These are redacted real stdin payload samples captured by `/hooks/scripts/experi
   "hook_event_name": "postToolUseFailure",
   "cursor_version": "3.1.15",
   "workspace_roots": [
-    "<REPO>"
+    "<repo>"
   ],
   "user_email": "<redacted>",
   "transcript_path": null
@@ -402,7 +402,7 @@ These are redacted real stdin payload samples captured by `/hooks/scripts/experi
   "tool_name": "Grep",
   "tool_input": {
     "pattern": "beforeSubmitPrompt",
-    "file_path": "<REPO>/docs",
+    "file_path": "<repo>/docs",
     "output_mode": "count"
   },
   "tool_use_id": "<redacted>",
@@ -410,7 +410,7 @@ These are redacted real stdin payload samples captured by `/hooks/scripts/experi
   "hook_event_name": "preToolUse",
   "cursor_version": "3.1.15",
   "workspace_roots": [
-    "<REPO>"
+    "<repo>"
   ],
   "user_email": "<redacted>",
   "transcript_path": null
@@ -434,7 +434,7 @@ These are redacted real stdin payload samples captured by `/hooks/scripts/experi
   "hook_event_name": "subagentStart",
   "cursor_version": "3.1.15",
   "workspace_roots": [
-    "<REPO>"
+    "<repo>"
   ],
   "user_email": "<redacted>",
   "transcript_path": null
@@ -462,7 +462,7 @@ These are redacted real stdin payload samples captured by `/hooks/scripts/experi
   "hook_event_name": "subagentStop",
   "cursor_version": "3.1.15",
   "workspace_roots": [
-    "<REPO>"
+    "<repo>"
   ],
   "user_email": "<redacted>",
   "transcript_path": null,
@@ -479,7 +479,7 @@ These are redacted real stdin payload samples captured by `/hooks/scripts/experi
 - Step ordering:
   - generated `/tmp/cursor-hooks-step-sequence.tsv` from internal hook logs and inspected timestamp order.
 - Restore verification:
-  - `cmp -s /tmp/hooks.json.original-repo-20260417T000818470Z <REPO>/hooks/hooks.json`
+  - `cmp -s /tmp/hooks.json.original-repo-20260417T000818470Z <repo>/hooks/hooks.json`
   - `cmp -s /tmp/hooks.json.original-installed-20260417T000818470Z <home>/.cursor/plugins/local/oh-my-cursor/hooks/hooks.json`
 
 ## Recommendations for production `hooks/hooks.json`
@@ -665,7 +665,7 @@ No env var or settings key was found that explicitly toggles hook-surface visibi
 - **Grep:** `hook_event_name`, `hookEventName`, `Sxd=`, `hooks/validators`, `Unknown hook type`, `failClosed`, `loop_limit`, `permission`, `updated_input`, `additional_context`, `followup_message`, `I.literal("`, `checkFeatureGate`, etc.
 - **Bundle:** `/usr/share/cursor/resources/app/` (~411 MB); no `app.asar` (`node_modules.asar` stub).
 - **Wave 4 installs:** D1 `/tmp/cursor-hook-experiment-responder.sh`; D2 all-20 logger; D3 P1–P12 response probes; D4 `type:"prompt"` triple; D5 shell prompt — all parser-accepted.
-- **D3/D4/D5 limit:** Sub-agent Shell/Read/Task use a different `agent-exec` hook path than the plugin workspace config. C2 snapshot: 296 invocations, all foreign `workspace_roots` (none `<REPO>`) → S1.3 `untested-reason` for several effects; authority = `source:workbench:28899` + cycle-1 `deny`/`failClosed` + foreground triggers.
+- **D3/D4/D5 limit:** Sub-agent Shell/Read/Task use a different `agent-exec` hook path than the plugin workspace config. C2 snapshot: 296 invocations, all foreign `workspace_roots` (none `<repo>`) → S1.3 `untested-reason` for several effects; authority = `source:workbench:28899` + cycle-1 `deny`/`failClosed` + foreground triggers.
 - **Forum (not new fields):** `postToolUse` `additional_context` → model (155689); Windows `stop` log vs `followup_message` (155078).
 - **C2 log snapshot:** `/tmp/cursor-hook-experiment-cycle2.log.writeup-snapshot` (839 KB); counts: `preToolUse:97, postToolUse:89, beforeReadFile:54, afterAgentThought:38, subagentStart:7, beforeShellExecution:5, afterShellExecution:5, postToolUseFailure:1`.
 - **Restore:** `cmp -s` ok on repo/plugin/user `hooks.json`; no commits (F1).

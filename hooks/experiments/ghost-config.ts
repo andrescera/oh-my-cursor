@@ -11,7 +11,7 @@ const KNOWN_GOOD_EVENTS = new Set([
 
 const CANDIDATE_RE = /^[a-zA-Z_][a-zA-Z0-9_]*$/;
 
-const REPO = "<REPO>";
+const REPO = process.env.OMC_EXPERIMENTS_REPO ?? process.cwd();
 const LOGGER_V2 = `${REPO}/hooks/scripts/experiment-logger-v2.sh`;
 
 export function generateGhostConfig(candidate: string): { version: number; hooks: Record<string, object[]> } {

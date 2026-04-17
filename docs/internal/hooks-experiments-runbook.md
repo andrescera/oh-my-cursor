@@ -75,14 +75,14 @@ cat > "$EXP_HOME/.cursor/hooks.json" << 'HOOKS_EOF'
   "hooks": [
     {
       "event": "afterAgentResponse",
-      "command": "bash \"<REPO>/hooks/scripts/experiment-logger-v2.sh\" \"afterAgentResponse\" --experiment-id \"W-X-afterAgentResponse-reliability-001\""
+      "command": "bash \"<repo>/hooks/scripts/experiment-logger-v2.sh\" \"afterAgentResponse\" --experiment-id \"W-X-afterAgentResponse-reliability-001\""
     }
   ]
 }
 HOOKS_EOF
 
 # Step 4: Launch isolated Cursor instance
-HOME="$EXP_HOME" cursor <REPO> &
+HOME="$EXP_HOME" cursor <repo> &
 CURSOR_PID=$!
 echo "Isolated Cursor PID: $CURSOR_PID"
 echo "Isolated HOME: $EXP_HOME"
@@ -98,7 +98,7 @@ echo "Isolated HOME: $EXP_HOME"
 
 ```bash
 # Extract W-X cells from the registry and format as a hooks.json
-cd <REPO>
+cd <repo>
 bun -e "
   const reg = JSON.parse(require('fs').readFileSync('hooks/hooks.experiment.v2.registry.json', 'utf8'));
   const wxCells = reg.cells.filter(c => c.wave === 'X');
@@ -119,11 +119,11 @@ bun -e "
 
 **Agent turns** (5 trivial turns, each produces one `afterAgentResponse` firing):
 
-1. `Read <REPO>/package.json`
+1. `Read <repo>/package.json`
 2. `What is the project name?` (any short question)
-3. `Read <REPO>/hooks/hook-config.ts` (first 20 lines)
+3. `Read <repo>/hooks/hook-config.ts` (first 20 lines)
 4. `How many files are in the hooks/ directory?`
-5. `Read <REPO>/README.md` (first 10 lines)
+5. `Read <repo>/README.md` (first 10 lines)
 
 **Evidence capture**:
 ```bash
@@ -194,7 +194,7 @@ rg 'STOP-MERGE-PROBE' /tmp/cursor-hooks-evidence/*.json
 
 **Agent turn**: Dispatch any `Task` subagent call — for example:
 ```
-Task(subagent_type="explore", description="30-second probe", prompt="List the top-level files in <REPO>")
+Task(subagent_type="explore", description="30-second probe", prompt="List the top-level files in <repo>")
 ```
 Wait for the Task to complete (30–60 seconds). The `subagentStop` hook fires automatically when the subagent finishes.
 
@@ -261,7 +261,7 @@ find /tmp/cursor-hooks-evidence -name '*.json' -newer /tmp/cursor-hooks-evidence
 # 2. Convert to JSONL and append to the evidence archive
 # NOTE: Do NOT overwrite — always APPEND
 for f in $(find /tmp/cursor-hooks-evidence -name '*.json' -newer /tmp/cursor-hooks-evidence/_header.json); do
-  jq -c '.' "$f" >> <REPO>/docs/internal/hooks-evidence-v2.jsonl
+  jq -c '.' "$f" >> <repo>/docs/internal/hooks-evidence-v2.jsonl
 done
 
 # 3. Restore the real hooks.json if you were NOT using the isolated HOME approach
@@ -301,7 +301,7 @@ After analyzing results, add rows to `docs/internal/hooks-v1-vs-v2-claim-diff.md
 Run these after each experiment to confirm evidence was captured:
 
 ```bash
-cd <REPO>
+cd <repo>
 
 # E1: at least 1 firing record
 rg -c '"experiment_id":"W-X-afterAgentResponse-reliability-001"' docs/internal/hooks-evidence-v2.jsonl

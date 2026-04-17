@@ -11,7 +11,7 @@
 set -uo pipefail
 
 INFLIGHT_PID_FILE="${CURSOR_HOOKS_INFLIGHT_PID_FILE:-/tmp/cursor-hooks-inflight.pid}"
-LOGGER_SCRIPT="${CURSOR_HOOKS_LOGGER:-<REPO>/hooks/scripts/experiment-logger-v2.sh}"
+LOGGER_SCRIPT="${CURSOR_HOOKS_LOGGER:-$(cd "$(dirname "${BASH_SOURCE[0]}")/../../scripts" && pwd)/experiment-logger-v2.sh}"
 
 mkdir -p "$(dirname "$INFLIGHT_PID_FILE")"
 echo $$ >> "$INFLIGHT_PID_FILE"

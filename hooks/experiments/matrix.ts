@@ -2,7 +2,7 @@ import type { ExperimentCell, ExperimentRegistry, WaveId, Decision } from "./mat
 import { writeFileSync } from "node:fs";
 import { resolve } from "node:path";
 
-const REPO = "<REPO>";
+const REPO = process.env.OMC_EXPERIMENTS_REPO ?? process.cwd();
 const SCRIPTS = `${REPO}/hooks/scripts`;
 const EXPERIMENTS = `${REPO}/hooks/experiments`;
 const RESPONDERS = `${EXPERIMENTS}/responders`;

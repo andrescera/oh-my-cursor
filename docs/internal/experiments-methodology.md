@@ -61,7 +61,7 @@ Example cell (Wave C, preToolUse logger, unconditional):
   "matcher": "",
   "sentinel": null,
   "needs_gate": false,
-  "command": "bash \"<REPO>/hooks/scripts/experiment-logger-v2.sh\" \"preToolUse\" --experiment-id \"W-C-preToolUse-logger-001\"",
+  "command": "bash \"<repo>/hooks/scripts/experiment-logger-v2.sh\" \"preToolUse\" --experiment-id \"W-C-preToolUse-logger-001\"",
   "responder_args": ["preToolUse", "--experiment-id", "W-C-preToolUse-logger-001"],
   "expected_outcome": "Capture preToolUse unconditionally"
 }
@@ -107,6 +107,13 @@ grep '"experiment_id":"W-EK-stop-followup-message-001"' docs/internal/hooks-evid
    The registry at `hooks/hooks.experiment.v2.registry.json` is the source of truth. A generator script to compile it into a valid `hooks.json` does not yet exist — **TODO: write `hooks/scripts/generate-experiment-config.ts`**. Until then, `hooks/hooks.experiment.v2.json` is the pre-generated output and can be copied directly.
 
 3. **Install the experiment config:**
+
+   > **Note:** `hooks/hooks.experiment.v2.json` uses `<REPO>` as a placeholder for the
+   > repository root. Substitute it with the actual path before copying:
+   > ```bash
+   > sed -i "s|<REPO>|$(pwd)|g" hooks/hooks.experiment.v2.json
+   > ```
+
    ```bash
    cp hooks/hooks.experiment.v2.json ~/.cursor/hooks.json
    # Or for isolated-HOME runs, copy to $EXP_HOME/.cursor/hooks.json
@@ -193,7 +200,7 @@ Proceed only when at least one gate passes.
   "matcher": "",
   "sentinel": "CURSOR_HOOK_V2_X_001",
   "needs_gate": false,
-  "command": "bash \"<REPO>/hooks/scripts/experiment-logger-v2.sh\" \"eventName\" --experiment-id \"W-X-eventName-purpose-001\"",
+  "command": "bash \"<repo>/hooks/scripts/experiment-logger-v2.sh\" \"eventName\" --experiment-id \"W-X-eventName-purpose-001\"",
   "responder_args": ["eventName", "--experiment-id", "W-X-eventName-purpose-001"],
   "expected_outcome": "Describe what constitutes success"
 }

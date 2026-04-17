@@ -7,7 +7,7 @@ set -uo pipefail
 OH_MY_CURSOR_PLUGIN_DIR="${OH_MY_CURSOR_PLUGIN_DIR:-$HOME/.cursor/plugins/local/oh-my-cursor}"
 BASELINE_GLOB="${BASELINE_GLOB:-/tmp/hooks.json.baseline-*}"
 WATCHDOG_INFLIGHT_PID_FILE="${WATCHDOG_INFLIGHT_PID_FILE:-/tmp/cursor-hooks-inflight.pid}"
-WATCHDOG_INSTALL_SCRIPT="${WATCHDOG_INSTALL_SCRIPT:-<REPO>/install.sh}"
+WATCHDOG_INSTALL_SCRIPT="${WATCHDOG_INSTALL_SCRIPT:-$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)/install.sh}"
 
 HOOKS_JSON="${OH_MY_CURSOR_PLUGIN_DIR}/hooks/hooks.json"
 

@@ -74,7 +74,7 @@ All hook processes receive the following `CURSOR_*` environment variables regard
 
 | Variable | Value pattern | Always present | Notes |
 |----------|---------------|---------------|-------|
-| `CURSOR_PROJECT_DIR` | absolute path to workspace root | yes | e.g. `<REPO>` |
+| `CURSOR_PROJECT_DIR` | absolute path to workspace root | yes | e.g. `<repo>` |
 | `CURSOR_EXTENSION_HOST_ROLE` | `always-local` | yes | Constant in this build |
 | `CURSOR_WORKSPACE_LABEL` | workspace folder name | yes | e.g. `oh-my-openagent` |
 | `CURSOR_LAYOUT` | `unifiedAgent` | yes | Constant in this build |
@@ -315,13 +315,13 @@ Logger hook attached to Shell tool via `matcher="^Shell$"`. Confirmed fires imme
 {
   "model": "claude-opus-4-7",
   "tool_name": "Shell",
-  "tool_input": {"command": "echo CURSOR_HOOK_V2_AB_BSH_020", "cwd": "<REPO>", "timeout": 30000},
+  "tool_input": {"command": "echo CURSOR_HOOK_V2_AB_BSH_020", "cwd": "<repo>", "timeout": 30000},
   "error_message": "Command execution was blocked by a hook: denied by experiment\n\nTo view or modify configured hooks, go to Cursor Settings > Hooks.\n\nAgent note: Do not suggest workarounds to the blocked tool.",
   "failure_type": "permission_denied",
   "duration": 0,
   "tool_use_id": "b3ac44b6-0259-40fa-b6ac-16baf75fbd91",
   "is_interrupt": false,
-  "cwd": "<REPO>"
+  "cwd": "<repo>"
 }
 ```
 
@@ -521,7 +521,7 @@ Logger hook captured completion of a general-purpose subagent. `duration_ms` was
 {
   "model": "claude-opus-4-7",
   "command": "echo \"CURSOR_HOOK_V2_AB_BSH_020\" 2>&1",
-  "cwd": "<REPO>",
+  "cwd": "<repo>",
   "sandbox": true
 }
 ```

@@ -7,10 +7,12 @@ SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 DAEMON_SCRIPT="$SCRIPT_DIR/../daemon.ts"
 SIDECAR_SCRIPT="$SCRIPT_DIR/../mcp-sidecar.ts"
 PID_FILE="/tmp/oh-my-cursor-daemon.pid"
+MCP_PID_FILE="/tmp/oh-my-cursor-sidecar.pid"
 PORT_FILE="/tmp/oh-my-cursor-daemon.port"
 MCP_PORT_FILE="/tmp/oh-my-cursor-sidecar.port"
 HEARTBEAT_FILE="/tmp/oh-my-cursor-heartbeat"
 RESTART_COUNT_FILE="/tmp/oh-my-cursor-restart-count"
+SIDECAR_RESTART_COUNT_FILE="/tmp/oh-my-cursor-sidecar-restart-count"
 
 read_port_file() {
   local file="$1"
@@ -112,7 +114,39 @@ ACTUAL_MCP_PORT="$(read_port_file "$MCP_PORT_FILE" "$MCP_PORT")"
 if ! curl -s "http://localhost:${ACTUAL_MCP_PORT}/health" >/dev/null 2>&1; then
   if [ -f "$SIDECAR_SCRIPT" ]; then
     export OH_MY_CURSOR_DAEMON_PORT="$ACTUAL_PORT"
-    nohup bun run "$SIDECAR_SCRIPT" >/tmp/oh-my-cursor-sidecar.log 2>&1 &
+    # Background supervisor: restarts on non-zero exit (crashes); exit 0 = graceful shutdown.
+    nohup env \
+      SIDECAR_SCRIPT="$SIDECAR_SCRIPT" \
+      MCP_PID_FILE="$MCP_PID_FILE" \
+      SIDECAR_RESTART_COUNT_FILE="$SIDECAR_RESTART_COUNT_FILE" \
+      OH_MY_CURSOR_DAEMON_PORT="$ACTUAL_PORT" \
+      bash -c '
+      while true; do
+        rm -f "$MCP_PID_FILE"
+        bun run "$SIDECAR_SCRIPT" >>/tmp/oh-my-cursor-sidecar.log 2>&1 &
+        child=$!
+        wait "$child"
+        ec=$?
+        if [ "$ec" -eq 0 ]; then
+          exit 0
+        fi
+        now=$(date +%s)
+        printf "%s\n" "$now" >>"$SIDECAR_RESTART_COUNT_FILE"
+        cutoff=$((now - 60))
+        recent=0
+        while IFS= read -r line || [ -n "$line" ]; do
+          [[ "$line" =~ ^[0-9]+$ ]] || continue
+          if [ "$line" -ge "$cutoff" ]; then
+            recent=$((recent + 1))
+          fi
+        done <"$SIDECAR_RESTART_COUNT_FILE"
+        if [ "$recent" -ge 5 ]; then
+          echo "fatal: sidecar crash loop detected (5 restarts in 60s), giving up" >&2
+          exit 1
+        fi
+        sleep 1
+      done
+    ' >/tmp/oh-my-cursor-sidecar.log 2>&1 &
     if ! wait_for_health "$MCP_PORT"; then
       ACTUAL_MCP_PORT="$(read_port_file "$MCP_PORT_FILE" "$MCP_PORT")"
       if ! wait_for_health "$ACTUAL_MCP_PORT"; then

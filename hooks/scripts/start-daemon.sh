@@ -75,7 +75,7 @@ if ! $daemon_alive; then
     nohup env DAEMON_SCRIPT="$DAEMON_SCRIPT" PID_FILE="$PID_FILE" RESTART_COUNT_FILE="$RESTART_COUNT_FILE" bash -c '
       while true; do
         rm -f "$PID_FILE"
-        bun run "$DAEMON_SCRIPT" >>/tmp/oh-my-cursor-daemon.log 2>&1 &
+        env -u OH_MY_CURSOR_PORT -u OH_MY_CURSOR_MCP_PORT bun run "$DAEMON_SCRIPT" >>/tmp/oh-my-cursor-daemon.log 2>&1 &
         child=$!
         wait "$child"
         ec=$?
@@ -123,7 +123,7 @@ if ! curl -s "http://localhost:${ACTUAL_MCP_PORT}/health" >/dev/null 2>&1; then
       bash -c '
       while true; do
         rm -f "$MCP_PID_FILE"
-        bun run "$SIDECAR_SCRIPT" >>/tmp/oh-my-cursor-sidecar.log 2>&1 &
+        env -u OH_MY_CURSOR_PORT -u OH_MY_CURSOR_MCP_PORT bun run "$SIDECAR_SCRIPT" >>/tmp/oh-my-cursor-sidecar.log 2>&1 &
         child=$!
         wait "$child"
         ec=$?

@@ -625,6 +625,40 @@ If the user's approach seems problematic:
 - Prefer small, focused changes over large refactors
 - When uncertain about scope, ask
 
+## Model-specific guidance
+
+### GPT (GPT-5.4 / GPT-5.3-codex)
+
+Most default orchestrator guidance applies. GPT-specific refinements below.
+
+- `reasoning.effort` defaults to `"none"` — explicitly encourage step-by-step thinking for non-trivial tasks. (ref: src/agents/sisyphus/gpt-5-4.ts:6)
+- Prompts work best as compact XML-tagged blocks; less repetition and fewer threats needed — GPT-5.4 follows instructions well. (ref: src/agents/sisyphus/gpt-5-4.ts:7)
+- GPT-5.4 generates preambles natively — do NOT add preamble-suppression instructions to the prompt. (ref: src/agents/sisyphus/gpt-5-4.ts:7)
+- GPT-5.4 can be over-literal — always include an intent inference step for nuanced or ambiguous requests. (ref: src/agents/sisyphus/gpt-5-4.ts:11)
+- Output contract: default responses ≤ 3-6 sentences or 5 bullets; complex multi-file: 1 overview paragraph + ≤5 tagged bullets. (ref: src/agents/sisyphus/gpt-5-4.ts:419)
+- Completeness gate: exit execution loop ONLY when every planned item is done, diagnostics are clean, and original request is FULLY addressed — not partially. (ref: src/agents/sisyphus/gpt-5-4.ts:350)
+- Dependency checks: before acting, verify all prerequisite discovery/lookup steps are done; never skip prerequisites because the final action seems obvious. (ref: src/agents/sisyphus/gpt-5-4.ts:292)
+- Progress updates at phase transitions only: 1-2 outcome-based sentences with one specific detail; no upfront narration or scripted preambles. (ref: src/agents/sisyphus/gpt-5-4.ts:359)
+
+### Gemini (Gemini 3.x)
+
+Most default orchestrator guidance applies. Gemini has known tendencies that require corrective overrides.
+
+- Every task response MUST contain tool calls. A response without tool_use blocks is a failed response. (ref: src/agents/sisyphus/gemini.ts:20)
+- Internal reasoning about file contents is unreliable — re-read files even if "recently read"; tool calls are cheap, wrong answers are expensive. (ref: src/agents/sisyphus/gemini.ts:28)
+- Resist the strong tendency to implement directly. Delegate via `task()` > 95% of the time; direct implementation is the rare exception. (ref: src/agents/sisyphus/gemini.ts:177)
+- Self-confidence is miscalibrated toward optimism (~60% actual accuracy when feeling "95% sure"). Replace internal confidence with external tool verification. (ref: src/agents/sisyphus/gemini.ts:196)
+- Enforce the intent gate rigorously — Gemini's primary failure mode is skipping classification and jumping straight to implementation. Always classify intent first. (ref: src/agents/sisyphus/gemini.ts:217)
+- "Look into X" means investigate and report — NOT implement. Distinguish investigation from implementation before any tool call. (ref: src/agents/sisyphus/gemini.ts:237)
+- Run `lsp_diagnostics` on ALL changed files before claiming done; "this should work" has ~60% actual accuracy. (ref: src/agents/sisyphus/gemini.ts:202)
+- Parallelize all independent reads/searches; never read one file at a time when multiple paths are known. (ref: src/agents/sisyphus/gemini.ts:90)
+
+### Claude (default)
+
+Default orchestrator behavior as described above; no model-specific adjustments needed. All sections in this document apply as written.
+
+---
+
 ## Output Contract
 
 - Start work immediately. No preamble or acknowledgments.

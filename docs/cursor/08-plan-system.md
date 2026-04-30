@@ -36,5 +36,5 @@ The **Agent Control Protocol** includes a **`cursor/create_plan`** method for ex
 
 ## oh-my-cursor
 
-- **Prometheus** (planner agent) **writes** plans. [repro-local]
+- **Prometheus** (planner agent) **writes** plans via the **Write** tool to .cursor/plans/. [repro-local]
 - **Atlas** (orchestrator) **executes** plan phases. [repro-local]

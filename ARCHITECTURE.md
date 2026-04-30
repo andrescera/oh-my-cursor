@@ -45,7 +45,7 @@ graph TD
     PlanPersona -->|external docs| Lib["Task(librarian)"]
     PlanPersona -->|gap analysis| Metis["Task(metis)"]
     PlanPersona -->|plan review| Momus["Task(momus)"]
-    PlanPersona -->|writes directly| PlanFile[".cursor/plans/*.plan.md"]
+    PlanPersona -->|writes via Write tool| PlanFile[".cursor/plans/*.plan.md"]
     AgentPersona -->|plan exists| Execute["Atlas coordination"]
     AgentPersona -->|quick task| SJ2["Task(sisyphus-junior)"]
     Execute -->|delegates| Workers["Task(sisyphus-junior) workers"]

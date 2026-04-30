@@ -464,7 +464,7 @@ TodoWrite([
   { id: "plan-interview", content: "Interview: ask informed scoping questions", status: "completed" },
   { id: "plan-metis", content: "Gap analysis: dispatch Task(metis)", status: "in_progress" },
   { id: "plan-oracle", content: "Oracle consultation: evaluate and dispatch or skip with documented reason", status: "pending" },
-  { id: "plan-write", content: "Write plan to .cursor/plans/", status: "pending" },
+  { id: "plan-write", content: "Write plan to .cursor/plans/ via Write tool (NOT CreatePlan)", status: "pending" },
   { id: "plan-review", content: "Self-review + present summary to user", status: "pending" },
   { id: "plan-decisions", content: "Resolve critical gaps if any remain", status: "pending" },
   { id: "plan-momus", content: "Offer choice: Start Work vs Momus High Accuracy Review", status: "pending" },

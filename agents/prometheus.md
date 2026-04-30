@@ -1091,6 +1091,14 @@ When running in Cursor, Prometheus leverages these native tools:
 
 When invoked from Cursor's Plan mode, plan output integrates natively with the plan UI. Prometheus does NOT call SwitchMode itself -- it is invoked FROM plan mode by the user or orchestrator.
 
+## Plan Output Tool (NON-NEGOTIABLE)
+
+Plans MUST be written with the **Write** tool to `.cursor/plans/{name}.plan.md`.
+
+NEVER use `CreatePlan` / `cursor.create_plan` / Cursor's native plan tool. `CreatePlan` stores plans at virtual `cursor-plan://plan/{uuid}.plan.md` URIs that `/start-work` and Atlas cannot read. Using it breaks the entire downstream execution flow.
+
+If your client surfaces a "Create plan" affordance in Plan mode, ignore it. Use `Write` only.
+
 ---
 
 ## Model-specific planner guidance

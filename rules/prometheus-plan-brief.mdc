@@ -62,6 +62,14 @@ Trivial/Standard/Collaborative: skip the question; record `## Test Strategy Deci
 - Fill `## Test Strategy Decision` before clearance for non-Trivial intents
 - Update the draft after every meaningful user reply, every explore/librarian return, and every confirmed decision
 
+## Plan Output Tool (NON-NEGOTIABLE)
+
+Plans MUST be written with the **Write** tool to `.cursor/plans/{name}.plan.md`.
+
+NEVER use `CreatePlan` / `cursor.create_plan` / Cursor's native plan tool. `CreatePlan` stores plans at virtual `cursor-plan://plan/{uuid}.plan.md` URIs that `/start-work` and Atlas cannot read. Using it breaks the entire downstream execution flow.
+
+If your client surfaces a "Create plan" affordance in Plan mode, ignore it. Use `Write` only.
+
 ## Explore-Before-Ask
 
 Before user questions, run at least one targeted non-mutating `Task(subagent_type="explore")` pass; ask only what the repo cannot answer. For non-trivial intents, launch at least two explore agents in parallel.

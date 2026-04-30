@@ -108,6 +108,29 @@ export function createToolGuardHandlers(
       const toolInput = (input.tool_input as Record<string, unknown>) || {}
       console.log(`[oh-my-cursor][preToolUse] convId=${convId} | tool=${toolName} | composerMode=${conversation.composerMode} | toolCallCount=${conversation.toolCallCount}`)
 
+      if (["Write", "write"].includes(toolName)) {
+        const currentMode = (input.mode as string) || (input.composerMode as string) || conversation.composerMode
+        if (currentMode === "plan") {
+          const rawPath = (toolInput.file_path || toolInput.path) as string | undefined
+          if (rawPath) {
+            const allowed = rawPath.includes(".cursor/plans/") || rawPath.includes(".cursor/drafts/")
+            if (!allowed) {
+              const reason = `[mode-guard] Write is restricted to .cursor/plans/ and .cursor/drafts/ in Plan mode. Refusing: ${rawPath}`
+              return {
+                permission: "deny",
+                userMessage: reason,
+                agentMessage: reason,
+                hookSpecificOutput: {
+                  hookEventName: "PreToolUse",
+                  permissionDecision: "deny",
+                  permissionDecisionReason: reason,
+                },
+              }
+            }
+          }
+        }
+      }
+
       if (["write", "Write", "str_replace", "StrReplace", "edit", "Edit", "apply_patch", "ApplyPatch"].includes(toolName)) {
         const isEditOperation = Boolean(toolInput.old_string)
         const rawWritePath = (toolInput.file_path || toolInput.path) as string

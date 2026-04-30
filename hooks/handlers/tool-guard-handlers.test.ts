@@ -284,3 +284,93 @@ describe("createToolGuardHandlers dispatch count inflation fix", () => {
     })
   })
 })
+
+describe("createToolGuardHandlers Plan-mode Write-path guard", () => {
+  beforeEach(() => {
+    conversations.delete(CONV)
+  })
+
+  describe("#when Write targets a path outside .cursor/plans and .cursor/drafts in plan mode", () => {
+    it("denies the call with a redirect message naming Write and .cursor/plans/", () => {
+      const tracker = makeTracker({ [CONV]: [] })
+      const { "/preToolUse": handler } = createToolGuardHandlers(conversations, tracker)
+      handler({ tool_name: "Read", conversation_id: CONV, tool_input: { path: "/tmp/x" } })
+      conversations.get(CONV)!.composerMode = "plan"
+
+      const result = handler({
+        tool_name: "Write",
+        conversation_id: CONV,
+        tool_input: { file_path: "/mnt/development/oh-my-openagent/src/foo.ts", contents: "x" },
+      }) as { permission?: string; userMessage?: string }
+
+      expect(result.permission).toBe("deny")
+      expect(result.userMessage).toContain(".cursor/plans/")
+      expect(result.userMessage).toContain("Write")
+    })
+
+    it("does NOT register the denied write in pendingWriteArgs (denied before tracking)", () => {
+      const tracker = makeTracker({ [CONV]: [] })
+      const { "/preToolUse": handler } = createToolGuardHandlers(conversations, tracker)
+      handler({ tool_name: "Read", conversation_id: CONV, tool_input: { path: "/tmp/x" } })
+      conversations.get(CONV)!.composerMode = "plan"
+
+      handler({
+        tool_name: "Write",
+        conversation_id: CONV,
+        tool_use_id: "test-tool-use-id",
+        tool_input: { file_path: "/tmp/forbidden.md", contents: "x" },
+      })
+
+      expect(conversations.get(CONV)!.pendingWriteArgs.has("test-tool-use-id")).toBe(false)
+    })
+  })
+
+  describe("#when Write targets .cursor/plans/<slug>.plan.md in plan mode", () => {
+    it("allows the call (does not return deny)", () => {
+      const tracker = makeTracker({ [CONV]: [] })
+      const { "/preToolUse": handler } = createToolGuardHandlers(conversations, tracker)
+      handler({ tool_name: "Read", conversation_id: CONV, tool_input: { path: "/tmp/x" } })
+      conversations.get(CONV)!.composerMode = "plan"
+
+      const result = handler({
+        tool_name: "Write",
+        conversation_id: CONV,
+        tool_input: { file_path: ".cursor/plans/foo.plan.md", contents: "x" },
+      }) as { permission?: string }
+
+      expect(result?.permission).not.toBe("deny")
+    })
+
+    it("also allows .cursor/drafts/", () => {
+      const tracker = makeTracker({ [CONV]: [] })
+      const { "/preToolUse": handler } = createToolGuardHandlers(conversations, tracker)
+      handler({ tool_name: "Read", conversation_id: CONV, tool_input: { path: "/tmp/x" } })
+      conversations.get(CONV)!.composerMode = "plan"
+
+      const result = handler({
+        tool_name: "Write",
+        conversation_id: CONV,
+        tool_input: { file_path: ".cursor/drafts/foo.md", contents: "x" },
+      }) as { permission?: string }
+
+      expect(result?.permission).not.toBe("deny")
+    })
+  })
+
+  describe("#when Write happens in agent mode (not plan mode)", () => {
+    it("does NOT apply the path guard (allows any path)", () => {
+      const tracker = makeTracker({ [CONV]: [] })
+      const { "/preToolUse": handler } = createToolGuardHandlers(conversations, tracker)
+      handler({ tool_name: "Read", conversation_id: CONV, tool_input: { path: "/tmp/x" } })
+      // composerMode left unset (agent default)
+
+      const result = handler({
+        tool_name: "Write",
+        conversation_id: CONV,
+        tool_input: { file_path: "/tmp/scratch.ts", contents: "x" },
+      }) as { permission?: string }
+
+      expect(result?.permission).not.toBe("deny")
+    })
+  })
+})

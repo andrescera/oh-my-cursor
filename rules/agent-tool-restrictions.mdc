@@ -38,7 +38,7 @@ Tool access depends on the active Cursor mode:
 
 - **Plan mode** (Prometheus persona):
   - **Allowed:** Read, Grep, Glob, Write (.md files in .cursor/plans/ and .cursor/drafts/ only), AskQuestion, TodoWrite, Task(explore, metis, momus, librarian, oracle), SwitchMode
-  - **Forbidden:** Write (non-.md), Shell (implementation), StrReplace (source code), Task(worker/coordinator agents)
+  - **Forbidden:** Write (non-.md), Shell (implementation), StrReplace (source code), Task(worker/coordinator agents), CreatePlan
 
 - **Agent mode** (Orchestrator/Atlas persona):
   - **Allowed:** Task (all subagent types), TodoWrite, AskQuestion, SwitchMode, Read, Glob (plan discovery + verification)
@@ -65,7 +65,7 @@ Violations indicate an agent is exceeding its role boundary.
 **Applies to:** prometheus (when dispatched as subagent via Task(prometheus))
 
 Planners produce only markdown plan files:
-- **Forbidden:** Write (non-.md files), Shell (implementation commands), StrReplace (source code), Task (sub-agent dispatch)
+- **Forbidden:** Write (non-.md files), Shell (implementation commands), StrReplace (source code), Task (sub-agent dispatch), CreatePlan
 - **Allowed:** Write (.md plan files only), Read, Grep, Glob, AskQuestion, TodoWrite
 
 > **Note:** In native mode, root-as-Prometheus follows the "Plan mode" permissions above (which include Task dispatch for explore, metis, momus). This "Planner Agents" section applies only when prometheus runs as a dispatched subagent.

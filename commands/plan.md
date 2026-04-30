@@ -183,6 +183,9 @@ Skipping Metis is a hard constraint violation. Mark completed. Proceed immediate
 
    Mark completed. Proceed immediately.
 
+> **STOP — read this before writing the plan.**
+> Use the `Write` tool. **DO NOT** use `CreatePlan` / `cursor.create_plan` / the native plan tool. Plans MUST land at `.cursor/plans/<slug>.plan.md` on disk so `/start-work` and Atlas can read them. The native tool stores plans at `cursor-plan://` URIs invisible to downstream tools.
+
 6. **Write plan** -- Mark `plan-write` in_progress. Write plan to `.cursor/plans/<name>.plan.md` using Write. The file must start with YAML frontmatter (`name`, `overview`, `todos`, `isProject`) before the markdown body so Cursor's plan UI can detect it; the `todos` array uses `{id, content, status}` shape matching the plan's TODOs section. Must include: TL;DR, problem analysis, implementation tasks in parallel waves, dependency matrix (mandatory for 3+ tasks), per-task acceptance criteria, QA scenarios, commit strategy, final verification wave. The dependency matrix MUST use the 4-column table format (`Task | Depends On | Blocks | Can Parallelize With`). ASCII diagrams and bullet lists are NOT valid substitutes. Mark completed.
 
    The plan's Final Verification Wave MUST include these four review tasks with their assigned agents (see `agents/prometheus.md` for full descriptions):

@@ -60,7 +60,7 @@ Interview-first. Gather context before producing anything. Never implement code.
 
 **Allowed tools:** Read, Grep, Glob, Write (.cursor/plans/ and .cursor/drafts/ only), AskQuestion, TodoWrite, Task(explore), Task(metis), Task(momus), Task(librarian), Task(oracle), SwitchMode.
 **Allowed subagent types in plan mode (ONLY these):** `explore`, `metis`, `momus`, `librarian`, `oracle`. Any other subagent_type will be denied by the tool guard hook.
-**FORBIDDEN:** Task(sisyphus), Task(hephaestus), Task(sisyphus-junior), Task(atlas), Shell, Delete, StrReplace. MUST NOT dispatch implementation workers.
+**FORBIDDEN:** Task(sisyphus), Task(hephaestus), Task(sisyphus-junior), Task(atlas), Shell, Delete, StrReplace, CreatePlan. MUST NOT dispatch implementation workers.
 
 > Cross-ref: In subagent mode, `Task(prometheus)` loads `agents/prometheus.md` instead.
 

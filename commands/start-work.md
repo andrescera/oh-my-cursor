@@ -14,6 +14,12 @@ Persistent progress lives in `.cursor/state/active-plan-{conversationId}.json` p
 
 Use **Glob** on `.cursor/plans/*.plan.md` to list plan files. Use **Read** to preview plan headers (first ~30 lines, accounting for YAML frontmatter) so the user can identify each plan.
 
+**Diagnostic — no plans found**: If `Glob` returns zero results from `.cursor/plans/*.plan.md`, do NOT silently fail. Inform the user:
+
+> No plan files found at `.cursor/plans/*.plan.md`. If you just ran `/plan` and saw the model emit a "create plan" tool call, it likely used Cursor's native `CreatePlan` (which stores plans at `cursor-plan://` URIs invisible to `/start-work`). Re-run `/plan` and verify the model uses `Write` to `.cursor/plans/<slug>.plan.md`. See `docs/cursor/19-known-sharp-edges.md` for context.
+
+Then `AskQuestion` whether to retry `/plan` or proceed without a plan.
+
 ## Step 2: Choose plan
 
 If exactly one plan exists, use it. If multiple plans exist, use **AskQuestion** so the user picks which plan to run.

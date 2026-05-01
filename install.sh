@@ -21,6 +21,9 @@ SCOPE="user"
 FORCE=false
 DRY_RUN=false
 MODE="auto"
+DASHBOARD_BUILD_SKIPPED=false
+DASHBOARD_BUILD_FAILED=false
+BUILD_OK=0
 
 # --- CLI parsing ---
 
@@ -36,16 +39,19 @@ Usage:
   ./install.sh --check-update     Compare installed vs source version
   ./install.sh --dry-run          Preview mode (combinable with above)
   ./install.sh --project          Project-scoped install
+  ./install.sh --skip-dashboard-build  Install without building the dashboard UI
   ./install.sh --help             This help text
 
 Options:
-  --force          Force fresh install even if already installed
-  --uninstall      Remove oh-my-cursor completely
-  --version        Show installed version
-  --check-update   Check if an update is available
-  --dry-run        Show what would happen without making changes
-  --project        Install to .cursor/ in current directory instead of ~/.cursor/
-  --help           Show this help message
+  --force                 Force fresh install even if already installed
+  --uninstall             Remove oh-my-cursor completely
+  --version               Show installed version
+  --check-update          Check if an update is available
+  --dry-run               Show what would happen without making changes
+  --project               Install to .cursor/ in current directory instead of ~/.cursor/
+  --skip-dashboard-build  Do not build hooks/dashboard-ui; preserves any existing dist on update.
+                          On fresh/force, /dashboard/assets/* will return 503 until next install.
+  --help                  Show this help message
 
 Environment variables:
   OH_MY_CURSOR_PORT       Daemon port (default: 27847)
@@ -398,6 +404,11 @@ PYEOF
 # --- Legacy cleanup ---
 
 cleanup_legacy_loose_files() {
+  # Invariant: this function must NEVER touch `hooks/dashboard-ui/dist/`. It is
+  # a build artifact managed by build_dashboard_ui — not a legacy loose file.
+  # The scans below are restricted to agents/, commands/, rules/, skills/ and
+  # two specific legacy hook files; none of those paths overlap with
+  # dashboard-ui/dist/, but keep this guarantee in mind when editing.
   local cursor_home="$HOME/.cursor"
   local dirs_to_scan=("agents" "commands" "rules" "skills")
 
@@ -450,7 +461,11 @@ cleanup_legacy_loose_files() {
 
 copy_plugin_files() {
   if [[ "$DRY_RUN" == "true" ]]; then
-    log "[dry-run] Would copy plugin files to $PLUGIN_DIR"
+    if [[ "$DASHBOARD_BUILD_SKIPPED" == "true" ]]; then
+      log "[dry-run] Would copy plugin files to $PLUGIN_DIR (skipping hooks/dashboard-ui/dist/)"
+    else
+      log "[dry-run] Would copy plugin files to $PLUGIN_DIR"
+    fi
     return
   fi
 
@@ -459,7 +474,11 @@ copy_plugin_files() {
   local dirs=(.cursor-plugin agents commands rules skills hooks scripts automations docs)
   for dir in "${dirs[@]}"; do
     local src="$SCRIPT_DIR/$dir"
-    if [[ -d "$src" ]]; then
+    [[ -d "$src" ]] || continue
+    if [[ "$dir" == "hooks" ]] && [[ "$DASHBOARD_BUILD_SKIPPED" == "true" ]]; then
+      copy_hooks_skip_dashboard_dist "$src" "$PLUGIN_DIR/hooks"
+      log "[ok] Copied $dir/ (skipped dashboard-ui/dist/)"
+    else
       cp -r "$src" "$PLUGIN_DIR/"
       log "[ok] Copied $dir/"
     fi
@@ -476,6 +495,36 @@ copy_plugin_files() {
 
   write_version_file
   seed_user_config
+}
+
+# Copy $src (a hooks/ source tree) into $dest, excluding dashboard-ui/dist/.
+# Prefers rsync --exclude; falls back to a find-based enumeration that copies
+# every entry whose path does not start with dashboard-ui/dist.
+copy_hooks_skip_dashboard_dist() {
+  local src="$1" dest="$2"
+  mkdir -p "$dest"
+
+  if command -v rsync &>/dev/null; then
+    rsync -a \
+      --exclude='dashboard-ui/dist' \
+      --exclude='dashboard-ui/dist/' \
+      "$src/" "$dest/"
+    return
+  fi
+
+  local entry rel
+  while IFS= read -r -d '' entry; do
+    rel="${entry#"$src"/}"
+    case "$rel" in
+      dashboard-ui/dist|dashboard-ui/dist/*) continue ;;
+    esac
+    if [[ -d "$entry" && ! -L "$entry" ]]; then
+      mkdir -p "$dest/$rel"
+    else
+      mkdir -p "$(dirname "$dest/$rel")"
+      cp -P "$entry" "$dest/$rel"
+    fi
+  done < <(find "$src" -mindepth 1 -print0)
 }
 
 seed_user_config() {
@@ -504,10 +553,64 @@ seed_user_config() {
 
 remove_plugin_files() {
   if [[ "$DRY_RUN" == "true" ]]; then
-    log "[dry-run] Would remove $PLUGIN_DIR"
+    if [[ "$DASHBOARD_BUILD_SKIPPED" == "true" ]]; then
+      log "[dry-run] Would remove $PLUGIN_DIR (preserving hooks/dashboard-ui/dist/)"
+    else
+      log "[dry-run] Would remove $PLUGIN_DIR"
+    fi
     return
   fi
-  rm -rf "$PLUGIN_DIR"
+
+  if [[ "$DASHBOARD_BUILD_SKIPPED" == "true" ]] \
+     && [[ -d "$PLUGIN_DIR/hooks/dashboard-ui/dist" ]]; then
+    # Preserve hooks/dashboard-ui/dist/ by wiping every sibling path under $PLUGIN_DIR.
+    find "$PLUGIN_DIR" -mindepth 1 -maxdepth 1 ! -name hooks -exec rm -rf {} +
+    if [[ -d "$PLUGIN_DIR/hooks" ]]; then
+      find "$PLUGIN_DIR/hooks" -mindepth 1 -maxdepth 1 ! -name dashboard-ui -exec rm -rf {} +
+    fi
+    if [[ -d "$PLUGIN_DIR/hooks/dashboard-ui" ]]; then
+      find "$PLUGIN_DIR/hooks/dashboard-ui" -mindepth 1 -maxdepth 1 ! -name dist -exec rm -rf {} +
+    fi
+    log "[ok] Removed $PLUGIN_DIR contents (preserved hooks/dashboard-ui/dist/)"
+  else
+    rm -rf "$PLUGIN_DIR"
+  fi
+}
+
+# --- Dashboard UI build ---
+#
+# build_dashboard_ui: runs `bun install --frozen-lockfile && bunx --bun vite build`
+# in hooks/dashboard-ui/. Honors DRY_RUN (logs only) and DASHBOARD_BUILD_SKIPPED
+# (no-op). On command failure, sets BUILD_OK=0 and returns non-zero; callers
+# decide whether to abort (fresh/force) or continue with dist preserved (update).
+build_dashboard_ui() {
+  if [[ "$DASHBOARD_BUILD_SKIPPED" == "true" ]]; then
+    log "Dashboard build skipped (--skip-dashboard-build)."
+    return 0
+  fi
+
+  if [[ "$DRY_RUN" == "true" ]]; then
+    log "[dry-run] Would build dashboard-ui:"
+    log "  cd \"$SCRIPT_DIR/hooks/dashboard-ui\" && bun install --frozen-lockfile && bunx --bun vite build"
+    return 0
+  fi
+
+  if [[ ! -d "$SCRIPT_DIR/hooks/dashboard-ui" ]]; then
+    warn "hooks/dashboard-ui not found at $SCRIPT_DIR/hooks/dashboard-ui — skipping build"
+    BUILD_OK=0
+    return 1
+  fi
+
+  log "Building dashboard-ui..."
+  if ! ( cd "$SCRIPT_DIR/hooks/dashboard-ui" \
+         && bun install --frozen-lockfile \
+         && bunx --bun vite build ); then
+    BUILD_OK=0
+    return 1
+  fi
+
+  BUILD_OK=1
+  return 0
 }
 
 # --- Lock management ---
@@ -561,6 +664,14 @@ print_uninstall_banner() {
   echo ""
 }
 
+print_dashboard_state_notice() {
+  if [[ "$DASHBOARD_BUILD_FAILED" == "true" ]]; then
+    warn "Dashboard build failed; existing dashboard preserved at $PLUGIN_DIR/hooks/dashboard-ui/dist/."
+  elif [[ "$DASHBOARD_BUILD_SKIPPED" == "true" ]]; then
+    warn "Dashboard build was skipped. /dashboard shell still loads, but /dashboard/assets/* will return 503 until next install."
+  fi
+}
+
 # --- Trap for cleanup on failure ---
 
 _install_failed=false
@@ -579,14 +690,15 @@ SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 
 while [[ $# -gt 0 ]]; do
   case $1 in
-    --project)      SCOPE="project"; shift ;;
-    --force)        FORCE=true; shift ;;
-    --dry-run)      DRY_RUN=true; shift ;;
-    --uninstall)    MODE="uninstall"; shift ;;
-    --version)      MODE="version"; shift ;;
-    --check-update) MODE="check-update"; shift ;;
-    --help|-h)      usage; exit 0 ;;
-    *)              err "Unknown option: $1"; usage; exit 1 ;;
+    --project)              SCOPE="project"; shift ;;
+    --force)                FORCE=true; shift ;;
+    --dry-run)              DRY_RUN=true; shift ;;
+    --uninstall)            MODE="uninstall"; shift ;;
+    --version)              MODE="version"; shift ;;
+    --check-update)         MODE="check-update"; shift ;;
+    --skip-dashboard-build) DASHBOARD_BUILD_SKIPPED=true; shift ;;
+    --help|-h)              usage; exit 0 ;;
+    *)                      err "Unknown option: $1"; usage; exit 1 ;;
   esac
 done
 
@@ -672,6 +784,7 @@ if [[ -d "$PLUGIN_DIR" ]] && [[ "$FORCE" != "true" ]]; then
 
   if [[ "$DRY_RUN" == "true" ]]; then
     log "[dry-run] Would update oh-my-cursor: v${installed} → v${source_ver}"
+    build_dashboard_ui
     log "[dry-run] Would backup $PLUGIN_DIR"
     log "[dry-run] Would stop daemon"
     log "[dry-run] Would remove and re-copy plugin files"
@@ -684,6 +797,18 @@ if [[ -d "$PLUGIN_DIR" ]] && [[ "$FORCE" != "true" ]]; then
   acquire_lock
   trap cleanup_on_exit EXIT
   _install_failed=true
+
+  # Build BEFORE any destructive operation so the user's existing dashboard
+  # survives a failed build. On failure, flip the skip flag so remove/copy
+  # both preserve the previously-built $PLUGIN_DIR/hooks/dashboard-ui/dist/.
+  if ! build_dashboard_ui; then
+    if [[ "$DASHBOARD_BUILD_SKIPPED" != "true" ]]; then
+      DASHBOARD_BUILD_SKIPPED=true
+      DASHBOARD_BUILD_FAILED=true
+      warn "Dashboard build failed; existing dashboard preserved at $PLUGIN_DIR/hooks/dashboard-ui/dist/."
+    fi
+  fi
+
   backup_installation
   stop_daemon
   remove_plugin_files
@@ -695,6 +820,7 @@ if [[ -d "$PLUGIN_DIR" ]] && [[ "$FORCE" != "true" ]]; then
   release_lock
   trap - EXIT
   print_update_banner "$installed" "$source_ver"
+  print_dashboard_state_notice
 
 elif [[ "$FORCE" == "true" ]] && [[ -d "$PLUGIN_DIR" ]]; then
   # Force reinstall
@@ -702,6 +828,7 @@ elif [[ "$FORCE" == "true" ]] && [[ -d "$PLUGIN_DIR" ]]; then
 
   if [[ "$DRY_RUN" == "true" ]]; then
     log "[dry-run] Would force reinstall oh-my-cursor v${source_ver}"
+    build_dashboard_ui
     log "[dry-run] Would stop daemon"
     log "[dry-run] Would remove existing $PLUGIN_DIR"
     log "[dry-run] Would clean up legacy loose files"
@@ -715,6 +842,17 @@ elif [[ "$FORCE" == "true" ]] && [[ -d "$PLUGIN_DIR" ]]; then
   acquire_lock
   trap cleanup_on_exit EXIT
   _install_failed=true
+
+  # Build BEFORE any destructive operation — abort without touching the
+  # existing install if the build fails.
+  if ! build_dashboard_ui; then
+    _install_failed=false
+    release_lock
+    trap - EXIT
+    err "Dashboard build failed. Fix and re-run, or run with --skip-dashboard-build to install without dashboard."
+    exit 1
+  fi
+
   stop_daemon
   remove_plugin_files
   cleanup_legacy_loose_files
@@ -726,6 +864,7 @@ elif [[ "$FORCE" == "true" ]] && [[ -d "$PLUGIN_DIR" ]]; then
   release_lock
   trap - EXIT
   print_success_banner
+  print_dashboard_state_notice
 
 else
   # Fresh install
@@ -733,6 +872,7 @@ else
 
   if [[ "$DRY_RUN" == "true" ]]; then
     log "[dry-run] Would install oh-my-cursor v${source_ver}"
+    build_dashboard_ui
     log "[dry-run] Would clean up legacy loose files"
     log "[dry-run] Would copy plugin files to $PLUGIN_DIR"
     log "[dry-run] Would merge MCP config into $MCP_CONFIG"
@@ -744,6 +884,17 @@ else
   acquire_lock
   trap cleanup_on_exit EXIT
   _install_failed=true
+
+  # Build BEFORE any destructive operation — abort without touching
+  # $PLUGIN_DIR if the build fails.
+  if ! build_dashboard_ui; then
+    _install_failed=false
+    release_lock
+    trap - EXIT
+    err "Dashboard build failed. Fix and re-run, or run with --skip-dashboard-build to install without dashboard."
+    exit 1
+  fi
+
   cleanup_legacy_loose_files
   copy_plugin_files
   merge_mcp_config
@@ -753,4 +904,5 @@ else
   release_lock
   trap - EXIT
   print_success_banner
+  print_dashboard_state_notice
 fi

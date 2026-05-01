@@ -1,6 +1,7 @@
 import { describe, test, expect, beforeAll, afterAll } from "bun:test"
 import type { Subprocess } from "bun"
-import { writeFileSync, unlinkSync } from "node:fs"
+import { writeFileSync, unlinkSync, renameSync, existsSync } from "node:fs"
+import { join } from "node:path"
 import { createServer } from "node:net"
 
 let PORT = 0
@@ -331,14 +332,69 @@ describe("daemon integration lifecycle", () => {
   })
 
   describe("#given the dashboard endpoint", () => {
+    const DIST_DIR = join(import.meta.dir, "dashboard-ui", "dist")
+    const DIST_BAK = `${DIST_DIR}.test-bak`
+
     describe("#when GET /dashboard is called", () => {
-      test("#then it returns 200 with HTML content", async () => {
-        const res = await fetch(`${BASE}/dashboard`)
+      test("#then it returns 200 text/html with the dashboard JS asset URL on the runtime port", async () => {
+        const res = await fetch(`${BASE}/dashboard`, { redirect: "manual" })
         expect(res.status).toBe(200)
-        const contentType = res.headers.get("content-type")
-        expect(contentType).toContain("text/html")
+        expect(res.headers.get("content-type") ?? "").toContain("text/html")
         const html = await res.text()
-        expect(html).toContain("oh-my-cursor Status")
+        expect(html).toContain(`http://localhost:${PORT}/dashboard/assets/dashboard.js`)
+        expect(html).toContain(`window.OMC_DAEMON_PORT = ${PORT}`)
+        expect(html).toContain('<div id="app">')
+      })
+    })
+
+    describe("#when GET /dashboard/index.html is called", () => {
+      test("#then body is byte-equal to /dashboard (no redirect)", async () => {
+        const a = await fetch(`${BASE}/dashboard`, { redirect: "manual" })
+        const b = await fetch(`${BASE}/dashboard/index.html`, { redirect: "manual" })
+        expect(a.status).toBe(200)
+        expect(b.status).toBe(200)
+        expect(b.headers.get("content-type") ?? "").toContain("text/html")
+        expect(await b.text()).toBe(await a.text())
+      })
+    })
+
+    describe("#when GET /dashboard/assets/dashboard.js is called and dist exists", () => {
+      test("#then it returns 200 application/javascript", async () => {
+        const res = await fetch(`${BASE}/dashboard/assets/dashboard.js`)
+        expect(res.status).toBe(200)
+        expect(res.headers.get("content-type") ?? "").toContain("application/javascript")
+      })
+    })
+
+    describe("#given the dashboard dist directory is missing", () => {
+      beforeAll(() => {
+        if (existsSync(DIST_DIR)) renameSync(DIST_DIR, DIST_BAK)
+      })
+
+      afterAll(() => {
+        if (existsSync(DIST_BAK)) renameSync(DIST_BAK, DIST_DIR)
+      })
+
+      describe("#when GET /dashboard/assets/dashboard.js is called", () => {
+        test("#then it returns 503 with helpful body", async () => {
+          const res = await fetch(`${BASE}/dashboard/assets/dashboard.js`)
+          expect(res.status).toBe(503)
+          expect(res.headers.get("content-type") ?? "").toContain("text/html")
+          const body = await res.text()
+          expect(body).toContain("Dashboard assets not built")
+          expect(body).toContain("install.sh")
+        })
+      })
+
+      describe("#when GET /dashboard is called", () => {
+        test("#then it still returns 200 (daemon-mode shell does not depend on dist)", async () => {
+          const res = await fetch(`${BASE}/dashboard`, { redirect: "manual" })
+          expect(res.status).toBe(200)
+          expect(res.headers.get("content-type") ?? "").toContain("text/html")
+          const html = await res.text()
+          expect(html).toContain('<div id="app">')
+          expect(html).toContain(`http://localhost:${PORT}/dashboard/assets/dashboard.js`)
+        })
       })
     })
   })

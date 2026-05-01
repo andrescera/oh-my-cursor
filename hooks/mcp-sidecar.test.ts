@@ -3,6 +3,7 @@ import { Client } from "@modelcontextprotocol/sdk/client/index.js"
 import { InMemoryTransport } from "@modelcontextprotocol/sdk/inMemory.js"
 
 import { buildServer } from "./mcp/server"
+import { getDaemonPort } from "./port-manager"
 
 const PORT = 47850
 const BASE = `http://localhost:${PORT}`
@@ -96,7 +97,7 @@ describe("mcp-sidecar via SDK Client", () => {
   })
 
   describe("resources/read", () => {
-    test("returns HTML contents for the dashboard URI", async () => {
+    test("returns the awaited daemon-mode shell with mount node and runtime port", async () => {
       const { client } = await harness()
       const result = await client.readResource({ uri: "ui://oh-my-cursor/dashboard" })
       expect(Array.isArray(result.contents)).toBe(true)
@@ -105,6 +106,10 @@ describe("mcp-sidecar via SDK Client", () => {
       expect(c.mimeType).toBe("text/html")
       expect(typeof c.text).toBe("string")
       expect(c.text).toContain("<!DOCTYPE html>")
+      expect(c.text).toContain('<div id="app">')
+      const runtimePort = getDaemonPort(27847)
+      expect(c.text).toContain(`window.OMC_DAEMON_PORT = ${runtimePort}`)
+      expect(c.text).toContain(`http://localhost:${runtimePort}/dashboard/assets/dashboard.js`)
     })
   })
 

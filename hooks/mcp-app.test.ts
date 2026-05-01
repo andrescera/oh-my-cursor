@@ -26,9 +26,10 @@ describe("mcp-app", () => {
     })
 
     test("legacy module-load HTML export is gone", () => {
-      // The pre-W1.4 contract eagerly exported a string named STATUS_HTML at
-      // module load. The new contract has only async getStatusHTML; verify
-      // the legacy name is no longer reachable on the module namespace.
+      // The pre-W1.4 contract eagerly exported a synchronous string named by
+      // joining STATUS and HTML with an underscore. The new contract has only
+      // async getStatusHTML; verify the legacy name is no longer reachable on
+      // the module namespace.
       const legacyExportName = ["STATUS", "HTML"].join("_")
       expect(Object.keys(mcpApp)).not.toContain(legacyExportName)
       expect((mcpApp as Record<string, unknown>)[legacyExportName]).toBeUndefined()

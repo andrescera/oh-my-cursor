@@ -406,6 +406,7 @@ cleanup_legacy_loose_files() {
     local target="$cursor_home/$dir"
     if [[ -d "$src" ]] && [[ -d "$target" ]]; then
       while IFS= read -r -d '' relpath; do
+        relpath="${relpath#./}"
         local loose_file="$target/$relpath"
         if [[ -e "$loose_file" ]]; then
           if [[ "$DRY_RUN" == "true" ]]; then
@@ -415,7 +416,7 @@ cleanup_legacy_loose_files() {
             log "[cleanup] Removed $loose_file"
           fi
         fi
-      done < <(cd "$src" && find . -type f -print0 | sed -z 's|^\./||')
+      done < <(cd "$src" && find . -type f -print0)
 
       if [[ "$DRY_RUN" != "true" ]]; then
         find "$target" -type d -empty -delete 2>/dev/null || true

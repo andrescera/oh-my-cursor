@@ -76,9 +76,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - **MCP shell port injection**: shell HTML is constructed at request time with the daemon's runtime port concatenated via JS template literal; no placeholder substitution in built artifacts, no cross-port cache contamination.
 - **SSE reducer output now reaches the Zustand store**: `dashboardSseBindings()` adapter wires `health` / `agents` / `backgroundTasks` / `dispatchCounts` / `recentErrors` / `sessions` / `sseStatus` into `data.*` and `connection.*` slices. Without it, `BackgroundTab` and live updates were silently empty.
+- **Dashboard REST from MCP webviews**: daemon REST endpoints now include CORS headers and `OPTIONS` preflight support, matching the existing SSE CORS behavior. Dashboard API calls also time out after 5 s and surface the existing error + Retry UI instead of staying in loading forever.
+- **Dashboard initial counts**: the shell preloads shared `health`, `sessions`, `events`, `backgroundTasks`, and `agentHistory` data on mount so tab badges and the conversation selector no longer stay empty until each tab is visited.
+- **Agents Gantt scale**: the Gantt view now uses a 60 s minimum visible range and HTML tick labels so tiny time windows do not stretch across the whole chart and SVG text does not distort.
 - **`/` events search shortcut**: Shell now dispatches `omc-focus-events-search` (matches the EventsTab listener); a round-trip Vitest spec mounts both components together to prevent regression.
 - **`r` tab-refresh shortcut**: `Shell.tsx` dispatches `omc-tab-refresh`; six tabs subscribe and re-run their loaders.
 - **Daemon socket bind**: bind-retry with backoff (no `reusePort` reliance); `flushEventLog` exported and called before `persistence.forceFlush` in the crash path.
+- **Daemon liveness guard**: `ensure-daemon.sh` and `start-daemon.sh` no longer trust a fresh heartbeat file unless the daemon PID is also alive, so a stale heartbeat after `/shutdown` cannot prevent restart.
 - **Audit close-outs**:
   - F2 (Server type): `Server` typed via `ReturnType<typeof serve>`; explicit error logging in `flushOnCrash` catches.
   - T1.3 / T1.4 / T1.5 plan deviations from F1 audit closed.

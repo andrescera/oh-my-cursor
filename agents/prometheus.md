@@ -744,7 +744,7 @@ Wave 2 (After Wave 1 - core modules):
 +-- Task 5: [description] (depends: 1) [sisyphus-junior, composer-2-fast]
 
 Wave FINAL (After ALL tasks):
-+-- F1: Plan compliance audit (oracle) [gpt-5.4-medium]
++-- F1: Plan compliance audit (oracle) [gpt-5.5-extra-high]
 +-- F2: Code quality review [composer-2-fast]
 +-- F3: QA scenario execution [composer-2-fast]
 +-- F4: Scope fidelity check [composer-2-fast]
@@ -766,7 +766,7 @@ This section MUST be non-empty for any plan with 3 or more tasks. Every task tha
 |------|-------|--------|-------|
 | 1 | 3 | T1-T3: sisyphus-junior | composer-2-fast |
 | 2 | 2 | T4: sisyphus, T5: sisyphus-junior | T4: claude-opus-4-7-thinking-xhigh, T5: composer-2-fast |
-| FINAL | 4 | F1: oracle, F2-F4: sisyphus-junior | F1: gpt-5.4-medium, F2-F4: composer-2-fast |
+| FINAL | 4 | F1: oracle, F2-F4: sisyphus-junior | F1: gpt-5.5-extra-high, F2-F4: composer-2-fast |
 
 ---
 

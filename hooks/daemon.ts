@@ -1,6 +1,7 @@
 import { type Server } from "bun"
 import { writeFileSync, renameSync, unlinkSync, existsSync } from "node:fs"
-import { join } from "node:path"
+import { dirname, isAbsolute, join, relative as pathRelative } from "node:path"
+import { fileURLToPath } from "node:url"
 import { getStatusHTML } from "./mcp-app"
 import { logEvent, getEvents, getConversationSummary, getLogPath, clearLog, onEvent, offEvent, flushEventLog } from "./event-logger"
 import type { EventEntry } from "./event-logger"
@@ -34,6 +35,28 @@ setPersistence(persistence)
 const DAEMON_BOOT_ID = crypto.randomUUID()
 const DAEMON_PROJECT_ROOT = process.env.OH_MY_CURSOR_PROJECT_DIR || process.cwd()
 persistence.setIdentity(DAEMON_PROJECT_ROOT, DAEMON_BOOT_ID)
+
+const HERE = dirname(fileURLToPath(import.meta.url))
+const DIST_ASSETS_DIR = join(HERE, "dashboard-ui", "dist", "assets")
+
+function contentTypeForAsset(filename: string): string {
+  if (filename.endsWith(".js") || filename.endsWith(".mjs")) return "application/javascript; charset=utf-8"
+  if (filename.endsWith(".css")) return "text/css; charset=utf-8"
+  if (filename.endsWith(".woff2")) return "font/woff2"
+  if (filename.endsWith(".woff")) return "font/woff"
+  if (filename.endsWith(".ttf")) return "font/ttf"
+  if (filename.endsWith(".otf")) return "font/otf"
+  if (filename.endsWith(".png")) return "image/png"
+  if (filename.endsWith(".jpg") || filename.endsWith(".jpeg")) return "image/jpeg"
+  if (filename.endsWith(".gif")) return "image/gif"
+  if (filename.endsWith(".svg")) return "image/svg+xml"
+  if (filename.endsWith(".webp")) return "image/webp"
+  if (filename.endsWith(".ico")) return "image/x-icon"
+  if (filename.endsWith(".map") || filename.endsWith(".json")) return "application/json; charset=utf-8"
+  return "application/octet-stream"
+}
+
+const DASHBOARD_ASSETS_NOT_BUILT_BODY = `<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8"><title>Dashboard assets not built</title></head><body style="font-family:system-ui;padding:2rem;max-width:40rem;margin:0 auto"><h1>Dashboard assets not built</h1><p>Run <code>install.sh</code> / <code>install.ps1</code>, or invoke install with <code>--skip-dashboard-build</code> to acknowledge.</p></body></html>`
 
 export function getDaemonBootId(): string {
   return DAEMON_BOOT_ID
@@ -240,9 +263,59 @@ const fetchHandler = async (req: Request) => {
   const url = new URL(req.url)
   const path = url.pathname
 
-  if (path === "/dashboard") {
-    return new Response(getStatusHTML(), {
-      headers: { "Content-Type": "text/html" },
+  if (path === "/dashboard" || path === "/dashboard/index.html") {
+    const html = await getStatusHTML(actualPort)
+    return new Response(html, {
+      status: 200,
+      headers: {
+        "Content-Type": "text/html; charset=utf-8",
+        "Cache-Control": "no-store",
+      },
+    })
+  }
+
+  if (path.startsWith("/dashboard/assets/")) {
+    const requestedRaw = path.slice("/dashboard/assets/".length)
+    let requested: string
+    try {
+      requested = decodeURIComponent(requestedRaw)
+    } catch {
+      return new Response("Bad Request", { status: 400, headers: { "Content-Type": "text/plain; charset=utf-8" } })
+    }
+    if (
+      requested.length === 0 ||
+      requested.includes("\0") ||
+      requested.startsWith("/") ||
+      requested.startsWith("\\") ||
+      requested.split(/[/\\]/).some((seg) => seg === "..")
+    ) {
+      return new Response("Bad Request", { status: 400, headers: { "Content-Type": "text/plain; charset=utf-8" } })
+    }
+    const resolved = join(DIST_ASSETS_DIR, requested)
+    const rel = pathRelative(DIST_ASSETS_DIR, resolved)
+    if (rel.length === 0 || rel.startsWith("..") || isAbsolute(rel)) {
+      return new Response("Bad Request", { status: 400, headers: { "Content-Type": "text/plain; charset=utf-8" } })
+    }
+    const file = Bun.file(resolved)
+    if (!(await file.exists())) {
+      return new Response(DASHBOARD_ASSETS_NOT_BUILT_BODY, {
+        status: 503,
+        headers: { "Content-Type": "text/html; charset=utf-8" },
+      })
+    }
+    const etag = `W/"${file.size.toString(16)}-${file.lastModified.toString(16)}"`
+    const ifNoneMatch = req.headers.get("if-none-match")
+    if (ifNoneMatch === etag) {
+      return new Response(null, { status: 304, headers: { ETag: etag } })
+    }
+    const data = await file.arrayBuffer()
+    return new Response(data, {
+      status: 200,
+      headers: {
+        "Content-Type": contentTypeForAsset(requested),
+        "Cache-Control": "public, max-age=60, must-revalidate",
+        "ETag": etag,
+      },
     })
   }
 

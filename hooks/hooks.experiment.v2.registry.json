@@ -1814,10 +1814,10 @@
       "needs_gate": false,
       "command": "",
       "type": "prompt",
-      "model": "claude-haiku-4-5",
+      "model": "composer-2-fast",
       "prompt": "Return {\"ok\": true, \"reason\": \"approved\"} if the command contains APPROVE_ME, else {\"ok\": false, \"reason\": \"denied\"}",
       "responder_args": [],
-      "expected_outcome": "prompt-type hook with model override (haiku)"
+      "expected_outcome": "prompt-type hook with model override (composer-2-fast)"
     },
     {
       "experiment_id": "W-X-afterAgentResponse-reliability-001",

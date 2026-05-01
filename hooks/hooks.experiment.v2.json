@@ -248,7 +248,7 @@
         "type": "prompt",
         "matcher": "CURSOR_HOOK_V2_F_PROMPT_002",
         "prompt": "Return {\"ok\": true, \"reason\": \"approved\"} if the command contains APPROVE_ME, else {\"ok\": false, \"reason\": \"denied\"}",
-        "model": "claude-haiku-4-5"
+        "model": "composer-2-fast"
       }
     ],
     "afterShellExecution": [

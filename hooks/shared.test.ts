@@ -132,6 +132,22 @@ describe("extractMeta", () => {
     expect(meta?.toolCallCount).toBe(3)
   })
 
+  test("extracts description for /subagentStop when present", () => {
+    const meta = extractMeta(
+      "/subagentStop",
+      { description: "build feature X", status: "completed" },
+      {},
+      {},
+    )
+    expect(meta?.description).toBe("build feature X")
+  })
+
+  test("omits description for /subagentStop when absent", () => {
+    const meta = extractMeta("/subagentStop", { status: "completed" }, {}, {})
+    expect(meta).toBeDefined()
+    expect(Object.prototype.hasOwnProperty.call(meta, "description")).toBe(false)
+  })
+
   test("captures reason for permission=deny", () => {
     const meta = extractMeta("/preToolUse", {}, {}, { permission: "deny", userMessage: "not allowed" })
     expect(meta?.reason).toBe("not allowed")

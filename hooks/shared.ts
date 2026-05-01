@@ -187,6 +187,8 @@ export function extractMeta(
 
   if (event === "/subagentStop") {
     meta.subagentStatus = (input.status as string) || ""
+    const description = (input.description as string) || (toolInput.description as string) || undefined
+    if (description !== undefined) meta.description = description
     if (input.message_count !== undefined) meta.messageCount = input.message_count as number
     if (input.tool_call_count !== undefined) meta.toolCallCount = input.tool_call_count as number
   }

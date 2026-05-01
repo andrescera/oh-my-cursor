@@ -1263,7 +1263,7 @@ export function renderDashboardHTML(daemonPort: number): string {
       return html\`
         <div class="sess-row" onClick=\${onToggle}>
           <div class="sess-main">
-            <span class="sess-id" title=\${session.id}>\${truncateSessionId(session.id)}</span>
+            <span class="sess-id" title=\${session.id}>\${session.displayTitle || truncateSessionId(session.id)}</span>
             <span class="sess-time">\${started}</span>
             <span class=\${'stat-value ' + statusClass}>\${statusLabel}</span>
             \${composerBadge(session.composerMode)}

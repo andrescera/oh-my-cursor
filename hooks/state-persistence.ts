@@ -11,6 +11,7 @@ export type ConversationMetadata = {
   id: string
   startedAt: string
   composerMode: string | null
+  displayTitle: string | null
   toolCallCount: number
   errorCount: number
   stoppedAt: string | null
@@ -251,6 +252,7 @@ export class StatePersistence {
       id: conv.id,
       startedAt: conv.startedAt,
       composerMode: conv.composerMode,
+      displayTitle: conv.displayTitle,
       toolCallCount: conv.toolCallCount,
       errorCount: conv.errorCount,
       stoppedAt: conv.stoppedAt,

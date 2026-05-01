@@ -8,6 +8,7 @@ import {
   derivedProjectRoot,
 } from "../shared"
 import { loadConfig } from "../config"
+import { extractDisplayTitle } from "../display-title"
 import { resolve } from "node:path"
 import { existsSync, readFileSync } from "node:fs"
 
@@ -237,6 +238,14 @@ export function createContinuationHandlers(
       const userMessage = (input.prompt as string) || (input.user_message as string) || ""
       const convId = resolveConversationId(input)
       const conversation = getOrCreateConversation(convId, wasResolvedViaFallback(input), derivedProjectRoot(input))
+
+      // Seed the per-session display title from the first non-empty user
+      // message; never overwrite (so the title remains stable for the
+      // dashboard Sessions list).
+      if (conversation.displayTitle === null && userMessage) {
+        const title = extractDisplayTitle(userMessage)
+        if (title) conversation.displayTitle = title
+      }
 
       let additionalContext = [
         "[oh-my-cursor] Identity: Plan=Prometheus | Agent=Orchestrator/Atlas | Debug=Diagnostic | Ask=Advisor",

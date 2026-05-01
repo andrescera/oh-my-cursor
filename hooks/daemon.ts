@@ -42,6 +42,7 @@ function mergedConversationIndex(): Map<string, ConversationMetadata> {
         id,
         startedAt: conv.startedAt,
         composerMode: conv.composerMode,
+        displayTitle: conv.displayTitle,
         toolCallCount: conv.toolCallCount,
         errorCount: conv.errorCount,
         stoppedAt: conv.stoppedAt,
@@ -57,6 +58,7 @@ function conversationRowsForStream(): Array<{
   toolCallCount: number
   errorCount: number
   composerMode: string | null
+  displayTitle: string | null
   dispatchCounts?: Record<string, number>
 }> {
   const index = mergedConversationIndex()
@@ -69,6 +71,7 @@ function conversationRowsForStream(): Array<{
         toolCallCount: s.toolCallCount,
         errorCount: s.errorCount,
         composerMode: s.composerMode,
+        displayTitle: s.displayTitle,
         dispatchCounts: s.dispatchCounts,
       }
     }
@@ -78,6 +81,7 @@ function conversationRowsForStream(): Array<{
       toolCallCount: meta.toolCallCount,
       errorCount: meta.errorCount,
       composerMode: meta.composerMode,
+      displayTitle: meta.displayTitle ?? null,
     }
   })
 }

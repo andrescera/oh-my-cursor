@@ -19,7 +19,7 @@ export function getNotBuiltHTML(): string {
 <body style="font-family: system-ui; padding: 2rem; max-width: 40rem; margin: 0 auto;">
 <h1>Dashboard not built</h1>
 <p>The dashboard UI bundle is missing at <code>${DIST_DIR}</code>.</p>
-<p>Run <code>bash install.sh</code> (or <code>install.ps1 -Scope project</code> on Windows) to build the dashboard, or invoke install with <code>--skip-dashboard-build</code> to acknowledge the absence.</p>
+<p>Run <code>bash install.sh</code> (or <code>install.ps1</code> on Windows) to build the dashboard, or invoke install with <code>--skip-dashboard-build</code> to acknowledge the absence.</p>
 </body></html>`
 }
 

@@ -53,6 +53,17 @@ describe('actions', () => {
     useDashboardStore.getState().setEventsFilter('errors')
     expect(useDashboardStore.getState().ui.eventsFilter).toBe('errors')
   })
+
+  test('setBackgroundAutoPrune toggles ui.backgroundAutoPrune (default true, persists)', () => {
+    expect(useDashboardStore.getState().ui.backgroundAutoPrune).toBe(true)
+    useDashboardStore.getState().setBackgroundAutoPrune(false)
+    expect(useDashboardStore.getState().ui.backgroundAutoPrune).toBe(false)
+
+    const raw = localStorage.getItem(STORAGE_KEY)
+    expect(raw).toBeTruthy()
+    const persisted = JSON.parse(raw!)
+    expect(persisted.state.ui.backgroundAutoPrune).toBe(false)
+  })
 })
 
 describe('expandedKeys per-tab map', () => {

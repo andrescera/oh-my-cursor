@@ -41,6 +41,7 @@ export type UiSlice = {
   eventsSearch: string
   sessionsSearch: string
   sessionsSort: SessionsSort
+  backgroundAutoPrune: boolean
 }
 
 export type ConnectionSlice = {
@@ -68,6 +69,7 @@ type Actions = {
   setEventsSearch: (q: string) => void
   setSessionsSearch: (q: string) => void
   setSessionsSort: (s: SessionsSort) => void
+  setBackgroundAutoPrune: (v: boolean) => void
   toggleExpanded: (tab: TabId, key: string) => void
   clearExpanded: (tab: TabId) => void
 
@@ -103,6 +105,7 @@ const makeInitial = () => ({
     eventsSearch: '',
     sessionsSearch: '',
     sessionsSort: 'startTimeDesc' as SessionsSort,
+    backgroundAutoPrune: true,
   } satisfies UiSlice,
   connection: {
     selectedConversation: null,
@@ -175,6 +178,8 @@ export const useDashboardStore = create<DashboardState>()(
         set((s) => ({ ui: { ...s.ui, sessionsSearch: q } })),
       setSessionsSort: (srt) =>
         set((s) => ({ ui: { ...s.ui, sessionsSort: srt } })),
+      setBackgroundAutoPrune: (v) =>
+        set((s) => ({ ui: { ...s.ui, backgroundAutoPrune: v } })),
 
       toggleExpanded: (tab, key) =>
         set((s) => {

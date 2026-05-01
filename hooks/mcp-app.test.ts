@@ -25,7 +25,7 @@ describe("mcp-app", () => {
         expect(STATUS_HTML).toContain("Tool Calls")
         expect(STATUS_HTML).toContain("Explore Dispatches")
         expect(STATUS_HTML).toContain("Worker Dispatches")
-        expect(STATUS_HTML).toContain("Ralph Loop")
+        expect(STATUS_HTML).toContain("Continuation loops")
       })
 
       test("#then contains tab navigation for Status and Events", () => {
@@ -71,6 +71,23 @@ describe("mcp-app", () => {
       test("#then falls back to a valid port (getDaemonPort or default 27847)", () => {
         const html = getStatusHTML()
         expect(html).toMatch(/http:\/\/localhost:\d+/)
+      })
+
+      test("#then dashboard HTML uses 'Continuation loop' copy, not 'Ralph loop'", () => {
+        const html = getStatusHTML()
+        expect(html).not.toMatch(/Ralph loop/i)
+        expect(html).toContain("Continuation loop")
+      })
+
+      test("#then Status tab stat label is 'Continuation loops'", () => {
+        const html = getStatusHTML()
+        expect(html).toContain('label="Continuation loops"')
+        expect(html).not.toMatch(/label="Ralph Loop"/)
+      })
+
+      test("#then SessionRow Continuation loop subsection is gated on active state", () => {
+        const html = getStatusHTML()
+        expect(html).toMatch(/(ralph[?]?\.active|ralph\s*&&\s*ralph\.active)[\s\S]{0,200}["']sess-detail-title["']>Continuation loop/)
       })
     })
   })

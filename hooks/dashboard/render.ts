@@ -659,7 +659,7 @@ export function renderDashboardHTML(daemonPort: number): string {
           <\${Stat} label="Tool Calls"         value=\${stats?.toolCalls ?? 0} />
           <\${Stat} label="Explore Dispatches" value=\${stats?.exploreCounts ?? 0} />
           <\${Stat} label="Worker Dispatches"  value=\${stats?.workerCounts ?? 0} />
-          <\${Stat} label="Ralph Loop"         value=\${stats?.ralphActive ? 'Active' : 'Inactive'}
+          <\${Stat} label="Continuation loops" value=\${stats?.ralphActive ? 'Active' : 'Inactive'}
                    valueClass=\${stats?.ralphActive ? 'status-ok' : ''} />
         </div>
         <div class="card">
@@ -1282,15 +1282,17 @@ export function renderDashboardHTML(daemonPort: number): string {
                         <span>\${v}</span>
                       </div>\`
                   )}
-              <div class="sess-detail-title">Ralph loop</div>
-              \${ralph && ralph.active
-                ? html\`<div class="sess-meta status-ok">
-                    Active — iter \${ralph.iteration} / \${ralph.maxIterations}
-                    (since \${ralph.startedAt ? new Date(ralph.startedAt).toLocaleString() : '--'})
-                  </div>\`
-                : ralph
-                  ? html\`<div class="sess-meta">Inactive</div>\`
-                  : html\`<div class="sess-meta">—</div>\`}
+              \${(ralph && ralph.active) || (session.boulderState && session.boulderState.active)
+                ? html\`
+                  <div class="sess-detail-title">Continuation loop</div>
+                  \${ralph && ralph.active
+                    ? html\`<div class="sess-meta status-ok">
+                        Active — iter \${ralph.iteration} / \${ralph.maxIterations}
+                        (since \${ralph.startedAt ? new Date(ralph.startedAt).toLocaleString() : '--'})
+                      </div>\`
+                    : html\`<div class="sess-meta status-ok">Boulder continuation active</div>\`}
+                \`
+                : null}
               \${session.stoppedAt
                 ? html\`<div class="sess-meta" style="margin-top:6px">Stopped at \${new Date(session.stoppedAt).toLocaleString()}</div>\`
                 : null}

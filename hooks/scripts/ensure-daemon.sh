@@ -56,9 +56,9 @@ is_heartbeat_fresh() {
 ACTUAL_PORT="$(read_port_file "$PORT_FILE" "$PORT")"
 
 daemon_alive=false
-if is_heartbeat_fresh; then
+if curl -s --max-time 1 "http://localhost:${ACTUAL_PORT}/health" >/dev/null 2>&1; then
   daemon_alive=true
-elif curl -s --max-time 1 "http://localhost:${ACTUAL_PORT}/health" >/dev/null 2>&1; then
+elif is_heartbeat_fresh && [ -f "$PID_FILE" ] && kill -0 "$(cat "$PID_FILE")" 2>/dev/null; then
   daemon_alive=true
 fi
 
@@ -80,7 +80,7 @@ if ! $daemon_alive; then
       deadline_exceeded && bail_timeout
       sleep 0.2
       ACTUAL_PORT="$(read_port_file "$PORT_FILE" "$PORT")"
-      if is_heartbeat_fresh; then
+      if is_heartbeat_fresh && [ -f "$PID_FILE" ] && kill -0 "$(cat "$PID_FILE")" 2>/dev/null; then
         daemon_alive=true
         break
       fi

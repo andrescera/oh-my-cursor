@@ -1,6 +1,7 @@
 import { describe, test, expect, beforeAll, afterAll } from "bun:test"
 import { mkdirSync, writeFileSync, unlinkSync, rmdirSync, rmSync, existsSync, renameSync, readFileSync } from "node:fs"
-import { join, resolve } from "node:path"
+import { join, resolve, dirname } from "node:path"
+import { fileURLToPath } from "node:url"
 import { tmpdir } from "node:os"
 import { randomUUID } from "node:crypto"
 import { DEFAULT_CONFIG } from "./config"
@@ -21,6 +22,59 @@ async function post(path: string, body: Record<string, unknown> = {}) {
     body: JSON.stringify(body),
   })
   return res.json()
+}
+
+async function rawGet(rawPath: string): Promise<{ status: number; headers: Map<string, string>; body: string }> {
+  return await new Promise((resolveResponse, reject) => {
+    let buffer = ""
+    const decoder = new TextDecoder()
+    const timeout = setTimeout(() => {
+      try { socket?.end() } catch {}
+      reject(new Error(`rawGet timed out for ${rawPath}`))
+    }, 4000)
+    let socket: Awaited<ReturnType<typeof Bun.connect>> | null = null
+    Bun.connect({
+      hostname: "127.0.0.1",
+      port: PORT,
+      socket: {
+        open(s) {
+          socket = s
+          s.write(`GET ${rawPath} HTTP/1.1\r\nHost: 127.0.0.1:${PORT}\r\nConnection: close\r\n\r\n`)
+        },
+        data(_s, data) {
+          buffer += decoder.decode(data, { stream: true })
+        },
+        close() {
+          clearTimeout(timeout)
+          buffer += decoder.decode()
+          const headerEnd = buffer.indexOf("\r\n\r\n")
+          if (headerEnd === -1) {
+            reject(new Error(`Malformed response for ${rawPath}: ${buffer.slice(0, 200)}`))
+            return
+          }
+          const head = buffer.slice(0, headerEnd)
+          const body = buffer.slice(headerEnd + 4)
+          const lines = head.split("\r\n")
+          const statusLine = lines[0] ?? ""
+          const statusMatch = /^HTTP\/1\.[01]\s+(\d{3})/.exec(statusLine)
+          const status = statusMatch ? parseInt(statusMatch[1] ?? "0", 10) : 0
+          const headers = new Map<string, string>()
+          for (let i = 1; i < lines.length; i++) {
+            const line = lines[i] ?? ""
+            const colon = line.indexOf(":")
+            if (colon > 0) {
+              headers.set(line.slice(0, colon).trim().toLowerCase(), line.slice(colon + 1).trim())
+            }
+          }
+          resolveResponse({ status, headers, body })
+        },
+        error(_s, err) {
+          clearTimeout(timeout)
+          reject(err)
+        },
+      },
+    }).catch((err) => { clearTimeout(timeout); reject(err) })
+  })
 }
 
 beforeAll(async () => {
@@ -185,6 +239,131 @@ describe("hook daemon", () => {
       await post("/afterShellExecution", { exit_code: 0 })
       const afterSecond = (await healthJson()).fallbackConversationsCreatedSinceBoot
       expect(afterSecond).toBe(before + 2)
+    })
+  })
+
+  describe("/dashboard and /dashboard/assets", () => {
+    const HOOKS_DIR = dirname(fileURLToPath(import.meta.url))
+    const DIST_ASSETS = join(HOOKS_DIR, "dashboard-ui", "dist", "assets")
+    const DASHBOARD_JS = join(DIST_ASSETS, "dashboard.js")
+
+    test("GET /dashboard returns 200 + text/html + Cache-Control: no-store + dynamic-shell body with runtime port", async () => {
+      const res = await fetch(`${BASE}/dashboard`)
+      expect(res.status).toBe(200)
+      expect(res.headers.get("content-type") ?? "").toContain("text/html")
+      expect(res.headers.get("cache-control")).toBe("no-store")
+      const html = await res.text()
+      expect(html).toContain(`http://localhost:${PORT}/dashboard/assets/dashboard.js`)
+      expect(html).toContain(`http://localhost:${PORT}/dashboard/assets/dashboard.css`)
+      expect(html).toContain(`window.OMC_DAEMON_PORT = ${PORT}`)
+    })
+
+    test("GET /dashboard/index.html is a same-handler alias (byte-equal body, no redirect)", async () => {
+      const a = await fetch(`${BASE}/dashboard`, { redirect: "manual" })
+      const b = await fetch(`${BASE}/dashboard/index.html`, { redirect: "manual" })
+      expect(a.status).toBe(200)
+      expect(b.status).toBe(200)
+      expect(b.headers.get("cache-control")).toBe("no-store")
+      expect(b.headers.get("content-type") ?? "").toContain("text/html")
+      const ta = await a.text()
+      const tb = await b.text()
+      expect(tb).toBe(ta)
+    })
+
+    test("GET /dashboard/assets/dashboard.js returns 200 with proper headers + weak ETag based on mtime+size", async () => {
+      if (!existsSync(DASHBOARD_JS)) {
+        throw new Error(`Test prerequisite missing: ${DASHBOARD_JS}. Run hooks/dashboard-ui build.`)
+      }
+      const res = await fetch(`${BASE}/dashboard/assets/dashboard.js`)
+      expect(res.status).toBe(200)
+      expect(res.headers.get("content-type") ?? "").toContain("application/javascript")
+      expect(res.headers.get("cache-control")).toBe("public, max-age=60, must-revalidate")
+      const etag = res.headers.get("etag") ?? ""
+      expect(etag).toMatch(/^W\/".+-.+"$/)
+      const file = Bun.file(DASHBOARD_JS)
+      const expected = `W/"${file.size.toString(16)}-${file.lastModified.toString(16)}"`
+      expect(etag).toBe(expected)
+    })
+
+    test("GET /dashboard/assets/dashboard.css returns 200 with text/css content-type", async () => {
+      const res = await fetch(`${BASE}/dashboard/assets/dashboard.css`)
+      expect(res.status).toBe(200)
+      expect(res.headers.get("content-type") ?? "").toContain("text/css")
+      expect(res.headers.get("cache-control")).toBe("public, max-age=60, must-revalidate")
+      expect(res.headers.get("etag")).toBeTruthy()
+    })
+
+    test("GET /dashboard/assets/dashboard.js with matching If-None-Match returns 304 + no body", async () => {
+      const first = await fetch(`${BASE}/dashboard/assets/dashboard.js`)
+      const etag = first.headers.get("etag") ?? ""
+      expect(etag.length).toBeGreaterThan(0)
+      const second = await fetch(`${BASE}/dashboard/assets/dashboard.js`, {
+        headers: { "If-None-Match": etag },
+      })
+      expect(second.status).toBe(304)
+      const body = await second.text()
+      expect(body).toBe("")
+    })
+
+    test("GET /dashboard/assets/<missing> returns 503 with helpful body", async () => {
+      const res = await fetch(`${BASE}/dashboard/assets/this-file-does-not-exist-${randomUUID()}.js`)
+      expect(res.status).toBe(503)
+      expect(res.headers.get("content-type") ?? "").toContain("text/html")
+      const body = await res.text()
+      expect(body).toContain("Dashboard assets not built")
+      expect(body).toContain("install.sh")
+    })
+
+    test("GET /dashboard/assets with encoded-slash traversal '..%2F' returns 400 (handler-level guard)", async () => {
+      const res = await rawGet("/dashboard/assets/%2E%2E%2Fdaemon.ts")
+      expect(res.status).toBe(400)
+      expect(res.body).not.toContain("gracefulShutdown")
+      expect(res.body).not.toContain("OH_MY_CURSOR_PORT")
+    })
+
+    test("GET /dashboard/assets/../daemon.ts never leaks daemon source (URL-normalized to non-asset path; 4xx)", async () => {
+      // Bun's server-side URL parser normalizes literal '..' segments away
+      // before the handler runs, so this request lands on a non-asset path
+      // (404) rather than triggering our 400 guard. Either way the daemon
+      // source must NEVER be returned. Defense in depth: we additionally
+      // verify the handler-level guard via the encoded-slash test above.
+      const res = await rawGet("/dashboard/assets/../daemon.ts")
+      expect(res.status).toBeGreaterThanOrEqual(400)
+      expect(res.status).toBeLessThan(500)
+      expect(res.body).not.toContain("gracefulShutdown")
+      expect(res.body).not.toContain("OH_MY_CURSOR_PORT")
+      expect(res.body).not.toContain("DASHBOARD_ASSETS_NOT_BUILT_BODY")
+    })
+
+    test("GET /dashboard/assets/ (empty filename) returns 400", async () => {
+      const res = await rawGet("/dashboard/assets/")
+      expect(res.status).toBe(400)
+    })
+  })
+
+  describe("CORS headers for dashboard REST API", () => {
+    test("GET /session-log includes CORS headers for MCP webview fetches", async () => {
+      const res = await fetch(`${BASE}/session-log?limit=1`)
+      expect(res.status).toBe(200)
+      expect(res.headers.get("access-control-allow-origin")).toBe("*")
+      expect(res.headers.get("access-control-allow-methods")).toContain("GET")
+      expect(res.headers.get("access-control-allow-methods")).toContain("POST")
+    })
+
+    test("GET /health includes CORS headers for MCP webview fetches", async () => {
+      const res = await fetch(`${BASE}/health`)
+      expect(res.status).toBe(200)
+      expect(res.headers.get("access-control-allow-origin")).toBe("*")
+    })
+
+    test("OPTIONS preflight returns 204 with CORS headers", async () => {
+      const res = await fetch(`${BASE}/session-log`, {
+        method: "OPTIONS",
+        headers: { "Access-Control-Request-Method": "GET" },
+      })
+      expect(res.status).toBe(204)
+      expect(res.headers.get("access-control-allow-origin")).toBe("*")
+      expect(res.headers.get("access-control-allow-headers")).toContain("Content-Type")
     })
   })
 

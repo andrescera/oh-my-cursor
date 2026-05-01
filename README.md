@@ -46,6 +46,8 @@ A persistent **hook daemon** (Bun HTTP server) handles 20 hook events (2 are Tab
 
 An **MCP sidecar** adds 8 tools not in Cursor's built-in set (visual file analysis, persistent tmux sessions, dispatch stats, transcript search, daemon logs, session log, status dashboard).
 
+A live **dashboard UI** (Vite 8 + React 19 + Tailwind v4 + shadcn/ui + Zustand 5) ships under [`hooks/dashboard-ui/`](hooks/dashboard-ui/). The installer builds it (`vite build`), the daemon serves the bundle from `GET /dashboard/assets/*`, and `GET /dashboard` plus the MCP resource `ui://oh-my-cursor/dashboard` both return a thin shell HTML that boots the SPA. Tabs cover status, hooks, background tasks, events, sessions, agents, and config — all wired through a typed REST client and an SSE stream from the daemon. See [`hooks/dashboard-ui/README.md`](hooks/dashboard-ui/README.md) for the contributor guide.
+
 Three **continuation loops**: Ralph (self-referential until done), Ultrawork/ULW (with Oracle verification gate), and Boulder (continuation with backoff and stagnation detection — effectiveness depends on Cursor's hook coverage for TodoWrite; see [sharp edges](docs/cursor/19-known-sharp-edges.md)).
 
 ## Agents
@@ -114,6 +116,7 @@ See `config.default.jsonc` for all options. Run `/config` to view the active mer
 |----------|-------------|
 | [INSTALL.md](INSTALL.md) | Install, update, uninstall, AI-assisted install |
 | [ARCHITECTURE.md](ARCHITECTURE.md) | System architecture, flows, and mermaid diagrams |
+| [hooks/dashboard-ui/README.md](hooks/dashboard-ui/README.md) | Dashboard UI contributor guide (dev, test, build modes, layout) |
 | [docs/cursor-features.md](docs/cursor-features.md) | Native Cursor features used by the plugin |
 | [CONTRIBUTING.md](CONTRIBUTING.md) | Development setup and contribution guidelines |
 | [docs/cursor/19-known-sharp-edges.md](docs/cursor/19-known-sharp-edges.md) | Operational gotchas and Cursor-specific constraints |

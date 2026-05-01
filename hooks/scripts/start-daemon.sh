@@ -61,9 +61,9 @@ wait_for_health() {
 ACTUAL_PORT="$(read_port_file "$PORT_FILE" "$PORT")"
 
 daemon_alive=false
-if is_heartbeat_fresh; then
+if curl -s "http://localhost:${ACTUAL_PORT}/health" >/dev/null 2>&1; then
   daemon_alive=true
-elif curl -s "http://localhost:${ACTUAL_PORT}/health" >/dev/null 2>&1; then
+elif is_heartbeat_fresh && [ -f "$PID_FILE" ] && kill -0 "$(cat "$PID_FILE")" 2>/dev/null; then
   daemon_alive=true
 fi
 

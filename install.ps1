@@ -1,9 +1,7 @@
 # oh-my-cursor installer for Windows / PowerShell
-# Usage: .\install.ps1 [-Scope user|project] [-Force] [-DryRun] [-Uninstall] [-Version] [-CheckUpdate] [-SkipDashboardBuild] [-Help]
+# Usage: .\install.ps1 [-Force] [-DryRun] [-Uninstall] [-Version] [-CheckUpdate] [-SkipDashboardBuild] [-Help]
 
 param(
-    [ValidateSet("user", "project")]
-    [string]$Scope = "user",
     [switch]$Force,
     [switch]$DryRun,
     [switch]$Uninstall,
@@ -31,15 +29,9 @@ $TempFiles = @(
     "oh-my-cursor-ports.json"
 )
 
-if ($Scope -eq "user") {
-    $CursorDir = Join-Path $env:USERPROFILE ".cursor"
-    $PluginDir = Join-Path $CursorDir "plugins\local\$PluginName"
-    $McpConfigPath = Join-Path $env:USERPROFILE ".cursor\mcp.json"
-} else {
-    $CursorDir = ".cursor"
-    $PluginDir = Join-Path $CursorDir "plugins\local\$PluginName"
-    $McpConfigPath = ".cursor\mcp.json"
-}
+$CursorDir = Join-Path $env:USERPROFILE ".cursor"
+$PluginDir = Join-Path $CursorDir "plugins\local\$PluginName"
+$McpConfigPath = Join-Path $env:USERPROFILE ".cursor\mcp.json"
 
 $BackupDir = "${PluginDir}.bak"
 $LockFile = Join-Path $TempDir "oh-my-cursor-install.lock"
@@ -76,12 +68,10 @@ function Show-Usage {
     .\install.ps1 -Version               Print installed version
     .\install.ps1 -CheckUpdate           Compare installed vs source version
     .\install.ps1 -DryRun                Preview mode (combinable with others)
-    .\install.ps1 -Scope project         Project-scoped install
     .\install.ps1 -SkipDashboardBuild    Install without (re)building dashboard-ui
     .\install.ps1 -Help                  Show this help
 
   FLAGS:
-    -Scope <user|project>    Install scope (default: user)
     -Force                   Force reinstall even if up to date
     -DryRun                  Preview changes without applying
     -Uninstall               Remove oh-my-cursor completely
@@ -737,9 +727,9 @@ $isUpdate = Test-Path $PluginDir
 
 Write-Host ""
 if ($isUpdate) {
-    Write-Host "  Updating $PluginName (scope: $Scope)..." -ForegroundColor Cyan
+    Write-Host "  Updating $PluginName..." -ForegroundColor Cyan
 } else {
-    Write-Host "  Installing $PluginName (scope: $Scope)..." -ForegroundColor Cyan
+    Write-Host "  Installing $PluginName..." -ForegroundColor Cyan
 }
 Write-Host ""
 

@@ -17,7 +17,6 @@ TEMP_FILES=(
 
 MCP_KEYS=("websearch" "context7" "grep_app" "oh-my-cursor")
 
-SCOPE="user"
 FORCE=false
 DRY_RUN=false
 MODE="auto"
@@ -38,7 +37,6 @@ Usage:
   ./install.sh --version          Print installed version
   ./install.sh --check-update     Compare installed vs source version
   ./install.sh --dry-run          Preview mode (combinable with above)
-  ./install.sh --project          Project-scoped install
   ./install.sh --skip-dashboard-build  Install without building the dashboard UI
   ./install.sh --help             This help text
 
@@ -48,7 +46,6 @@ Options:
   --version               Show installed version
   --check-update          Check if an update is available
   --dry-run               Show what would happen without making changes
-  --project               Install to .cursor/ in current directory instead of ~/.cursor/
   --skip-dashboard-build  Do not build hooks/dashboard-ui; preserves any existing dist on update.
                           On fresh/force, /dashboard/assets/* will return 503 until next install.
   --help                  Show this help message
@@ -690,7 +687,6 @@ SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 
 while [[ $# -gt 0 ]]; do
   case $1 in
-    --project)              SCOPE="project"; shift ;;
     --force)                FORCE=true; shift ;;
     --dry-run)              DRY_RUN=true; shift ;;
     --uninstall)            MODE="uninstall"; shift ;;
@@ -702,13 +698,8 @@ while [[ $# -gt 0 ]]; do
   esac
 done
 
-if [[ "$SCOPE" == "user" ]]; then
-  PLUGIN_DIR="${OH_MY_CURSOR_PLUGIN_DIR:-$HOME/.cursor/plugins/local/$PLUGIN_NAME}"
-  MCP_CONFIG="${OH_MY_CURSOR_MCP_CONFIG:-$HOME/.cursor/mcp.json}"
-else
-  PLUGIN_DIR="${OH_MY_CURSOR_PLUGIN_DIR:-.cursor/plugins/local/$PLUGIN_NAME}"
-  MCP_CONFIG="${OH_MY_CURSOR_MCP_CONFIG:-.cursor/mcp.json}"
-fi
+PLUGIN_DIR="${OH_MY_CURSOR_PLUGIN_DIR:-$HOME/.cursor/plugins/local/$PLUGIN_NAME}"
+MCP_CONFIG="${OH_MY_CURSOR_MCP_CONFIG:-$HOME/.cursor/mcp.json}"
 
 # --- Mode: version ---
 
@@ -880,7 +871,7 @@ else
     exit 0
   fi
 
-  echo "Installing $PLUGIN_NAME v${source_ver} (scope: $SCOPE)..."
+  echo "Installing $PLUGIN_NAME v${source_ver}..."
   acquire_lock
   trap cleanup_on_exit EXIT
   _install_failed=true

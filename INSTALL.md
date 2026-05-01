@@ -1,6 +1,6 @@
 # Install
 
-Install oh-my-cursor in any Cursor IDE project.
+Install oh-my-cursor for your Cursor user profile.
 
 ## Prerequisites
 
@@ -33,15 +33,8 @@ cd oh-my-cursor
 ./install.sh
 ```
 
-Default: user scope under `~/.cursor/`. Project-only:
-
-```bash
-./install.sh --project
-```
-
 | Flag | Effect |
 |------|--------|
-| `--project` | Install to `.cursor/` in the current working directory |
 | `--dry-run` | Print planned actions; no writes |
 | `--force` | Fresh install over existing |
 | `--uninstall` | Remove oh-my-cursor |
@@ -60,8 +53,6 @@ cd oh-my-cursor
 
 | Switch | Effect |
 |--------|--------|
-| `-Scope user` | Default; user-level Cursor config |
-| `-Scope project` | `.cursor/` in the current directory |
 | `-DryRun` | Preview only |
 | `-Force` | Fresh install |
 | `-Uninstall` | Remove oh-my-cursor |

@@ -1,4 +1,4 @@
-import type { ConversationState, HandlerMap } from "../types"
+import type { AgentHistoryEntry, ConversationState, HandlerMap } from "../types"
 import type { BackgroundTracker } from "./background-tracker"
 import { addWisdomLearning, formatWisdomForInjection } from "./wisdom-tracker"
 import { getOrCreateConversation, resolveConversationId, wasResolvedViaFallback, derivedProjectRoot } from "../shared"
@@ -6,14 +6,68 @@ import { createEmptyTaskDetector } from "./empty-task-detector"
 import { contextCollector } from "../context-collector"
 import { loadConfig } from "../config"
 import { logEvent } from "../event-logger"
+import { AgentHistoryStore, getDefaultAgentHistoryStore, recordHistoryEntry } from "../agent-history-store"
 import { appendFileSync } from "node:fs"
 import { resolve } from "node:path"
 
 const SUBAGENT_TIMING_LOG = "/tmp/oh-my-cursor-timing.jsonl"
+const BOOT_ID_KEY = "__oh_my_cursor_runtime_boot_id"
+
+function getDaemonBootId(): string {
+  const fromEnv = process.env.OH_MY_CURSOR_DAEMON_BOOT_ID
+  if (typeof fromEnv === "string" && fromEnv.length > 0) {
+    return fromEnv
+  }
+  const bootGlobal = globalThis as Record<string, unknown>
+  if (typeof bootGlobal[BOOT_ID_KEY] !== "string" || bootGlobal[BOOT_ID_KEY] === "") {
+    bootGlobal[BOOT_ID_KEY] = crypto.randomUUID()
+  }
+  return bootGlobal[BOOT_ID_KEY] as string
+}
+
+function buildHistoryEntryForStart(
+  input: Record<string, unknown>,
+  agentId: string,
+  agentType: string,
+  description: string,
+  entryMs: number,
+): Partial<AgentHistoryEntry> {
+  return {
+    status: "running",
+    agentId,
+    agentType,
+    description,
+    startTime: entryMs,
+    projectRoot: derivedProjectRoot(input),
+    daemonBootId: getDaemonBootId(),
+  }
+}
+
+function buildHistoryEntryForStop(
+  input: Record<string, unknown>,
+  agentId: string,
+  startTime: number,
+  completedAt: number,
+  errorMessage: string,
+): Partial<AgentHistoryEntry> {
+  const hasError = errorMessage.length > 0
+  return {
+    status: hasError ? "failed" : "completed",
+    agentId,
+    agentType: ((input.agent_type as string) || (input.subagent_type as string) || "unknown").toLowerCase(),
+    startTime,
+    completedAt,
+    durationMs: completedAt - startTime,
+    errorContext: hasError ? errorMessage : null,
+    projectRoot: derivedProjectRoot(input),
+    daemonBootId: getDaemonBootId(),
+  }
+}
 
 export function createSubagentHandlers(
   _conversations: Map<string, ConversationState>,
   tracker: BackgroundTracker,
+  historyStore: AgentHistoryStore = getDefaultAgentHistoryStore(),
 ): HandlerMap {
   const emptyTaskDetector = createEmptyTaskDetector()
 
@@ -29,7 +83,9 @@ export function createSubagentHandlers(
       input.agent_id = agentId
       const description = (input.description as string) || ""
       const convId = resolveConversationId(input)
-      tracker.track(agentId, agentType, description, convId)
+      const projectRoot = derivedProjectRoot(input)
+      tracker.track(agentId, agentType, description, convId, projectRoot)
+      recordHistoryEntry(buildHistoryEntryForStart(input, agentId, agentType, description, entryMs), historyStore)
       const conversation = getOrCreateConversation(convId, wasResolvedViaFallback(input), derivedProjectRoot(input))
 
       let additional_context: string | undefined
@@ -78,6 +134,7 @@ export function createSubagentHandlers(
       const entryMs = Date.now()
       const agentId = (input.agent_id as string) || ""
       const convId = resolveConversationId(input)
+      const existingEntry = agentId ? tracker.getEntry(agentId) : null
 
       // Reflect agent_id back onto input (empty allowed) so the central
       // logEvent in daemon.ts can carry it on the SSE EventEntry; the
@@ -92,6 +149,14 @@ export function createSubagentHandlers(
           tracker.completeOldestByType(convId, stopType)
         }
       }
+      const errorMessage = (input.error_message as string) || ""
+      const completedAt = Date.now()
+      const startTime = existingEntry?.startTime ?? (completedAt - 1)
+      const historyAgentId = agentId || `${((input.agent_type as string) || (input.subagent_type as string) || "unknown").toLowerCase()}-stop-${completedAt}`
+      recordHistoryEntry(
+        buildHistoryEntryForStop(input, historyAgentId, startTime, completedAt, errorMessage),
+        historyStore,
+      )
 
       const subagentType = (input.agent_type as string) || (input.subagent_type as string) || ""
       const status = (input.status as string) || ""

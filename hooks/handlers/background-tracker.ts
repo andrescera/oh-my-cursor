@@ -1,10 +1,26 @@
 import type { HandlerFn } from "../types"
+import { AgentHistoryStore, getDefaultAgentHistoryStore, recordHistoryEntry } from "../agent-history-store"
+
+const BOOT_ID_KEY = "__oh_my_cursor_runtime_boot_id"
+
+function getDaemonBootId(): string {
+  const fromEnv = process.env.OH_MY_CURSOR_DAEMON_BOOT_ID
+  if (typeof fromEnv === "string" && fromEnv.length > 0) {
+    return fromEnv
+  }
+  const bootGlobal = globalThis as Record<string, unknown>
+  if (typeof bootGlobal[BOOT_ID_KEY] !== "string" || bootGlobal[BOOT_ID_KEY] === "") {
+    bootGlobal[BOOT_ID_KEY] = crypto.randomUUID()
+  }
+  return bootGlobal[BOOT_ID_KEY] as string
+}
 
 type TrackedTask = {
   conversationId: string
   agentType: string
   description: string
   startTime: number
+  projectRoot?: string
 }
 
 type ActiveTask = TrackedTask & {
@@ -12,17 +28,26 @@ type ActiveTask = TrackedTask & {
   elapsedMs: number
 }
 
-const STALE_THRESHOLD_MS = 600_000
+export const STALE_THRESHOLD_MS = 600_000
 
 export class BackgroundTracker {
   private tasks = new Map<string, TrackedTask>()
+  private readonly historyStore: AgentHistoryStore
 
-  track(agentId: string, agentType: string, description: string, conversationId: string): void {
-    this.tasks.set(agentId, { conversationId, agentType, description, startTime: Date.now() })
+  constructor(historyStore?: AgentHistoryStore) {
+    this.historyStore = historyStore ?? getDefaultAgentHistoryStore()
+  }
+
+  track(agentId: string, agentType: string, description: string, conversationId: string, projectRoot?: string): void {
+    this.tasks.set(agentId, { conversationId, agentType, description, startTime: Date.now(), projectRoot })
   }
 
   complete(agentId: string): void {
     this.tasks.delete(agentId)
+  }
+
+  getEntry(agentId: string): TrackedTask | null {
+    return this.tasks.get(agentId) ?? null
   }
 
   completeOldestByType(conversationId: string, agentType: string): boolean {
@@ -74,6 +99,18 @@ export class BackgroundTracker {
     const now = Date.now()
     for (const [agentId, task] of this.tasks) {
       if (now - task.startTime > STALE_THRESHOLD_MS) {
+        const completedAt = Date.now()
+        recordHistoryEntry({
+          status: "abandoned",
+          agentId,
+          agentType: task.agentType,
+          description: task.description,
+          startTime: task.startTime,
+          completedAt,
+          durationMs: completedAt - task.startTime,
+          projectRoot: task.projectRoot ?? "",
+          daemonBootId: getDaemonBootId(),
+        }, this.historyStore)
         this.tasks.delete(agentId)
       }
     }

@@ -1,5 +1,5 @@
 # oh-my-cursor installer for Windows / PowerShell
-# Usage: .\install.ps1 [-Scope user|project] [-Force] [-DryRun] [-Uninstall] [-Version] [-CheckUpdate] [-Help]
+# Usage: .\install.ps1 [-Scope user|project] [-Force] [-DryRun] [-Uninstall] [-Version] [-CheckUpdate] [-SkipDashboardBuild] [-Help]
 
 param(
     [ValidateSet("user", "project")]
@@ -9,6 +9,7 @@ param(
     [switch]$Uninstall,
     [switch]$Version,
     [switch]$CheckUpdate,
+    [switch]$SkipDashboardBuild,
     [switch]$Help
 )
 
@@ -43,6 +44,9 @@ if ($Scope -eq "user") {
 $BackupDir = "${PluginDir}.bak"
 $LockFile = Join-Path $TempDir "oh-my-cursor-install.lock"
 
+$script:BuildOk = $true
+$script:DashboardBuildSkipped = [bool]$SkipDashboardBuild
+
 # --- Output helpers ---
 
 function Write-Log {
@@ -73,6 +77,7 @@ function Show-Usage {
     .\install.ps1 -CheckUpdate           Compare installed vs source version
     .\install.ps1 -DryRun                Preview mode (combinable with others)
     .\install.ps1 -Scope project         Project-scoped install
+    .\install.ps1 -SkipDashboardBuild    Install without (re)building dashboard-ui
     .\install.ps1 -Help                  Show this help
 
   FLAGS:
@@ -82,6 +87,8 @@ function Show-Usage {
     -Uninstall               Remove oh-my-cursor completely
     -Version                 Show installed version
     -CheckUpdate             Check if update is available
+    -SkipDashboardBuild      Skip the dashboard-ui build step; preserve any
+                             existing $PluginDir\hooks\dashboard-ui\dist\
     -Help                    Show this help text
 
 "@
@@ -438,11 +445,123 @@ function Remove-LegacyLooseFiles {
     }
 }
 
+# --- Dashboard UI build ---
+
+function Build-DashboardUI {
+    if ($script:DashboardBuildSkipped) {
+        Write-Log "  Dashboard build skipped (-SkipDashboardBuild)."
+        return $true
+    }
+    if ($DryRun) {
+        Write-Host "[dry-run] Would build dashboard-ui:"
+        Write-Host "  Set-Location '$ScriptDir/hooks/dashboard-ui'; bun install --frozen-lockfile; bunx --bun vite build"
+        return $true
+    }
+    $uiDir = Join-Path $ScriptDir 'hooks/dashboard-ui'
+    if (-not (Test-Path $uiDir)) {
+        Write-Warn "  Dashboard UI source not found at $uiDir; skipping build."
+        $script:BuildOk = $false
+        return $false
+    }
+    Write-Host "  Building dashboard-ui (bun install --frozen-lockfile && bunx --bun vite build)..."
+    $pushed = $false
+    try {
+        Push-Location $uiDir
+        $pushed = $true
+        & bun install --frozen-lockfile
+        if ($LASTEXITCODE -ne 0) { throw "bun install --frozen-lockfile failed (exit $LASTEXITCODE)" }
+        & bunx --bun vite build
+        if ($LASTEXITCODE -ne 0) { throw "bunx --bun vite build failed (exit $LASTEXITCODE)" }
+        $script:BuildOk = $true
+        Write-Log "  Dashboard build OK."
+        return $true
+    }
+    catch {
+        Write-Warn "  Dashboard build failed: $_"
+        $script:BuildOk = $false
+        return $false
+    }
+    finally {
+        if ($pushed) { Pop-Location -ErrorAction SilentlyContinue }
+    }
+}
+
 # --- File operations ---
+
+# Copy a directory tree, skipping a specific relative path under the source.
+function Copy-DirectoryExcluding {
+    param(
+        [Parameter(Mandatory)] [string]$Source,
+        [Parameter(Mandatory)] [string]$Destination,
+        [Parameter(Mandatory)] [string]$ExcludeRelative
+    )
+    if (-not (Test-Path $Source)) { return }
+    if (-not (Test-Path $Destination)) {
+        New-Item -ItemType Directory -Path $Destination -Force | Out-Null
+    }
+    $sourceFull = (Resolve-Path $Source).Path
+    $excludeFull = Join-Path $sourceFull $ExcludeRelative
+    $sep = [IO.Path]::DirectorySeparatorChar
+    Get-ChildItem -Path $sourceFull -Recurse -Force | ForEach-Object {
+        $itemFull = $_.FullName
+        if ($itemFull -eq $excludeFull) { return }
+        if ($itemFull.StartsWith($excludeFull + $sep)) { return }
+        $rel = $itemFull.Substring($sourceFull.Length).TrimStart([char]$sep, [char][IO.Path]::AltDirectorySeparatorChar)
+        $target = Join-Path $Destination $rel
+        if ($_.PSIsContainer) {
+            if (-not (Test-Path $target)) {
+                New-Item -ItemType Directory -Path $target -Force | Out-Null
+            }
+        } else {
+            $targetDir = Split-Path -Parent $target
+            if ($targetDir -and -not (Test-Path $targetDir)) {
+                New-Item -ItemType Directory -Path $targetDir -Force | Out-Null
+            }
+            Copy-Item -Path $itemFull -Destination $target -Force
+        }
+    }
+}
+
+function _RemoveExcept {
+    param(
+        [Parameter(Mandatory)] [string]$Current,
+        [Parameter(Mandatory)] [string]$ExcludeFull
+    )
+    $sep = [IO.Path]::DirectorySeparatorChar
+    Get-ChildItem -Path $Current -Force | ForEach-Object {
+        $itemFull = $_.FullName
+        if ($itemFull -eq $ExcludeFull) { return }
+        if ($_.PSIsContainer -and $ExcludeFull.StartsWith($itemFull + $sep)) {
+            _RemoveExcept -Current $itemFull -ExcludeFull $ExcludeFull
+            return
+        }
+        if ($_.PSIsContainer) {
+            Remove-Item $itemFull -Recurse -Force
+        } else {
+            Remove-Item $itemFull -Force
+        }
+    }
+}
+
+# Remove everything under $Path except a single relative subpath (and its ancestors).
+function Remove-DirectoryExcluding {
+    param(
+        [Parameter(Mandatory)] [string]$Path,
+        [Parameter(Mandatory)] [string]$ExcludeRelative
+    )
+    if (-not (Test-Path $Path)) { return }
+    $rootFull = (Resolve-Path $Path).Path
+    $excludeFull = Join-Path $rootFull $ExcludeRelative
+    _RemoveExcept -Current $rootFull -ExcludeFull $excludeFull
+}
 
 function Copy-PluginFiles {
     if ($DryRun) {
-        Write-Host "[dry-run] Would copy plugin files to $PluginDir"
+        if ($script:DashboardBuildSkipped) {
+            Write-Host "[dry-run] Would copy plugin files to $PluginDir (preserving hooks\dashboard-ui\dist\)"
+        } else {
+            Write-Host "[dry-run] Would copy plugin files to $PluginDir"
+        }
         return
     }
 
@@ -453,7 +572,12 @@ function Copy-PluginFiles {
     $dirs = @(".cursor-plugin", "agents", "commands", "rules", "skills", "hooks", "scripts", "automations", "docs")
     foreach ($d in $dirs) {
         $src = Join-Path $ScriptDir $d
-        if (Test-Path $src) {
+        if (-not (Test-Path $src)) { continue }
+        if ($d -eq "hooks" -and $script:DashboardBuildSkipped) {
+            $dst = Join-Path $PluginDir $d
+            Copy-DirectoryExcluding -Source $src -Destination $dst -ExcludeRelative "dashboard-ui\dist"
+            Write-Host "  [ok] $d/ (preserved hooks\dashboard-ui\dist\)"
+        } else {
             Copy-Item -Path $src -Destination $PluginDir -Recurse -Force
             Write-Host "  [ok] $d/"
         }
@@ -478,7 +602,16 @@ function Remove-PluginFiles {
         return
     }
     if ($DryRun) {
-        Write-Host "[dry-run] Would remove $PluginDir"
+        if ($script:DashboardBuildSkipped) {
+            Write-Host "[dry-run] Would remove $PluginDir (preserving hooks\dashboard-ui\dist\)"
+        } else {
+            Write-Host "[dry-run] Would remove $PluginDir"
+        }
+        return
+    }
+    if ($script:DashboardBuildSkipped) {
+        Remove-DirectoryExcluding -Path $PluginDir -ExcludeRelative "hooks\dashboard-ui\dist"
+        Write-Host "  Plugin directory cleaned (preserved hooks\dashboard-ui\dist\)"
         return
     }
     Remove-Item $PluginDir -Recurse -Force
@@ -623,6 +756,18 @@ if ($isUpdate -and $installedVersion -eq $sourceVersion -and -not $Force) {
 
 Get-InstallLock
 try {
+    Write-Host "==> Building dashboard UI"
+    if (-not (Build-DashboardUI)) {
+        if ($isUpdate) {
+            Write-Warn "  Dashboard build failed; preserving existing $PluginDir\hooks\dashboard-ui\dist\ and continuing update."
+            $script:DashboardBuildSkipped = $true
+        } else {
+            Write-Err "  Dashboard build failed. Fix and re-run, or run with -SkipDashboardBuild to install without dashboard."
+            Release-InstallLock
+            exit 1
+        }
+    }
+
     if ($isUpdate) {
         Write-Host "==> Backing up current installation"
         Backup-Installation
@@ -662,6 +807,9 @@ try {
         Write-Log "  $PluginName updated successfully: v$installedVersion -> v$sourceVersion"
     } else {
         Write-Log "  $PluginName v$sourceVersion installed successfully!"
+    }
+    if ($script:DashboardBuildSkipped) {
+        Write-Warn "  Dashboard build was skipped. /dashboard shell still loads, but /dashboard/assets/* will return 503 until next install."
     }
     Write-Host ""
     Write-Host "  Next steps:"

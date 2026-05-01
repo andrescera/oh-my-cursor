@@ -93,7 +93,10 @@ export function createBackgroundTasksHandler(tracker: BackgroundTracker): Handle
     tracker.cleanup()
     const convId =
       (input.conversation_id as string) || (input.session_id as string) || ""
-    const tasks = convId ? tracker.getActiveTasksForConversation(convId) : []
+    // When convId is empty (e.g. dashboard's initial /backgroundTasks fetch
+    // before it has a session selected), return all active tasks so the UI
+    // can paint immediately instead of waiting for SSE.
+    const tasks = convId ? tracker.getActiveTasksForConversation(convId) : tracker.getActiveTasks()
     return { tasks, count: tasks.length }
   }
 }

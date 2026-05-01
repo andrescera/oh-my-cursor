@@ -586,6 +586,7 @@ const fetchHandler = async (req: Request) => {
         sessionId: (parsed.conversation_id as string) || (parsed.session_id as string) || "",
         tool: (parsed.tool_name as string) || undefined,
         agentType: (toolInput.subagent_type as string) || (toolInput.agent_type as string) || (parsed.agent_type as string) || undefined,
+        agentId: (parsed.agent_id as string) || (toolInput.agent_id as string) || undefined,
         action: classifyAction(path, result),
         durationMs: handlerDurationMs,
         error: (parsed.error as string) || (parsed.error_message as string) || ((parsed.tool_response as Record<string, unknown>)?.error as string) || undefined,

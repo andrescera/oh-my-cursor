@@ -22,6 +22,11 @@ export function createSubagentHandlers(
       const entryMs = Date.now()
       const agentType = ((input.agent_type as string) || (input.subagent_type as string) || "unknown").toLowerCase()
       const agentId = (input.agent_id as string) || agentType + "-" + Date.now()
+      // Stamp the (possibly synthesized) agent id back onto the input so the
+      // central logEvent in daemon.ts can include it in the SSE EventEntry,
+      // letting the dashboard match a later /subagentStop without falling
+      // back to oldest-by-type heuristics.
+      input.agent_id = agentId
       const description = (input.description as string) || ""
       const convId = resolveConversationId(input)
       tracker.track(agentId, agentType, description, convId)
@@ -74,6 +79,11 @@ export function createSubagentHandlers(
       const agentId = (input.agent_id as string) || ""
       const convId = resolveConversationId(input)
 
+      // Reflect agent_id back onto input (empty allowed) so the central
+      // logEvent in daemon.ts can carry it on the SSE EventEntry; the
+      // dashboard's /subagentStop SSE matcher already prefers explicit ids
+      // before falling back to oldest-by-type.
+      input.agent_id = agentId
       if (agentId) {
         tracker.complete(agentId)
       } else {

@@ -199,8 +199,11 @@ describe("wisdomLearnings conversation isolation", () => {
   })
 })
 
-describe("BackgroundTracker empty convId isolation", () => {
-  it("should return empty array when convId is missing", () => {
+describe("BackgroundTracker empty-convId returns ALL (dashboard-load case)", () => {
+  // T1.2: previously this block enforced the broken behavior (empty array
+  // when no convId), which is exactly why the dashboard's Agents tab was
+  // always empty on first paint. Flipped to match real dashboard semantics.
+  it("returns ALL tasks when conversation_id is missing (dashboard load case)", () => {
     const tracker = new BackgroundTracker()
     tracker.track("agent-1", "explore", "searching", "conv-A")
     tracker.track("agent-2", "sisyphus", "building", "conv-B")
@@ -208,8 +211,20 @@ describe("BackgroundTracker empty convId isolation", () => {
     const handler = createBackgroundTasksHandler(tracker)
     const result = handler({ conversation_id: "", session_id: "" })
 
-    expect(result.tasks).toHaveLength(0)
-    expect(result.count).toBe(0)
+    expect(result.tasks).toHaveLength(2)
+    expect(result.count).toBe(2)
+  })
+
+  it("returns ALL tasks when both fields are completely absent from the input", () => {
+    const tracker = new BackgroundTracker()
+    tracker.track("agent-1", "explore", "searching", "conv-A")
+    tracker.track("agent-2", "sisyphus", "building", "conv-B")
+
+    const handler = createBackgroundTasksHandler(tracker)
+    const result = handler({})
+
+    expect(result.tasks).toHaveLength(2)
+    expect(result.count).toBe(2)
   })
 
   it("should return only that conversation's tasks when convId is present", () => {
@@ -223,7 +238,50 @@ describe("BackgroundTracker empty convId isolation", () => {
 
     expect(result.tasks).toHaveLength(2)
     expect(result.count).toBe(2)
-    expect(result.tasks.every((t: { conversationId: string }) => t.conversationId === "conv-A")).toBe(true)
+    const tasks = result.tasks as Array<{ conversationId: string }>
+    expect(tasks.every((t) => t.conversationId === "conv-A")).toBe(true)
+  })
+})
+
+describe("subagent-handlers agent_id propagation", () => {
+  beforeEach(() => {
+    conversations.clear()
+  })
+  afterEach(() => {
+    conversations.clear()
+  })
+
+  it("/subagentStart stamps a synthesized agent_id on the input when one is not provided", async () => {
+    const { createSubagentHandlers } = await import("./handlers/subagent-handlers")
+    const tracker = new BackgroundTracker()
+    const handlers = createSubagentHandlers(conversations, tracker)
+    const input: Record<string, unknown> = {
+      conversation_id: "conv-X",
+      subagent_type: "explore",
+      description: "find references",
+    }
+
+    handlers["/subagentStart"]!(input)
+
+    expect(typeof input.agent_id).toBe("string")
+    expect((input.agent_id as string).length).toBeGreaterThan(0)
+    expect((input.agent_id as string)).toMatch(/^explore-/)
+  })
+
+  it("/subagentStart preserves a caller-provided agent_id verbatim", async () => {
+    const { createSubagentHandlers } = await import("./handlers/subagent-handlers")
+    const tracker = new BackgroundTracker()
+    const handlers = createSubagentHandlers(conversations, tracker)
+    const input: Record<string, unknown> = {
+      conversation_id: "conv-Y",
+      subagent_type: "sisyphus",
+      agent_id: "caller-supplied-123",
+      description: "implement feature",
+    }
+
+    handlers["/subagentStart"]!(input)
+
+    expect(input.agent_id).toBe("caller-supplied-123")
   })
 })
 

@@ -58,6 +58,21 @@ function contentTypeForAsset(filename: string): string {
 
 const DASHBOARD_ASSETS_NOT_BUILT_BODY = `<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8"><title>Dashboard assets not built</title></head><body style="font-family:system-ui;padding:2rem;max-width:40rem;margin:0 auto"><h1>Dashboard assets not built</h1><p>Run <code>install.sh</code> / <code>install.ps1</code>, or invoke install with <code>--skip-dashboard-build</code> to acknowledge.</p></body></html>`
 
+const CORS_HEADERS = {
+  "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
+  "Access-Control-Allow-Headers": "Content-Type, Authorization, X-Requested-With",
+} as const
+
+function withCors(response: Response): Response {
+  for (const [key, value] of Object.entries(CORS_HEADERS)) {
+    if (!response.headers.has(key)) {
+      response.headers.set(key, value)
+    }
+  }
+  return response
+}
+
 export function getDaemonBootId(): string {
   return DAEMON_BOOT_ID
 }
@@ -263,15 +278,19 @@ const fetchHandler = async (req: Request) => {
   const url = new URL(req.url)
   const path = url.pathname
 
+  if (req.method === "OPTIONS") {
+    return withCors(new Response(null, { status: 204 }))
+  }
+
   if (path === "/dashboard" || path === "/dashboard/index.html") {
     const html = await getStatusHTML(actualPort)
-    return new Response(html, {
+    return withCors(new Response(html, {
       status: 200,
       headers: {
         "Content-Type": "text/html; charset=utf-8",
         "Cache-Control": "no-store",
       },
-    })
+    }))
   }
 
   if (path.startsWith("/dashboard/assets/")) {
@@ -280,7 +299,7 @@ const fetchHandler = async (req: Request) => {
     try {
       requested = decodeURIComponent(requestedRaw)
     } catch {
-      return new Response("Bad Request", { status: 400, headers: { "Content-Type": "text/plain; charset=utf-8" } })
+      return withCors(new Response("Bad Request", { status: 400, headers: { "Content-Type": "text/plain; charset=utf-8" } }))
     }
     if (
       requested.length === 0 ||
@@ -289,34 +308,34 @@ const fetchHandler = async (req: Request) => {
       requested.startsWith("\\") ||
       requested.split(/[/\\]/).some((seg) => seg === "..")
     ) {
-      return new Response("Bad Request", { status: 400, headers: { "Content-Type": "text/plain; charset=utf-8" } })
+      return withCors(new Response("Bad Request", { status: 400, headers: { "Content-Type": "text/plain; charset=utf-8" } }))
     }
     const resolved = join(DIST_ASSETS_DIR, requested)
     const rel = pathRelative(DIST_ASSETS_DIR, resolved)
     if (rel.length === 0 || rel.startsWith("..") || isAbsolute(rel)) {
-      return new Response("Bad Request", { status: 400, headers: { "Content-Type": "text/plain; charset=utf-8" } })
+      return withCors(new Response("Bad Request", { status: 400, headers: { "Content-Type": "text/plain; charset=utf-8" } }))
     }
     const file = Bun.file(resolved)
     if (!(await file.exists())) {
-      return new Response(DASHBOARD_ASSETS_NOT_BUILT_BODY, {
+      return withCors(new Response(DASHBOARD_ASSETS_NOT_BUILT_BODY, {
         status: 503,
         headers: { "Content-Type": "text/html; charset=utf-8" },
-      })
+      }))
     }
     const etag = `W/"${file.size.toString(16)}-${file.lastModified.toString(16)}"`
     const ifNoneMatch = req.headers.get("if-none-match")
     if (ifNoneMatch === etag) {
-      return new Response(null, { status: 304, headers: { ETag: etag } })
+      return withCors(new Response(null, { status: 304, headers: { ETag: etag } }))
     }
     const data = await file.arrayBuffer()
-    return new Response(data, {
+    return withCors(new Response(data, {
       status: 200,
       headers: {
         "Content-Type": contentTypeForAsset(requested),
         "Cache-Control": "public, max-age=60, must-revalidate",
         "ETag": etag,
       },
-    })
+    }))
   }
 
   if (path === "/session-log" || path === "/conversation-log") {
@@ -707,7 +726,7 @@ let actualPort = Number.isNaN(envPort) ? DEFAULT_PORT : envPort
 if (ENV_PORT) {
   console.log(`[oh-my-cursor] Hook daemon starting on port ${actualPort} (env override)...`)
   try {
-    server = bindWithRetry({ port: actualPort, fetch: fetchHandler })
+    server = bindWithRetry({ port: actualPort, fetch: async (req) => withCors(await fetchHandler(req)) })
   } catch (err) {
     console.error(`[oh-my-cursor] Failed to bind daemon on port ${actualPort} (env override):`, err instanceof Error ? err.message : String(err))
     process.exit(1)
@@ -720,7 +739,7 @@ if (ENV_PORT) {
     process.exit(1)
   }
   try {
-    server = bindWithRetry({ port: DEFAULT_PORT, fetch: fetchHandler })
+    server = bindWithRetry({ port: DEFAULT_PORT, fetch: async (req) => withCors(await fetchHandler(req)) })
     actualPort = DEFAULT_PORT
   } catch (err) {
     console.error(

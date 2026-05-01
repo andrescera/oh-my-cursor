@@ -341,6 +341,32 @@ describe("hook daemon", () => {
     })
   })
 
+  describe("CORS headers for dashboard REST API", () => {
+    test("GET /session-log includes CORS headers for MCP webview fetches", async () => {
+      const res = await fetch(`${BASE}/session-log?limit=1`)
+      expect(res.status).toBe(200)
+      expect(res.headers.get("access-control-allow-origin")).toBe("*")
+      expect(res.headers.get("access-control-allow-methods")).toContain("GET")
+      expect(res.headers.get("access-control-allow-methods")).toContain("POST")
+    })
+
+    test("GET /health includes CORS headers for MCP webview fetches", async () => {
+      const res = await fetch(`${BASE}/health`)
+      expect(res.status).toBe(200)
+      expect(res.headers.get("access-control-allow-origin")).toBe("*")
+    })
+
+    test("OPTIONS preflight returns 204 with CORS headers", async () => {
+      const res = await fetch(`${BASE}/session-log`, {
+        method: "OPTIONS",
+        headers: { "Access-Control-Request-Method": "GET" },
+      })
+      expect(res.status).toBe(204)
+      expect(res.headers.get("access-control-allow-origin")).toBe("*")
+      expect(res.headers.get("access-control-allow-headers")).toContain("Content-Type")
+    })
+  })
+
   describe("/sessionStart", () => {
     test("returns hookSpecificOutput with context (Claude Code format)", async () => {
       const result = await post("/sessionStart", {

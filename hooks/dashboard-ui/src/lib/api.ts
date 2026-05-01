@@ -49,18 +49,34 @@ function url(path: string, query?: Record<string, QueryValue>): string {
   return qs ? `${base}?${qs}` : base
 }
 
+const REQUEST_TIMEOUT_MS = 5000
+
 async function request<T>(input: string, init: RequestInit = {}): Promise<Result<T>> {
+  const controller = new AbortController()
+  const timeout = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS)
   let res: Response
   try {
     res = await fetch(input, {
       ...init,
+      signal: init.signal ?? controller.signal,
       headers: { Accept: 'application/json', ...init.headers },
     })
   } catch (err) {
+    clearTimeout(timeout)
     return {
       ok: false,
-      error: { kind: 'network', message: err instanceof Error ? err.message : String(err) },
+      error: {
+        kind: 'network',
+        message:
+          err instanceof Error && err.name === 'AbortError'
+            ? `Request timed out after ${REQUEST_TIMEOUT_MS / 1000}s`
+            : err instanceof Error
+              ? err.message
+              : String(err),
+      },
     }
+  } finally {
+    clearTimeout(timeout)
   }
 
   if (!res.ok) {

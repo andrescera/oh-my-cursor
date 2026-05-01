@@ -29,4 +29,61 @@ It is a permanent artifact — do not delete after the spikes pass.
 
 ## W0.3 — CSP serving spike
 
-_Filled in by W0.3._
+### HTTP layer (curl, validated locally)
+
+Validated by spinning up an isolated Bun server on port 27950 that mirrors the
+spike-route response bytes from `hooks/daemon.ts` (the user's installed daemon
+on port 27847 holds the canonical PID/port-coordination files — running the
+working-tree daemon directly would SIGTERM that process via
+`cleanupStaleProcess`, so an isolated server is used instead). Route logic,
+headers, and template-literal port injection are byte-identical to the daemon
+spike code (Linux, Bun 1.3.13, 2026-05-01T17:29:24Z UTC).
+
+- `curl -is http://localhost:27950/dashboard-spike` → 200, body contains the
+  dynamic-import shell with the daemon port template-injected:
+
+  ```
+  HTTP/1.1 200 OK
+  Content-Type: text/html
+  Date: Fri, 01 May 2026 17:29:24 GMT
+  Content-Length: 393
+
+  <!DOCTYPE html><html><head><meta charset="UTF-8"><title>CSP Spike</title></head><body>
+  <p>Probing dynamic-import under Cursor MCP CSP...</p>
+  <script type="module">
+    import('http://localhost:27950/dashboard-spike/test.js')
+      .then(m => document.body.innerText = 'CSP_OK:' + m.value)
+      .catch(e => document.body.innerText = 'CSP_FAIL:' + (e?.message ?? String(e)));
+  </script>
+  </body></html>
+  ```
+
+- `curl -is http://localhost:27950/dashboard-spike/test.js` → 200,
+  `Content-Type: application/javascript`, `Cache-Control: no-store`:
+
+  ```
+  HTTP/1.1 200 OK
+  Content-Type: application/javascript
+  Cache-Control: no-store
+  Date: Fri, 01 May 2026 17:29:29 GMT
+  Content-Length: 30
+
+  export const value = 'hello';
+  ```
+
+### MCP CSP layer (pending user)
+
+To validate dynamic-import under Cursor's MCP webview CSP, the user opens the temporary MCP resource `ui://oh-my-cursor/dashboard-spike` in Cursor's MCP panel and reports the result:
+
+- `CSP_OK:hello` → primary mode is **daemon-served** (Strategy C). W1.4 builds the dynamic-import shell. Default config.
+- `CSP_FAIL:<error>` → primary mode flips to **singlefile** (Strategy A). Set `OMC_DASHBOARD_MODE=singlefile`. W1.4 reads the inlined `dist/index.html` instead of constructing a shell.
+
+The spike route (`/dashboard-spike`, `/dashboard-spike/test.js`) and MCP resource (`ui://oh-my-cursor/dashboard-spike`) are **removed** in the same commit that records this result. Future re-tests should reintroduce the scaffolding from this section:
+
+1. In `hooks/daemon.ts`, add a `path === "/dashboard-spike"` branch returning the shell HTML above (template-literal interpolating `actualPort` — no `{PORT}` placeholder), and a `path === "/dashboard-spike/test.js"` branch returning `export const value = 'hello';\n` with `Content-Type: application/javascript` and `Cache-Control: no-store`.
+2. Add `hooks/mcp/resources/dashboard-spike.ts` mirroring `hooks/mcp/resources/dashboard.ts`. The resource handler builds the same shell HTML using `getDaemonPort(loadConfig().daemon.port)` from `hooks/port-manager.ts`.
+3. Register the new resource in `hooks/mcp/register.ts` alongside `registerDashboard`.
+
+### Decision
+
+Per user choice, **primary mode is Strategy C (daemon-served)**. Strategy A (singlefile) is baked into the same codebase as a fallback gated on `OMC_DASHBOARD_MODE=singlefile`. If the user reports `CSP_FAIL` after running the in-Cursor test, the fix is one env var change — no plan revision needed.

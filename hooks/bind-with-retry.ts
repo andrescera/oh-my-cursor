@@ -1,6 +1,7 @@
-import { serve, sleepSync, type Server } from "bun"
+import { serve, sleepSync } from "bun"
 
 type ServeOpts = Parameters<typeof serve>[0]
+export type Server = ReturnType<typeof serve>
 type ServeFn = (opts: ServeOpts) => Server
 
 export type BindWithRetryDeps = {
@@ -51,14 +52,16 @@ export type FlushOnCrashDeps = {
 }
 
 export function flushOnCrash(deps: FlushOnCrashDeps): void {
+  // Crash path: each flush is best-effort. Swallow individual failures so a broken
+  // event-log writer cannot prevent the conversation-state flush (and vice versa).
   try {
     deps.flushEventLog()
-  } catch {
-    void 0
+  } catch (err) {
+    console.error("[oh-my-cursor] flushEventLog failed during crash:", err)
   }
   try {
     deps.forceFlush()
-  } catch {
-    void 0
+  } catch (err) {
+    console.error("[oh-my-cursor] persistence.forceFlush failed during crash:", err)
   }
 }

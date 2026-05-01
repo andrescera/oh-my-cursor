@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test"
-import { bindWithRetry, flushOnCrash } from "./bind-with-retry"
+import { bindWithRetry, flushOnCrash, type Server } from "./bind-with-retry"
 
 type FakeServer = { stop: () => void }
 
@@ -20,13 +20,13 @@ describe("bindWithRetry", () => {
       backoffsMs: [1, 1, 1, 1, 1],
       serveFn: () => {
         calls++
-        return server as unknown as ReturnType<Parameters<typeof bindWithRetry>[1]["serveFn"] & {}>
+        return server as unknown as Server
       },
       sleepFn: (ms) => {
         sleeps.push(ms)
       },
     })
-    expect(result).toBe(server)
+    expect(result).toBe(server as unknown as Server)
     expect(calls).toBe(1)
     expect(sleeps).toHaveLength(0)
   })
@@ -41,13 +41,13 @@ describe("bindWithRetry", () => {
       serveFn: () => {
         calls++
         if (calls < 3) throw eaddrinuseError()
-        return server as unknown as ReturnType<Parameters<typeof bindWithRetry>[1]["serveFn"] & {}>
+        return server as unknown as Server
       },
       sleepFn: (ms) => {
         sleeps.push(ms)
       },
     })
-    expect(result).toBe(server)
+    expect(result).toBe(server as unknown as Server)
     expect(calls).toBe(3)
     expect(sleeps).toEqual([1, 1])
   })

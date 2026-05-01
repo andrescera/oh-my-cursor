@@ -15,6 +15,7 @@ import { createSubagentHandlers } from "./handlers/subagent-handlers"
 import { createConversationHistoryHandler } from "./handlers/conversation-history"
 import { BackgroundTracker, createBackgroundTasksHandler } from "./handlers/background-tracker"
 import { createAgentHistoryHandler } from "./handlers/agent-history"
+import { extractAgentTypeFromLogInputs, extractAgentIdFromLogInputs } from "./handlers/extract-agent-fields"
 import { StatePersistence, type ConversationMetadata } from "./state-persistence"
 import { createHeartbeatHandler, startHeartbeatWriter, HEARTBEAT_FILE } from "./handlers/heartbeat"
 import { loadConfig, resetConfigCache } from "./config"
@@ -594,8 +595,8 @@ const fetchHandler = async (req: Request) => {
         event: path,
         sessionId: (parsed.conversation_id as string) || (parsed.session_id as string) || "",
         tool: (parsed.tool_name as string) || undefined,
-        agentType: (toolInput.subagent_type as string) || (toolInput.agent_type as string) || (parsed.subagent_type as string) || (parsed.agent_type as string) || undefined,
-        agentId: (parsed.agent_id as string) || (parsed.subagent_id as string) || (toolInput.agent_id as string) || (toolInput.subagent_id as string) || undefined,
+        agentType: extractAgentTypeFromLogInputs(parsed, toolInput),
+        agentId: extractAgentIdFromLogInputs(parsed, toolInput),
         action: classifyAction(path, result),
         durationMs: handlerDurationMs,
         error: (parsed.error as string) || (parsed.error_message as string) || ((parsed.tool_response as Record<string, unknown>)?.error as string) || undefined,

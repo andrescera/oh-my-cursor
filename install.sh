@@ -203,7 +203,7 @@ start_daemon() {
     return 1
   fi
   chmod +x "$starter"
-  echo '{}' | "$starter"
+  echo '{}' | "$starter" >/dev/null
   local port
   port="$(cat /tmp/oh-my-cursor-daemon.port 2>/dev/null || echo "$DEFAULT_DAEMON_PORT")"
   local attempt=0

@@ -4,9 +4,26 @@ Install oh-my-cursor in any Cursor IDE project.
 
 ## Prerequisites
 
-- **bun** (required) — hook daemon and MCP sidecar runtime
+- **bun** ≥ 1.1 (required) — hook daemon, MCP sidecar runtime, and the dashboard UI build
 - **python3** or **jq** (recommended) — JSON merge during install
 - **curl** (Linux/macOS install)
+
+## Dashboard UI build
+
+The installer compiles the dashboard SPA in `hooks/dashboard-ui/` (Vite 8 + React 19 + Tailwind v4 + shadcn/ui + Zustand 5) before copying plugin files. The build runs `bun install --frozen-lockfile && bunx --bun vite build` in `hooks/dashboard-ui/` and produces `dist/assets/dashboard.js`, `dist/assets/dashboard.css`, and a chunked vendor bundle. The daemon serves these from `GET /dashboard/assets/*`; the MCP resource `ui://oh-my-cursor/dashboard` and `GET /dashboard` return a thin shell HTML that loads them.
+
+| Flag | Switch | Effect |
+|------|--------|--------|
+| `--skip-dashboard-build` | `-SkipDashboardBuild` | Skip the build step entirely. On fresh / `--force` installs, `/dashboard/assets/*` returns **503 "Dashboard assets not built"** and `GET /dashboard` shows a "not built" page until the next install. On updates, any existing `hooks/dashboard-ui/dist/` under the install directory is **preserved** so the previous build keeps serving. |
+
+The build runs **before** any destructive install action; if it fails (fresh / force), the installer aborts without touching the existing install. On updates, a build failure is non-fatal — the installer keeps going and the previously-installed `dist/` continues to serve.
+
+### Troubleshooting
+
+- **`bun: command not found`** — install Bun (`curl -fsSL https://bun.sh/install | bash`) and retry, or use `--skip-dashboard-build` / `-SkipDashboardBuild` to defer the build.
+- **`Dashboard build failed.`** — re-run `bun install --frozen-lockfile && bunx --bun vite build` inside `hooks/dashboard-ui/` to see the underlying error. Lockfile drift is the most common cause; run `bun install` (without `--frozen-lockfile`) once and commit `bun.lock`.
+- **`/dashboard` shows "Dashboard assets not built"** — you ran the installer with `--skip-dashboard-build` and there is no pre-existing `dist/`. Re-run the installer without the flag.
+- **Hot reload while developing** — `cd hooks/dashboard-ui && bun run dev` (Vite dev server). See [`hooks/dashboard-ui/README.md`](hooks/dashboard-ui/README.md).
 
 ## Linux / macOS
 

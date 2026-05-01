@@ -97,6 +97,56 @@ graph LR
     MCP --> Daemon[Hook Daemon - dynamic port]
 ```
 
+## Dashboard UI
+
+The dashboard is a SPA that lives in [`hooks/dashboard-ui/`](hooks/dashboard-ui/) and is built with Vite 8 + React 19 + Tailwind v4 + shadcn/ui + Zustand 5. The installer compiles it (`bun install --frozen-lockfile && bunx --bun vite build` inside `hooks/dashboard-ui/`); the build emits `dist/assets/dashboard.js`, `dist/assets/dashboard.css`, and chunked vendor bundles. The daemon resolves `dashboard-ui/dist/` relative to itself and serves both the shell HTML and the assets.
+
+### Project layout
+
+- `src/main.tsx` — entrypoint that mounts `<App />` into `#app`.
+- `src/App.tsx` / `src/components/Shell.tsx` — top-level providers and the tab/shortcut shell.
+- `src/components/ui/` — shadcn/ui primitives (button, card, sheet, …).
+- `src/tabs/` — one file per dashboard tab; `tabs/registry.ts` is the single source of truth for tab order and hotkeys.
+- `src/store/dashboard.ts` — Zustand store (UI slice + connection slice + data slice) with selective persistence.
+- `src/store/selectors.ts` — memoised selectors used by tabs.
+- `src/lib/api.ts` — typed REST client; the daemon contract is documented in `src/lib/api.endpoints.md`.
+- `src/lib/sse.ts` — EventSource adapter with exponential backoff + jitter reconnects.
+- `src/lib/sse-reducer.ts` — pure SSE reducer (the W1.6 port of the legacy `sse-payload-from-event` + `merge-by-agent-id` helpers).
+
+### Daemon static-asset routes
+
+| Route | Status | Body | Notes |
+|-------|--------|------|-------|
+| `GET /dashboard` | 200 | Shell HTML from `hooks/mcp-app.ts::buildDaemonShell(port)` | Injects `window.OMC_DAEMON_PORT`, `<link>`s `dashboard.css`, dynamic-`import()`s `dashboard.js` |
+| `GET /dashboard/index.html` | 200 | Same as `/dashboard` | Convenience alias |
+| `GET /dashboard/assets/<file>` | 200 / 304 / 503 | Static file from `hooks/dashboard-ui/dist/assets/` | Path-traversal guarded; `ETag` + `Cache-Control: public, max-age=60, must-revalidate`; **503** with a "not built" page when `dist/` is missing |
+
+The MCP resource `ui://oh-my-cursor/dashboard` (`hooks/mcp/resources/dashboard.ts`) reuses `getStatusHTML(port)` so the MCP webview and the daemon route serve the **same** shell. Built-in caching keys on `${mode}:${port}`; `OMC_DASHBOARD_MODE=singlefile` switches the shell to read from `dist/index.html` (single-file build) instead.
+
+### Data flow
+
+```mermaid
+sequenceDiagram
+    participant Cursor as Cursor MCP Webview / Browser
+    participant Sidecar as MCP Sidecar
+    participant Daemon as Hook Daemon
+    participant Store as Zustand store
+    Cursor->>Sidecar: read ui://oh-my-cursor/dashboard
+    Sidecar->>Daemon: getStatusHTML(port)
+    Daemon-->>Cursor: 200 shell HTML
+    Cursor->>Daemon: GET /dashboard/assets/dashboard.js
+    Cursor->>Daemon: GET /dashboard/assets/dashboard.css
+    Daemon-->>Cursor: 200 assets (ETag + Cache-Control)
+    Cursor->>Store: boot('#app') → mount React tree
+    Store->>Daemon: GET /health, /sessions, /config, ...
+    Daemon-->>Store: JSON responses
+    Store->>Daemon: EventSource /events/stream
+    Daemon-->>Store: SSE: hookDispatch, agentRunning, ...
+    Store->>Store: reduceSseEvent → slice → store update
+```
+
+The same compiled bundle works against any daemon port because `window.OMC_DAEMON_PORT` is injected by the shell at request time, and `src/lib/api.ts` resolves the base URL on every call.
+
 ## Agent Architecture
 
 ### Agent Tiers

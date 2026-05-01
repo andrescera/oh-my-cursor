@@ -72,6 +72,19 @@ Relative to the repo root (see manifest paths):
 - `skills/` — Agent Skills [repro-local]
 - `rules/` — Cursor rules [repro-local]
 - `hooks/hooks.json` — hook configuration entry [repro-local]
+- `hooks/dashboard-ui/` — Vite + React + Tailwind + shadcn/ui dashboard SPA built during install; `dist/` is what the daemon serves [repro-local]
+
+## Build-during-install
+
+`install.sh` and `install.ps1` build [`hooks/dashboard-ui/`](../../hooks/dashboard-ui/) **before** any destructive install action by running `bun install --frozen-lockfile && bunx --bun vite build` inside that directory. The artefacts (`dist/assets/dashboard.js`, `dist/assets/dashboard.css`, chunked vendor bundles) are then copied alongside the rest of the plugin and served by the daemon at `GET /dashboard/assets/*`. The shell HTML at `GET /dashboard` and the MCP resource `ui://oh-my-cursor/dashboard` boot the bundle. [repro-local]
+
+| Scenario | Behavior on build failure |
+|----------|--------------------------|
+| Fresh install / `--force` / `-Force` | Installer aborts before touching the existing install. |
+| Update | Build failure is non-fatal; the previously-installed `hooks/dashboard-ui/dist/` keeps serving. |
+| `--skip-dashboard-build` / `-SkipDashboardBuild` | Build step is skipped; on update, any existing `dist/` is preserved; on fresh / force, `/dashboard/assets/*` returns **503** until the next install. |
+
+See [`INSTALL.md`](../../INSTALL.md#dashboard-ui-build) for the user-facing flag reference and [`hooks/dashboard-ui/README.md`](../../hooks/dashboard-ui/README.md) for the contributor build workflow. [repro-local]
 
 ## oh-my-cursor as a plugin
 

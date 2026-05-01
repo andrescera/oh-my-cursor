@@ -214,17 +214,70 @@ export function createSseClient<TState>(opts: SseClientOpts<TState>): SseClient 
 
 function coerceEvent(value: unknown, fallbackType?: SseEvent['type']): SseEvent | null {
   if (!value || typeof value !== 'object') return null
+  if (Array.isArray(value) && fallbackType === 'conversation-snapshot') {
+    return { type: 'conversation-snapshot', payload: { sessions: value } }
+  }
   const obj = value as Record<string, unknown>
-  const type = (obj.type as SseEvent['type']) ?? fallbackType
+  const rawType = (obj.type ?? obj.event ?? fallbackType) as string | undefined
+  const type = normalizeEventType(rawType)
   if (!type) return null
   if (type === 'conversation-snapshot') {
-    const data = (obj.data as { sessions?: unknown[] } | undefined) ?? (obj.payload as { sessions?: unknown[] } | undefined)
-    const sessions = Array.isArray(data?.sessions) ? data!.sessions : []
+    const data = obj.data ?? obj.payload
+    const sessions = Array.isArray(data)
+      ? data
+      : Array.isArray((data as { sessions?: unknown[] } | undefined)?.sessions)
+        ? (data as { sessions: unknown[] }).sessions
+        : Array.isArray(obj.sessions)
+          ? obj.sessions
+          : null
+    if (!sessions) return null
     return { type, payload: { sessions } }
   }
   if (type === 'shutdown') {
     return { type: 'shutdown', payload: obj.payload }
   }
-  const payload = (obj.payload ?? obj.data ?? {}) as Record<string, unknown>
+  const payload = (obj.payload ?? obj.data ?? obj) as Record<string, unknown>
+  if (type === 'subagentStart' || type === 'subagentStop') {
+    const agentId = payload.agent_id ?? payload.agentId
+    const agentType = payload.agent_type ?? payload.agentType
+    return {
+      type,
+      payload: {
+        ...payload,
+        agent_id: typeof agentId === 'string' ? agentId : '',
+        agent_type: typeof agentType === 'string' ? agentType : '',
+        startedAt: typeof payload.startedAt === 'number' ? payload.startedAt : Date.parse(String(payload.ts ?? Date.now())),
+        stoppedAt: typeof payload.stoppedAt === 'number' ? payload.stoppedAt : Date.parse(String(payload.ts ?? Date.now())),
+      },
+    } as SseEvent
+  }
+  if (type === 'error') {
+    return {
+      type,
+      payload: {
+        ...payload,
+        message: String(payload.message ?? payload.error ?? 'Unknown dashboard event error'),
+        ts: typeof payload.ts === 'number' ? payload.ts : Date.parse(String(payload.ts ?? Date.now())),
+      },
+    }
+  }
   return { type, payload } as SseEvent
+}
+
+function normalizeEventType(raw: string | undefined): SseEvent['type'] | null {
+  if (!raw) return null
+  const value = raw.startsWith('/') ? raw.slice(1) : raw
+  if (
+    value === 'health' ||
+    value === 'subagentStart' ||
+    value === 'subagentStop' ||
+    value === 'tool_call' ||
+    value === 'error' ||
+    value === 'conversation-snapshot' ||
+    value === 'shutdown'
+  ) {
+    return value
+  }
+  if (value === 'postToolUseFailure') return 'error'
+  return null
 }

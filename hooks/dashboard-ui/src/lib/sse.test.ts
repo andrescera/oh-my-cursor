@@ -168,6 +168,56 @@ describe('createSseClient → dashboard store wiring', () => {
     client.stop()
   })
 
+  test('daemon conversation-snapshot array payload preserves sessions instead of resetting to empty', () => {
+    const { mock, client } = attach()
+
+    const sessions = [{ id: 'conv-live', startedAt: 100 }]
+    mock.named('conversation-snapshot', sessions)
+
+    expect(useDashboardStore.getState().data.sessions).toEqual(sessions)
+
+    client.stop()
+  })
+
+  test('daemon EventEntry shape with event path updates agents', () => {
+    const { mock, client } = attach()
+
+    mock.message({
+      ts: '2026-05-01T20:00:00.000Z',
+      event: '/subagentStart',
+      sessionId: 'conv-live',
+      agentId: 'agent-1',
+      agentType: 'explore',
+    })
+
+    expect(useDashboardStore.getState().data.agents).toEqual([
+      expect.objectContaining({
+        agent_id: 'agent-1',
+        agent_type: 'explore',
+        status: 'running',
+      }),
+    ])
+
+    client.stop()
+  })
+
+  test('daemon postToolUseFailure EventEntry lands in recentErrors', () => {
+    const { mock, client } = attach()
+
+    mock.message({
+      ts: '2026-05-01T20:00:00.000Z',
+      event: '/postToolUseFailure',
+      sessionId: 'conv-live',
+      error: 'Shell failed',
+    })
+
+    expect(useDashboardStore.getState().data.recentErrors).toEqual([
+      expect.objectContaining({ message: 'Shell failed' }),
+    ])
+
+    client.stop()
+  })
+
   test('shutdown event flips store.connection.sseStatus to "shutdown"', () => {
     const { mock, client } = attach()
 

@@ -73,7 +73,7 @@ describe("createContinuationHandlers", () => {
       })
 
       it("continues ralph when context has DONE only as accidental substring (not <promise>DONE</promise>)", () => {
-        const startedAt = "2026-01-01T00:00:00.000Z"
+        const startedAt = new Date().toISOString()
         const conversation = getOrCreateConversation(convId)
         conversation.contextHistory = ["[12:00] Read /tmp/TODO.md completed", "follow-up: UNDONE"]
         conversation.ralphState = {
@@ -183,12 +183,12 @@ describe("createContinuationHandlers", () => {
         expect(result.followup_message).toContain("Continue executing plan")
       })
 
-      it("clears activePlan after two consecutive zero tool-call deltas (idle deactivation)", () => {
+      it("clears activePlan after three consecutive zero tool-call deltas (idle deactivation)", () => {
         const conversation = getOrCreateConversation(convId)
         conversation.activePlan = { path: "/p.md", phase: "A", completedTasks: [] }
         conversation.toolCallCount = 1
         conversation.toolCallCountAtLastStop = 1
-        conversation.consecutiveZeroDeltas = 1
+        conversation.consecutiveZeroDeltas = 2
 
         const result = handlers["/stop"](baseStopInput(convId))
 
@@ -216,7 +216,12 @@ describe("createContinuationHandlers", () => {
       it("deactivates boulder and returns empty when loop_count exceeds 10", () => {
         const conversation = getOrCreateConversation(convId)
         conversation.todoStates.set("t1", "pending")
-        conversation.boulderState = { active: true, failureCount: 0, lastContinuationAt: null }
+        conversation.boulderState = {
+          active: true,
+          failureCount: 0,
+          lastContinuationAt: null,
+          loopStartedAt: new Date().toISOString(),
+        }
 
         const result = handlers["/stop"](baseStopInput(convId, { loop_count: 11 }))
 
@@ -423,7 +428,12 @@ describe("createContinuationHandlers", () => {
         startedAt: new Date().toISOString(),
         lastProcessedIndex: 0,
       }
-      conversation.boulderState = { active: true, failureCount: 1, lastContinuationAt: "x" }
+      conversation.boulderState = {
+        active: true,
+        failureCount: 1,
+        lastContinuationAt: "x",
+        loopStartedAt: new Date().toISOString(),
+      }
       conversation.activePlan = { path: "/p.md", phase: "x", completedTasks: [] }
       conversation.consecutiveZeroDeltas = 2
 
@@ -624,6 +634,56 @@ describe("createContinuationHandlers", () => {
         expect(conversation.composerMode).toBe("plan")
         expect(result.additional_context).toContain("[mode:plan]")
       })
+    })
+  })
+
+  describe("/stop safety caps", () => {
+    it("deactivates ralph loop when ralphState.startedAt is older than safety.continuation.max_wallclock_ms", () => {
+      const conversation = getOrCreateConversation(convId)
+      conversation.ralphState = {
+        active: true,
+        iteration: 1,
+        maxIterations: 0,
+        startedAt: new Date(Date.now() - 4_000_000).toISOString(),
+        lastProcessedIndex: 0,
+      }
+      conversation.contextHistory = ["still working"]
+
+      const result = handlers["/stop"](baseStopInput(convId))
+
+      expect(result).toEqual({})
+      expect(conversation.ralphState).toBeNull()
+    })
+
+    it("deactivates boulder loop when boulderState.loopStartedAt is older than safety.continuation.max_wallclock_ms", () => {
+      const conversation = getOrCreateConversation(convId)
+      conversation.activePlan = { path: "/plans/foo.md", phase: "P1", completedTasks: [] }
+      conversation.boulderState = {
+        active: true,
+        failureCount: 0,
+        lastContinuationAt: null,
+        loopStartedAt: new Date(Date.now() - 4_000_000).toISOString(),
+      }
+
+      const result = handlers["/stop"](baseStopInput(convId))
+
+      expect(result).toEqual({})
+      expect(conversation.activePlan).toBeNull()
+      expect(conversation.boulderState).toBeNull()
+    })
+
+    it("deactivates after consecutiveZeroDeltas reaches the configured cap (default 3)", () => {
+      const conversation = getOrCreateConversation(convId)
+      conversation.activePlan = { path: "/plans/foo.md", phase: "P1", completedTasks: [] }
+      conversation.consecutiveZeroDeltas = 3
+      conversation.toolCallCount = 1
+      conversation.toolCallCountAtLastStop = 1
+
+      const result = handlers["/stop"](baseStopInput(convId))
+
+      expect(result).toEqual({})
+      expect(conversation.activePlan).toBeNull()
+      expect(conversation.boulderState).toBeNull()
     })
   })
 })

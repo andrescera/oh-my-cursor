@@ -546,6 +546,7 @@ describe("StatePersistence cross-conversation isolation guards", () => {
       active: true,
       failureCount: 1,
       lastContinuationAt: new Date().toISOString(),
+      loopStartedAt: new Date().toISOString(),
     }
     conv.continuationCooldownUntil = Date.now() + 60_000
 

@@ -104,4 +104,23 @@ describe("OhMyCursorConfigSchema", () => {
       expect(r.data.daemon.port).toBe(27847)
     }
   })
+
+  test("parses safety continuation and MCP LLM review defaults and overrides", () => {
+    const defaults = OhMyCursorConfigSchema.parse({})
+    expect(defaults.safety.continuation.max_wallclock_ms).toBe(3_600_000)
+    expect(defaults.safety.mcp_llm_review_enabled).toBe(true)
+
+    const overridden = OhMyCursorConfigSchema.parse({
+      safety: {
+        continuation: {
+          max_wallclock_ms: 120_000,
+          max_consecutive_zero_deltas: 5,
+        },
+        mcp_llm_review_enabled: false,
+      },
+    })
+    expect(overridden.safety.continuation.max_wallclock_ms).toBe(120_000)
+    expect(overridden.safety.continuation.max_consecutive_zero_deltas).toBe(5)
+    expect(overridden.safety.mcp_llm_review_enabled).toBe(false)
+  })
 })

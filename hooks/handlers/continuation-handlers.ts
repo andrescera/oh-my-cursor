@@ -113,6 +113,7 @@ export function createContinuationHandlers(
       const stopHookActive = Boolean(input.stop_hook_active)
       const convId = resolveConversationId(input)
       const conversation = getOrCreateConversation(convId, wasResolvedViaFallback(input), derivedProjectRoot(input))
+      const config = loadConfig(conversation.env.OH_MY_CURSOR_PROJECT_DIR)
 
       const isAbort = status === "aborted" || Boolean(input.aborted) || Boolean(input.abort_signal)
       if (isAbort) {
@@ -142,6 +143,13 @@ export function createContinuationHandlers(
         if (contextStr.includes("<promise>DONE</promise>")) {
           conversation.ralphState = null
           console.log(`[oh-my-cursor][/stop] RESULT=noop reason=ralphDone`)
+          return {}
+        }
+
+        const ralphAgeMs = ralph.startedAt ? Date.now() - new Date(ralph.startedAt).getTime() : 0
+        if (ralphAgeMs > config.safety.continuation.max_wallclock_ms) {
+          conversation.ralphState = null
+          console.log(`[oh-my-cursor][/stop] RESULT=noop reason=ralphWallclockExceeded`)
           return {}
         }
 
@@ -184,7 +192,8 @@ export function createContinuationHandlers(
 
       console.log(`[oh-my-cursor][/stop] conversation=${convId} | composerMode=${conversation.composerMode} | activePlan=${!!conversation.activePlan} | toolCallDelta=${delta} | consecutiveZeroDeltas=${conversation.consecutiveZeroDeltas}`)
 
-      if (conversation.consecutiveZeroDeltas >= 2) {
+      const maxZeroDeltas = config.safety.continuation.max_consecutive_zero_deltas
+      if (conversation.consecutiveZeroDeltas >= maxZeroDeltas) {
         if (conversation.activePlan) {
           sendOsNotification("Plan Complete", "Agent idle — continuation deactivated.", "normal", conversation.env.OH_MY_CURSOR_PROJECT_DIR)
           conversation.activePlan = null
@@ -198,10 +207,25 @@ export function createContinuationHandlers(
 
       if (conversation.activePlan) {
         if (!conversation.boulderState) {
-          conversation.boulderState = { active: true, failureCount: 0, lastContinuationAt: null }
+          conversation.boulderState = {
+            active: true,
+            failureCount: 0,
+            lastContinuationAt: null,
+            loopStartedAt: new Date().toISOString(),
+          }
         }
         if (!conversation.boulderState.active) {
           console.log(`[oh-my-cursor][/stop] RESULT=noop reason=boulderInactive`)
+          return {}
+        }
+
+        const boulderAgeMs = conversation.boulderState.loopStartedAt
+          ? Date.now() - new Date(conversation.boulderState.loopStartedAt).getTime()
+          : 0
+        if (boulderAgeMs > config.safety.continuation.max_wallclock_ms) {
+          conversation.activePlan = null
+          conversation.boulderState = null
+          console.log(`[oh-my-cursor][/stop] RESULT=noop reason=boulderWallclockExceeded`)
           return {}
         }
         conversation.boulderState.lastContinuationAt = new Date().toISOString()

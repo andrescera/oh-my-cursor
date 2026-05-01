@@ -13,6 +13,7 @@ export const BoulderStateSchema = z.object({
   active: z.boolean(),
   failureCount: z.number(),
   lastContinuationAt: z.string().nullable(),
+  loopStartedAt: z.string().nullable().default(null),
 })
 export type BoulderState = z.infer<typeof BoulderStateSchema>
 

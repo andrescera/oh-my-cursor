@@ -30,6 +30,7 @@ describe("state partition helpers", () => {
         active: true,
         failureCount: 1,
         lastContinuationAt: "2026-04-29T08:02:00.000Z",
+        loopStartedAt: "2026-04-29T08:00:30.000Z",
       },
       stoppedAt: "2026-04-29T08:03:00.000Z",
       errorCount: 1,

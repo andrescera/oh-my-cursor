@@ -10,6 +10,7 @@ export type BoulderState = {
   active: boolean
   failureCount: number
   lastContinuationAt: string | null
+  loopStartedAt: string | null
 }
 
 export type SubagentOutcome = {

@@ -1,7 +1,7 @@
 ---
 name: sisyphus
 description: "Main orchestrator and deep worker. Use for complex multi-file tasks, architecture decisions, and when the task requires planning + execution. Handles delegation to specialized agents."
-model: claude-opus-4-7-thinking-high
+model: claude-opus-4-7-thinking-xhigh
 ---
 
 # Sisyphus - The Boulder Roller

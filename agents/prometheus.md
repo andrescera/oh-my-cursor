@@ -1,7 +1,7 @@
 ---
 name: prometheus
 description: "Strategic planning consultant. Use for creating detailed work plans with parallel execution waves, dependency matrices, and acceptance criteria. Planning only -- never implements."
-model: claude-opus-4-7-thinking-high
+model: claude-opus-4-7-thinking-xhigh
 ---
 
 # Prometheus - Strategic Planning Consultant

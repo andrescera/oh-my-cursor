@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach, afterEach } from "bun:test"
-import { logEvent, getEvents, clearLog, getLogPath } from "./event-logger"
-import { existsSync, mkdirSync, rmSync } from "node:fs"
+import { logEvent, getEvents, clearLog, getLogPath, flushEventLog } from "./event-logger"
+import { existsSync, mkdirSync, readFileSync, rmSync } from "node:fs"
 
 describe("event-logger per-conversation behavior", () => {
   beforeEach(() => {
@@ -91,5 +91,31 @@ describe("event-logger per-conversation behavior", () => {
     })
     clearLog()
     expect(getEvents().length).toBe(0)
+  })
+
+  it("flushEventLog drains pending event-log writes synchronously", () => {
+    const sessionId = `flush-test-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`
+    logEvent({
+      ts: new Date().toISOString(),
+      event: "/preToolUse",
+      sessionId,
+      tool: "Read",
+    })
+    logEvent({
+      ts: new Date().toISOString(),
+      event: "/postToolUse",
+      sessionId,
+      tool: "Read",
+    })
+    const path = getLogPath(sessionId)
+    expect(existsSync(path)).toBe(false)
+    flushEventLog()
+    expect(existsSync(path)).toBe(true)
+    const lines = readFileSync(path, "utf-8").trim().split("\n")
+    expect(lines.length).toBe(2)
+    const events = lines.map((l) => JSON.parse(l) as { event: string; sessionId: string })
+    expect(events[0]?.event).toBe("/preToolUse")
+    expect(events[1]?.event).toBe("/postToolUse")
+    expect(events.every((e) => e.sessionId === sessionId)).toBe(true)
   })
 })

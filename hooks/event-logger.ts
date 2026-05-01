@@ -98,6 +98,14 @@ function scheduleFlush(): void {
   }, FLUSH_DELAY)
 }
 
+export function flushEventLog(): void {
+  if (flushTimer) {
+    clearTimeout(flushTimer)
+    flushTimer = null
+  }
+  flushPending()
+}
+
 function flushPending(): void {
   if (pending.length === 0) return
   const entries = pending

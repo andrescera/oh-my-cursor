@@ -1,9 +1,10 @@
-import { serve, type Server } from "bun"
+import { type Server } from "bun"
 import { writeFileSync, renameSync, unlinkSync, existsSync } from "node:fs"
 import { join } from "node:path"
 import { getStatusHTML } from "./mcp-app"
-import { logEvent, getEvents, getConversationSummary, getLogPath, clearLog, onEvent, offEvent } from "./event-logger"
+import { logEvent, getEvents, getConversationSummary, getLogPath, clearLog, onEvent, offEvent, flushEventLog } from "./event-logger"
 import type { EventEntry } from "./event-logger"
+import { bindWithRetry, flushOnCrash } from "./bind-with-retry"
 import { conversations, parseInput, extractMeta, classifyAction, setPersistence } from "./shared"
 import { isHookEnabled, getHookConfig, resetHookConfigCache } from "./hook-config"
 import { createConversationHandlers } from "./handlers/conversation-handlers"
@@ -583,7 +584,7 @@ const fetchHandler = async (req: Request) => {
       console.log(`[oh-my-cursor][daemon] ${path} | inputKeys=${Object.keys(parsed).join(",")}`)
     }
     const handlerStart = Date.now()
-    const result = handler(parsed)
+    const result = await Promise.resolve(handler(parsed))
     const handlerDurationMs = Date.now() - handlerStart
 
     if (path !== "/health" && path !== "/heartbeat" && path !== "/status") {
@@ -632,7 +633,7 @@ let actualPort = Number.isNaN(envPort) ? DEFAULT_PORT : envPort
 if (ENV_PORT) {
   console.log(`[oh-my-cursor] Hook daemon starting on port ${actualPort} (env override)...`)
   try {
-    server = serve({ port: actualPort, fetch: fetchHandler })
+    server = bindWithRetry({ port: actualPort, fetch: fetchHandler })
   } catch (err) {
     console.error(`[oh-my-cursor] Failed to bind daemon on port ${actualPort} (env override):`, err instanceof Error ? err.message : String(err))
     process.exit(1)
@@ -645,7 +646,7 @@ if (ENV_PORT) {
     process.exit(1)
   }
   try {
-    server = serve({ port: DEFAULT_PORT, fetch: fetchHandler })
+    server = bindWithRetry({ port: DEFAULT_PORT, fetch: fetchHandler })
     actualPort = DEFAULT_PORT
   } catch (err) {
     console.error(
@@ -685,7 +686,10 @@ process.on("unhandledRejection", (reason) => {
 
 process.on("uncaughtException", (err) => {
   console.error("[oh-my-cursor] Uncaught exception:", err.stack || err.message || String(err))
-  persistence.forceFlush(conversations)
+  flushOnCrash({
+    flushEventLog,
+    forceFlush: () => persistence.forceFlush(conversations),
+  })
   process.exit(1)
 })
 

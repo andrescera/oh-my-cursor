@@ -1,5 +1,8 @@
 import { z } from "zod"
 
+const DEFAULT_MAX_CONTINUATION_WALLCLOCK_MS = 3_600_000
+const DEFAULT_MAX_CONSECUTIVE_ZERO_DELTAS = 3
+
 export const SubagentLimitsSchema = z.object({
   explore: z.number().default(6),
   worker: z.number().default(8),
@@ -52,14 +55,14 @@ export const ContinuationSchema = z.object({
 // daemon cannot wrap it with a server-side timeout. See
 // docs/internal/mcp-safety-hook.md for how to disable the hook entry.
 export const SafetyContinuationSchema = z.object({
-  max_wallclock_ms: z.number().int().positive().default(3_600_000),
-  max_consecutive_zero_deltas: z.number().int().positive().default(3),
+  max_wallclock_ms: z.number().int().positive().default(DEFAULT_MAX_CONTINUATION_WALLCLOCK_MS),
+  max_consecutive_zero_deltas: z.number().int().positive().default(DEFAULT_MAX_CONSECUTIVE_ZERO_DELTAS),
 })
 
 export const SafetySchema = z.object({
   continuation: SafetyContinuationSchema.default({
-    max_wallclock_ms: 3_600_000,
-    max_consecutive_zero_deltas: 3,
+    max_wallclock_ms: DEFAULT_MAX_CONTINUATION_WALLCLOCK_MS,
+    max_consecutive_zero_deltas: DEFAULT_MAX_CONSECUTIVE_ZERO_DELTAS,
   }),
   mcp_llm_review_enabled: z.boolean().default(true),
 })
@@ -99,7 +102,7 @@ export const OhMyCursorConfigSchema = z.object({
   orchestration: OrchestrationSchema.default({ mode: "native" }),
   continuation: ContinuationSchema.default({ cooldown_ms: 5000, max_failures: 5, backoff_multiplier: 2 }),
   safety: SafetySchema.default({
-    continuation: { max_wallclock_ms: 3_600_000, max_consecutive_zero_deltas: 3 },
+    continuation: { max_wallclock_ms: DEFAULT_MAX_CONTINUATION_WALLCLOCK_MS, max_consecutive_zero_deltas: DEFAULT_MAX_CONSECUTIVE_ZERO_DELTAS },
     mcp_llm_review_enabled: true,
   }),
   momus: MomusSchema.default({ max_iterations: 4 }),

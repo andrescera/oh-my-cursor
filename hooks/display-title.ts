@@ -11,7 +11,6 @@ export function extractDisplayTitle(rawMessage: string): string {
   // Strip fenced code blocks entirely so titles don't end up showing
   // ``` or partial code snippets.
   const noFences = rawMessage.replace(/```[\s\S]*?```/g, " ")
-  // Collapse all whitespace (newlines, tabs) to single spaces; trim.
   const oneLine = noFences.replace(/\s+/g, " ").trim()
   if (!oneLine) return ""
   const redacted = redactSecrets(oneLine)

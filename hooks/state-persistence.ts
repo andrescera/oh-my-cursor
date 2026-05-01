@@ -127,7 +127,6 @@ export class StatePersistence {
       }
 
       const { schemaVersion: _v, projectRoot: _p, daemonBootId: _b, ...durableSerialized } = record
-      void _v; void _p; void _b
       const merged = mergeFromDurable({
         ...durableSerialized,
         readPaths: new Set(durableSerialized.readPaths),

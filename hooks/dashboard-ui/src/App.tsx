@@ -1,9 +1,15 @@
-import { Button } from '@/components/ui/button'
+import { TooltipProvider } from '@/components/ui/tooltip'
+import { Toaster } from '@/components/ui/sonner'
+import { ErrorBoundary } from '@/components/ErrorBoundary'
+import Shell from '@/components/Shell'
 
 export default function App() {
   return (
-    <div className="flex min-h-screen items-center justify-center bg-background">
-      <Button>oh-my-cursor Dashboard</Button>
-    </div>
+    <ErrorBoundary>
+      <TooltipProvider>
+        <Shell />
+        <Toaster richColors closeButton position="bottom-right" />
+      </TooltipProvider>
+    </ErrorBoundary>
   )
 }

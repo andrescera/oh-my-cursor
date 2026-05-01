@@ -64,4 +64,53 @@ describe("mergeByAgentId", () => {
     expect(merged).toHaveLength(1)
     expect(merged[0].startTime).toBe(200)
   })
+
+  test("drops pending-<type> rows when a real agent_id arrives for the same agentType", () => {
+    const pending: Row = {
+      agentId: "pending-explore-123",
+      agentType: "explore",
+      startTime: 100,
+      status: "running",
+    }
+    const real: Row = {
+      agentId: "abc",
+      agentType: "explore",
+      startTime: 200,
+      status: "running",
+    }
+    const merged = mergeByAgentId<Row>([pending], [real])
+    expect(merged).toHaveLength(1)
+    expect(merged[0].agentId).toBe("abc")
+  })
+
+  test("preserves pending-<type> when no real id of that type arrives", () => {
+    const pending: Row = {
+      agentId: "pending-explore-123",
+      agentType: "explore",
+      startTime: 100,
+      status: "running",
+    }
+    const merged = mergeByAgentId<Row>([pending], [])
+    expect(merged).toHaveLength(1)
+    expect(merged[0].agentId).toBe("pending-explore-123")
+  })
+
+  test("preserves pending-<type> when only a real id of a DIFFERENT type arrives", () => {
+    const pending: Row = {
+      agentId: "pending-explore-123",
+      agentType: "explore",
+      startTime: 100,
+      status: "running",
+    }
+    const realLibrarian: Row = {
+      agentId: "lib-1",
+      agentType: "librarian",
+      startTime: 200,
+      status: "running",
+    }
+    const merged = mergeByAgentId<Row>([pending], [realLibrarian])
+    expect(merged).toHaveLength(2)
+    expect(rowById(merged, "pending-explore-123")).toBeDefined()
+    expect(rowById(merged, "lib-1")).toBeDefined()
+  })
 })

@@ -1,6 +1,8 @@
 import { mergeByAgentId } from "./merge-by-agent-id"
+import { ssePayloadFromEvent } from "./sse-payload-from-event"
 
 const MERGE_BY_AGENT_ID_SOURCE = mergeByAgentId.toString()
+const SSE_PAYLOAD_FROM_EVENT_SOURCE = ssePayloadFromEvent.toString()
 
 export function renderDashboardHTML(daemonPort: number): string {
   return `<!DOCTYPE html>
@@ -422,6 +424,7 @@ export function renderDashboardHTML(daemonPort: number): string {
 
     const BASE = 'http://localhost:${daemonPort}';
     ${MERGE_BY_AGENT_ID_SOURCE}
+    ${SSE_PAYLOAD_FROM_EVENT_SOURCE}
 
     const TABS = [
       { id: 'status',     label: 'Status'     },
@@ -1390,18 +1393,6 @@ export function renderDashboardHTML(daemonPort: number): string {
     function normalizeAgentId(raw) {
       if (raw != null && String(raw).trim()) return String(raw);
       return '';
-    }
-
-    function ssePayloadFromEvent(msg) {
-      const m = msg && typeof msg === 'object' ? msg : {};
-      const meta = m.meta && typeof m.meta === 'object' ? m.meta : {};
-      return {
-        agent_id: m.agent_id ?? m.agentId ?? meta.agent_id ?? meta.agentId,
-        agent_type: m.agent_type ?? m.agentType ?? meta.agent_type ?? meta.agentType,
-        description: m.description ?? meta.description,
-        status: m.status ?? meta.status,
-        duration_ms: m.duration_ms ?? m.durationMs ?? meta.duration_ms ?? meta.durationMs,
-      };
     }
 
     function AgentsTab() {

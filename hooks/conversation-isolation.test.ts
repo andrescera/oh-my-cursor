@@ -666,3 +666,47 @@ describe("derivedProjectRoot", () => {
     expect(derivedProjectRoot({ workspace_roots: "not-an-array", cwd: "/qux" })).toBe("/qux")
   })
 })
+
+describe("displayTitle no-overwrite invariant", () => {
+  beforeEach(() => { conversations.clear() })
+  afterEach(() => { conversations.clear() })
+
+  it("/beforeSubmitPrompt sets displayTitle once and never overwrites", async () => {
+    const { createContinuationHandlers } = await import("./handlers/continuation-handlers")
+    const handlers = createContinuationHandlers(conversations)
+    const convId = "no-overwrite-test"
+
+    handlers["/beforeSubmitPrompt"]!({
+      conversation_id: convId,
+      prompt: "Implement feature X with care",
+    })
+    const conv1 = conversations.get(convId)!
+    expect(conv1.displayTitle).toBe("Implement feature X with care")
+
+    handlers["/beforeSubmitPrompt"]!({
+      conversation_id: convId,
+      prompt: "Now do something completely different",
+    })
+    const conv2 = conversations.get(convId)!
+    expect(conv2.displayTitle).toBe("Implement feature X with care")
+  })
+
+  it("/beforeSubmitPrompt does not seed title on whitespace-only first message", async () => {
+    const { createContinuationHandlers } = await import("./handlers/continuation-handlers")
+    const handlers = createContinuationHandlers(conversations)
+    const convId = "whitespace-first"
+
+    handlers["/beforeSubmitPrompt"]!({
+      conversation_id: convId,
+      prompt: "   \n\t  ",
+    })
+    const conv = conversations.get(convId)!
+    expect(conv.displayTitle).toBeNull()
+
+    handlers["/beforeSubmitPrompt"]!({
+      conversation_id: convId,
+      prompt: "Real first message",
+    })
+    expect(conversations.get(convId)!.displayTitle).toBe("Real first message")
+  })
+})

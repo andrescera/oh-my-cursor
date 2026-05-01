@@ -349,6 +349,7 @@ describe("daemon integration lifecycle", () => {
         expect(typeof data.exploreCounts).toBe("number")
         expect(typeof data.workerCounts).toBe("number")
         expect(typeof data.ralphActive).toBe("boolean")
+        expect(typeof data.continuationLoopsActive).toBe("number")
         expect(typeof data.allDispatchCounts).toBe("object")
       })
     })

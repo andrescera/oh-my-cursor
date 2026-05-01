@@ -184,10 +184,13 @@ export function createContinuationHandlers(
       const delta = conversation.toolCallCount - conversation.toolCallCountAtLastStop
       conversation.toolCallCountAtLastStop = conversation.toolCallCount
 
+      // Plan T1.4: do NOT reset on non-zero delta. The previous reset-on-any-
+      // tool-call behavior allowed indefinite loops to keep going as long as
+      // the agent fired one tool per cycle, defeating the cap. We now require
+      // strict accumulation; the only thing that resets the counter is an
+      // explicit /stop-continuation command (handled in /beforeSubmitPrompt).
       if (delta === 0) {
         conversation.consecutiveZeroDeltas++
-      } else {
-        conversation.consecutiveZeroDeltas = 0
       }
 
       console.log(`[oh-my-cursor][/stop] conversation=${convId} | composerMode=${conversation.composerMode} | activePlan=${!!conversation.activePlan} | toolCallDelta=${delta} | consecutiveZeroDeltas=${conversation.consecutiveZeroDeltas}`)

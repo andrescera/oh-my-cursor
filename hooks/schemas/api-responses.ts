@@ -9,6 +9,7 @@ export const HealthResponseSchema = z.object({
   exploreCounts: z.number(),
   workerCounts: z.number(),
   ralphActive: z.boolean(),
+  continuationLoopsActive: z.number(),
   conversationCount: z.number(),
   allDispatchCounts: z.record(z.string(), z.number()),
 })

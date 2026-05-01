@@ -17,6 +17,9 @@ function baseStopInput(convId: string, overrides: Record<string, unknown> = {}):
   }
 }
 
+// 67 minutes ago, exceeds default safety.continuation.max_wallclock_ms (3_600_000 = 1h).
+const PAST_WALLCLOCK_MS = 4_000_000
+
 describe("createContinuationHandlers", () => {
   const unusedConversations = new Map()
   let handlers: ReturnType<typeof createContinuationHandlers>
@@ -168,7 +171,7 @@ describe("createContinuationHandlers", () => {
         expect(result).toEqual({})
       })
 
-      it("resets consecutiveZeroDeltas when tool calls occurred between stops", () => {
+      it("does NOT reset consecutiveZeroDeltas on non-zero delta", () => {
         const conversation = getOrCreateConversation(convId)
         conversation.activePlan = { path: "/p.md", phase: "A", completedTasks: [] }
         conversation.toolCallCount = 0
@@ -176,10 +179,11 @@ describe("createContinuationHandlers", () => {
         handlers["/stop"](baseStopInput(convId))
         expect(conversation.consecutiveZeroDeltas).toBe(1)
 
+        // T1.4 audit-fix: closes the escape hatch where one tool call per cycle defeated the cap.
         conversation.toolCallCount = 3
         const result = handlers["/stop"](baseStopInput(convId)) as { followup_message?: string }
 
-        expect(conversation.consecutiveZeroDeltas).toBe(0)
+        expect(conversation.consecutiveZeroDeltas).toBe(1)
         expect(result.followup_message).toContain("Continue executing plan")
       })
 
@@ -197,6 +201,32 @@ describe("createContinuationHandlers", () => {
         expect(conversation.boulderState).toBeNull()
         expect(conversation.consecutiveContinuationFailures).toBe(0)
         expect(conversation.continuationCooldownUntil).toBeNull()
+      })
+
+      it("deactivates the boulder loop after the configured zero-delta cap is reached, even if intervening tool calls produced non-zero deltas", () => {
+        const conversation = getOrCreateConversation(convId)
+        conversation.activePlan = { path: ".cursor/plans/x.md", phase: "Wave 1", completedTasks: [] }
+        conversation.toolCallCount = 5
+        conversation.toolCallCountAtLastStop = 5
+        conversation.consecutiveZeroDeltas = 0
+
+        // Cycle 1: zero delta -> counter 1
+        let result = handlers["/stop"](baseStopInput(convId))
+        expect(conversation.consecutiveZeroDeltas).toBe(1)
+
+        // Cycle 2: tool fired (delta = 1) - counter MUST NOT reset
+        conversation.toolCallCount = 6
+        result = handlers["/stop"](baseStopInput(convId))
+        expect(conversation.consecutiveZeroDeltas).toBe(1)
+
+        // Cycle 3: zero delta again -> counter 2
+        result = handlers["/stop"](baseStopInput(convId))
+        expect(conversation.consecutiveZeroDeltas).toBe(2)
+
+        // Cycle 4: zero delta -> counter 3 (cap), deactivation fires
+        result = handlers["/stop"](baseStopInput(convId))
+        expect(conversation.activePlan).toBeNull()
+        expect(result).toEqual({})
       })
     })
 
@@ -644,7 +674,7 @@ describe("createContinuationHandlers", () => {
         active: true,
         iteration: 1,
         maxIterations: 0,
-        startedAt: new Date(Date.now() - 4_000_000).toISOString(),
+        startedAt: new Date(Date.now() - PAST_WALLCLOCK_MS).toISOString(),
         lastProcessedIndex: 0,
       }
       conversation.contextHistory = ["still working"]
@@ -662,7 +692,7 @@ describe("createContinuationHandlers", () => {
         active: true,
         failureCount: 0,
         lastContinuationAt: null,
-        loopStartedAt: new Date(Date.now() - 4_000_000).toISOString(),
+        loopStartedAt: new Date(Date.now() - PAST_WALLCLOCK_MS).toISOString(),
       }
 
       const result = handlers["/stop"](baseStopInput(convId))

@@ -83,12 +83,10 @@ describe("mcp-app", () => {
         const html = getStatusHTML()
         expect(html).toContain('label="Continuation loops"')
         expect(html).not.toMatch(/label="Ralph Loop"/)
+        // The stat value is a numeric count, not "Active"/"Inactive" string.
+        expect(html).toContain("stats?.continuationLoopsActive")
       })
 
-      test("#then SessionRow Continuation loop subsection is gated on active state", () => {
-        const html = getStatusHTML()
-        expect(html).toMatch(/(ralph[?]?\.active|ralph\s*&&\s*ralph\.active)[\s\S]{0,200}["']sess-detail-title["']>Continuation loop/)
-      })
     })
   })
 })

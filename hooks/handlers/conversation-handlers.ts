@@ -63,6 +63,7 @@ export function createConversationHandlers(
       let exploreCounts = 0
       let workerCounts = 0
       let ralphActive = false
+      let continuationLoopsActive = 0
 
       for (const [, conversation] of scope) {
         totalToolCalls += conversation.toolCallCount
@@ -81,6 +82,7 @@ export function createConversationHandlers(
           (conversation.dispatchCounts["subagent:librarian"] || 0) +
           (conversation.dispatchCounts["subagent:multimodal-looker"] || 0)
         if (conversation.ralphState?.active) ralphActive = true
+        if (conversation.ralphState?.active || conversation.boulderState?.active) continuationLoopsActive++
       }
 
       const allDispatchCounts: Record<string, number> = {}
@@ -99,6 +101,7 @@ export function createConversationHandlers(
         exploreCounts,
         workerCounts,
         ralphActive,
+        continuationLoopsActive,
         allDispatchCounts,
         fallbackConversationsCreatedSinceBoot: getFallbackConversationsCreatedSinceBoot(),
       }

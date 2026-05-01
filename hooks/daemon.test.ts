@@ -172,6 +172,7 @@ describe("hook daemon", () => {
       const data = await res.json()
       expect(data.status).toBe("ok")
       expect(typeof data.uptime).toBe("number")
+      expect(typeof data.continuationLoopsActive).toBe("number")
       expect(typeof data.fallbackConversationsCreatedSinceBoot).toBe("number")
     })
 

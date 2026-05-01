@@ -627,18 +627,17 @@ If the user's approach seems problematic:
 
 ## Model-specific guidance
 
-### GPT (GPT-5.4 / GPT-5.3-codex)
+### GPT-5.5-extra-high
 
 Most default orchestrator guidance applies. GPT-specific refinements below.
 
-- `reasoning.effort` defaults to `"none"` — explicitly encourage step-by-step thinking for non-trivial tasks. (ref: src/agents/sisyphus/gpt-5-4.ts:6)
-- Prompts work best as compact XML-tagged blocks; less repetition and fewer threats needed — GPT-5.4 follows instructions well. (ref: src/agents/sisyphus/gpt-5-4.ts:7)
-- GPT-5.4 generates preambles natively — do NOT add preamble-suppression instructions to the prompt. (ref: src/agents/sisyphus/gpt-5-4.ts:7)
-- GPT-5.4 can be over-literal — always include an intent inference step for nuanced or ambiguous requests. (ref: src/agents/sisyphus/gpt-5-4.ts:11)
-- Output contract: default responses ≤ 3-6 sentences or 5 bullets; complex multi-file: 1 overview paragraph + ≤5 tagged bullets. (ref: src/agents/sisyphus/gpt-5-4.ts:419)
-- Completeness gate: exit execution loop ONLY when every planned item is done, diagnostics are clean, and original request is FULLY addressed — not partially. (ref: src/agents/sisyphus/gpt-5-4.ts:350)
-- Dependency checks: before acting, verify all prerequisite discovery/lookup steps are done; never skip prerequisites because the final action seems obvious. (ref: src/agents/sisyphus/gpt-5-4.ts:292)
-- Progress updates at phase transitions only: 1-2 outcome-based sentences with one specific detail; no upfront narration or scripted preambles. (ref: src/agents/sisyphus/gpt-5-4.ts:359)
+- Compact XML-tagged prompt blocks work best; the model follows instructions reliably so less repetition and fewer threats are needed.
+- Generates preambles natively — do NOT add preamble-suppression instructions to the prompt.
+- Can be over-literal — always include an intent inference step for nuanced or ambiguous requests.
+- Output contract: default responses ≤ 3-6 sentences or 5 bullets; complex multi-file: 1 overview paragraph + ≤5 tagged bullets.
+- Completeness gate: exit execution loop ONLY when every planned item is done, diagnostics are clean, and original request is FULLY addressed — not partially.
+- Dependency checks: before acting, verify all prerequisite discovery/lookup steps are done; never skip prerequisites because the final action seems obvious.
+- Progress updates at phase transitions only: 1-2 outcome-based sentences with one specific detail; no upfront narration or scripted preambles.
 
 ### Gemini (Gemini 3.x)
 

@@ -1105,15 +1105,15 @@ If your client surfaces a "Create plan" affordance in Plan mode, ignore it. Use 
 
 The Prometheus prompt is model-aware. The same 10-phase workflow applies everywhere, but interview depth, tool-call enforcement, and output verbosity are tuned per model family.
 
-### GPT (GPT-5.4 / GPT-5.3-codex)
+### GPT-5.5-extra-high
 
-- Structure system prompt with XML-tagged blocks (`<identity>`, `<phases>`, `<scope_constraints>`) — GPT-5.4 parses structural tags reliably. (ref: src/agents/prometheus/gpt.ts:14)
-- Set explicit verbosity limits: interview turns 3-6 sentences + 1-3 questions; research summaries ≤5 bullets. (ref: src/agents/prometheus/gpt.ts:45-53)
-- Fire minimum 2 explore agents before the first user question; GPT rarely needs more than 2. (ref: src/agents/prometheus/gpt.ts:99-106)
-- No thinking checkpoints required — GPT-5.4 handles internal reasoning without forced intermediate output. (ref: src/agents/prometheus/system-prompt.ts:51-53)
-- Configure `reasoningEffort` via model config; avoid redundant "think step by step" instructions in the prompt. (ref: src/agents/prometheus/gpt.ts:1-9)
-- Emphasize the "Decision Complete" north star metric early and prominently — GPT responds well to explicit success criteria. (ref: src/agents/prometheus/gpt.ts:26-28)
-- Strip `Question({...})` tool code blocks when the `question` tool is disabled in the deployment context. (ref: src/agents/prometheus/system-prompt.ts:72-84)
+- Structure system prompt with XML-tagged blocks (`<identity>`, `<phases>`, `<scope_constraints>`) — the model parses structural tags reliably.
+- Set explicit verbosity limits: interview turns 3-6 sentences + 1-3 questions; research summaries ≤5 bullets.
+- Fire minimum 2 explore agents before the first user question; GPT rarely needs more than 2.
+- No thinking checkpoints required — handles internal reasoning without forced intermediate output.
+- Avoid redundant "think step by step" instructions in the prompt; reasoning effort is configured at the model level.
+- Emphasize the "Decision Complete" north star metric early and prominently — the model responds well to explicit success criteria.
+- Strip `Question({...})` tool code blocks when the `question` tool is disabled in the deployment context.
 
 ### Gemini (Gemini 3.x)
 

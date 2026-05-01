@@ -46,6 +46,24 @@ export const ContinuationSchema = z.object({
   backoff_multiplier: z.number().positive().default(2),
 })
 
+// Safety caps for the /stop continuation loop and the upstream Cursor MCP
+// LLM review hook. The MCP flag is advisory only — the actual hook entry
+// lives in hooks/hooks.json and is owned by Cursor's hook runtime, so the
+// daemon cannot wrap it with a server-side timeout. See
+// docs/internal/mcp-safety-hook.md for how to disable the hook entry.
+export const SafetyContinuationSchema = z.object({
+  max_wallclock_ms: z.number().int().positive().default(3_600_000),
+  max_consecutive_zero_deltas: z.number().int().positive().default(3),
+})
+
+export const SafetySchema = z.object({
+  continuation: SafetyContinuationSchema.default({
+    max_wallclock_ms: 3_600_000,
+    max_consecutive_zero_deltas: 3,
+  }),
+  mcp_llm_review_enabled: z.boolean().default(true),
+})
+
 export const MomusSchema = z.object({
   max_iterations: z.number().positive().default(4),
 })
@@ -80,6 +98,10 @@ export const OhMyCursorConfigSchema = z.object({
   notifications: NotificationsSchema.default({ enabled: true, sound: false }),
   orchestration: OrchestrationSchema.default({ mode: "native" }),
   continuation: ContinuationSchema.default({ cooldown_ms: 5000, max_failures: 5, backoff_multiplier: 2 }),
+  safety: SafetySchema.default({
+    continuation: { max_wallclock_ms: 3_600_000, max_consecutive_zero_deltas: 3 },
+    mcp_llm_review_enabled: true,
+  }),
   momus: MomusSchema.default({ max_iterations: 4 }),
   model_routing: ModelRoutingSchema.default({
     retry_on_errors: [429, 500, 502, 503, 504],

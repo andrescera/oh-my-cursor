@@ -24,6 +24,12 @@ export function getNotBuiltHTML(): string {
 }
 
 function buildDaemonShell(port: number): string {
+  // The dynamic import is side-effect only: src/main.tsx auto-boots when it
+  // detects #app in the DOM. We deliberately do NOT call any named export
+  // (e.g. m.boot) because Vite's HTML-entry build tree-shakes named exports of
+  // the entry module, so any property access on `m` is undefined and would
+  // throw — clobbering the just-rendered React tree via the catch handler.
+  // The catch handler still fires for real import failures (404, syntax error).
   return `<!DOCTYPE html>
 <html lang="en"><head>
 <meta charset="UTF-8" />
@@ -34,7 +40,6 @@ function buildDaemonShell(port: number): string {
 <script>window.OMC_DAEMON_PORT = ${port};</script>
 <script type="module">
   import('http://localhost:${port}/dashboard/assets/dashboard.js')
-    .then(m => m.boot('#app'))
     .catch(err => {
       const root = document.getElementById('app');
       if (!root) return;

@@ -81,6 +81,20 @@ describe("mcp-app", () => {
       const html = await getStatusHTML(27847)
       expect(html).not.toContain('<script type="module" crossorigin>')
     })
+
+    test("loads the bundle for side effect, never calls a named export on it", async () => {
+      // Regression: Vite's HTML-entry build tree-shakes named exports of the
+      // entry module, so the bundle has no `boot` (or any) export. If the
+      // daemon shell calls `m.someProperty(...)` after import, it throws
+      // TypeError, and the catch handler clobbers the rendered React tree —
+      // exactly the "m.boot is not a function" bug. The fix is to load the
+      // bundle for side effect only; src/main.tsx auto-boots when #app is
+      // present in the DOM.
+      const html = await getStatusHTML(27847)
+      expect(html).not.toMatch(/\.then\s*\(\s*m\s*=>\s*m\./)
+      expect(html).not.toContain("m.boot")
+      expect(html).toMatch(/import\(['"]http:\/\/localhost:27847\/dashboard\/assets\/dashboard\.js['"]\)\s*\.catch/)
+    })
   })
 
   describe("cache", () => {

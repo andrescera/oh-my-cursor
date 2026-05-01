@@ -5,7 +5,6 @@ import { getOrCreateConversation, resolveConversationId, wasResolvedViaFallback,
 import { createEmptyTaskDetector } from "./empty-task-detector"
 import { contextCollector } from "../context-collector"
 import { loadConfig } from "../config"
-import { logEvent } from "../event-logger"
 import { AgentHistoryStore, getDefaultAgentHistoryStore, recordHistoryEntry } from "../agent-history-store"
 import { appendFileSync } from "node:fs"
 import { resolve } from "node:path"
@@ -298,13 +297,6 @@ export function createSubagentHandlers(
           } catch {
             void 0
           }
-          logEvent({
-            ts: new Date().toISOString(),
-            event: "/subagentStop",
-            sessionId: convId,
-            agentType: subagentType,
-            action: "notify",
-          })
         }
       }
 

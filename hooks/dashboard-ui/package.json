@@ -33,6 +33,7 @@
     "@types/react": "latest",
     "@types/react-dom": "latest",
     "@vitejs/plugin-react": "6.0.1",
+    "axe-core": "^4.11.4",
     "happy-dom": "^20.9.0",
     "jsdom": "^29.1.1",
     "lucide-react": "1.14.0",
@@ -40,6 +41,7 @@
     "typescript": "6.0.3",
     "vite": "8.0.10",
     "vite-plugin-singlefile": "2.3.3",
-    "vitest": "latest"
+    "vitest": "latest",
+    "vitest-axe": "^0.1.0"
   }
 }

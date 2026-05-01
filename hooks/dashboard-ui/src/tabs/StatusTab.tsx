@@ -316,7 +316,7 @@ function RecentErrorsSection({
   return (
     <section className="space-y-2">
       <header className="flex items-center justify-between gap-2">
-        <h3 className="font-heading text-sm">Recent errors</h3>
+        <h2 className="font-heading text-sm">Recent errors</h2>
         <Button
           variant="link"
           size="sm"

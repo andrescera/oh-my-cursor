@@ -394,7 +394,6 @@ export default function Shell({ enableSse = true }: ShellProps) {
               <TabsContent
                 key={t.id}
                 value={t.id}
-                aria-labelledby={`tab-trigger-${t.id}`}
                 className="mt-3 flex-1 motion-safe:animate-in motion-safe:fade-in-50"
               >
                 <ErrorBoundary>

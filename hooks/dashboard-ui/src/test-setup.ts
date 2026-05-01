@@ -1,4 +1,12 @@
 import '@testing-library/jest-dom/vitest'
+import 'vitest-axe/extend-expect'
+import * as axeMatchers from 'vitest-axe/matchers'
+import { expect } from 'vitest'
+
+// vitest-axe ships matchers as plain functions; extend-expect alone only
+// declares the TypeScript ambient types. Extend `expect` so the matchers
+// are wired at runtime as well.
+expect.extend(axeMatchers)
 
 // Bun's runtime injects a non-functional `localStorage` / `sessionStorage`
 // stub on `globalThis` AND on jsdom/happy-dom's `window`, even when no

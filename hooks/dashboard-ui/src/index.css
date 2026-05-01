@@ -6,7 +6,7 @@
 @custom-variant dark (&:is(.dark *));
 
 :root {
-    /* Surface neutrals — VSCode editor colors with warm-tinted dark fallbacks (low chroma per impeccable laws) */
+    /* Surface neutrals: VSCode editor colors with warm-tinted dark fallbacks (low chroma per impeccable laws) */
     --background: var(--vscode-editor-background, oklch(0.18 0.008 70));
     --foreground: var(--vscode-editor-foreground, oklch(0.86 0.008 70));
     --card: var(--vscode-editorWidget-background, oklch(0.22 0.008 70));
@@ -19,7 +19,7 @@
     --input: var(--vscode-input-background, oklch(0.24 0.008 70));
     --ring: var(--vscode-focusBorder, oklch(0.65 0.13 240));
 
-    /* Brand / accent — VSCode primary button family */
+    /* Brand / accent: VSCode primary button family */
     --primary: var(--vscode-button-background, oklch(0.62 0.13 240));
     --primary-foreground: var(--vscode-button-foreground, oklch(0.97 0.01 240));
     --secondary: var(--vscode-button-secondaryBackground, oklch(0.30 0.012 70));
@@ -31,21 +31,21 @@
     --destructive: oklch(0.65 0.18 25);
     --destructive-foreground: oklch(0.98 0.01 70);
 
-    /* Status semantic tokens — OKLCH near VSCode debug/error families */
+    /* Status semantic tokens: OKLCH near VSCode debug/error families */
     --status-ok: oklch(0.74 0.13 165);
     --status-warn: oklch(0.78 0.13 90);
     --status-error: oklch(0.65 0.18 25);
     --status-info: oklch(0.70 0.10 240);
     --status-running: oklch(0.72 0.13 270);
 
-    /* Charts — warm-tinted analytic palette */
+    /* Charts: warm-tinted analytic palette */
     --chart-1: oklch(0.65 0.13 240);
     --chart-2: oklch(0.72 0.13 165);
     --chart-3: oklch(0.78 0.13 90);
     --chart-4: oklch(0.65 0.18 25);
     --chart-5: oklch(0.72 0.13 270);
 
-    /* Sidebar — slightly raised neutral */
+    /* Sidebar: slightly raised neutral */
     --sidebar: var(--vscode-sideBar-background, oklch(0.20 0.008 70));
     --sidebar-foreground: var(--vscode-sideBar-foreground, oklch(0.86 0.008 70));
     --sidebar-primary: var(--vscode-button-background, oklch(0.62 0.13 240));
@@ -112,7 +112,20 @@
     --radius-4xl: calc(var(--radius) * 2.6);
 }
 
-/* Reduced-motion baseline — W3.1 expands */
+/* W3.1 global reduced-motion contract.
+ *
+ * The blanket rule collapses every CSS animation/transition (including the
+ * ones tw-animate-css ships for shadcn/Radix mounts: `animate-in`,
+ * `fade-in-*`, `zoom-in-*`, `slide-in-from-*`) and the global `animate-pulse`
+ * skeleton/indicator pulses to ~instant. Then the targeted exceptions below
+ * preserve essential motion the audit calls out:
+ *   - spinners stay legible by spinning slowly (1 turn / 2s) instead of
+ *     freezing; disabling them outright reads as "broken loading state".
+ *   - the SSE banner status dot continues to pulse at a calm 3s cycle so a
+ *     reconnecting daemon still telegraphs liveness without strobing.
+ *   - the live-status indicator on the Status tab pulses at the same
+ *     calmed cadence.
+ */
 @media (prefers-reduced-motion: reduce) {
     *,
     *::before,
@@ -121,6 +134,17 @@
         animation-iteration-count: 1 !important;
         transition-duration: 0.01ms !important;
         scroll-behavior: auto !important;
+    }
+
+    .animate-spin {
+        animation-duration: 2s !important;
+        animation-iteration-count: infinite !important;
+    }
+
+    [data-testid='sse-banner'] .animate-pulse,
+    [data-testid='sse-status'] .animate-pulse {
+        animation-duration: 3s !important;
+        animation-iteration-count: infinite !important;
     }
 }
 

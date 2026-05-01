@@ -451,14 +451,16 @@ function renderSectionFields(
   function walk(node: unknown, path: (string | number)[]): void {
     if (isPlainObject(node)) {
       // Render a small heading for nested sub-objects (path.length >= 2).
+      // h3 keeps the heading order valid: section title is h2, nested
+      // group label is h3 — no levels skipped.
       if (path.length >= 2) {
         out.push(
-          <h4
+          <h3
             key={`h-${path.join('.')}`}
             className="mt-3 text-xs font-medium uppercase tracking-wide text-muted-foreground"
           >
             {humanLabel(String(path[path.length - 1]))}
-          </h4>,
+          </h3>,
         )
       }
       for (const k of Object.keys(node)) {
@@ -803,7 +805,7 @@ export default function ConfigTab(props: ConfigTabProps = {}) {
               data-testid={`config-section-${s.id}`}
               onClick={() => setActiveId(s.id)}
               className={
-                'flex items-center justify-between rounded-md px-2.5 py-1.5 text-left text-sm transition-colors ' +
+                'flex items-center justify-between rounded-md px-2.5 py-1.5 text-left text-sm outline-none transition-colors focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset ' +
                 (isActive
                   ? 'bg-primary/10 font-medium text-foreground'
                   : 'text-muted-foreground hover:bg-muted hover:text-foreground')

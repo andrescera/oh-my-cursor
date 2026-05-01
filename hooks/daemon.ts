@@ -26,6 +26,12 @@ const tracker = new BackgroundTracker()
 const persistence = new StatePersistence(config.state_persistence.path)
 setPersistence(persistence)
 
+const DAEMON_BOOT_ID = crypto.randomUUID()
+
+export function getDaemonBootId(): string {
+  return DAEMON_BOOT_ID
+}
+
 function mergedConversationIndex(): Map<string, ConversationMetadata> {
   const index = persistence.loadIndex()
   for (const [id, conv] of conversations) {

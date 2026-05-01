@@ -7,6 +7,7 @@ export type EventEntry = {
   sessionId: string
   tool?: string
   agentType?: string
+  agentId?: string
   action?: string
   durationMs?: number
   error?: string

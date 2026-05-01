@@ -31,6 +31,7 @@ export type RecentToolTrailEntry = {
 export type ConversationState = {
   id: string
   startedAt: string
+  displayTitle: string | null
   env: Record<string, string>
   dispatchCounts: Record<string, number>
   dispatchCountsThisTurn: Record<string, number>
@@ -70,6 +71,70 @@ export type ConversationState = {
   wisdomLearnings: Array<{ source: string; learning: string; timestamp: string }>
   createdViaFallback: boolean
 }
+
+export type DurableConversationFields = Pick<
+  ConversationState,
+  | "id"
+  | "startedAt"
+  | "displayTitle"
+  | "env"
+  | "dispatchCounts"
+  | "dispatchCountsThisTurn"
+  | "contextHistory"
+  | "readPaths"
+  | "injectedPaths"
+  | "pendingWriteArgs"
+  | "toolCallCount"
+  | "recentToolTrail"
+  | "toolCallsSinceTaskDispatch"
+  | "stoppedAt"
+  | "errorCount"
+  | "lastCompactionEpoch"
+  | "compactionSnapshot"
+  | "activePlan"
+  | "todoStates"
+  | "momusIterations"
+  | "subagentOutcomes"
+  | "subagentFailureCounts"
+  | "delegateRetryState"
+  | "shellFailureCounts"
+  | "fileEditCounts"
+  | "mcpCallCounts"
+  | "responseCount"
+  | "estimatedTokens"
+  | "tokenWarningEmitted"
+  | "wisdomLearnings"
+  | "createdViaFallback"
+>
+
+export type EphemeralConversationFields = Pick<
+  ConversationState,
+  | "composerMode"
+  | "ralphState"
+  | "boulderState"
+  | "continuationCooldownUntil"
+  | "consecutiveContinuationFailures"
+  | "toolCallCountAtLastStop"
+  | "consecutiveZeroDeltas"
+  | "lastTodoSnapshot"
+  | "abortDetectedAt"
+  | "reminderInjected"
+>
+
+export type PersistedRecord = DurableConversationFields & {
+  projectRoot: string
+  daemonBootId: string
+  schemaVersion: 2
+}
+
+type Equals<A, B> = (
+  (<T>() => T extends A ? 1 : 2) extends (<T>() => T extends B ? 1 : 2)
+    ? ((<T>() => T extends B ? 1 : 2) extends (<T>() => T extends A ? 1 : 2) ? true : false)
+    : false
+)
+
+type AssertTrue<T extends true> = T
+type _ConversationStateCheck = AssertTrue<Equals<ConversationState, DurableConversationFields & EphemeralConversationFields>>
 
 export type HandlerFn = (input: Record<string, unknown>) => Record<string, unknown>
 

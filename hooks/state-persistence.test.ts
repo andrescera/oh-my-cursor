@@ -10,6 +10,7 @@ function createTestConversation(id: string): ConversationState {
   return {
     id,
     startedAt: new Date().toISOString(),
+    displayTitle: null,
     env: {},
     dispatchCounts: {},
     dispatchCountsThisTurn: {},

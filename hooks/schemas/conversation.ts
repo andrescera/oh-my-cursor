@@ -37,6 +37,7 @@ export type RecentToolTrailEntry = z.infer<typeof RecentToolTrailEntrySchema>
 export const ConversationStateSchema = z.object({
   id: z.string(),
   startedAt: z.string(),
+  displayTitle: z.string().nullable(),
   env: z.record(z.string(), z.string()),
   dispatchCounts: z.record(z.string(), z.number()),
   dispatchCountsThisTurn: z.record(z.string(), z.number()),

@@ -75,6 +75,7 @@ export class StatePersistence {
       if (!text.trim()) return null
       const data = JSON.parse(text)
       const backwardCompatDefaults = {
+        displayTitle: null,
         abortDetectedAt: null,
         delegateRetryState: {},
         toolCallCountAtLastStop: 0,

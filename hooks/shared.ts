@@ -39,6 +39,7 @@ export function getOrCreateConversation(conversationId: string, viaFallback?: bo
     const created: ConversationState = {
       id: conversationId,
       startedAt: new Date().toISOString(),
+      displayTitle: null,
       env: {},
       dispatchCounts: {},
       dispatchCountsThisTurn: {},

@@ -10,6 +10,7 @@ function minimalConversation(overrides: Record<string, unknown> = {}) {
   return {
     id: "sess-1",
     startedAt: "2026-01-01T00:00:00.000Z",
+    displayTitle: null,
     env: {},
     dispatchCounts: {},
     dispatchCountsThisTurn: {},

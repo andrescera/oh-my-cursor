@@ -1,22 +1,8 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { useShallow } from 'zustand/shallow'
-import { KeyboardIcon, MoonIcon, SunIcon } from 'lucide-react'
 
 import { Badge } from '@/components/ui/badge'
-import { Button } from '@/components/ui/button'
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipTrigger,
-} from '@/components/ui/tooltip'
 
 import { ErrorBoundary } from '@/components/ErrorBoundary'
 import { SseBanner } from '@/components/SseBanner'
@@ -30,7 +16,7 @@ import {
 } from '@/store/selectors'
 import { createSseClient, type SseClient } from '@/lib/sse'
 
-import { HOTKEY_TO_TAB, TAB_DEFINITIONS } from '@/tabs/registry'
+import { TAB_DEFINITIONS } from '@/tabs/registry'
 
 import StatusTab from '@/tabs/StatusTab'
 import HooksTab from '@/tabs/HooksTab'
@@ -39,6 +25,9 @@ import EventsTab from '@/tabs/EventsTab'
 import SessionsTab from '@/tabs/SessionsTab'
 import AgentsTab from '@/tabs/AgentsTab'
 import ConfigTab from '@/tabs/ConfigTab'
+
+import { ShellHeader } from './ShellHeader'
+import { useShellHotkeys } from './ShellHotkeys'
 
 const TAB_PANELS: Record<TabId, () => React.JSX.Element> = {
   status: () => <StatusTab />,
@@ -57,13 +46,6 @@ const SSE_MAX_BACKOFF_MS = 30_000
 function nextReconnectAt(attempt: number, now: number): number {
   const backoff = Math.min(SSE_BASE_BACKOFF_MS * 2 ** Math.max(0, attempt - 1), SSE_MAX_BACKOFF_MS)
   return now + backoff
-}
-
-function isEditableTarget(target: EventTarget | null): boolean {
-  if (!(target instanceof HTMLElement)) return false
-  if (target.isContentEditable) return true
-  const tag = target.tagName
-  return tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT'
 }
 
 function useTabBadgeCounts(): Partial<Record<TabId, number>> {
@@ -88,109 +70,6 @@ function useTabBadgeCounts(): Partial<Record<TabId, number>> {
         agents: agentsRunning,
       }
     }),
-  )
-}
-
-function ConversationSelector() {
-  const selectedConversation = useDashboardStore(
-    (s) => s.connection.selectedConversation,
-  )
-  const setSelectedConversation = useDashboardStore(
-    (s) => s.setSelectedConversation,
-  )
-  const sessions = useDashboardStore((s) => s.data.sessions)
-
-  const options = useMemo<{ value: string; label: string }[]>(() => {
-    if (!Array.isArray(sessions) || sessions.length === 0) return []
-    const seen = new Set<string>()
-    const out: { value: string; label: string }[] = []
-    for (const raw of sessions) {
-      const s = raw as { conversationId?: string; id?: string; title?: string }
-      const value = s?.conversationId ?? s?.id
-      if (typeof value !== 'string' || seen.has(value)) continue
-      seen.add(value)
-      out.push({ value, label: s?.title ?? value })
-    }
-    return out
-  }, [sessions])
-
-  if (options.length === 0) {
-    return (
-      <Badge variant="outline" className="font-mono text-[11px]">
-        no conversation
-      </Badge>
-    )
-  }
-
-  return (
-    <Select
-      value={selectedConversation ?? options[0]!.value}
-      onValueChange={setSelectedConversation}
-    >
-      <SelectTrigger size="sm" aria-label="Select conversation" className="min-w-40">
-        <SelectValue placeholder="Conversation" />
-      </SelectTrigger>
-      <SelectContent>
-        {options.map((o) => (
-          <SelectItem key={o.value} value={o.value}>
-            {o.label}
-          </SelectItem>
-        ))}
-      </SelectContent>
-    </Select>
-  )
-}
-
-function ShellHeader({
-  onOpenShortcuts,
-}: {
-  onOpenShortcuts: () => void
-}) {
-  const denseMode = useDenseMode()
-  const toggleDense = useDashboardStore((s) => s.toggleDense)
-
-  return (
-    <header className="flex flex-wrap items-center gap-3 border-b border-border bg-card/30 px-4 py-2">
-      <h1 className="text-sm font-semibold tracking-tight text-foreground">
-        oh-my-cursor
-        <span className="ml-2 text-muted-foreground">Dashboard</span>
-      </h1>
-      <Badge variant="outline" className="font-mono text-[11px]">
-        v0
-      </Badge>
-      <div className="ml-auto flex items-center gap-2">
-        <ConversationSelector />
-        <Tooltip>
-          <TooltipTrigger asChild>
-            <Button
-              variant="outline"
-              size="icon-sm"
-              aria-label={denseMode ? 'Switch to comfortable density' : 'Switch to dense density'}
-              aria-pressed={denseMode}
-              onClick={toggleDense}
-            >
-              {denseMode ? <SunIcon /> : <MoonIcon />}
-            </Button>
-          </TooltipTrigger>
-          <TooltipContent>
-            {denseMode ? 'Comfortable mode' : 'Dense mode'}
-          </TooltipContent>
-        </Tooltip>
-        <Tooltip>
-          <TooltipTrigger asChild>
-            <Button
-              variant="outline"
-              size="icon-sm"
-              aria-label="Show keyboard shortcuts"
-              onClick={onOpenShortcuts}
-            >
-              <KeyboardIcon />
-            </Button>
-          </TooltipTrigger>
-          <TooltipContent>Keyboard shortcuts (?)</TooltipContent>
-        </Tooltip>
-      </div>
-    </header>
   )
 }
 
@@ -264,48 +143,7 @@ export default function Shell({ enableSse = true }: ShellProps) {
     }
   }, [enableSse, setSseStatus])
 
-  // Global keyboard shortcuts. Skips IME composition + editable targets so
-  // typing into the events search input doesn't hijack the digit keys.
-  useEffect(() => {
-    if (typeof window === 'undefined') return
-    function onKeyDown(e: KeyboardEvent) {
-      if (e.defaultPrevented || e.metaKey || e.ctrlKey || e.altKey) return
-      // `?` opens the shortcuts sheet even from within an editable target;
-      // that's the conventional escape hatch from any context.
-      if (e.key === '?') {
-        e.preventDefault()
-        setShortcutsOpen((open) => !open)
-        return
-      }
-      if (isEditableTarget(e.target)) return
-      const tabFromHotkey = HOTKEY_TO_TAB[e.key]
-      if (tabFromHotkey) {
-        e.preventDefault()
-        setActiveTab(tabFromHotkey)
-        return
-      }
-      if (e.key === '/') {
-        e.preventDefault()
-        if (useDashboardStore.getState().ui.activeTab !== 'events') {
-          setActiveTab('events')
-        }
-        // Listener lives in EventsTab.tsx (FOCUS_SEARCH_EVENT). Names must
-        // stay aligned; the round-trip spec in Shell.events-shortcut.test.tsx
-        // mounts both sides together so a future rename can't drift again.
-        window.dispatchEvent(new CustomEvent('omc-focus-events-search'))
-        return
-      }
-      if (e.key === 'r' || e.key === 'R') {
-        e.preventDefault()
-        const tab = useDashboardStore.getState().ui.activeTab
-        window.dispatchEvent(
-          new CustomEvent('tab-refresh', { detail: { tab } }),
-        )
-      }
-    }
-    window.addEventListener('keydown', onKeyDown)
-    return () => window.removeEventListener('keydown', onKeyDown)
-  }, [setActiveTab])
+  useShellHotkeys({ setActiveTab, setShortcutsOpen })
 
   // Arrow-key tablist navigation. Radix Tabs ships with this, but we
   // supplement it so the keyboard contract is enforceable in tests + works

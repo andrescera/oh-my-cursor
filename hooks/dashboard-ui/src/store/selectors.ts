@@ -11,7 +11,6 @@ export const useConnection = () =>
 
 export const useActiveTab = () => useDashboardStore((s) => s.ui.activeTab)
 export const useDenseMode = () => useDashboardStore((s) => s.ui.denseMode)
-export const useEventsFilter = () => useDashboardStore((s) => s.ui.eventsFilter)
 export const useSseStatus = () =>
   useDashboardStore((s) => s.connection.sseStatus)
 

@@ -133,7 +133,7 @@ export default function HooksTab() {
 
   return (
     <div className="flex flex-col gap-3 p-3" data-slot="hooks-tab">
-      <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+      <div className="grid grid-cols-1 gap-3 min-[500px]:grid-cols-2">
         <Card data-slot="hooks-column-enabled">
           <CardHeader>
             <CardTitle className="flex items-center justify-between">

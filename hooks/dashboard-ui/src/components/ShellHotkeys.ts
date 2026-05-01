@@ -1,6 +1,7 @@
 import { useEffect } from 'react'
 
 import { useDashboardStore, type TabId } from '@/store/dashboard'
+import { TAB_REFRESH_EVENT } from '@/lib/tab-refresh'
 import { HOTKEY_TO_TAB } from '@/tabs/registry'
 
 export function isEditableTarget(target: EventTarget | null): boolean {
@@ -48,8 +49,11 @@ export function useShellHotkeys({ setActiveTab, setShortcutsOpen }: ShellHotkeys
       if (e.key === 'r' || e.key === 'R') {
         e.preventDefault()
         const tab = useDashboardStore.getState().ui.activeTab
+        // Active tab listens via TAB_REFRESH_EVENT and re-runs its loader.
+        // Radix Tabs unmounts inactive panels, so this fires only on the
+        // tab the user is currently looking at.
         window.dispatchEvent(
-          new CustomEvent('tab-refresh', { detail: { tab } }),
+          new CustomEvent(TAB_REFRESH_EVENT, { detail: { tab } }),
         )
       }
     }

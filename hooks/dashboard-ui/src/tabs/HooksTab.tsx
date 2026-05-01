@@ -11,6 +11,7 @@ import {
 import { Skeleton } from '@/components/ui/skeleton'
 import { getConfig, type ApiError } from '@/lib/api'
 import { describeApiError } from '@/lib/api-error'
+import { TAB_REFRESH_EVENT } from '@/lib/tab-refresh'
 import { useDashboardStore } from '@/store/dashboard'
 
 type HookConfig = { enabled: string[]; disabled: string[] }
@@ -107,6 +108,14 @@ export default function HooksTab() {
 
   useEffect(() => {
     void load()
+  }, [load])
+
+  useEffect(() => {
+    const handler = () => {
+      void load()
+    }
+    window.addEventListener(TAB_REFRESH_EVENT, handler)
+    return () => window.removeEventListener(TAB_REFRESH_EVENT, handler)
   }, [load])
 
   if (state.status === 'error') {

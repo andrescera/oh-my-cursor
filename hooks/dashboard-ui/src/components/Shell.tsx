@@ -15,6 +15,7 @@ import {
   useDenseMode,
 } from '@/store/selectors'
 import { createSseClient, type SseClient } from '@/lib/sse'
+import { dashboardSseBindings } from '@/lib/sse-dashboard-binding'
 
 import { TAB_DEFINITIONS } from '@/tabs/registry'
 
@@ -109,6 +110,7 @@ export default function Shell({ enableSse = true }: ShellProps) {
     try {
       client = createSseClient({
         url,
+        ...dashboardSseBindings(),
         onStatusChange(next) {
           if (next === 'connected') {
             setSseStatus('connected', { reconnectAttempt: 0, reconnectAt: null })

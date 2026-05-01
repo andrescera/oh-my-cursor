@@ -12,6 +12,7 @@ import { Separator } from '@/components/ui/separator'
 import { Skeleton } from '@/components/ui/skeleton'
 import { type ApiError, getHealth, type Result } from '@/lib/api'
 import { describeApiError } from '@/lib/api-error'
+import { TAB_REFRESH_EVENT } from '@/lib/tab-refresh'
 import { useDashboardStore } from '@/store/dashboard'
 import {
   useDispatchCounts,
@@ -84,6 +85,14 @@ export default function StatusTab() {
     }
     lastStatusRef.current = sseStatus
   }, [sseStatus, fetchHealth])
+
+  useEffect(() => {
+    const handler = () => {
+      void fetchHealth()
+    }
+    window.addEventListener(TAB_REFRESH_EVENT, handler)
+    return () => window.removeEventListener(TAB_REFRESH_EVENT, handler)
+  }, [fetchHealth])
 
   if (loading) {
     return (

@@ -30,6 +30,7 @@ import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
 import { clearSessionLog, getSessionLog, type ApiError } from '@/lib/api'
 import { describeApiError, formatApiErrorInline } from '@/lib/api-error'
+import { TAB_REFRESH_EVENT } from '@/lib/tab-refresh'
 import { useDashboardStore } from '@/store/dashboard'
 import { useExpanded, useUi } from '@/store/selectors'
 
@@ -83,6 +84,14 @@ export default function EventsTab() {
 
   useEffect(() => {
     void fetchEvents()
+  }, [fetchEvents])
+
+  useEffect(() => {
+    const handler = () => {
+      void fetchEvents()
+    }
+    window.addEventListener(TAB_REFRESH_EVENT, handler)
+    return () => window.removeEventListener(TAB_REFRESH_EVENT, handler)
   }, [fetchEvents])
 
   useEffect(() => {

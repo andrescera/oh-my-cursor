@@ -1,6 +1,7 @@
 import { act, render, screen, waitFor } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest'
 
+import { TAB_REFRESH_EVENT } from '@/lib/tab-refresh'
 import { _resetForTests, useDashboardStore } from '@/store/dashboard'
 
 const getHealthMock = vi.fn()
@@ -141,6 +142,25 @@ describe('StatusTab: view all errors', () => {
 
     expect(useDashboardStore.getState().ui.eventsFilter).toBe('errors')
     expect(useDashboardStore.getState().ui.activeTab).toBe('events')
+  })
+})
+
+describe('StatusTab: `r` hotkey refresh', () => {
+  test('omc-tab-refresh event refetches /health', async () => {
+    render(<StatusTab />)
+    await flushHealth()
+
+    expect(getHealthMock).toHaveBeenCalledTimes(1)
+
+    act(() => {
+      window.dispatchEvent(
+        new CustomEvent(TAB_REFRESH_EVENT, { detail: { tab: 'status' } }),
+      )
+    })
+
+    await waitFor(() => {
+      expect(getHealthMock).toHaveBeenCalledTimes(2)
+    })
   })
 })
 

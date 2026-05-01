@@ -39,6 +39,7 @@ import {
 import { Skeleton } from '@/components/ui/skeleton'
 import { type ApiError, getFullConfig, saveConfig } from '@/lib/api'
 import { describeApiError, formatApiErrorInline } from '@/lib/api-error'
+import { TAB_REFRESH_EVENT } from '@/lib/tab-refresh'
 import { useDashboardStore } from '@/store/dashboard'
 
 import { renderSectionFields } from './config/ConfigSection'
@@ -110,6 +111,15 @@ export default function ConfigTab(props: ConfigTabProps = {}) {
   useEffect(() => {
     if (props.initialConfig) return
     void load()
+  }, [load, props.initialConfig])
+
+  useEffect(() => {
+    if (props.initialConfig) return
+    const handler = () => {
+      void load()
+    }
+    window.addEventListener(TAB_REFRESH_EVENT, handler)
+    return () => window.removeEventListener(TAB_REFRESH_EVENT, handler)
   }, [load, props.initialConfig])
 
   const sections = useMemo(

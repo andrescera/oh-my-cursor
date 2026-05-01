@@ -48,6 +48,7 @@ import {
 import { type ApiError, getAgentHistory } from '@/lib/api'
 import { describeApiError } from '@/lib/api-error'
 import type { AgentRow as SseAgentRow } from '@/lib/sse-reducer'
+import { TAB_REFRESH_EVENT } from '@/lib/tab-refresh'
 import { useDashboardStore } from '@/store/dashboard'
 
 import { GanttSkeleton, GanttView } from './AgentsGantt'
@@ -120,6 +121,15 @@ export default function AgentsTab(props: AgentsTabProps = {}) {
   useEffect(() => {
     if (isSeeded) return
     void load()
+  }, [isSeeded, load])
+
+  useEffect(() => {
+    if (isSeeded) return
+    const handler = () => {
+      void load()
+    }
+    window.addEventListener(TAB_REFRESH_EVENT, handler)
+    return () => window.removeEventListener(TAB_REFRESH_EVENT, handler)
   }, [isSeeded, load])
 
   const merged = useMemo<AgentBar[]>(() => {

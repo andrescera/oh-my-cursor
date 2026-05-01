@@ -13,6 +13,7 @@ import {
 import { Skeleton } from '@/components/ui/skeleton'
 import { getSessions } from '@/lib/api'
 import { describeApiError } from '@/lib/api-error'
+import { TAB_REFRESH_EVENT } from '@/lib/tab-refresh'
 import {
   type SessionsSort,
   useDashboardStore,
@@ -93,6 +94,14 @@ export default function SessionsTab() {
 
   useEffect(() => {
     void load()
+  }, [load])
+
+  useEffect(() => {
+    const handler = () => {
+      void load()
+    }
+    window.addEventListener(TAB_REFRESH_EVENT, handler)
+    return () => window.removeEventListener(TAB_REFRESH_EVENT, handler)
   }, [load])
 
   const filtered = useMemo(() => {

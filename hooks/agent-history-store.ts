@@ -126,9 +126,6 @@ function sanitizeEntry(entry: AgentHistoryEntry): AgentHistoryEntry {
   if (completedAt !== null) {
     durationMs = Math.max(0, completedAt - startTime)
   }
-  if (completedAt !== null && completedAt < startTime) {
-    durationMs = 0
-  }
 
   return {
     agentId: parsed.agentId,

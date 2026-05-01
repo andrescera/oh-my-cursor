@@ -1,5 +1,5 @@
 import type { AgentHistoryEntry, ConversationState, HandlerMap } from "../types"
-import type { BackgroundTracker } from "./background-tracker"
+import type { BackgroundTracker, TrackedTask } from "./background-tracker"
 import { addWisdomLearning, formatWisdomForInjection } from "./wisdom-tracker"
 import { getOrCreateConversation, resolveConversationId, wasResolvedViaFallback, derivedProjectRoot } from "../shared"
 import { createEmptyTaskDetector } from "./empty-task-detector"
@@ -49,16 +49,20 @@ function buildHistoryEntryForStop(
   startTime: number,
   completedAt: number,
   errorMessage: string,
+  description: string,
 ): Partial<AgentHistoryEntry> {
-  const hasError = errorMessage.length > 0
+  const reportedStatus = ((input.status as string) || "").toLowerCase()
+  const hasFailureStatus = reportedStatus === "failed" || reportedStatus === "error"
+  const hasError = hasFailureStatus || errorMessage.length > 0
   return {
     status: hasError ? "failed" : "completed",
     agentId,
     agentType: ((input.agent_type as string) || (input.subagent_type as string) || "unknown").toLowerCase(),
+    description,
     startTime,
     completedAt,
     durationMs: completedAt - startTime,
-    errorContext: hasError ? errorMessage : null,
+    errorContext: errorMessage.length > 0 ? errorMessage : null,
     projectRoot: derivedProjectRoot(input),
     daemonBootId: getDaemonBootId(),
   }
@@ -132,31 +136,43 @@ export function createSubagentHandlers(
 
     "/subagentStop": (input) => {
       const entryMs = Date.now()
-      const agentId = (input.agent_id as string) || ""
+      const inputAgentId = (input.agent_id as string) || ""
       const convId = resolveConversationId(input)
-      const existingEntry = agentId ? tracker.getEntry(agentId) : null
+      const existingEntry = inputAgentId ? tracker.getEntry(inputAgentId) : null
+      const stopType = ((input.agent_type as string) || (input.subagent_type as string) || "").toLowerCase()
+      let matchedStopEntry: { agentId: string; task: TrackedTask } | null = null
 
-      // Reflect agent_id back onto input (empty allowed) so the central
-      // logEvent in daemon.ts can carry it on the SSE EventEntry; the
-      // dashboard's /subagentStop SSE matcher already prefers explicit ids
-      // before falling back to oldest-by-type.
-      input.agent_id = agentId
-      if (agentId) {
-        tracker.complete(agentId)
-      } else {
-        const stopType = ((input.agent_type as string) || (input.subagent_type as string) || "").toLowerCase()
-        if (stopType) {
-          tracker.completeOldestByType(convId, stopType)
+      if (inputAgentId) {
+        tracker.complete(inputAgentId)
+        if (existingEntry) {
+          matchedStopEntry = { agentId: inputAgentId, task: existingEntry }
         }
+      } else if (stopType) {
+        matchedStopEntry = tracker.completeOldestByType(convId, stopType)
       }
+
+      const agentId = matchedStopEntry?.agentId ?? inputAgentId
+      // Reflect resolved agent_id back onto input. When no explicit id is
+      // provided, this ensures downstream logs/history line up with the
+      // oldest-by-type tracker entry that was actually completed.
+      input.agent_id = agentId
       const errorMessage = (input.error_message as string) || ""
       const completedAt = Date.now()
-      const startTime = existingEntry?.startTime ?? (completedAt - 1)
-      const historyAgentId = agentId || `${((input.agent_type as string) || (input.subagent_type as string) || "unknown").toLowerCase()}-stop-${completedAt}`
-      recordHistoryEntry(
-        buildHistoryEntryForStop(input, historyAgentId, startTime, completedAt, errorMessage),
-        historyStore,
-      )
+      if (agentId) {
+        const startTime = matchedStopEntry?.task.startTime ?? existingEntry?.startTime ?? (completedAt - 1)
+        const description =
+          matchedStopEntry?.task.description ??
+          existingEntry?.description ??
+          ((input.description as string) || "")
+        recordHistoryEntry(
+          buildHistoryEntryForStop(input, agentId, startTime, completedAt, errorMessage, description),
+          historyStore,
+        )
+      } else {
+        console.warn(
+          `[oh-my-cursor][subagentStop] Missing agent_id and no tracker match for conversation "${convId}" type "${stopType}". Skipping history write.`,
+        )
+      }
 
       const subagentType = (input.agent_type as string) || (input.subagent_type as string) || ""
       const status = (input.status as string) || ""

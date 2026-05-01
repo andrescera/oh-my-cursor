@@ -1,4 +1,4 @@
-import { afterEach, beforeEach, describe, expect, it } from "bun:test"
+import { afterEach, beforeEach, describe, expect, it, spyOn } from "bun:test"
 import { mkdtempSync, rmSync } from "node:fs"
 import { tmpdir } from "node:os"
 import { join } from "node:path"
@@ -115,5 +115,90 @@ describe("subagent history lifecycle", () => {
     expect(entries[0]?.status).toBe("failed")
     expect(entries[0]?.errorContext).toContain("[REDACTED:openai]")
     expect(entries[0]?.errorContext).not.toContain("sk-fake")
+  })
+
+  it("/subagentStop keeps failed status when status=failed and error_message is empty", () => {
+    const handlers = createSubagentHandlers(conversations, tracker, store)
+    handlers["/subagentStart"]!({
+      conversation_id: "conv-stop-failed-no-error",
+      agent_type: "sisyphus-junior",
+      agent_id: "agent-stop-failed-no-error-1",
+      description: "run task",
+    })
+
+    handlers["/subagentStop"]!({
+      conversation_id: "conv-stop-failed-no-error",
+      agent_type: "sisyphus-junior",
+      agent_id: "agent-stop-failed-no-error-1",
+      status: "failed",
+      error_message: "",
+    })
+
+    const entries = store.query({})
+    expect(entries).toHaveLength(1)
+    expect(entries[0]?.status).toBe("failed")
+  })
+
+  it("/subagentStop preserves start-row description on finalization", () => {
+    const handlers = createSubagentHandlers(conversations, tracker, store)
+    handlers["/subagentStart"]!({
+      conversation_id: "conv-stop-description-preserved",
+      agent_type: "sisyphus-junior",
+      agent_id: "agent-stop-description-preserved-1",
+      description: "keep this description",
+    })
+
+    handlers["/subagentStop"]!({
+      conversation_id: "conv-stop-description-preserved",
+      agent_type: "sisyphus-junior",
+      agent_id: "agent-stop-description-preserved-1",
+      description: "",
+      status: "completed",
+    })
+
+    const entries = store.query({})
+    expect(entries).toHaveLength(1)
+    expect(entries[0]?.description).toBe("keep this description")
+  })
+
+  it("/subagentStop without agent_id finalizes against matched oldest tracker entry", () => {
+    const handlers = createSubagentHandlers(conversations, tracker, store)
+    handlers["/subagentStart"]!({
+      conversation_id: "conv-stop-no-agent-id-match",
+      agent_type: "explore",
+      agent_id: "agent-stop-no-agent-id-match-1",
+      description: "tracked description",
+    })
+    const runningEntry = store.query({})[0]
+
+    handlers["/subagentStop"]!({
+      conversation_id: "conv-stop-no-agent-id-match",
+      subagent_type: "explore",
+      status: "completed",
+    })
+
+    const entries = store.query({})
+    expect(entries).toHaveLength(1)
+    expect(entries[0]?.agentId).toBe("agent-stop-no-agent-id-match-1")
+    expect(entries[0]?.startTime).toBe(runningEntry?.startTime)
+    expect(entries[0]?.description).toBe("tracked description")
+  })
+
+  it("/subagentStop without agent_id and no tracker match skips history write and warns", () => {
+    const handlers = createSubagentHandlers(conversations, tracker, store)
+    const warnSpy = spyOn(console, "warn").mockImplementation(() => {})
+
+    handlers["/subagentStop"]!({
+      conversation_id: "conv-stop-no-agent-id-no-match",
+      subagent_type: "explore",
+      status: "failed",
+    })
+
+    const entries = store.query({})
+    expect(entries).toHaveLength(0)
+    expect(warnSpy).toHaveBeenCalled()
+    const warningMessage = String(warnSpy.mock.calls[0]?.[0] ?? "")
+    expect(warningMessage).toContain("Skipping history write")
+    warnSpy.mockRestore()
   })
 })

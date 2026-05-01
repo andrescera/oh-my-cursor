@@ -15,7 +15,7 @@ function getDaemonBootId(): string {
   return bootGlobal[BOOT_ID_KEY] as string
 }
 
-type TrackedTask = {
+export type TrackedTask = {
   conversationId: string
   agentType: string
   description: string
@@ -50,7 +50,7 @@ export class BackgroundTracker {
     return this.tasks.get(agentId) ?? null
   }
 
-  completeOldestByType(conversationId: string, agentType: string): boolean {
+  completeOldestByType(conversationId: string, agentType: string): { agentId: string; task: TrackedTask } | null {
     const normalizedType = agentType.toLowerCase()
     let oldestKey: string | null = null
     let oldestTime = Infinity
@@ -63,10 +63,14 @@ export class BackgroundTracker {
       }
     }
     if (oldestKey !== null) {
+      const task = this.tasks.get(oldestKey)
+      if (!task) {
+        return null
+      }
       this.tasks.delete(oldestKey)
-      return true
+      return { agentId: oldestKey, task }
     }
-    return false
+    return null
   }
 
   getActiveTasks(): ActiveTask[] {

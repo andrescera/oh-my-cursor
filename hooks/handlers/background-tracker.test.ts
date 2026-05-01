@@ -174,7 +174,9 @@ describe("#completeOldestByType", () => {
 
     const removed = tracker.completeOldestByType("conv-1", "explore")
 
-    expect(removed).toBe(true)
+    expect(removed).not.toBeNull()
+    expect(removed?.agentId).toBe("agent-a")
+    expect(removed?.task.description).toBe("First")
     const remaining = tracker.getActiveTasks()
     expect(remaining).toHaveLength(2)
     expect(remaining.find(t => t.agentId === "agent-a")).toBeUndefined()
@@ -185,8 +187,8 @@ describe("#completeOldestByType", () => {
   it("returns false when no matching conv/type exists", () => {
     tracker.track("agent-a", "explore", "Task", "conv-1")
 
-    expect(tracker.completeOldestByType("conv-999", "explore")).toBe(false)
-    expect(tracker.completeOldestByType("conv-1", "librarian")).toBe(false)
+    expect(tracker.completeOldestByType("conv-999", "explore")).toBeNull()
+    expect(tracker.completeOldestByType("conv-1", "librarian")).toBeNull()
     expect(tracker.getActiveTasks()).toHaveLength(1)
   })
 
@@ -195,7 +197,8 @@ describe("#completeOldestByType", () => {
 
     const removed = tracker.completeOldestByType("conv-1", "Explore")
 
-    expect(removed).toBe(true)
+    expect(removed).not.toBeNull()
+    expect(removed?.agentId).toBe("agent-a")
     expect(tracker.getActiveTasks()).toHaveLength(0)
   })
 })

@@ -22,7 +22,7 @@ const sessions = new Map<string, SessionEntry>()
 
 export function buildServer(): McpServer {
   const server = new McpServer(
-    { name: "oh-my-cursor", version: "0.5.0", title: "oh-my-cursor" },
+    { name: "oh-my-cursor", version: "0.6.0", title: "oh-my-cursor" },
     {
       capabilities: {
         tools: { listChanged: false },

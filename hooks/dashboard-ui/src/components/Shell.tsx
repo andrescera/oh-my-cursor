@@ -289,7 +289,10 @@ export default function Shell({ enableSse = true }: ShellProps) {
         if (useDashboardStore.getState().ui.activeTab !== 'events') {
           setActiveTab('events')
         }
-        window.dispatchEvent(new CustomEvent('events-search-focus'))
+        // Listener lives in EventsTab.tsx (FOCUS_SEARCH_EVENT). Names must
+        // stay aligned; the round-trip spec in Shell.events-shortcut.test.tsx
+        // mounts both sides together so a future rename can't drift again.
+        window.dispatchEvent(new CustomEvent('omc-focus-events-search'))
         return
       }
       if (e.key === 'r' || e.key === 'R') {

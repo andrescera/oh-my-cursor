@@ -13,6 +13,7 @@ import { createSafetyHandlers } from "./handlers/safety-handlers"
 import { createSubagentHandlers } from "./handlers/subagent-handlers"
 import { createConversationHistoryHandler } from "./handlers/conversation-history"
 import { BackgroundTracker, createBackgroundTasksHandler } from "./handlers/background-tracker"
+import { createAgentHistoryHandler } from "./handlers/agent-history"
 import { StatePersistence, type ConversationMetadata } from "./state-persistence"
 import { createHeartbeatHandler, startHeartbeatWriter, HEARTBEAT_FILE } from "./handlers/heartbeat"
 import { loadConfig, resetConfigCache } from "./config"
@@ -20,9 +21,11 @@ import { OhMyCursorConfigSchema } from "./schemas/config"
 import { cleanupStaleProcess, killPortSquatter } from "./process-guard"
 import { writePortCoordination } from "./port-manager"
 import type { HandlerMap } from "./types"
+import { getDefaultAgentHistoryStore } from "./agent-history-store"
 
 const config = loadConfig()
 const tracker = new BackgroundTracker()
+const historyStore = getDefaultAgentHistoryStore()
 const persistence = new StatePersistence(config.state_persistence.path)
 setPersistence(persistence)
 
@@ -197,6 +200,7 @@ const handlers: HandlerMap = {
   ...createSubagentHandlers(conversations, tracker),
   "/sessionHistory": createConversationHistoryHandler(conversations),
   "/backgroundTasks": createBackgroundTasksHandler(tracker),
+  "/agentHistory": createAgentHistoryHandler(historyStore),
   "/heartbeat": createHeartbeatHandler(startTime),
   "/shutdown": () => {
     setTimeout(() => gracefulShutdown("shutdown endpoint"), 100)
@@ -536,7 +540,7 @@ const fetchHandler = async (req: Request) => {
     })
   }
 
-  const GET_ALLOWED_ROUTES = new Set(["/health", "/heartbeat", "/status", "/backgroundTasks"])
+  const GET_ALLOWED_ROUTES = new Set(["/health", "/heartbeat", "/status", "/backgroundTasks", "/agentHistory"])
   if (req.method !== "POST" && !GET_ALLOWED_ROUTES.has(path)) {
     return new Response(JSON.stringify({ error: "Method not allowed", allowed: "POST" }), {
       status: 405,

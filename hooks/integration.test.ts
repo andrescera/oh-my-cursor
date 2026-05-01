@@ -248,6 +248,29 @@ describe("daemon integration lifecycle", () => {
     })
   })
 
+  describe("#given the agentHistory endpoint", () => {
+    describe("#when GET /agentHistory is called without params", () => {
+      test("#then it returns entries and count keys", async () => {
+        const { status, data } = await get("/agentHistory")
+
+        expect(status).toBe(200)
+        expect(Array.isArray(data.entries)).toBe(true)
+        expect(typeof data.count).toBe("number")
+      })
+    })
+
+    describe("#when GET /agentHistory is called with limit=5", () => {
+      test("#then it returns at most 5 entries", async () => {
+        const { status, data } = await get("/agentHistory?limit=5")
+
+        expect(status).toBe(200)
+        expect(Array.isArray(data.entries)).toBe(true)
+        expect(data.entries.length).toBeLessThanOrEqual(5)
+        expect(typeof data.count).toBe("number")
+      })
+    })
+  })
+
   describe("#given a subagent dispatch", () => {
     describe("#when POST /subagentStart with explore type is called", () => {
       test("#then it allows and returns empty", async () => {

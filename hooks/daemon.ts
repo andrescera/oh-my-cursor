@@ -27,6 +27,8 @@ const persistence = new StatePersistence(config.state_persistence.path)
 setPersistence(persistence)
 
 const DAEMON_BOOT_ID = crypto.randomUUID()
+const DAEMON_PROJECT_ROOT = process.env.OH_MY_CURSOR_PROJECT_DIR || process.cwd()
+persistence.setIdentity(DAEMON_PROJECT_ROOT, DAEMON_BOOT_ID)
 
 export function getDaemonBootId(): string {
   return DAEMON_BOOT_ID

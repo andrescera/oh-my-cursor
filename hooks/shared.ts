@@ -19,13 +19,17 @@ export function markDirty(convId: string): void {
   _persistence?.markDirty(convId)
 }
 
-export function getOrCreateConversation(conversationId: string, viaFallback?: boolean): ConversationState {
+export function getOrCreateConversation(
+  conversationId: string,
+  viaFallback?: boolean,
+  projectRoot?: string,
+): ConversationState {
   if (conversations.has(conversationId)) {
     return conversations.get(conversationId)!
   }
   let state: ConversationState | undefined
   if (_persistence) {
-    const loaded = _persistence.loadOne(conversationId)
+    const loaded = _persistence.loadOne(conversationId, projectRoot)
     if (loaded) {
       conversations.set(conversationId, loaded)
       state = loaded
@@ -113,6 +117,21 @@ export function resolveConversationId(input: Record<string, unknown>): string {
   const fallbackId = crypto.randomUUID()
   console.warn(`[oh-my-cursor][resolveConversationId] No conversation_id or session_id provided, using fallback UUID: ${fallbackId}`)
   return fallbackId
+}
+
+// Reads the requesting hook's project root from a hook input payload.
+// Cursor passes `workspace_roots` as a string array; `cwd` is a fallback
+// for older payloads. Empty string when unknown — handlers that opt into
+// project verification should pass this to getOrCreateConversation so the
+// daemon refuses to rehydrate state stamped with a different project.
+export function derivedProjectRoot(input: Record<string, unknown>): string {
+  const workspaceRoots = input.workspace_roots
+  if (Array.isArray(workspaceRoots) && workspaceRoots.length > 0 && typeof workspaceRoots[0] === "string") {
+    return workspaceRoots[0]
+  }
+  const cwd = input.cwd
+  if (typeof cwd === "string" && cwd) return cwd
+  return ""
 }
 
 export function extractMeta(

@@ -5,6 +5,7 @@ import {
   getFallbackConversationsCreatedSinceBoot,
   resolveConversationId,
   wasResolvedViaFallback,
+  derivedProjectRoot,
 } from "../shared"
 import { loadConfig } from "../config"
 import { contextCollector } from "../context-collector"
@@ -105,7 +106,7 @@ export function createConversationHandlers(
 
     "/sessionStart": (input) => {
       const convId = resolveConversationId(input)
-      const conversation = getOrCreateConversation(convId, wasResolvedViaFallback(input))
+      const conversation = getOrCreateConversation(convId, wasResolvedViaFallback(input), derivedProjectRoot(input))
       const projectDir = ((input.workspace_roots as string[])?.[0]) || (input.cwd as string) || process.cwd()
 
       conversation.env.OH_MY_CURSOR_SESSION_ID = convId
@@ -157,7 +158,7 @@ export function createConversationHandlers(
 
     "/preCompact": (input) => {
       const convId = resolveConversationId(input)
-      const conversation = getOrCreateConversation(convId, wasResolvedViaFallback(input))
+      const conversation = getOrCreateConversation(convId, wasResolvedViaFallback(input), derivedProjectRoot(input))
 
       conversation.lastCompactionEpoch++
       conversation.compactionSnapshot = {

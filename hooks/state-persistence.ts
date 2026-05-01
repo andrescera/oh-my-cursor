@@ -1,6 +1,7 @@
 import { existsSync, mkdirSync, readFileSync, unlinkSync, readdirSync, writeFileSync } from "node:fs"
 import type { ConversationState } from "./types"
-import { ConversationStateSchema } from "./schemas/conversation"
+import { partitionState, mergeFromDurable } from "./state-partition"
+import { PersistedRecordSchema } from "./schemas/conversation"
 
 const DEFAULT_DIR = "/tmp/oh-my-cursor-state"
 const LEGACY_FILE = "/tmp/oh-my-cursor-state.json"
@@ -20,6 +21,8 @@ export class StatePersistence {
   private readonly dirPath: string
   private readonly debounceMs: number
   private dirty: Set<string> = new Set()
+  private projectRoot = ""
+  private daemonBootId = ""
 
   constructor(dirPath = DEFAULT_DIR, debounceMs = DEFAULT_DEBOUNCE_MS) {
     this.dirPath = dirPath
@@ -30,6 +33,13 @@ export class StatePersistence {
     if (existsSync(LEGACY_FILE)) {
       try { unlinkSync(LEGACY_FILE) } catch { /* best-effort */ }
     }
+  }
+
+  // Stamps written into every persisted record so a daemon serving multiple
+  // Cursor windows / projects refuses to rehydrate state from another project.
+  setIdentity(projectRoot: string, daemonBootId: string): void {
+    this.projectRoot = projectRoot
+    this.daemonBootId = daemonBootId
   }
 
   markDirty(convId: string): void {
@@ -67,29 +77,31 @@ export class StatePersistence {
     this.writeIndexSync(conversations)
   }
 
-  loadOne(convId: string): ConversationState | null {
+  // Loads a persisted conversation. Returns null when the file is missing,
+  // corrupt, pre-upgrade (schemaVersion < 2), or its projectRoot stamp does
+  // not match `expectedProjectRoot` (when provided).
+  // Pre-upgrade files are deleted from disk on detection (warn-once).
+  // daemonBootId mismatch is allowed when projectRoot matches (legitimate
+  // cold restart) — ephemeral fields are always reset to defaults regardless.
+  // When `expectedProjectRoot` is omitted, project verification is skipped
+  // (used by tests and tooling that operate outside a hook context).
+  loadOne(convId: string, expectedProjectRoot?: string): ConversationState | null {
     const filePath = `${this.dirPath}/${convId}.json`
     try {
       if (!existsSync(filePath)) return null
       const text = readFileSync(filePath, "utf-8")
       if (!text.trim()) return null
-      const data = JSON.parse(text)
-      const backwardCompatDefaults = {
-        displayTitle: null,
-        abortDetectedAt: null,
-        delegateRetryState: {},
-        toolCallCountAtLastStop: 0,
-        consecutiveZeroDeltas: 0,
-        shellFailureCounts: 0,
-        fileEditCounts: {},
-        mcpCallCounts: {},
-        responseCount: 0,
-        estimatedTokens: 0,
-        tokenWarningEmitted: false,
-        wisdomLearnings: [],
-        createdViaFallback: false,
+      const data = JSON.parse(text) as Record<string, unknown>
+
+      if (data && typeof data === "object" && data.schemaVersion !== 2) {
+        console.warn(
+          `[oh-my-cursor] Dropping pre-upgrade persisted state (schemaVersion=${String(data.schemaVersion)}) for ${convId}`,
+        )
+        try { unlinkSync(filePath) } catch { /* best-effort */ }
+        return null
       }
-      const result = ConversationStateSchema.safeParse({ ...backwardCompatDefaults, ...data })
+
+      const result = PersistedRecordSchema.safeParse(data)
       if (!result.success) {
         console.warn(
           "[oh-my-cursor] Skipping invalid persisted conversation entry:",
@@ -98,20 +110,31 @@ export class StatePersistence {
         )
         return null
       }
-      const validated = result.data
-      return {
-        ...validated,
-        readPaths: new Set(validated.readPaths),
-        injectedPaths: new Set(validated.injectedPaths),
-        pendingWriteArgs: new Map(Object.entries(validated.pendingWriteArgs)),
-        todoStates: new Map(Object.entries(validated.todoStates)),
-        ralphState: validated.ralphState
-          ? {
-              ...validated.ralphState,
-              lastProcessedIndex: validated.ralphState.lastProcessedIndex ?? 0,
-            }
-          : null,
+
+      const record = result.data
+
+      if (typeof expectedProjectRoot === "string" && expectedProjectRoot !== "" &&
+          record.projectRoot !== "" && record.projectRoot !== expectedProjectRoot) {
+        console.warn(
+          `[oh-my-cursor] Refusing to rehydrate ${convId}: projectRoot mismatch (persisted=${record.projectRoot}, expected=${expectedProjectRoot})`,
+        )
+        return null
       }
+
+      if (this.daemonBootId !== "" && record.daemonBootId !== "" && record.daemonBootId !== this.daemonBootId) {
+        console.log(`[oh-my-cursor] Cold-restart rehydrate for ${convId} (boot ${record.daemonBootId} -> ${this.daemonBootId}); ephemeral fields reset`)
+      }
+
+      const { schemaVersion: _v, projectRoot: _p, daemonBootId: _b, ...durableSerialized } = record
+      void _v; void _p; void _b
+      const merged = mergeFromDurable({
+        ...durableSerialized,
+        readPaths: new Set(durableSerialized.readPaths),
+        injectedPaths: new Set(durableSerialized.injectedPaths),
+        pendingWriteArgs: new Map(Object.entries(durableSerialized.pendingWriteArgs)),
+        todoStates: new Map(Object.entries(durableSerialized.todoStates)),
+      })
+      return merged
     } catch (err) {
       console.error(`[oh-my-cursor] Failed to load conversation ${convId}:`, err instanceof Error ? err.message : String(err))
       return null
@@ -210,12 +233,16 @@ export class StatePersistence {
   }
 
   private serializeConversation(conv: ConversationState) {
+    const { durable } = partitionState(conv)
     return {
-      ...conv,
-      readPaths: Array.from(conv.readPaths),
-      injectedPaths: Array.from(conv.injectedPaths),
-      pendingWriteArgs: Object.fromEntries(conv.pendingWriteArgs),
-      todoStates: Object.fromEntries(conv.todoStates),
+      schemaVersion: 2 as const,
+      projectRoot: this.projectRoot,
+      daemonBootId: this.daemonBootId,
+      ...durable,
+      readPaths: Array.from(durable.readPaths),
+      injectedPaths: Array.from(durable.injectedPaths),
+      pendingWriteArgs: Object.fromEntries(durable.pendingWriteArgs),
+      todoStates: Object.fromEntries(durable.todoStates),
     }
   }
 

@@ -1,5 +1,5 @@
 import type { HandlerMap } from "../types"
-import { getOrCreateConversation, resolveConversationId, wasResolvedViaFallback } from "../shared"
+import { getOrCreateConversation, resolveConversationId, wasResolvedViaFallback, derivedProjectRoot } from "../shared"
 import { createThinkingBlockValidator } from "./thinking-block-validator"
 import { loadConfig } from "../config"
 
@@ -40,7 +40,7 @@ export function createSafetyHandlers(): HandlerMap {
     "/afterShellExecution": (input) => {
       const exitCode = (input.exit_code as number) ?? (input.exitCode as number) ?? 0
       const convId = resolveConversationId(input)
-      const conversation = getOrCreateConversation(convId, wasResolvedViaFallback(input))
+      const conversation = getOrCreateConversation(convId, wasResolvedViaFallback(input), derivedProjectRoot(input))
 
       if (exitCode === 0) {
         conversation.shellFailureCounts = 0
@@ -92,7 +92,7 @@ export function createSafetyHandlers(): HandlerMap {
 
       if (!filePath) return {}
 
-      const conversation = getOrCreateConversation(convId, wasResolvedViaFallback(input))
+      const conversation = getOrCreateConversation(convId, wasResolvedViaFallback(input), derivedProjectRoot(input))
       const count = (conversation.fileEditCounts[filePath] || 0) + 1
       conversation.fileEditCounts[filePath] = count
 
@@ -108,7 +108,7 @@ export function createSafetyHandlers(): HandlerMap {
     "/beforeMCPExecution": (input) => {
       const serverName = (input.mcp_server_name as string) || (input.serverName as string) || ""
       const convId = resolveConversationId(input)
-      const conversation = getOrCreateConversation(convId, wasResolvedViaFallback(input))
+      const conversation = getOrCreateConversation(convId, wasResolvedViaFallback(input), derivedProjectRoot(input))
       const config = loadConfig(conversation.env.OH_MY_CURSOR_PROJECT_DIR)
       const allowlist = config.mcp_allowlist
 
@@ -125,7 +125,7 @@ export function createSafetyHandlers(): HandlerMap {
     "/afterMCPExecution": (input) => {
       const serverName = (input.mcp_server_name as string) || (input.serverName as string) || ""
       const convId = resolveConversationId(input)
-      const conversation = getOrCreateConversation(convId, wasResolvedViaFallback(input))
+      const conversation = getOrCreateConversation(convId, wasResolvedViaFallback(input), derivedProjectRoot(input))
 
       conversation.mcpCallCounts[serverName] = (conversation.mcpCallCounts[serverName] || 0) + 1
 
@@ -136,7 +136,7 @@ export function createSafetyHandlers(): HandlerMap {
       const convId = resolveConversationId(input)
       console.log(`[oh-my-cursor][afterAgentResponse] convId=${convId} | inputKeys=${Object.keys(input).join(",")} | hasResponse=${!!input.response} | responseLen=${typeof input.response === "string" ? input.response.length : 0}`)
 
-      const conversation = getOrCreateConversation(convId, wasResolvedViaFallback(input))
+      const conversation = getOrCreateConversation(convId, wasResolvedViaFallback(input), derivedProjectRoot(input))
       conversation.responseCount++
 
       if (conversation.responseCount % 10 === 0) {

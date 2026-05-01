@@ -8,6 +8,7 @@ import {
   resolveConversationId,
   wasResolvedViaFallback,
   transitionFromPlanMode,
+  derivedProjectRoot,
 } from "../shared"
 import { loadConfig } from "../config"
 import { createContextWindowMonitor } from "./context-window-monitor"
@@ -104,7 +105,7 @@ export function createToolGuardHandlers(
     "/preToolUse": (input) => {
       const toolName = (input.tool_name as string) || ""
       const convId = resolveConversationId(input)
-      const conversation = getOrCreateConversation(convId, wasResolvedViaFallback(input))
+      const conversation = getOrCreateConversation(convId, wasResolvedViaFallback(input), derivedProjectRoot(input))
       const toolInput = (input.tool_input as Record<string, unknown>) || {}
       console.log(`[oh-my-cursor][preToolUse] convId=${convId} | tool=${toolName} | composerMode=${conversation.composerMode} | toolCallCount=${conversation.toolCallCount}`)
 
@@ -243,7 +244,7 @@ export function createToolGuardHandlers(
       const toolName = (input.tool_name as string) || ""
       const output = JSON.stringify(input.tool_response || input.output || "")
       const convId = resolveConversationId(input)
-      const conversation = getOrCreateConversation(convId, wasResolvedViaFallback(input))
+      const conversation = getOrCreateConversation(convId, wasResolvedViaFallback(input), derivedProjectRoot(input))
       const toolInput = (input.tool_input as Record<string, unknown>) || {}
 
       const contextNote = `[${new Date().toISOString()}] ${toolName} completed`
@@ -496,7 +497,7 @@ export function createToolGuardHandlers(
       const toolName = (input.tool_name as string) || ""
       const errorMessage = (input.error as string) || (input.error_message as string) || ((input.tool_response as Record<string, unknown>)?.error as string) || ""
       const convId = resolveConversationId(input)
-      const conversation = getOrCreateConversation(convId, wasResolvedViaFallback(input))
+      const conversation = getOrCreateConversation(convId, wasResolvedViaFallback(input), derivedProjectRoot(input))
 
       if (["write", "Write", "str_replace", "StrReplace", "edit", "Edit"].includes(toolName) && input.tool_use_id) {
         conversation.pendingWriteArgs.delete(input.tool_use_id as string)

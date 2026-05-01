@@ -1,14 +1,15 @@
 import { describe, it, expect, beforeEach, afterEach, spyOn } from "bun:test"
-import { resolveConversationId, getOrCreateConversation, conversations } from "./shared"
+import { resolveConversationId, getOrCreateConversation, conversations, setPersistence, derivedProjectRoot } from "./shared"
 import { ContextCollector } from "./context-collector"
 import { BackgroundTracker, createBackgroundTasksHandler } from "./handlers/background-tracker"
 import { addWisdomLearning, formatWisdomForInjection } from "./handlers/wisdom-tracker"
 import { loadConfig, resetConfigCache } from "./config"
 import { StatePersistence } from "./state-persistence"
 import { buildCompactionContextPrompt } from "./compaction-context-prompt"
-import { rmSync } from "node:fs"
+import { existsSync, rmSync, writeFileSync } from "node:fs"
 import { join } from "node:path"
 import { tmpdir } from "node:os"
+import type { ConversationState } from "./types"
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i
 
@@ -454,5 +455,155 @@ describe("BackgroundTracker clearConversation", () => {
     tracker.track("a1", "explore", "task1", "conv-1")
     tracker.clearConversation("conv-nonexistent")
     expect(tracker.getActiveTasks()).toHaveLength(1)
+  })
+})
+
+describe("StatePersistence cross-conversation isolation guards", () => {
+  let tmpPath: string
+  let persistence: StatePersistence
+
+  beforeEach(() => {
+    tmpPath = join(tmpdir(), `oh-my-cursor-iso-test-${Date.now()}-${Math.random().toString(36).slice(2)}`)
+    persistence = new StatePersistence(tmpPath, 0)
+    persistence.setIdentity("/project/A", "boot-1")
+    conversations.clear()
+  })
+
+  afterEach(() => {
+    try { rmSync(tmpPath, { recursive: true, force: true }) } catch { /* best-effort */ }
+    conversations.clear()
+  })
+
+  it("loadOne does NOT restore composerMode/ralphState/boulderState/continuationCooldownUntil", () => {
+    const conv = getOrCreateConversation("test-conv-1")
+    conv.composerMode = "plan"
+    conv.ralphState = {
+      active: true,
+      iteration: 2,
+      maxIterations: 5,
+      startedAt: new Date().toISOString(),
+      lastProcessedIndex: 0,
+    }
+    conv.boulderState = {
+      active: true,
+      failureCount: 1,
+      lastContinuationAt: new Date().toISOString(),
+    }
+    conv.continuationCooldownUntil = Date.now() + 60_000
+
+    const map = new Map<string, ConversationState>()
+    map.set("test-conv-1", conv)
+    persistence.markDirty("test-conv-1")
+    persistence.forceFlush(map)
+
+    const loaded = persistence.loadOne("test-conv-1", "/project/A")
+    expect(loaded).not.toBeNull()
+    expect(loaded!.composerMode).toBeNull()
+    expect(loaded!.ralphState).toBeNull()
+    expect(loaded!.boulderState).toBeNull()
+    expect(loaded!.continuationCooldownUntil).toBeNull()
+  })
+
+  it("loadOne returns null when projectRoot mismatches the requesting hook's project", () => {
+    const conv = getOrCreateConversation("test-conv-2")
+    conv.toolCallCount = 7
+
+    const map = new Map<string, ConversationState>()
+    map.set("test-conv-2", conv)
+    persistence.markDirty("test-conv-2")
+    persistence.forceFlush(map)
+
+    const loaded = persistence.loadOne("test-conv-2", "/project/B")
+    expect(loaded).toBeNull()
+  })
+
+  it("loadOne allows daemonBootId mismatch when projectRoot matches (legitimate cold restart)", () => {
+    const conv = getOrCreateConversation("test-conv-3")
+    conv.toolCallCount = 13
+    conv.errorCount = 2
+    conv.dispatchCounts = { explore: 4 }
+    conv.displayTitle = "my session"
+
+    const map = new Map<string, ConversationState>()
+    map.set("test-conv-3", conv)
+    persistence.markDirty("test-conv-3")
+    persistence.forceFlush(map)
+
+    persistence.setIdentity("/project/A", "boot-2")
+    const loaded = persistence.loadOne("test-conv-3", "/project/A")
+    expect(loaded).not.toBeNull()
+    expect(loaded!.toolCallCount).toBe(13)
+    expect(loaded!.errorCount).toBe(2)
+    expect(loaded!.dispatchCounts).toEqual({ explore: 4 })
+    expect(loaded!.displayTitle).toBe("my session")
+    expect(loaded!.composerMode).toBeNull()
+  })
+
+  it("loadOne preserves toolCallCount, errorCount, dispatchCounts, displayTitle across cold restart", () => {
+    const conv = getOrCreateConversation("test-conv-4")
+    conv.toolCallCount = 42
+    conv.errorCount = 3
+    conv.dispatchCounts = { explore: 10, sisyphus: 2 }
+    conv.displayTitle = "Implement feature X"
+
+    const map = new Map<string, ConversationState>()
+    map.set("test-conv-4", conv)
+    persistence.markDirty("test-conv-4")
+    persistence.forceFlush(map)
+
+    const loaded = persistence.loadOne("test-conv-4", "/project/A")
+    expect(loaded).not.toBeNull()
+    expect(loaded!.toolCallCount).toBe(42)
+    expect(loaded!.errorCount).toBe(3)
+    expect(loaded!.dispatchCounts).toEqual({ explore: 10, sisyphus: 2 })
+    expect(loaded!.displayTitle).toBe("Implement feature X")
+  })
+
+  it("loadOne returns null and removes file when schemaVersion is missing (pre-upgrade format)", () => {
+    const oldShape = {
+      id: "old-conv",
+      startedAt: new Date().toISOString(),
+      composerMode: "plan",
+      activePlan: { path: ".cursor/plans/x.md", phase: "Wave 0", completedTasks: [] },
+      toolCallCount: 0,
+    }
+    writeFileSync(`${tmpPath}/old-conv.json`, JSON.stringify(oldShape), "utf-8")
+
+    const loaded = persistence.loadOne("old-conv", "/project/A")
+    expect(loaded).toBeNull()
+    expect(existsSync(`${tmpPath}/old-conv.json`)).toBe(false)
+  })
+
+  it("getOrCreateConversation accepts an optional projectRoot and refuses to rehydrate from a different project", () => {
+    setPersistence(persistence)
+    const conv = getOrCreateConversation("test-conv-5", false, "/project/A")
+    conv.toolCallCount = 99
+
+    const map = new Map<string, ConversationState>()
+    map.set("test-conv-5", conv)
+    persistence.markDirty("test-conv-5")
+    persistence.forceFlush(map)
+
+    conversations.clear()
+    const fresh = getOrCreateConversation("test-conv-5", false, "/project/B")
+    expect(fresh.toolCallCount).toBe(0)
+  })
+})
+
+describe("derivedProjectRoot", () => {
+  it("returns first workspace_roots entry when present", () => {
+    expect(derivedProjectRoot({ workspace_roots: ["/foo", "/bar"] })).toBe("/foo")
+  })
+
+  it("falls back to cwd when workspace_roots is missing", () => {
+    expect(derivedProjectRoot({ cwd: "/baz" })).toBe("/baz")
+  })
+
+  it("returns empty string when neither is present", () => {
+    expect(derivedProjectRoot({})).toBe("")
+  })
+
+  it("ignores non-array workspace_roots", () => {
+    expect(derivedProjectRoot({ workspace_roots: "not-an-array", cwd: "/qux" })).toBe("/qux")
   })
 })

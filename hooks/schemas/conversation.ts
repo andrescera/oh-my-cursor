@@ -87,3 +87,48 @@ export const ConversationStateSchema = z.object({
   createdViaFallback: z.boolean(),
 })
 export type ConversationState = z.infer<typeof ConversationStateSchema>
+
+// Persisted shape (schemaVersion 2): only durable fields + identity stamps.
+// Ephemeral fields (composerMode, ralphState, boulderState, continuationCooldownUntil,
+// consecutiveContinuationFailures, toolCallCountAtLastStop, consecutiveZeroDeltas,
+// lastTodoSnapshot, abortDetectedAt, reminderInjected) are intentionally absent.
+export const DurableConversationFieldsSchema = ConversationStateSchema.pick({
+  id: true,
+  startedAt: true,
+  displayTitle: true,
+  env: true,
+  dispatchCounts: true,
+  dispatchCountsThisTurn: true,
+  contextHistory: true,
+  readPaths: true,
+  injectedPaths: true,
+  pendingWriteArgs: true,
+  toolCallCount: true,
+  recentToolTrail: true,
+  toolCallsSinceTaskDispatch: true,
+  stoppedAt: true,
+  errorCount: true,
+  lastCompactionEpoch: true,
+  compactionSnapshot: true,
+  activePlan: true,
+  todoStates: true,
+  momusIterations: true,
+  subagentOutcomes: true,
+  subagentFailureCounts: true,
+  delegateRetryState: true,
+  shellFailureCounts: true,
+  fileEditCounts: true,
+  mcpCallCounts: true,
+  responseCount: true,
+  estimatedTokens: true,
+  tokenWarningEmitted: true,
+  wisdomLearnings: true,
+  createdViaFallback: true,
+})
+
+export const PersistedRecordSchema = DurableConversationFieldsSchema.extend({
+  schemaVersion: z.literal(2),
+  projectRoot: z.string(),
+  daemonBootId: z.string(),
+})
+export type PersistedRecord = z.infer<typeof PersistedRecordSchema>

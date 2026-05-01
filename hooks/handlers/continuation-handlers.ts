@@ -5,6 +5,7 @@ import {
   wasResolvedViaFallback,
   PLAN_PHASE_IDS,
   transitionFromPlanMode,
+  derivedProjectRoot,
 } from "../shared"
 import { loadConfig } from "../config"
 import { resolve } from "node:path"
@@ -110,7 +111,7 @@ export function createContinuationHandlers(
       const status = (input.status as string) || ""
       const stopHookActive = Boolean(input.stop_hook_active)
       const convId = resolveConversationId(input)
-      const conversation = getOrCreateConversation(convId, wasResolvedViaFallback(input))
+      const conversation = getOrCreateConversation(convId, wasResolvedViaFallback(input), derivedProjectRoot(input))
 
       const isAbort = status === "aborted" || Boolean(input.aborted) || Boolean(input.abort_signal)
       if (isAbort) {
@@ -235,7 +236,7 @@ export function createContinuationHandlers(
     "/beforeSubmitPrompt": (input) => {
       const userMessage = (input.prompt as string) || (input.user_message as string) || ""
       const convId = resolveConversationId(input)
-      const conversation = getOrCreateConversation(convId, wasResolvedViaFallback(input))
+      const conversation = getOrCreateConversation(convId, wasResolvedViaFallback(input), derivedProjectRoot(input))
 
       let additionalContext = [
         "[oh-my-cursor] Identity: Plan=Prometheus | Agent=Orchestrator/Atlas | Debug=Diagnostic | Ask=Advisor",

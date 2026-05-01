@@ -23,6 +23,22 @@ export type SubagentOutcome = {
   durationMs?: number
 }
 
+export type AgentHistoryStatus = "running" | "completed" | "failed" | "abandoned"
+
+export type AgentHistoryEntry = {
+  agentId: string
+  agentType: string
+  description: string
+  startTime: number
+  completedAt: number | null
+  durationMs: number
+  status: AgentHistoryStatus
+  errorContext: string | null
+  projectRoot: string
+  daemonBootId: string
+  schemaVersion: 1
+}
+
 export type RecentToolTrailEntry = {
   tool: string
   path?: string

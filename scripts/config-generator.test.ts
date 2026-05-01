@@ -16,8 +16,8 @@ afterAll(async () => {
 })
 
 describe("mapModel", () => {
-  test("maps gpt-5.4 with variant high to gpt-5.3-codex-high-fast via re-normalization", () => {
-    expect(mapModel("gpt-5.4", "high")).toBe("gpt-5.3-codex-high-fast")
+  test("maps gpt-5.4 with variant high to gpt-5.5-extra-high via re-normalization", () => {
+    expect(mapModel("gpt-5.4", "high")).toBe("gpt-5.5-extra-high")
   })
 
   test("maps gpt-5.4 without variant to gpt-5.4-medium (backward compat)", () => {
@@ -25,15 +25,15 @@ describe("mapModel", () => {
   })
 
   test("maps gpt-5.4-high directly via MODEL_MAP", () => {
-    expect(mapModel("gpt-5.4-high")).toBe("gpt-5.3-codex-high-fast")
+    expect(mapModel("gpt-5.4-high")).toBe("gpt-5.5-extra-high")
   })
 
-  test("maps claude-opus-4-6 without variant to claude-opus-4-7-thinking-high", () => {
-    expect(mapModel("claude-opus-4-6")).toBe("claude-opus-4-7-thinking-high")
+  test("maps claude-opus-4-6 without variant to claude-opus-4-7-thinking-xhigh", () => {
+    expect(mapModel("claude-opus-4-6")).toBe("claude-opus-4-7-thinking-xhigh")
   })
 
-  test("maps claude-opus-4-6 with variant high to claude-opus-4-7-thinking-high", () => {
-    expect(mapModel("claude-opus-4-6", "high")).toBe("claude-opus-4-7-thinking-high")
+  test("maps claude-opus-4-6 with variant high to claude-opus-4-7-thinking-xhigh", () => {
+    expect(mapModel("claude-opus-4-6", "high")).toBe("claude-opus-4-7-thinking-xhigh")
   })
 
   test("falls back to base when variant produces invalid slug", () => {
@@ -52,8 +52,8 @@ describe("mapModel", () => {
     }
   })
 
-  test("VALID_CURSOR_SLUGS contains exactly 7 entries", () => {
-    expect(VALID_CURSOR_SLUGS.size).toBe(7)
+  test("VALID_CURSOR_SLUGS contains exactly 6 entries", () => {
+    expect(VALID_CURSOR_SLUGS.size).toBe(6)
   })
 
   test("mapModel('fast') throws with migration message", () => {
@@ -93,7 +93,7 @@ describe("config-generator", () => {
     const sisyphusContent = await readFile(join(TEST_DIR, "agents", "sisyphus.md"), "utf-8")
 
     // then
-    expect(sisyphusContent).toContain("model: claude-opus-4-7-thinking-high")
+    expect(sisyphusContent).toContain("model: claude-opus-4-7-thinking-xhigh")
 
     // given - momus is disabled, should not have agent file
     const momusExists = existsSync(join(TEST_DIR, "agents", "momus.md"))

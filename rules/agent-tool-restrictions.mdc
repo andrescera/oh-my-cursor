@@ -17,15 +17,14 @@ Agent YAML frontmatter `model:` defines the default. At runtime, Task accepts th
 
 | Slug | Tier |
 | --- | --- |
-| `composer-2` | Standard |
 | `composer-2-fast` | Standard |
 | `gpt-5.4-medium` | Standard |
 | `claude-4.6-sonnet-medium-thinking` | Standard+ |
-| `gpt-5.3-codex-high-fast` | Heavy |
-| `claude-opus-4-7-thinking-high` | Heavy+ |
+| `gpt-5.5-extra-high` | Heavy+ |
+| `claude-opus-4-7-thinking-xhigh` | Heavy+ |
 | `gemini-3.1-pro` | Multimodal |
 
-Opus 4.6 is still accepted by Cursor but is not recommended; use 4.7 (same cost, newer).
+Cursor's current Task() enum (verified empirically): see `scripts/config-generator.ts` `VALID_CURSOR_SLUGS` for the authoritative list this repo uses.
 
 If `model` is omitted, the task inherits the parent's model. Cursor may fall back to a different model at runtime; the requested slug is a preference, not a guarantee.
 

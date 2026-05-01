@@ -26,20 +26,20 @@ Orchestration mode is injected via `additional_context` on session start. Defaul
 
 ## Agent Routing
 
-> The Task tool accepts only the seven valid Cursor model slugs listed in `rules/agent-tool-restrictions.mdc`.
+> The Task tool accepts only the six valid Cursor model slugs listed in `rules/agent-tool-restrictions.mdc`.
 
 | Agent | Model | Fire When |
 |-------|-------|-----------|
 | **explore** | `composer-2-fast` | Any search, exploration, "how does X work", docs lookup |
 | **librarian** | `composer-2-fast` | External docs, library APIs, OSS code search |
 | **sisyphus-junior** | `composer-2-fast` | Simple single-file changes, quick focused tasks |
-| **sisyphus** | `claude-opus-4-7-thinking-high` | Complex multi-file work, architecture + implementation |
-| **hephaestus** | `gpt-5.3-codex-high-fast` | Sustained deep work on a single complex problem |
+| **sisyphus** | `claude-opus-4-7-thinking-xhigh` | Complex multi-file work, architecture + implementation |
+| **hephaestus** | `gpt-5.5-extra-high` | Sustained deep work on a single complex problem |
 | **atlas** | `claude-4.6-sonnet-medium-thinking` | Plan exists -> executes plan step-by-step via delegation |
-| **oracle** | `gpt-5.4-medium` | Need architecture advice, debugging consultation |
-| **prometheus** | `claude-opus-4-7-thinking-high` | Complex planning, ambiguous scope analysis |
+| **oracle** | `gpt-5.5-extra-high` | Need architecture advice, debugging consultation |
+| **prometheus** | `claude-opus-4-7-thinking-xhigh` | Complex planning, ambiguous scope analysis |
 | **metis** | `gpt-5.4-medium` | Pre-planning gap analysis, risk assessment |
-| **momus** | `gpt-5.3-codex-high-fast` | Plan review, quality audit |
+| **momus** | `gpt-5.5-extra-high` | Plan review, quality audit |
 | **multimodal-looker** | `gemini-3.1-pro` | Images, PDFs, diagrams, visual analysis |
 
 ## Model Fallback
@@ -62,9 +62,9 @@ When a model is unavailable, Cursor falls back to the next available model:
 | explore | composer-2-fast | Always available |
 | librarian | composer-2-fast | Always available |
 | sisyphus-junior | composer-2-fast | Retry with composer-2-fast |
-| sisyphus | claude-opus-4-7-thinking-high | Retry with sisyphus-junior |
-| hephaestus | gpt-5.3-codex-high-fast | Retry with sisyphus |
-| oracle | gpt-5.4-medium | Retry with composer-2-fast |
+| sisyphus | claude-opus-4-7-thinking-xhigh | Retry with sisyphus-junior |
+| hephaestus | gpt-5.5-extra-high | Retry with sisyphus |
+| oracle | gpt-5.5-extra-high | Retry with composer-2-fast |
 
 ## Hard Constraints
 

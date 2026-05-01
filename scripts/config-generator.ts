@@ -77,24 +77,27 @@ interface CategoryConfig {
 }
 
 export const VALID_CURSOR_SLUGS = new Set([
-  "composer-2", "composer-2-fast", "gpt-5.4-medium",
-  "claude-4.6-sonnet-medium-thinking", "claude-opus-4-7-thinking-high",
-  "gpt-5.3-codex-high-fast", "gemini-3.1-pro",
+  "composer-2-fast",
+  "gpt-5.4-medium",
+  "gpt-5.5-extra-high",
+  "claude-4.6-sonnet-medium-thinking",
+  "claude-opus-4-7-thinking-xhigh",
+  "gemini-3.1-pro",
 ])
 
 /**
  * Maps oh-my-opencode model identifiers to valid Cursor Task model slugs.
  * Cursor's Task tool only accepts these slugs (enum-enforced):
- * composer-2, composer-2-fast, gpt-5.4-medium, claude-4.6-sonnet-medium-thinking,
- * claude-opus-4-7-thinking-high, gemini-3.1-pro, gpt-5.3-codex-high-fast
+ * composer-2-fast, gpt-5.4-medium, gpt-5.5-extra-high,
+ * claude-4.6-sonnet-medium-thinking, claude-opus-4-7-thinking-xhigh, gemini-3.1-pro
  */
 const MODEL_MAP: Record<string, string> = {
-  "claude-opus-4-6": "claude-opus-4-7-thinking-high",
-  "claude-opus-4-7": "claude-opus-4-7-thinking-high",
+  "claude-opus-4-6": "claude-opus-4-7-thinking-xhigh",
+  "claude-opus-4-7": "claude-opus-4-7-thinking-xhigh",
   "claude-sonnet-4-6": "claude-4.6-sonnet-medium-thinking",
   "claude-haiku-4-5": "composer-2-fast",
   "gpt-5.4": "gpt-5.4-medium",
-  "gpt-5.4-high": "gpt-5.3-codex-high-fast",
+  "gpt-5.4-high": "gpt-5.5-extra-high",
   "gpt-5-nano": "composer-2-fast",
   "gemini-3.1-pro": "gemini-3.1-pro",
   "gemini-2.5-flash": "composer-2-fast",

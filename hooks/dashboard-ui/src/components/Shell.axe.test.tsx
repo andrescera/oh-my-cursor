@@ -44,7 +44,7 @@ describe('Shell: axe a11y (W3.1)', () => {
   test('default render has no axe violations', async () => {
     const { container } = render(
       <TooltipProvider>
-        <Shell enableSse={false} />
+        <Shell enableSse={false} enableDataBootstrap={false} />
       </TooltipProvider>,
     )
 

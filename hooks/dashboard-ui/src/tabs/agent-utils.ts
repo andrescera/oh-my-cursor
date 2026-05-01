@@ -39,6 +39,7 @@ export const GUTTER_BOTTOM = 8
 export const VIEW_W = 1000
 export const PAD_X = 12
 export const TICK_COUNT = 5
+export const MIN_RANGE_MS = 60_000
 
 export const STATUS_FILL: Record<AgentStatus, string> = {
   running: 'var(--status-running)',
@@ -127,10 +128,11 @@ export function computeGeometry(agents: AgentBar[], now: number): Geometry {
     (m, a) => (a.startedAt < m ? a.startedAt : m),
     agents[0]!.startedAt,
   )
-  const maxEnd = agents.reduce(
+  const rawMaxEnd = agents.reduce(
     (m, a) => Math.max(m, a.stoppedAt ?? now),
     minStart,
   )
+  const maxEnd = Math.max(rawMaxEnd, minStart + MIN_RANGE_MS)
   const rangeMs = Math.max(maxEnd - minStart, 1)
   const usable = VIEW_W - PAD_X * 2
   const bars = agents.map((a, i) => {

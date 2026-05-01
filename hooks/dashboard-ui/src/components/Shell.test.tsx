@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest'
-import { act, fireEvent, render, screen, within } from '@testing-library/react'
+import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import { TooltipProvider } from '@/components/ui/tooltip'
 import { ErrorBoundary } from '@/components/ErrorBoundary'
 import Shell from '@/components/Shell'
@@ -8,7 +8,15 @@ import { _resetForTests, useDashboardStore } from '@/store/dashboard'
 function renderShell() {
   return render(
     <TooltipProvider>
-      <Shell enableSse={false} />
+      <Shell enableSse={false} enableDataBootstrap={false} />
+    </TooltipProvider>,
+  )
+}
+
+function renderShellWithBootstrap() {
+  return render(
+    <TooltipProvider>
+      <Shell enableSse={false} enableDataBootstrap />
     </TooltipProvider>,
   )
 }
@@ -20,6 +28,7 @@ beforeEach(() => {
 
 afterEach(() => {
   document.body.classList.remove('dense')
+  vi.restoreAllMocks()
 })
 
 describe('Shell: tablist keyboard navigation (P0-1)', () => {
@@ -138,6 +147,40 @@ describe('Shell: derived UI behavior', () => {
     })
     renderShell()
     expect(screen.queryByTestId('sse-banner')).toBeNull()
+  })
+
+  test('bootstrap preloads shared badge counts before tabs are visited', async () => {
+    vi.spyOn(globalThis, 'fetch').mockImplementation((input) => {
+      const url = String(input)
+      if (url.includes('/health')) {
+        return Promise.resolve(Response.json({ uptime: 5 }))
+      }
+      if (url.includes('/sessions')) {
+        return Promise.resolve(Response.json([{ id: 's1' }, { id: 's2' }]))
+      }
+      if (url.includes('/session-log')) {
+        return Promise.resolve(Response.json([{ id: 'e1' }, { id: 'e2' }, { id: 'e3' }]))
+      }
+      if (url.includes('/backgroundTasks')) {
+        return Promise.resolve(Response.json([{ id: 'b1', status: 'running' }]))
+      }
+      if (url.includes('/agentHistory')) {
+        return Promise.resolve(Response.json({
+          entries: [{ agent_id: 'a1', status: 'running' }],
+          count: 1,
+        }))
+      }
+      return Promise.resolve(Response.json({}))
+    })
+
+    renderShellWithBootstrap()
+
+    await waitFor(() => {
+      expect(screen.getByTestId('tab-count-sessions')).toHaveTextContent('2')
+      expect(screen.getByTestId('tab-count-events')).toHaveTextContent('3')
+      expect(screen.getByTestId('tab-running-background')).toHaveTextContent('1 running')
+      expect(screen.getByTestId('tab-running-agents')).toHaveTextContent('1 running')
+    })
   })
 })
 

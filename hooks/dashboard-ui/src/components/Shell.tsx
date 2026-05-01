@@ -29,6 +29,7 @@ import ConfigTab from '@/tabs/ConfigTab'
 
 import { ShellHeader } from './ShellHeader'
 import { useShellHotkeys } from './ShellHotkeys'
+import { useDashboardBootstrap } from './useDashboardBootstrap'
 
 const TAB_PANELS: Record<TabId, () => React.JSX.Element> = {
   status: () => <StatusTab />,
@@ -77,9 +78,14 @@ function useTabBadgeCounts(): Partial<Record<TabId, number>> {
 type ShellProps = {
   /** Test seam: skip the real EventSource connect when running in jsdom/happy-dom. */
   enableSse?: boolean
+  /** Test seam: skip initial REST preloads when assertions don't need them. */
+  enableDataBootstrap?: boolean
 }
 
-export default function Shell({ enableSse = true }: ShellProps) {
+export default function Shell({
+  enableSse = true,
+  enableDataBootstrap = true,
+}: ShellProps) {
   const activeTab = useActiveTab()
   const setActiveTab = useDashboardStore((s) => s.setActiveTab)
   const setSseStatus = useDashboardStore((s) => s.setSseStatus)
@@ -87,6 +93,8 @@ export default function Shell({ enableSse = true }: ShellProps) {
   const { sseStatus } = useConnection()
   const counts = useTabBadgeCounts()
   const [shortcutsOpen, setShortcutsOpen] = useState(false)
+
+  useDashboardBootstrap(enableDataBootstrap)
 
   // Toggle the body-level `dense` class so descendant components can opt in
   // to a denser variant via Tailwind's arbitrary-variant `:where(.dense &)`.

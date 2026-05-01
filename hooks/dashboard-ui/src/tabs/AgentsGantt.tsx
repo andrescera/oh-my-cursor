@@ -44,6 +44,31 @@ export function GanttView({
 
   return (
     <div className="relative w-full" data-slot="agents-gantt">
+      <div
+        className="pointer-events-none absolute inset-x-0 top-0 z-10 h-6"
+        aria-hidden="true"
+      >
+        {ticks.map((t, i) => {
+          const leftPct = (t.x / VIEW_W) * 100
+          return (
+            <span
+              key={i}
+              className="absolute top-0 -translate-x-1/2 whitespace-nowrap font-mono text-[10px] text-muted-foreground"
+              style={{
+                left: `${leftPct}%`,
+                transform:
+                  i === 0
+                    ? 'translateX(0)'
+                    : i === ticks.length - 1
+                      ? 'translateX(-100%)'
+                      : undefined,
+              }}
+            >
+              {t.label}
+            </span>
+          )
+        })}
+      </div>
       <svg
         viewBox={`0 0 ${VIEW_W} ${rowH}`}
         preserveAspectRatio="none"
@@ -64,16 +89,6 @@ export function GanttView({
                 strokeWidth={0.5}
                 strokeDasharray="2 4"
               />
-              <text
-                x={t.x}
-                y={GUTTER_TOP - 10}
-                textAnchor={i === 0 ? 'start' : i === ticks.length - 1 ? 'end' : 'middle'}
-                fontSize={10}
-                fill="var(--muted-foreground)"
-                fontFamily="var(--font-sans)"
-              >
-                {t.label}
-              </text>
             </g>
           ))}
         </g>

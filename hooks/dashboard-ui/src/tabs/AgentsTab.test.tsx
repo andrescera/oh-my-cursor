@@ -100,8 +100,9 @@ describe('AgentsTab: Gantt geometry', () => {
     expect(x2).toBeGreaterThan(x1)
     // The longer bar (2000ms) should be wider than the shorter (800ms).
     expect(w1).toBeGreaterThan(w2)
-    // First bar spans the full usable width because it bounds the range.
-    expect(x1 + w1).toBeCloseTo(1000 - 12, 5)
+    // The chart now enforces a minimum visible range so tiny 2s fixtures do
+    // not stretch to fill the whole plot in production.
+    expect(x1 + w1).toBeLessThan(1000 - 12)
   })
 
   test('agents are sorted by startedAt ascending', () => {

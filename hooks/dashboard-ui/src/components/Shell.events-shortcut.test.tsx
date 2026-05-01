@@ -61,7 +61,7 @@ describe('Shell ↔ EventsTab `/` shortcut round trip', () => {
 
     render(
       <TooltipProvider>
-        <Shell enableSse={false} />
+        <Shell enableSse={false} enableDataBootstrap={false} />
       </TooltipProvider>,
     )
 

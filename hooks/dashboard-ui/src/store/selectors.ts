@@ -17,3 +17,9 @@ export const useSseStatus = () =>
 
 export const useExpanded = (tab: TabId) =>
   useDashboardStore(useShallow((s) => s.ui.expandedKeys[tab]))
+
+export const useDispatchCounts = () =>
+  useDashboardStore(useShallow((s) => s.data.dispatchCounts))
+export const useRecentErrors = () =>
+  useDashboardStore(useShallow((s) => s.data.recentErrors))
+export const useHealth = () => useDashboardStore((s) => s.data.health)

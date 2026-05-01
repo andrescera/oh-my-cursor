@@ -1,5 +1,6 @@
 import { create } from 'zustand'
 import { createJSONStorage, persist } from 'zustand/middleware'
+import type { DispatchCounts } from '@/lib/sse-reducer'
 
 export type TabId =
   | 'status'
@@ -55,6 +56,8 @@ export type DataSlice = {
   health: unknown | null
   hooks: unknown | null
   backgroundTasks: unknown[] | null
+  dispatchCounts: DispatchCounts
+  recentErrors: unknown[]
   events: unknown[]
   config: unknown | null
   sessions: unknown[] | null
@@ -82,6 +85,8 @@ type Actions = {
   setHealth: (h: unknown) => void
   setHooks: (h: unknown) => void
   setBackgroundTasks: (t: unknown[]) => void
+  setDispatchCounts: (c: DispatchCounts) => void
+  setRecentErrors: (e: unknown[]) => void
   setEvents: (e: unknown[]) => void
   appendEvent: (e: unknown) => void
   setConfig: (c: unknown) => void
@@ -117,6 +122,8 @@ const makeInitial = () => ({
     health: null,
     hooks: null,
     backgroundTasks: null,
+    dispatchCounts: { explore: 0, worker: 0, total: 0 },
+    recentErrors: [] as unknown[],
     events: [] as unknown[],
     config: null,
     sessions: null,
@@ -220,6 +227,10 @@ export const useDashboardStore = create<DashboardState>()(
       setHooks: (h) => set((s) => ({ data: { ...s.data, hooks: h } })),
       setBackgroundTasks: (t) =>
         set((s) => ({ data: { ...s.data, backgroundTasks: t } })),
+      setDispatchCounts: (c) =>
+        set((s) => ({ data: { ...s.data, dispatchCounts: c } })),
+      setRecentErrors: (e) =>
+        set((s) => ({ data: { ...s.data, recentErrors: e } })),
       setEvents: (e) => set((s) => ({ data: { ...s.data, events: e } })),
       appendEvent: (e) =>
         set((s) => ({ data: { ...s.data, events: [...s.data.events, e] } })),

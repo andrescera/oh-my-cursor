@@ -15,7 +15,14 @@ LOGGER_SCRIPT="${CURSOR_HOOKS_LOGGER:-$(cd "$(dirname "${BASH_SOURCE[0]}")/../..
 
 mkdir -p "$(dirname "$INFLIGHT_PID_FILE")"
 echo $$ >> "$INFLIGHT_PID_FILE"
-cleanup_pid() { sed -i "/^$$\$/d" "$INFLIGHT_PID_FILE" 2>/dev/null || true; }
+# Portable in-place delete (BSD sed -i requires an extension arg, GNU does not).
+cleanup_pid() {
+  [[ -f "$INFLIGHT_PID_FILE" ]] || return 0
+  local tmp
+  tmp="$(mktemp)" || return 0
+  grep -v "^$$\$" "$INFLIGHT_PID_FILE" > "$tmp" 2>/dev/null || true
+  mv "$tmp" "$INFLIGHT_PID_FILE" 2>/dev/null || rm -f "$tmp"
+}
 trap cleanup_pid EXIT
 
 EXPERIMENT_ID="${1:-UNKNOWN}"

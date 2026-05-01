@@ -34,13 +34,17 @@ TRANSCRIPT_FORMAT="not-found"
 TRANSCRIPT_SIZE_BYTES=0
 
 if [ -n "$TRANSCRIPT_PATH" ] && [ -f "$TRANSCRIPT_PATH" ]; then
-  TRANSCRIPT_HEAD_B64=$(head -c 200 "$TRANSCRIPT_PATH" 2>/dev/null | base64 -w 0 || echo "")
+  # base64 -w 0 is GNU-only; pipe through tr to strip newlines portably.
+  TRANSCRIPT_HEAD_B64=$(head -c 200 "$TRANSCRIPT_PATH" 2>/dev/null | base64 2>/dev/null | tr -d '\n' || echo "")
   TRANSCRIPT_FORMAT=$(file -b "$TRANSCRIPT_PATH" 2>/dev/null || echo "unknown")
-  TRANSCRIPT_SIZE_BYTES=$(stat -c%s "$TRANSCRIPT_PATH" 2>/dev/null || echo "0")
+  # stat -c%s is GNU-only; wc -c is portable across BSD/macOS and Linux.
+  TRANSCRIPT_SIZE_BYTES=$(wc -c < "$TRANSCRIPT_PATH" 2>/dev/null | tr -d ' ' || echo "0")
+  TRANSCRIPT_SIZE_BYTES=${TRANSCRIPT_SIZE_BYTES:-0}
 fi
 
-# Write supplemental evidence record
-PROBE_UUID=$(cat /proc/sys/kernel/random/uuid 2>/dev/null || echo "$(date +%s%N)-$$")
+# Write supplemental evidence record (uuidgen is portable; /proc/.../uuid is Linux-only,
+# and the date +%s%N fallback fails on BSD/macOS where %N is not supported).
+PROBE_UUID=$(uuidgen 2>/dev/null || cat /proc/sys/kernel/random/uuid 2>/dev/null || echo "$(date +%s)-$$-$RANDOM")
 cat > "$EVIDENCE_DIR/transcript-probe-${PROBE_UUID}.json" <<JSON
 {
   "experiment_id": "$EXPERIMENT_ID",

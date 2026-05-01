@@ -1,3 +1,7 @@
+import { mergeByAgentId } from "./merge-by-agent-id"
+
+const MERGE_BY_AGENT_ID_SOURCE = mergeByAgentId.toString()
+
 export function renderDashboardHTML(daemonPort: number): string {
   return `<!DOCTYPE html>
 <html lang="en">
@@ -417,6 +421,7 @@ export function renderDashboardHTML(daemonPort: number): string {
     const html = htm.bind(h);
 
     const BASE = 'http://localhost:${daemonPort}';
+    ${MERGE_BY_AGENT_ID_SOURCE}
 
     const TABS = [
       { id: 'status',     label: 'Status'     },
@@ -1408,12 +1413,15 @@ export function renderDashboardHTML(daemonPort: number): string {
       useEffect(() => {
         let cancelled = false;
 
-        fetch(\`\${BASE}/backgroundTasks\`)
-          .then(r => { if (!r.ok) throw new Error(\`HTTP \${r.status}\`); return r.json(); })
-          .then(d => {
+        Promise.all([
+          fetch(\`\${BASE}/backgroundTasks\`).then(r => { if (!r.ok) throw new Error(\`HTTP \${r.status}\`); return r.json(); }),
+          fetch(\`\${BASE}/agentHistory?limit=200\`).then(r => { if (!r.ok) throw new Error(\`HTTP \${r.status}\`); return r.json(); }),
+        ])
+          .then(([bg, hist]) => {
             if (cancelled) return;
-            const tasks = d.tasks || [];
-            setRunning(tasks.map(t => ({
+            const tasks = (bg && bg.tasks) || [];
+            const entries = (hist && hist.entries) || [];
+            const nextRunning = tasks.map(t => ({
               agentId: t.agentId,
               conversationId: t.conversationId,
               agentType: t.agentType || 'unknown',
@@ -1421,11 +1429,30 @@ export function renderDashboardHTML(daemonPort: number): string {
               startTime: t.startTime,
               elapsedMs: t.elapsedMs,
               status: 'running',
-            })));
+            }));
+            const nextHistory = entries
+              .filter(e => e.status !== 'running')
+              .map(e => ({
+                agentId: e.agentId,
+                agentType: e.agentType || 'unknown',
+                description: e.description || '',
+                startTime: e.startTime,
+                elapsedMs: e.durationMs,
+                status: e.status,
+                completedAt: e.completedAt,
+              }))
+              .sort((a, b) => (b.completedAt || b.startTime || 0) - (a.completedAt || a.startTime || 0));
+            setRunning(prev => mergeByAgentId(prev, nextRunning));
+            setHistory(nextHistory);
             setLoadErr(null);
+            setReady(true);
           })
-          .catch(e => { if (!cancelled) setLoadErr(e.message); })
-          .finally(() => { if (!cancelled) setReady(true); });
+          .catch(e => {
+            if (!cancelled) {
+              setLoadErr(e.message);
+              setReady(true);
+            }
+          });
 
         const unsub = sseSubscribe((msg) => {
           if (msg.type === 'conversation-snapshot') return;
@@ -1509,9 +1536,11 @@ export function renderDashboardHTML(daemonPort: number): string {
         };
       }, []);
 
+      const runningIds = new Set(running.map(a => a.agentId));
+      const visibleHistory = history.filter(a => !runningIds.has(a.agentId));
       const rows = [
         ...running.map(a => ({ ...a, sortKey: a.startTime || 0 })),
-        ...history.map(a => ({ ...a, sortKey: a.completedAt || a.startTime || 0 })),
+        ...visibleHistory.map(a => ({ ...a, sortKey: a.completedAt || a.startTime || 0 })),
       ].sort((a, b) => {
         const ar = a.status === 'running' ? 1 : 0;
         const br = b.status === 'running' ? 1 : 0;

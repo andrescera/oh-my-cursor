@@ -86,7 +86,18 @@ describe("mcp-app", () => {
         // The stat value is a numeric count, not "Active"/"Inactive" string.
         expect(html).toContain("stats?.continuationLoopsActive")
       })
+    })
 
+    describe("#when inspecting Agents tab fetch wiring", () => {
+      test("#then dashboard HTML contains /agentHistory endpoint", () => {
+        const html = getStatusHTML()
+        expect(html).toContain("/agentHistory")
+      })
+
+      test("#then dashboard HTML still contains /backgroundTasks endpoint", () => {
+        const html = getStatusHTML()
+        expect(html).toContain("/backgroundTasks")
+      })
     })
   })
 })

@@ -1,5 +1,5 @@
 /**
- * Config tab — sidebar-nav editor for the daemon's full config (W2.8).
+ * Config tab: sidebar-nav editor for the daemon's full config (W2.8).
  *
  * Data flow:
  * - Mount: GET `/config/full` (`getFullConfig`). The response is the full
@@ -13,7 +13,7 @@
  *   `formatZodPath`.
  * - Reset reverts `draft` back to the snapshot.
  *
- * Layout (kills AB-2 — no identical-card grid):
+ * Layout (kills AB-2; no identical-card grid):
  * - Left: `<nav role="tablist">` with one row per section. Up/Down arrow
  *   keys roving-tabindex through the list, Enter activates.
  * - Right: a flat form for the active section. Each leaf is rendered as a
@@ -40,6 +40,7 @@ import {
 } from '@/components/ui/sheet'
 import { Skeleton } from '@/components/ui/skeleton'
 import { type ApiError, getFullConfig, saveConfig } from '@/lib/api'
+import { describeApiError, formatApiErrorInline } from '@/lib/api-error'
 import { useDashboardStore } from '@/store/dashboard'
 
 // ---------- types ----------
@@ -139,7 +140,7 @@ export type ConfigDiff = {
 
 /**
  * Walk both trees and emit one entry per leaf where the JSON-encoded
- * value differs. Leaves are anything that isn't a plain object — arrays
+ * value differs. Leaves are anything that isn't a plain object: arrays
  * and primitives both get a single diff row, which keeps the sheet
  * readable for the kinds of values this config holds.
  */
@@ -394,7 +395,7 @@ function FieldRow({
   }
 
   if (isPlainObject(value)) {
-    // Record/map style — render as JSON in a textarea so the user can edit
+    // Record/map style: render as JSON in a textarea so the user can edit
     // free-form key/value entries. Persist parse errors as field errors.
     const json = JSON.stringify(value, null, 2)
     return (
@@ -452,7 +453,7 @@ function renderSectionFields(
     if (isPlainObject(node)) {
       // Render a small heading for nested sub-objects (path.length >= 2).
       // h3 keeps the heading order valid: section title is h2, nested
-      // group label is h3 — no levels skipped.
+      // group label is h3; no levels skipped.
       if (path.length >= 2) {
         out.push(
           <h3
@@ -489,7 +490,7 @@ function renderSectionFields(
 // ---------- diff renderer ----------
 
 function formatScalar(v: unknown): string {
-  if (v === undefined) return '—'
+  if (v === undefined) return '(unset)'
   if (typeof v === 'string') return v === '' ? '""' : v
   return JSON.stringify(v)
 }
@@ -539,17 +540,6 @@ function DiffList({ diffs }: { diffs: ConfigDiff[] }) {
 
 // ---------- error banner ----------
 
-function describeApiError(err: ApiError): string {
-  switch (err.kind) {
-    case 'http':
-      return `HTTP ${err.status}${err.message ? ` — ${err.message}` : ''}`
-    case 'network':
-      return `Network error — ${err.message}`
-    case 'parse':
-      return `Bad response — ${err.message}`
-  }
-}
-
 function extractIssues(body: unknown): ZodIssue[] {
   if (!isPlainObject(body)) return []
   const issues = (body as SaveErrorBody).issues
@@ -563,7 +553,7 @@ function extractIssues(body: unknown): ZodIssue[] {
 
 type ConfigTabProps = {
   /**
-   * Test seam — when supplied bypasses the network fetch and uses the
+   * Test seam: when supplied bypasses the network fetch and uses the
    * given object as the loaded snapshot.
    */
   initialConfig?: ConfigShape
@@ -682,12 +672,12 @@ export default function ConfigTab(props: ConfigTabProps = {}) {
                     : (i.message ?? 'Invalid value'),
                 )
                 .join('\n')
-            : describeApiError(r.error)
+            : formatApiErrorInline(r.error)
         setSave({ status: 'error', banner, issues })
       } else {
         setSave({
           status: 'error',
-          banner: describeApiError(r.error),
+          banner: formatApiErrorInline(r.error),
           issues: [],
         })
       }
@@ -742,16 +732,15 @@ export default function ConfigTab(props: ConfigTabProps = {}) {
   )
 
   if (fetchState.status === 'error') {
+    const copy = describeApiError(fetchState.error)
     return (
       <div
         className="flex h-full flex-col items-center justify-center gap-3 p-8 text-center"
         data-slot="config-error"
       >
-        <p className="text-sm font-medium text-foreground">
-          Failed to load configuration.
-        </p>
+        <p className="text-sm font-medium text-foreground">{copy.title}</p>
         <p className="max-w-md text-xs text-muted-foreground">
-          {describeApiError(fetchState.error)}
+          {copy.subtitle}
         </p>
         <Button onClick={() => void load()} size="sm" variant="outline">
           Retry

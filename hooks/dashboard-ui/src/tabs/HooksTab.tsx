@@ -10,6 +10,7 @@ import {
 } from '@/components/ui/card'
 import { Skeleton } from '@/components/ui/skeleton'
 import { getConfig, type ApiError } from '@/lib/api'
+import { describeApiError } from '@/lib/api-error'
 import { useDashboardStore } from '@/store/dashboard'
 
 type HookConfig = { enabled: string[]; disabled: string[] }
@@ -31,17 +32,6 @@ function isHookConfig(v: unknown): v is HookConfig {
     Array.isArray(r.disabled) &&
     r.disabled.every((x) => typeof x === 'string')
   )
-}
-
-function describeError(err: ApiError): string {
-  switch (err.kind) {
-    case 'http':
-      return `HTTP ${err.status}${err.message ? ` — ${err.message}` : ''}`
-    case 'network':
-      return `Network error — ${err.message}`
-    case 'parse':
-      return `Bad response — ${err.message}`
-  }
 }
 
 function HookList({
@@ -120,16 +110,15 @@ export default function HooksTab() {
   }, [load])
 
   if (state.status === 'error') {
+    const copy = describeApiError(state.error)
     return (
       <div
         className="flex h-full flex-col items-center justify-center gap-3 p-8 text-center"
         data-slot="hooks-error"
       >
-        <p className="text-sm font-medium text-foreground">
-          Failed to load hook configuration.
-        </p>
+        <p className="text-sm font-medium text-foreground">{copy.title}</p>
         <p className="max-w-md text-xs text-muted-foreground">
-          {describeError(state.error)}
+          {copy.subtitle}
         </p>
         <Button onClick={() => void load()} size="sm" variant="outline">
           Retry

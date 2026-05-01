@@ -22,7 +22,7 @@ afterEach(() => {
   document.body.classList.remove('dense')
 })
 
-describe('Shell — tablist keyboard navigation (P0-1)', () => {
+describe('Shell: tablist keyboard navigation (P0-1)', () => {
   test('renders all tabs with role="tab" inside a labelled tablist', () => {
     renderShell()
     const list = screen.getByRole('tablist', { name: /dashboard sections/i })
@@ -91,7 +91,7 @@ describe('Shell — tablist keyboard navigation (P0-1)', () => {
   })
 })
 
-describe('Shell — derived UI behavior', () => {
+describe('Shell: derived UI behavior', () => {
   test('dense mode toggle adds the body `dense` class (P2-8)', () => {
     renderShell()
     expect(document.body.classList.contains('dense')).toBe(false)

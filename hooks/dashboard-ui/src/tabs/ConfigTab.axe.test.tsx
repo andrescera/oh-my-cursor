@@ -48,7 +48,7 @@ afterEach(() => {
   cleanup()
 })
 
-describe('ConfigTab — axe a11y (W3.1)', () => {
+describe('ConfigTab: axe a11y (W3.1)', () => {
   test('General section render has no axe violations', async () => {
     const { container } = render(
       <ConfigTab initialConfig={FIXTURE_CONFIG} />,

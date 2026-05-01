@@ -195,7 +195,7 @@ function ShellHeader({
 }
 
 type ShellProps = {
-  /** Test seam — skip the real EventSource connect when running in jsdom/happy-dom. */
+  /** Test seam: skip the real EventSource connect when running in jsdom/happy-dom. */
   enableSse?: boolean
 }
 
@@ -270,7 +270,7 @@ export default function Shell({ enableSse = true }: ShellProps) {
     if (typeof window === 'undefined') return
     function onKeyDown(e: KeyboardEvent) {
       if (e.defaultPrevented || e.metaKey || e.ctrlKey || e.altKey) return
-      // `?` opens the shortcuts sheet even from within an editable target —
+      // `?` opens the shortcuts sheet even from within an editable target;
       // that's the conventional escape hatch from any context.
       if (e.key === '?') {
         e.preventDefault()

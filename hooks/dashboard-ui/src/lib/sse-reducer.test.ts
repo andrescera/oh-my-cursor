@@ -21,7 +21,7 @@ function deepFreeze<T>(value: T): T {
   return value
 }
 
-describe('reduceSseEvent — purity', () => {
+describe('reduceSseEvent: purity', () => {
   test('unknown event returns the input by reference (no-op)', () => {
     const frozen = deepFreeze({ ...initial, recentErrors: [...initial.recentErrors] }) as SseSliceState
     const next = reduceSseEvent(frozen, { type: 'unknown' as 'shutdown' })
@@ -36,7 +36,7 @@ describe('reduceSseEvent — purity', () => {
   })
 })
 
-describe('reduceSseEvent — health', () => {
+describe('reduceSseEvent: health', () => {
   test('updates health slice and marks SSE connected', () => {
     const next = reduceSseEvent(initial, { type: 'health', payload: { uptime: 5, toolCalls: 2 } })
     expect(next.health).toEqual({ uptime: 5, toolCalls: 2 })
@@ -44,7 +44,7 @@ describe('reduceSseEvent — health', () => {
   })
 })
 
-describe('reduceSseEvent — subagentStart / subagentStop', () => {
+describe('reduceSseEvent: subagentStart / subagentStop', () => {
   test('appends running agent on start', () => {
     const next = reduceSseEvent(initial, {
       type: 'subagentStart',
@@ -88,7 +88,7 @@ describe('reduceSseEvent — subagentStart / subagentStop', () => {
   })
 })
 
-describe('reduceSseEvent — tool_call', () => {
+describe('reduceSseEvent: tool_call', () => {
   test('increments explore + total counters', () => {
     const next = reduceSseEvent(initial, { type: 'tool_call', payload: { agent_kind: 'explore' } })
     expect(next.dispatchCounts.explore).toBe(1)
@@ -110,7 +110,7 @@ describe('reduceSseEvent — tool_call', () => {
   })
 })
 
-describe('reduceSseEvent — error', () => {
+describe('reduceSseEvent: error', () => {
   test('caps recentErrors at 10 (newest first)', () => {
     let s: SseSliceState = initial
     for (let i = 0; i < 15; i++) {
@@ -122,7 +122,7 @@ describe('reduceSseEvent — error', () => {
   })
 })
 
-describe('reduceSseEvent — conversation-snapshot', () => {
+describe('reduceSseEvent: conversation-snapshot', () => {
   test('replaces sessions slice', () => {
     const sessions = [{ id: 'sess-1', startedAt: 1 }]
     const next = reduceSseEvent(initial, {
@@ -133,14 +133,14 @@ describe('reduceSseEvent — conversation-snapshot', () => {
   })
 })
 
-describe('reduceSseEvent — shutdown', () => {
+describe('reduceSseEvent: shutdown', () => {
   test('sets sseStatus to "shutdown"', () => {
     const next = reduceSseEvent(initial, { type: 'shutdown' })
     expect(next.sseStatus).toBe('shutdown')
   })
 })
 
-describe('reduceSseEvent — unknown', () => {
+describe('reduceSseEvent: unknown', () => {
   test('returns the input state by reference (no-op)', () => {
     const next = reduceSseEvent(initial, { type: 'banana', payload: { foo: 1 } } as unknown as SseEvent)
     expect(next).toBe(initial)

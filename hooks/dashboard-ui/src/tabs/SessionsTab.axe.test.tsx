@@ -46,7 +46,7 @@ afterEach(() => {
   globalThis.fetch = realFetch
 })
 
-describe('SessionsTab — axe a11y (W3.1)', () => {
+describe('SessionsTab: axe a11y (W3.1)', () => {
   test('list render has no axe violations', async () => {
     mockFetch.mockResolvedValueOnce(jsonResponse([session()]))
     const { container } = render(<SessionsTab />)

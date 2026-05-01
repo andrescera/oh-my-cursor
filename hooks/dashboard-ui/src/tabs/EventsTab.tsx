@@ -1,5 +1,5 @@
 /**
- * Events tab — W2.5.
+ * Events tab (W2.5).
  *
  * Wires the dashboard store (`ui.eventsFilter|AutoScroll|Search`,
  * `data.events`, `expandedKeys.events`) to the `/session-log` endpoint.
@@ -8,7 +8,7 @@
  *   - P0-2  focusable rows: every row is a `<button>` with `aria-expanded`,
  *           Enter/Space toggle handled natively by the button element.
  *   - P1-1  retry on initial fetch failure (no silent swallow).
- *   - P1-3  inline-confirm Clear with 5s Undo toast — replaces `confirm()`
+ *   - P1-3  inline-confirm Clear with 5s Undo toast: replaces `confirm()`
  *           per AB-3.
  *   - P2-2  real-time text search across event type / tool / agent / message.
  *   - P2-5  filter + search + autoscroll persisted through the store
@@ -18,7 +18,7 @@
  *
  * Virtualization note (spec W2.5): `@tanstack/react-virtual` is NOT installed
  * and adding it would bloat the single-file bundle. The spec explicitly
- * permits plain rendering — "the audit goal is smooth scroll, not must
+ * permits plain rendering: "the audit goal is smooth scroll, not must
  * virtualize." We render everything; if the session-log ever grows past
  * ~1k events we revisit this.
  * TODO(W2.5-followup): add windowing once the event volume justifies it.
@@ -30,11 +30,12 @@ import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { clearSessionLog, getSessionLog, type ApiError } from '@/lib/api'
+import { describeApiError, formatApiErrorInline } from '@/lib/api-error'
 import { cn } from '@/lib/utils'
 import { type EventsFilter, useDashboardStore } from '@/store/dashboard'
 import { useExpanded, useUi } from '@/store/selectors'
 
-// Loose structural shape — the daemon emits a heterogeneous union (tool
+// Loose structural shape: the daemon emits a heterogeneous union (tool
 // calls, dispatches, errors, etc.). We only rely on the fields used for
 // rendering / filtering / search; everything else is preserved verbatim
 // in the detail pane via `JSON.stringify`.
@@ -109,15 +110,6 @@ function applySearch(
       .toLowerCase()
     return hay.includes(needle)
   })
-}
-
-function formatApiError(err: ApiError): string {
-  if (err.kind === 'http') {
-    return `HTTP ${err.status}${err.message ? `: ${err.message}` : ''}`
-  }
-  return err.kind === 'network'
-    ? `Network error: ${err.message}`
-    : `Parse error: ${err.message}`
 }
 
 function formatTime(ts: number | undefined): string {
@@ -210,18 +202,18 @@ export default function EventsTab() {
   const toggleExpanded = useDashboardStore((s) => s.toggleExpanded)
 
   const [status, setStatus] = useState<'loading' | 'ready' | 'error'>('loading')
-  const [errorMsg, setErrorMsg] = useState<string | null>(null)
+  const [fetchError, setFetchError] = useState<ApiError | null>(null)
   const [confirmingClear, setConfirmingClear] = useState(false)
 
   const searchInputRef = useRef<HTMLInputElement | null>(null)
   const listRef = useRef<HTMLDivElement | null>(null)
   // Snapshot lives in a ref (not state) so the Undo toast callback closes
-  // over a stable reference — no stale closure after further list edits.
+  // over a stable reference: no stale closure after further list edits.
   const undoSnapshotRef = useRef<DashboardEvent[] | null>(null)
 
   const fetchEvents = useCallback(async () => {
     setStatus('loading')
-    setErrorMsg(null)
+    setFetchError(null)
     const res = await getSessionLog({ limit: FETCH_LIMIT })
     if (res.ok) {
       const data = Array.isArray(res.data) ? (res.data as DashboardEvent[]) : []
@@ -229,7 +221,7 @@ export default function EventsTab() {
       setStatus('ready')
       return
     }
-    setErrorMsg(formatApiError(res.error))
+    setFetchError(res.error)
     setStatus('error')
   }, [setEvents])
 
@@ -293,7 +285,7 @@ export default function EventsTab() {
     const res = await clearSessionLog()
     if (!res.ok) {
       undoSnapshotRef.current = null
-      toast.error(`Clear failed: ${formatApiError(res.error)}`)
+      toast.error(`Clear failed: ${formatApiErrorInline(res.error)}`)
       return
     }
     setEvents([])
@@ -450,10 +442,16 @@ export default function EventsTab() {
           data-testid="events-error"
           className="flex items-center justify-between gap-3 border-b border-destructive/30 bg-destructive/10 p-3 text-sm text-destructive"
         >
-          <span>
-            Failed to load events{errorMsg ? `: ${errorMsg}` : '.'} The daemon
-            may be offline.
-          </span>
+          <div className="flex flex-col gap-0.5">
+            <span className="font-medium">
+              {fetchError ? describeApiError(fetchError).title : 'Could not load events'}
+            </span>
+            <span className="text-xs text-destructive/80">
+              {fetchError
+                ? describeApiError(fetchError).subtitle
+                : 'Retry, or check daemon logs.'}
+            </span>
+          </div>
           <Button
             type="button"
             variant="outline"

@@ -4,7 +4,7 @@ import { cn } from '@/lib/utils'
  * Hand-rolled inline-SVG sparkline. Renders a single-stroke polyline normalized
  * to a 100×100 viewBox so the host can size it via Tailwind utilities. We keep
  * this in-tree (rather than pulling a chart lib) because the W2.2 plan caps
- * dashboard sparklines at this fidelity — see plan §P2-4.
+ * dashboard sparklines at this fidelity (see plan §P2-4).
  *
  * - Fewer than 2 samples → render an aria-hidden empty placeholder so the
  *   surrounding flex/grid keeps its rhythm without showing a flat line.

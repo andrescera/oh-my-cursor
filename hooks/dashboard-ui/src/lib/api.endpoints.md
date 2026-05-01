@@ -6,7 +6,7 @@ HTTP method and URL shape.
 
 ## Base URL
 
-`http://localhost:${window.OMC_DAEMON_PORT ?? 27847}` — resolved at request
+`http://localhost:${window.OMC_DAEMON_PORT ?? 27847}`, resolved at request
 time so the same compiled bundle works against any daemon port.
 
 ## Result shape
@@ -31,13 +31,13 @@ Nothing throws. Callers branch on `r.ok`.
 | Function              | Method | Path                  | Query / Body                                      | Returns         |
 |-----------------------|--------|-----------------------|---------------------------------------------------|-----------------|
 | `getHealth`           | GET    | `/health`             | `?conversationId=…` (optional)                    | health object   |
-| `getSessions`         | GET    | `/sessions`           | —                                                 | session list    |
+| `getSessions`         | GET    | `/sessions`           | none                                              | session list    |
 | `getSessionLog`       | GET    | `/session-log`        | `?limit=N&session=ID` (both optional)             | event entries   |
 | `clearSessionLog`     | POST   | `/session-log/clear`  | `?sessionId=…&conversationId=…` (both optional)   | `{ status }`    |
-| `getConfig`           | GET    | `/config`             | —                                                 | hook config     |
-| `getFullConfig`       | GET    | `/config/full`        | —                                                 | full config     |
+| `getConfig`           | GET    | `/config`             | none                                              | hook config     |
+| `getFullConfig`       | GET    | `/config/full`        | none                                              | full config     |
 | `saveConfig`          | POST   | `/config`             | JSON body = config draft, `Content-Type: application/json` | `{ status, path }` on 200; `{ error, issues }` on 400 |
-| `getBackgroundTasks`  | GET    | `/backgroundTasks`    | —                                                 | task list       |
+| `getBackgroundTasks`  | GET    | `/backgroundTasks`    | none                                              | task list       |
 | `getAgentHistory`     | GET    | `/agentHistory`       | `?limit=N` (optional)                             | history entries |
 
 ## Notes

@@ -28,7 +28,7 @@ function jsonResponse(body: unknown): Response {
   })
 }
 
-describe('HooksTab — axe a11y (W3.1)', () => {
+describe('HooksTab: axe a11y (W3.1)', () => {
   test('default render with hooks has no axe violations', async () => {
     mockFetch.mockResolvedValueOnce(
       jsonResponse({

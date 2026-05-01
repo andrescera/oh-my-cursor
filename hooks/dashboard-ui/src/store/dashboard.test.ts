@@ -8,7 +8,7 @@ beforeEach(() => {
   _resetForTests()
 })
 
-describe('useDashboardStore — initial state', () => {
+describe('useDashboardStore: initial state', () => {
   test('exposes ui, connection, data slices', () => {
     const s = useDashboardStore.getState()
     expect(s.ui).toBeDefined()

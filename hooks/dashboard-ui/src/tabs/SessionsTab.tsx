@@ -19,6 +19,7 @@ import {
   TooltipTrigger,
 } from '@/components/ui/tooltip'
 import { type ApiError, getSessions } from '@/lib/api'
+import { describeApiError } from '@/lib/api-error'
 import {
   type SessionsSort,
   useDashboardStore,
@@ -62,19 +63,8 @@ const SORT_LABELS: Record<SessionsSort, string> = {
 const SEARCH_DEBOUNCE_MS = 150
 
 function truncateId(id: string, max = 14): string {
-  if (!id) return '--'
+  if (!id) return ''
   return id.length > max ? `${id.slice(0, max - 1)}…` : id
-}
-
-function describeError(err: ApiError): string {
-  switch (err.kind) {
-    case 'http':
-      return `HTTP ${err.status}${err.message ? ` — ${err.message}` : ''}`
-    case 'network':
-      return `Network error — ${err.message}`
-    case 'parse':
-      return `Bad response — ${err.message}`
-  }
 }
 
 function isSessionRowArray(v: unknown): v is SessionRow[] {
@@ -171,11 +161,13 @@ function SessionDetail({ session }: { session: SessionRow }) {
               <Tooltip>
                 <TooltipTrigger asChild>
                   <p className="text-xs text-emerald-600 dark:text-emerald-400">
-                    Active — iter {ralph.iteration ?? 0} / {ralph.maxIterations ?? 0}
+                    Active: iteration {ralph.iteration ?? 0} of {ralph.maxIterations ?? 0}
                   </p>
                 </TooltipTrigger>
                 <TooltipContent>
-                  Started {ralph.startedAt ? new Date(ralph.startedAt).toLocaleString() : '--'}
+                  {ralph.startedAt
+                    ? `Started ${new Date(ralph.startedAt).toLocaleString()}`
+                    : 'Start time unavailable'}
                 </TooltipContent>
               </Tooltip>
             </TooltipProvider>
@@ -205,8 +197,8 @@ function SessionDetail({ session }: { session: SessionRow }) {
               const extra = t.path || t.commandSnippet || ''
               return (
                 <li key={i} className="truncate font-mono text-muted-foreground">
-                  <span className="text-foreground">{t.tool ?? '--'}</span>
-                  {extra && ` — ${String(extra).slice(0, 120)}`}
+                  <span className="text-foreground">{t.tool ?? 'tool'}</span>
+                  {extra && `: ${String(extra).slice(0, 120)}`}
                 </li>
               )
             })}
@@ -228,7 +220,7 @@ function SessionRowItem({
 }) {
   const started = session.startedAt
     ? new Date(session.startedAt).toLocaleString()
-    : '--'
+    : ''
   const active = !session.stoppedAt
   const statusLabel = active ? 'active' : 'stopped'
   const errorCount = session.errorCount ?? 0
@@ -260,7 +252,7 @@ function SessionRowItem({
         <Badge variant={active ? 'secondary' : 'outline'}>{statusLabel}</Badge>
         <ComposerBadge mode={session.composerMode} />
         <span className="shrink-0 text-xs tabular-nums text-muted-foreground">
-          tools {session.toolCallCount ?? 0}
+          {session.toolCallCount ?? 0} tool calls
         </span>
         <span
           className={
@@ -269,7 +261,7 @@ function SessionRowItem({
               : 'shrink-0 text-xs tabular-nums text-muted-foreground'
           }
         >
-          err {errorCount}
+          {errorCount} errors
         </span>
       </button>
       {expanded && <SessionDetail session={session} />}
@@ -349,14 +341,15 @@ export default function SessionsTab() {
   }, [sessions, sessionsSearch, sessionsSort])
 
   if (state.status === 'error') {
+    const copy = describeApiError(state.error)
     return (
       <div
         className="flex h-full flex-col items-center justify-center gap-3 p-8 text-center"
         data-slot="sessions-error"
       >
-        <p className="text-sm font-medium text-foreground">Failed to load sessions.</p>
+        <p className="text-sm font-medium text-foreground">{copy.title}</p>
         <p className="max-w-md text-xs text-muted-foreground">
-          {describeError(state.error)}
+          {copy.subtitle}
         </p>
         <Button onClick={() => void load()} size="sm" variant="outline">
           Retry

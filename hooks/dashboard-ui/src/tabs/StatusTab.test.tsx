@@ -45,7 +45,7 @@ async function flushHealth() {
   )
 }
 
-describe('StatusTab — sparklines', () => {
+describe('StatusTab: sparklines', () => {
   test('renders sparkline given mock health data', async () => {
     useDashboardStore.getState().setDispatchCounts({
       explore: 3,
@@ -80,8 +80,8 @@ describe('StatusTab — sparklines', () => {
   })
 })
 
-describe('StatusTab — SSE resync (P1-7)', () => {
-  test('transition offline → connected triggers refetch', async () => {
+describe('StatusTab: SSE resync (P1-7)', () => {
+  test('transition offline -> connected triggers refetch', async () => {
     useDashboardStore.getState().setSseStatus('reconnecting')
 
     render(<StatusTab />)
@@ -97,13 +97,13 @@ describe('StatusTab — SSE resync (P1-7)', () => {
       expect(getHealthMock).toHaveBeenCalledTimes(2)
     })
 
-    // Going connected → connected does NOT re-fire.
+    // Going connected -> connected does NOT re-fire.
     act(() => {
       useDashboardStore.getState().setSseStatus('connected')
     })
     expect(getHealthMock).toHaveBeenCalledTimes(2)
 
-    // Going connected → reconnecting → connected fires the second resync.
+    // Going connected -> reconnecting -> connected fires the second resync.
     act(() => {
       useDashboardStore.getState().setSseStatus('reconnecting')
     })
@@ -116,7 +116,7 @@ describe('StatusTab — SSE resync (P1-7)', () => {
   })
 })
 
-describe('StatusTab — connected indicator (P0-4)', () => {
+describe('StatusTab: connected indicator (P0-4)', () => {
   test('reflects store sseStatus rather than local flag', async () => {
     useDashboardStore.getState().setSseStatus('reconnecting')
     render(<StatusTab />)
@@ -132,7 +132,7 @@ describe('StatusTab — connected indicator (P0-4)', () => {
   })
 })
 
-describe('StatusTab — view all errors', () => {
+describe('StatusTab: view all errors', () => {
   test('clicking the link sets eventsFilter and switches to events tab', async () => {
     render(<StatusTab />)
     await flushHealth()
@@ -144,7 +144,7 @@ describe('StatusTab — view all errors', () => {
   })
 })
 
-describe('StatusTab — error retry (P1-1)', () => {
+describe('StatusTab: error retry (P1-1)', () => {
   test('shows retry button when getHealth fails, refetches on click', async () => {
     getHealthMock.mockReset()
     getHealthMock.mockResolvedValueOnce({
@@ -157,7 +157,8 @@ describe('StatusTab — error retry (P1-1)', () => {
     await waitFor(() => {
       expect(screen.getByRole('button', { name: /retry/i })).toBeInTheDocument()
     })
-    expect(screen.getByText(/Daemon unreachable/i)).toBeInTheDocument()
+    expect(screen.getByText(/Could not reach daemon/i)).toBeInTheDocument()
+    expect(screen.getByText(/oh-my-cursor start/i)).toBeInTheDocument()
 
     getHealthMock.mockResolvedValueOnce({
       ok: true,

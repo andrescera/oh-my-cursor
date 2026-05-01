@@ -255,7 +255,7 @@ export const useDashboardStore = create<DashboardState>()(
 // Test-only helper: wipe the store's slices back to their initial shape
 // while keeping the action functions intact. The persist middleware writes
 // to storage on every `setState`, so we snapshot localStorage before the
-// reset and restore it afterward — that lets a test pre-seed storage,
+// reset and restore it afterward; that lets a test pre-seed storage,
 // call `_resetForTests()`, and then exercise `persist.rehydrate()` without
 // the reset clobbering its fixture.
 export function _resetForTests(): void {

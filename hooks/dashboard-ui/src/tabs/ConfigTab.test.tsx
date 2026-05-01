@@ -112,14 +112,14 @@ describe('diffConfig', () => {
   })
 })
 
-describe('ConfigTab — rendering', () => {
+describe('ConfigTab: rendering', () => {
   test('renders the sidebar nav with sections derived from /config/full', () => {
     render(<ConfigTab initialConfig={FIXTURE_CONFIG} />)
     const tablist = screen.getByRole('tablist', {
       name: /configuration sections/i,
     })
     expect(tablist).toBeInTheDocument()
-    // Daemon, Subagent Limits, etc. — at least these are present.
+    // Daemon, Subagent Limits, etc.: at least these are present.
     expect(within(tablist).getByText('Daemon')).toBeInTheDocument()
     expect(within(tablist).getByText('Subagent Limits')).toBeInTheDocument()
     expect(within(tablist).getByText('Hooks & Agents')).toBeInTheDocument()
@@ -152,7 +152,7 @@ describe('ConfigTab — rendering', () => {
   })
 })
 
-describe('ConfigTab — edit + save flow', () => {
+describe('ConfigTab: edit + save flow', () => {
   test('editing a number, opening diff sheet, and confirming POSTs to saveConfig', async () => {
     mockFetch.mockResolvedValueOnce(jsonResponse({ status: 'saved', path: '/tmp/oh-my-cursor.jsonc' }))
 
@@ -204,7 +204,7 @@ describe('ConfigTab — edit + save flow', () => {
 
     // No POST happened.
     expect(mockFetch).not.toHaveBeenCalled()
-    // Draft is still dirty — Save button enabled, port input still 27999.
+    // Draft is still dirty: Save button enabled, port input still 27999.
     expect(
       (screen.getByTestId('config-input-daemon.port') as HTMLInputElement).value,
     ).toBe('27999')
@@ -230,7 +230,7 @@ describe('ConfigTab — edit + save flow', () => {
   })
 })
 
-describe('ConfigTab — error handling', () => {
+describe('ConfigTab: error handling', () => {
   test('400 with Zod issues renders human-readable banner and field error', async () => {
     mockFetch.mockResolvedValueOnce(
       new Response(
@@ -297,11 +297,11 @@ describe('ConfigTab — error handling', () => {
     })
 
     const banner = await screen.findByTestId('config-error-banner')
-    expect(banner.textContent).toMatch(/HTTP 503/)
+    expect(banner.textContent).toMatch(/Daemon returned 503/)
   })
 })
 
-describe('ConfigTab — initial fetch', () => {
+describe('ConfigTab: initial fetch', () => {
   test('GETs /config/full on mount and renders the daemon section', async () => {
     mockFetch.mockResolvedValueOnce(jsonResponse(FIXTURE_CONFIG))
 

@@ -1,5 +1,5 @@
 /**
- * Agents tab — Gantt waterfall + list view of subagent runs.
+ * Agents tab: Gantt waterfall + list view of subagent runs.
  *
  * Data sources:
  * - GET `/agentHistory` (loaded once on mount). The handler returns
@@ -11,14 +11,14 @@
  *   limit so the label can read "X of TRUE_TOTAL"; today the daemon caps
  *   at DEFAULT_QUERY_LIMIT=200 internally and `count` only reflects the
  *   page returned.
- * - SSE `data.agents` slice via `useDashboardStore` — overlays live
+ * - SSE `data.agents` slice via `useDashboardStore`: overlays live
  *   `running` rows that haven't been persisted to history yet.
  *
  * Live updates:
  * - A 250ms `setInterval` bumps a `now` timestamp in state. Bars for
  *   running agents are recomputed via React on each tick (1 reflow / 250ms
  *   regardless of agent count). We DO NOT animate `width` per `rAF`
- *   per-agent — that would be ~60×N writes/s and is the explicit anti-rule
+ *   per-agent: that would be ~60×N writes/s and is the explicit anti-rule
  *   from the W2.7 spec for >20 agents.
  *
  * Visual contract:
@@ -53,6 +53,7 @@ import {
   TooltipTrigger,
 } from '@/components/ui/tooltip'
 import { type ApiError, getAgentHistory } from '@/lib/api'
+import { describeApiError } from '@/lib/api-error'
 import type { AgentRow as SseAgentRow } from '@/lib/sse-reducer'
 import { useDashboardStore } from '@/store/dashboard'
 
@@ -100,23 +101,12 @@ type FetchState =
   | { status: 'ready'; entries: AgentBar[]; total: number }
 
 type AgentsTabProps = {
-  /** Test seam — when supplied, bypasses fetch and store subscription. */
+  /** Test seam: when supplied, bypasses fetch and store subscription. */
   agents?: AgentBar[]
-  /** Test seam — pairs with `agents` to drive the cap-label denominator. */
+  /** Test seam: pairs with `agents` to drive the cap-label denominator. */
   totalCount?: number
-  /** Test seam — disables the 250ms ticker. Defaults to `true`. */
+  /** Test seam: disables the 250ms ticker. Defaults to `true`. */
   liveTicker?: boolean
-}
-
-function describeError(err: ApiError): string {
-  switch (err.kind) {
-    case 'http':
-      return `HTTP ${err.status}${err.message ? ` — ${err.message}` : ''}`
-    case 'network':
-      return `Network error — ${err.message}`
-    case 'parse':
-      return `Bad response — ${err.message}`
-  }
 }
 
 function isObject(v: unknown): v is Record<string, unknown> {
@@ -238,7 +228,7 @@ function ariaForBar(a: AgentBar, now: number): string {
   const end = a.stoppedAt ?? now
   const dur = Math.max(0, end - a.startedAt)
   return `${a.type} ${STATUS_LABEL[a.status].toLowerCase()} for ${formatRelative(dur)}${
-    a.description ? ` — ${a.description}` : ''
+    a.description ? `: ${a.description}` : ''
   }`
 }
 
@@ -441,7 +431,7 @@ function ListView({ agents, now }: { agents: AgentBar[]; now: number }) {
                   {a.stoppedAt === null ? ' (live)' : ''}
                 </td>
                 <td className="px-2 py-1.5 text-[12px] text-muted-foreground">
-                  {a.description ?? <span className="opacity-60">—</span>}
+                  {a.description ?? <span className="opacity-60">N/A</span>}
                 </td>
               </tr>
             )
@@ -567,16 +557,15 @@ export default function AgentsTab(props: AgentsTabProps = {}) {
   const shownCount = merged.length
 
   if (state.status === 'error') {
+    const copy = describeApiError(state.error)
     return (
       <div
         className="flex h-full flex-col items-center justify-center gap-3 p-8 text-center"
         data-slot="agents-error"
       >
-        <p className="text-sm font-medium text-foreground">
-          Failed to load agent history.
-        </p>
+        <p className="text-sm font-medium text-foreground">{copy.title}</p>
         <p className="max-w-md text-xs text-muted-foreground">
-          {describeError(state.error)}
+          {copy.subtitle}
         </p>
         <Button onClick={() => void load()} size="sm" variant="outline">
           Retry

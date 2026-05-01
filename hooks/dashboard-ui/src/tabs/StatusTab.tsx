@@ -13,6 +13,7 @@ import {
 import { Separator } from '@/components/ui/separator'
 import { Skeleton } from '@/components/ui/skeleton'
 import { type ApiError, getHealth, type Result } from '@/lib/api'
+import { describeApiError } from '@/lib/api-error'
 import { cn } from '@/lib/utils'
 import { useDashboardStore } from '@/store/dashboard'
 import {
@@ -126,13 +127,15 @@ export default function StatusTab() {
   }
 
   if (error) {
+    const copy = describeApiError(error)
     return (
       <Card>
         <CardHeader>
           <CardTitle>System status</CardTitle>
         </CardHeader>
         <CardContent className="space-y-3">
-          <p className="text-sm text-status-error">{describeError(error)}</p>
+          <p className="text-sm font-medium text-status-error">{copy.title}</p>
+          <p className="text-xs text-muted-foreground">{copy.subtitle}</p>
           <Button
             variant="outline"
             size="sm"
@@ -229,7 +232,7 @@ function IdentityStrip({ health }: { health: Health }) {
       <Field label="Uptime" value={formatUptime(health.uptime)} />
       <Field
         label="Active sessions"
-        value={health.conversations?.toString() ?? '—'}
+        value={health.conversations?.toString() ?? '0'}
       />
     </dl>
   )
@@ -379,7 +382,7 @@ function Field({
 }
 
 function formatUptime(seconds?: number): string {
-  if (typeof seconds !== 'number' || !Number.isFinite(seconds)) return '—'
+  if (typeof seconds !== 'number' || !Number.isFinite(seconds)) return 'starting'
   const s = Math.max(0, Math.round(seconds))
   if (s < 60) return `${s}s`
   const m = Math.floor(s / 60)
@@ -391,7 +394,7 @@ function formatUptime(seconds?: number): string {
 }
 
 function truncSessionId(id?: string): string {
-  if (!id) return '—'
+  if (!id) return 'N/A'
   return id.length > 14 ? `${id.slice(0, 12)}…` : id
 }
 
@@ -407,15 +410,4 @@ function formatTime(ts?: number): string {
 
 function errorMessage(e: RecentError): string {
   return e.message ?? e.msg ?? e.error ?? 'Error'
-}
-
-function describeError(err: ApiError): string {
-  switch (err.kind) {
-    case 'http':
-      return `Daemon returned HTTP ${err.status}${err.message ? ` — ${err.message}` : ''}.`
-    case 'network':
-      return `Daemon unreachable: ${err.message}`
-    case 'parse':
-      return `Daemon response could not be parsed: ${err.message}`
-  }
 }

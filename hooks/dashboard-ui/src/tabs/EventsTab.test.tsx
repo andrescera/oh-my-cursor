@@ -5,8 +5,8 @@
  *   - aria-live container (P2-11).
  *
  * Mocks:
- *   - `@/lib/api` — so nothing hits a real daemon.
- *   - `sonner`    — avoids mounting `<Toaster>` (+ `next-themes`) in tests;
+ *   - `@/lib/api`: so nothing hits a real daemon.
+ *   - `sonner`:    avoids mounting `<Toaster>` (+ `next-themes`) in tests;
  *                   we assert the call site + action invocation instead.
  */
 
@@ -95,7 +95,7 @@ async function renderReady() {
   return utils
 }
 
-describe('EventsTab — keyboard interaction (P0-2)', () => {
+describe('EventsTab: keyboard interaction (P0-2)', () => {
   test('rows render as focusable buttons; Enter expands detail', async () => {
     await renderReady()
 
@@ -112,7 +112,7 @@ describe('EventsTab — keyboard interaction (P0-2)', () => {
     expect(document.activeElement).toBe(rows[0])
 
     // Native <button> translates Enter/Space keydown into a synthetic click
-    // in real browsers, but jsdom/happy-dom don't — dispatch click directly
+    // in real browsers, but jsdom/happy-dom don't; dispatch click directly
     // to assert the handler wiring. aria-expanded must flip.
     fireEvent.click(rows[0])
     await waitFor(() => {
@@ -138,7 +138,7 @@ describe('EventsTab — keyboard interaction (P0-2)', () => {
   })
 })
 
-describe('EventsTab — inline-confirm Clear (P1-3 / AB-3)', () => {
+describe('EventsTab: inline-confirm Clear (P1-3 / AB-3)', () => {
   test('Cancel reverts to Clear without calling the API', async () => {
     await renderReady()
     fireEvent.click(screen.getByTestId('events-clear'))
@@ -190,7 +190,7 @@ describe('EventsTab — inline-confirm Clear (P1-3 / AB-3)', () => {
   })
 })
 
-describe('EventsTab — aria-live container (P2-11)', () => {
+describe('EventsTab: aria-live container (P2-11)', () => {
   test('event list has aria-live="polite" and aria-atomic="false"', async () => {
     await renderReady()
     const list = screen.getByTestId('events-list')
@@ -200,7 +200,7 @@ describe('EventsTab — aria-live container (P2-11)', () => {
   })
 })
 
-describe('EventsTab — retry on fetch failure (P1-1)', () => {
+describe('EventsTab: retry on fetch failure (P1-1)', () => {
   test('renders error state with Retry button and recovers on retry', async () => {
     apiMocks.getSessionLog
       .mockResolvedValueOnce({
@@ -214,8 +214,9 @@ describe('EventsTab — retry on fetch failure (P1-1)', () => {
     await waitFor(() => {
       expect(screen.getByTestId('events-error')).toBeInTheDocument()
     })
-    // Error surface must NOT be silent: message is visible + retry available.
-    expect(screen.getByText(/Failed to load events/i)).toBeInTheDocument()
+    // Error surface must NOT be silent: actionable copy + retry are visible.
+    expect(screen.getByText(/Could not reach daemon/i)).toBeInTheDocument()
+    expect(screen.getByText(/oh-my-cursor start/i)).toBeInTheDocument()
     expect(screen.getByTestId('events-retry')).toBeInTheDocument()
     expect(screen.queryByTestId('events-list')).not.toBeInTheDocument()
 
@@ -230,12 +231,12 @@ describe('EventsTab — retry on fetch failure (P1-1)', () => {
   })
 })
 
-describe('EventsTab — filter persistence (P2-5)', () => {
+describe('EventsTab: filter persistence (P2-5)', () => {
   test('filter chip selection updates and persists through store', async () => {
     await renderReady()
     fireEvent.click(screen.getByTestId('events-filter-errors'))
     expect(useDashboardStore.getState().ui.eventsFilter).toBe('errors')
-    // Only the deny event has an error snippet → filter narrows the list.
+    // Only the deny event has an error snippet; filter narrows the list.
     await waitFor(() => {
       expect(screen.getAllByTestId('event-row')).toHaveLength(1)
     })

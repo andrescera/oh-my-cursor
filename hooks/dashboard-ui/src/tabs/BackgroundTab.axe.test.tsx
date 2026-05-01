@@ -18,7 +18,7 @@ afterEach(() => {
   cleanup()
 })
 
-describe('BackgroundTab — axe a11y (W3.1)', () => {
+describe('BackgroundTab: axe a11y (W3.1)', () => {
   test('empty render has no axe violations', async () => {
     const { container } = render(<BackgroundTab />)
     const results = await axeComponent(container)

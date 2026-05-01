@@ -36,7 +36,7 @@ afterEach(() => {
   cleanup()
 })
 
-describe('AgentsTab — axe a11y (W3.1)', () => {
+describe('AgentsTab: axe a11y (W3.1)', () => {
   test('Gantt view render has no axe violations', async () => {
     const { container } = render(
       <AgentsTab agents={FIXTURE} totalCount={2} />,

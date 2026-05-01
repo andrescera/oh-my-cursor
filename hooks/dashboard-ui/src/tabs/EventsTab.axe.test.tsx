@@ -54,7 +54,7 @@ afterEach(() => {
   cleanup()
 })
 
-describe('EventsTab — axe a11y (W3.1)', () => {
+describe('EventsTab: axe a11y (W3.1)', () => {
   test('ready render has no axe violations', async () => {
     apiMocks.getSessionLog.mockResolvedValueOnce({
       ok: true,

@@ -57,7 +57,7 @@ async function renderWithFixture(rows: SessionRow[]) {
   )
 }
 
-describe('SessionsTab — rendering', () => {
+describe('SessionsTab: rendering', () => {
   test('renders a focusable <button> row with aria-expanded=false by default', async () => {
     await renderWithFixture([session()])
     const row = screen.getByRole('button', { name: /sess-alpha/i })
@@ -71,7 +71,7 @@ describe('SessionsTab — rendering', () => {
   })
 })
 
-describe('SessionsTab — keyboard navigation', () => {
+describe('SessionsTab: keyboard navigation', () => {
   test('Enter on a focused row toggles aria-expanded and reveals detail', async () => {
     await renderWithFixture([session()])
     const row = screen.getByRole('button', { name: /sess-alpha/i })
@@ -116,7 +116,7 @@ describe('SessionsTab — keyboard navigation', () => {
   })
 })
 
-describe('SessionsTab — search debounce', () => {
+describe('SessionsTab: search debounce', () => {
   test('debounces store write by 150ms', async () => {
     vi.useFakeTimers({ shouldAdvanceTime: true })
     mockFetch.mockResolvedValueOnce(
@@ -132,12 +132,12 @@ describe('SessionsTab — search debounce', () => {
 
     const input = screen.getByPlaceholderText(/search session id/i) as HTMLInputElement
 
-    // Type a prefix quickly — the store should still be empty mid-debounce.
+    // Type a prefix quickly: the store should still be empty mid-debounce.
     fireEvent.change(input, { target: { value: 'alph' } })
     expect(input.value).toBe('alph')
     expect(useDashboardStore.getState().ui.sessionsSearch).toBe('')
 
-    // Advance less than 150ms — still not committed.
+    // Advance less than 150ms: still not committed.
     await act(async () => {
       vi.advanceTimersByTime(120)
     })
@@ -171,7 +171,7 @@ describe('SessionsTab — search debounce', () => {
   })
 })
 
-describe('SessionsTab — sort', () => {
+describe('SessionsTab: sort', () => {
   test('sort change reorders the rows and persists to store', async () => {
     // `truncateId` collapses IDs >14 chars. Prefix each ID with a short,
     // unique tag so the visible row text remains distinguishable even after

@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 /**
- * W3.1 — axe-core scan over the Shell shell (header + tablist + active panel).
+ * W3.1 axe-core scan over the Shell shell (header + tablist + active panel).
  *
  * vitest-axe is incompatible with happy-dom (`Node.prototype.isConnected`
  * bug) so this file forces the jsdom environment with the per-file pragma
@@ -40,7 +40,7 @@ afterEach(() => {
   cleanup()
 })
 
-describe('Shell — axe a11y (W3.1)', () => {
+describe('Shell: axe a11y (W3.1)', () => {
   test('default render has no axe violations', async () => {
     const { container } = render(
       <TooltipProvider>

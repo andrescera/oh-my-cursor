@@ -144,8 +144,8 @@ export default function BackgroundTab() {
           data-slot="auto-prune-toggle"
           title={
             autoPrune
-              ? 'Auto-prune is ON — finished tasks fall off after 60s.'
-              : 'Auto-prune is OFF — finished tasks linger for 10 minutes.'
+              ? 'Auto-prune is on: finished tasks fall off after 60s.'
+              : 'Auto-prune is off: finished tasks linger for 10 minutes.'
           }
         >
           <span

@@ -4,7 +4,7 @@
  * Render strategy: pass `agents` + `totalCount` props to bypass the
  * /agentHistory fetch and the 250ms ticker (driven by `liveTicker`
  * defaulting to false when `agents` is supplied). That keeps the test
- * deterministic — the geometry math is the only thing under examination.
+ * deterministic: the geometry math is the only thing under examination.
  */
 
 import { cleanup, fireEvent, render, screen, within } from '@testing-library/react'
@@ -62,7 +62,7 @@ function getBarFor(id: string): SVGRectElement {
   return rect as SVGRectElement
 }
 
-describe('AgentsTab — Gantt geometry', () => {
+describe('AgentsTab: Gantt geometry', () => {
   test('renders one rect per agent with correct status fills', () => {
     render(<AgentsTab agents={FIXTURE} totalCount={42} />)
     expect(getBarFor('a-running').getAttribute('fill')).toBe(
@@ -76,7 +76,7 @@ describe('AgentsTab — Gantt geometry', () => {
 
   test('positions bars by startedAt; widths track duration', () => {
     // Use a fully-bounded fixture (no running rows) so geometry is fully
-    // deterministic — `now` doesn't enter the math when every agent has
+    // deterministic: `now` doesn't enter the math when every agent has
     // a `stoppedAt`.
     const bounded: AgentBar[] = [
       { ...FIXTURE[1]!, status: 'done' }, // 0..2000  startedAt=NOW+500 stoppedAt=NOW+2500
@@ -115,7 +115,7 @@ describe('AgentsTab — Gantt geometry', () => {
   })
 })
 
-describe('AgentsTab — view toggle + list view', () => {
+describe('AgentsTab: view toggle + list view', () => {
   test('Gantt is the default view; toggling reveals the table', () => {
     render(<AgentsTab agents={FIXTURE} totalCount={42} />)
 
@@ -139,7 +139,7 @@ describe('AgentsTab — view toggle + list view', () => {
   })
 })
 
-describe('AgentsTab — accessibility', () => {
+describe('AgentsTab: accessibility', () => {
   test('SVG advertises a role and label; bars expose aria-labels', () => {
     render(<AgentsTab agents={FIXTURE} totalCount={42} />)
 
@@ -167,7 +167,7 @@ describe('AgentsTab — accessibility', () => {
   })
 })
 
-describe('AgentsTab — history cap label (P1-8)', () => {
+describe('AgentsTab: history cap label (P1-8)', () => {
   test('reads "Showing N most recent of M total" from props', () => {
     render(<AgentsTab agents={FIXTURE} totalCount={137} />)
     expect(screen.getByTestId('agents-history-cap-label')).toHaveTextContent(
@@ -183,7 +183,7 @@ describe('AgentsTab — history cap label (P1-8)', () => {
   })
 })
 
-describe('AgentsTab — empty + loading states', () => {
+describe('AgentsTab: empty + loading states', () => {
   test('seeded with no agents shows empty-state copy in Gantt view', () => {
     render(<AgentsTab agents={[]} totalCount={0} />)
     expect(

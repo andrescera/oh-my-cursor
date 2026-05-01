@@ -41,7 +41,7 @@ afterEach(() => {
   vi.clearAllMocks()
 })
 
-describe('StatusTab — axe a11y (W3.1)', () => {
+describe('StatusTab: axe a11y (W3.1)', () => {
   test('ready render has no axe violations', async () => {
     const { container } = render(<StatusTab />)
     await waitFor(() => {

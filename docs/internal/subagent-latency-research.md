@@ -145,13 +145,13 @@ Models referenced by oh-my-cursor agent definitions in this repo (`agents/*.md` 
 | explore | `composer-2-fast` |
 | librarian | `composer-2-fast` (Task tool parameter; selects a smaller/faster model — not a row in the CLI model list) |
 | sisyphus-junior | `composer-2-fast` |
-| sisyphus | `claude-opus-4-7-thinking-high` |
-| hephaestus | `gpt-5.3-codex-high-fast` |
+| sisyphus | `claude-opus-4-7-thinking-xhigh` |
+| hephaestus | `gpt-5.5-extra-high` |
 | atlas | `claude-4.6-sonnet-medium-thinking` |
 | oracle | `gpt-5.4-medium` |
-| prometheus | `claude-opus-4-7-thinking-high` |
+| prometheus | `claude-opus-4-7-thinking-xhigh` |
 | metis | `gpt-5.4-medium` |
-| momus | `gpt-5.3-codex-high-fast` |
+| momus | `gpt-5.5-extra-high` |
 | multimodal-looker | `gemini-3.1-pro` |
 
 **Note:** `composer-2-fast` is a Task tool parameter (not in the `cursor agent models` list) that selects a smaller/faster model.

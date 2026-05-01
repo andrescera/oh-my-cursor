@@ -209,7 +209,7 @@ These are redacted real stdin payload samples captured by `/hooks/scripts/experi
 {
   "conversation_id": "<redacted>",
   "generation_id": "<redacted>",
-  "model": "gpt-5.3-codex-high-fast",
+  "model": "gpt-5.5-extra-high",
   "file_path": "<repo>/hooks/hooks.experiment.valid.json",
   "edits": [
     {
@@ -234,7 +234,7 @@ These are redacted real stdin payload samples captured by `/hooks/scripts/experi
 {
   "conversation_id": "<redacted>",
   "generation_id": "<redacted>",
-  "model": "gpt-5.3-codex-high-fast",
+  "model": "gpt-5.5-extra-high",
   "tool_name": "web_search_exa",
   "tool_input": "{}",
   "result_json": "{\"content\":[{\"type\":\"text\",\"text\":\"MCP error -32602: Input validation error: Invalid arguments for tool web_search_exa: [\\n  {\\n    \\\"code\\\": \\\"invalid_type\\\",\\n    \\\"expected\\\": \\\"string\\\",\\n    \\\"received\\\": \\\"undefined\\\",\\n    \\\"path\\\": [\\n      \\\"query\\\"\\n    ],\\n    \\\"message\\\": \\\"Required\\\"\\n  }\\n]\"}],\"isError\":true}",
@@ -256,7 +256,7 @@ These are redacted real stdin payload samples captured by `/hooks/scripts/experi
 {
   "conversation_id": "<redacted>",
   "generation_id": "<redacted>",
-  "model": "gpt-5.3-codex-high-fast",
+  "model": "gpt-5.5-extra-high",
   "command": "echo HOOK_MATCH_TEST",
   "output": "HOOK_MATCH_TEST\n",
   "duration": 52.929,
@@ -278,7 +278,7 @@ These are redacted real stdin payload samples captured by `/hooks/scripts/experi
 {
   "conversation_id": "<redacted>",
   "generation_id": "<redacted>",
-  "model": "gpt-5.3-codex-high-fast",
+  "model": "gpt-5.5-extra-high",
   "tool_name": "web_search_exa",
   "tool_input": "{\"query\":\"Cursor hook beforeMCPExecution payload example\",\"numResults\":1}",
   "command": "websearch",
@@ -299,7 +299,7 @@ These are redacted real stdin payload samples captured by `/hooks/scripts/experi
 {
   "conversation_id": "<redacted>",
   "generation_id": "<redacted>",
-  "model": "gpt-5.3-codex-high-fast",
+  "model": "gpt-5.5-extra-high",
   "content": "{\"role\":\"user\",\"message\":{\"content\":[{\"type\":\"text\",\"text\":\"<user_query>\\nTASK: Search for \\\"sessionStart\\\" in <repo>/hooks and return first 3 matches.\\nE...<truncated>",
   "file_path": "<home>/.cursor/projects/mnt-development-oh-my-openagent/agent-transcripts/<session-id>/subagents/<subagent-id>.jsonl",
   "attachments": [],
@@ -320,7 +320,7 @@ These are redacted real stdin payload samples captured by `/hooks/scripts/experi
 {
   "conversation_id": "<redacted>",
   "generation_id": "<redacted>",
-  "model": "gpt-5.3-codex-high-fast",
+  "model": "gpt-5.5-extra-high",
   "command": "echo HOOK_MATCH_TEST && echo CURSOR_HOOK_FAILOPEN_TEST && echo CURSOR_HOOK_FAILCLOSED_TEST && echo CURSOR_HOOK_DENY_TEST",
   "cwd": "",
   "sandbox": true,
@@ -341,7 +341,7 @@ These are redacted real stdin payload samples captured by `/hooks/scripts/experi
 {
   "conversation_id": "<redacted>",
   "generation_id": "<redacted>",
-  "model": "gpt-5.3-codex-high-fast",
+  "model": "gpt-5.5-extra-high",
   "tool_name": "Grep",
   "tool_input": {
     "pattern": "beforeSubmitPrompt",
@@ -368,7 +368,7 @@ These are redacted real stdin payload samples captured by `/hooks/scripts/experi
 {
   "conversation_id": "<redacted>",
   "generation_id": "<redacted>",
-  "model": "gpt-5.3-codex-high-fast",
+  "model": "gpt-5.5-extra-high",
   "tool_name": "Shell",
   "tool_input": {
     "command": "echo HOOK_MATCH_TEST && echo CURSOR_HOOK_FAILOPEN_TEST && echo CURSOR_HOOK_FAILCLOSED_TEST && echo CURSOR_HOOK_DENY_TEST",
@@ -398,7 +398,7 @@ These are redacted real stdin payload samples captured by `/hooks/scripts/experi
 {
   "conversation_id": "<redacted>",
   "generation_id": "<redacted>",
-  "model": "gpt-5.3-codex-high-fast",
+  "model": "gpt-5.5-extra-high",
   "tool_name": "Grep",
   "tool_input": {
     "pattern": "beforeSubmitPrompt",
@@ -423,7 +423,7 @@ These are redacted real stdin payload samples captured by `/hooks/scripts/experi
 {
   "conversation_id": "<redacted>",
   "generation_id": "<redacted>",
-  "model": "gpt-5.3-codex-high-fast",
+  "model": "gpt-5.5-extra-high",
   "subagent_id": "<redacted>",
   "subagent_type": "general-purpose",
   "task": "",
@@ -447,7 +447,7 @@ These are redacted real stdin payload samples captured by `/hooks/scripts/experi
 {
   "conversation_id": "<redacted>",
   "generation_id": "<redacted>",
-  "model": "gpt-5.3-codex-high-fast",
+  "model": "gpt-5.5-extra-high",
   "subagent_id": "<redacted>",
   "subagent_type": "general-purpose",
   "status": "completed",

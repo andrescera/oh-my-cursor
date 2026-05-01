@@ -31,13 +31,13 @@ You (root thread)
        │
        ├── Task(explore) ──── Codebase search (composer-2-fast, readonly, background)
        ├── Task(librarian) ── External docs search (composer-2-fast, readonly, background)
-       ├── Task(sisyphus) ─── Complex multi-file work (claude-opus-4-7-thinking-high)
-       ├── Task(hephaestus) ─ Sustained deep work (gpt-5.3-codex-high-fast)
+       ├── Task(sisyphus) ─── Complex multi-file work (claude-opus-4-7-thinking-xhigh)
+       ├── Task(hephaestus) ─ Sustained deep work (gpt-5.5-extra-high)
        ├── Task(atlas) ────── Plan execution via delegation (claude-4.6-sonnet-medium-thinking)
-       ├── Task(prometheus) ─ Strategic planning (claude-opus-4-7-thinking-high)
-       ├── Task(oracle) ───── Architecture consultation (gpt-5.4-medium, readonly)
+       ├── Task(prometheus) ─ Strategic planning (claude-opus-4-7-thinking-xhigh)
+       ├── Task(oracle) ───── Architecture consultation (gpt-5.5-extra-high, readonly)
        ├── Task(metis) ────── Pre-planning gap analysis (gpt-5.4-medium, readonly)
-       ├── Task(momus) ────── Plan review (gpt-5.3-codex-high-fast, readonly)
+       ├── Task(momus) ────── Plan review (gpt-5.5-extra-high, readonly)
        ├── Task(sisyphus-junior) ── Quick focused tasks (composer-2-fast)
        └── Task(multimodal-looker) ── Visual analysis (gemini-3.1-pro, readonly)
 ```
@@ -52,13 +52,13 @@ Three **continuation loops**: Ralph (self-referential until done), Ultrawork/ULW
 
 | Agent | Model | Role |
 |-------|-------|------|
-| **sisyphus** | claude-opus-4-7-thinking-high | Main orchestrator + deep worker |
-| **hephaestus** | gpt-5.3-codex-high-fast | Autonomous deep worker |
+| **sisyphus** | claude-opus-4-7-thinking-xhigh | Main orchestrator + deep worker |
+| **hephaestus** | gpt-5.5-extra-high | Autonomous deep worker |
 | **atlas** | claude-4.6-sonnet-medium-thinking | Todo-list orchestrator |
-| **prometheus** | claude-opus-4-7-thinking-high | Strategic planner |
-| **oracle** | gpt-5.4-medium | Architecture consultant (readonly) |
+| **prometheus** | claude-opus-4-7-thinking-xhigh | Strategic planner |
+| **oracle** | gpt-5.5-extra-high | Architecture consultant (readonly) |
 | **metis** | gpt-5.4-medium | Pre-planning analysis (readonly) |
-| **momus** | gpt-5.3-codex-high-fast | Plan reviewer (readonly) |
+| **momus** | gpt-5.5-extra-high | Plan reviewer (readonly) |
 | **explore** | composer-2-fast | Codebase search (readonly, background) |
 | **librarian** | composer-2-fast | External docs search (readonly, background) |
 | **sisyphus-junior** | composer-2-fast | Quick task executor |

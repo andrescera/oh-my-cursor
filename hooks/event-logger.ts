@@ -47,6 +47,34 @@ const TRIM_TO = 5_000
 const FLUSH_DELAY = 500
 const MAX_FILE_LINES = 10_000
 const FILE_TRIM_TO = 5_000
+const MAX_FILE_BYTES = 2_097_152
+
+const pendingRotations: Set<string> = new Set()
+let cleanupPending = false
+
+function scheduleRotation(filePath: string): void {
+  try {
+    const size = statSync(filePath).size
+    if (size > MAX_FILE_BYTES) pendingRotations.add(filePath)
+  } catch { /* missing file is non-fatal */ }
+}
+
+function scheduleCleanup(): void {
+  cleanupPending = true
+}
+
+export function drainPendingRotations(): void {
+  if (pendingRotations.size === 0) return
+  const paths = Array.from(pendingRotations)
+  pendingRotations.clear()
+  for (const filePath of paths) rotateIfNeeded(filePath)
+}
+
+export function drainCleanup(): void {
+  if (!cleanupPending) return
+  cleanupPending = false
+  cleanupOldConversationFiles()
+}
 
 const logDir = join(process.env.HOME ?? "/tmp", ".cursor", "oh-my-cursor", "logs")
 
@@ -125,10 +153,10 @@ function flushPending(): void {
     const filePath = getLogPathForConversation(sessionId || undefined)
     const chunk = group.map((e) => JSON.stringify(e)).join("\n") + "\n"
     appendFileSync(filePath, chunk)
-    rotateIfNeeded(filePath)
+    scheduleRotation(filePath)
   }
 
-  cleanupOldConversationFiles()
+  scheduleCleanup()
 }
 
 function rotateIfNeeded(filePath: string): void {

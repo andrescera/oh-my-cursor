@@ -52,7 +52,6 @@ export function createConversationHandlers(
           conversations.delete(id)
         }
       }
-      persistence.pruneStale(TWO_HOURS)
 
       const filterConvId = (input.conversation as string) || ""
       const scope = filterConvId

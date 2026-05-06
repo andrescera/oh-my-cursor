@@ -3,7 +3,7 @@ import { writeFileSync, renameSync, unlinkSync, existsSync } from "node:fs"
 import { dirname, isAbsolute, join, relative as pathRelative } from "node:path"
 import { fileURLToPath } from "node:url"
 import { getStatusHTML } from "./mcp-app"
-import { logEvent, getEvents, getConversationSummary, getLogPath, clearLog, onEvent, offEvent, flushEventLog } from "./event-logger"
+import { logEvent, getEvents, getConversationSummary, getLogPath, clearLog, onEvent, offEvent, flushEventLog, drainPendingRotations, drainCleanup } from "./event-logger"
 import type { EventEntry } from "./event-logger"
 import { bindWithRetry, flushOnCrash } from "./bind-with-retry"
 import { conversations, parseInput, extractMeta, classifyAction, setPersistence } from "./shared"
@@ -25,12 +25,50 @@ import { cleanupStaleProcess, killPortSquatter } from "./process-guard"
 import { writePortCoordination } from "./port-manager"
 import type { HandlerMap } from "./types"
 import { getDefaultAgentHistoryStore } from "./agent-history-store"
+import { createBudgetMiddleware } from "./lib/budget-middleware"
+import { createBackgroundWorker } from "./lib/background-worker"
+
+const HOT_PATHS = new Set([
+  "/preToolUse",
+  "/beforeShellExecution",
+  "/beforeMCPExecution",
+  "/beforeReadFile",
+  "/beforeSubmitPrompt",
+])
+const DIAGNOSTIC_PATHS = new Set([
+  "/health",
+  "/heartbeat",
+  "/status",
+  "/backgroundTasks",
+  "/agentHistory",
+])
+
+function budgetForRoute(route: string): number {
+  if (HOT_PATHS.has(route)) return 50
+  if (DIAGNOSTIC_PATHS.has(route)) return 500
+  return 250
+}
+
+const budgetMiddleware = createBudgetMiddleware({
+  onSlowHandler: (ev) => {
+    console.warn(
+      `[oh-my-cursor][slow-handler] route=${ev.route} budgetMs=${ev.budgetMs} observedMs=${ev.observedMs}`,
+    )
+  },
+})
 
 const config = loadConfig()
 const tracker = new BackgroundTracker()
 const historyStore = getDefaultAgentHistoryStore()
 const persistence = new StatePersistence(config.state_persistence.path)
 setPersistence(persistence)
+
+const TWO_HOURS_MS = 2 * 60 * 60 * 1000
+const backgroundWorker = createBackgroundWorker({
+  pruneStale: () => { persistence.pruneStale(TWO_HOURS_MS) },
+  rotateIfNeeded: drainPendingRotations,
+  cleanupOldConversationFiles: drainCleanup,
+})
 
 const DAEMON_BOOT_ID = crypto.randomUUID()
 const DAEMON_PROJECT_ROOT = process.env.OH_MY_CURSOR_PROJECT_DIR || process.cwd()
@@ -195,6 +233,8 @@ function gracefulShutdown(reason: string): void {
   isShuttingDown = true
 
   console.log(`[oh-my-cursor] Shutting down: ${reason}`)
+
+  backgroundWorker.stop().catch(() => { /* drain errors are non-fatal */ })
 
   if (heartbeatInterval) {
     clearInterval(heartbeatInterval)
@@ -677,7 +717,9 @@ const fetchHandler = async (req: Request) => {
       console.log(`[oh-my-cursor][daemon] ${path} | inputKeys=${Object.keys(parsed).join(",")}`)
     }
     const handlerStart = Date.now()
-    const result = await Promise.resolve(handler(parsed))
+    const result = await budgetMiddleware.withBudget(path, budgetForRoute(path), () =>
+      Promise.resolve(handler(parsed)),
+    )
     const handlerDurationMs = Date.now() - handlerStart
 
     if (path !== "/health" && path !== "/heartbeat" && path !== "/status") {
@@ -762,6 +804,7 @@ heartbeatInterval = startHeartbeatWriter()
 persistenceInterval = setInterval(async () => {
   await persistence.save(conversations)
 }, 30_000)
+backgroundWorker.start()
 
 process.on("SIGTERM", () => gracefulShutdown("SIGTERM"))
 process.on("SIGINT", () => gracefulShutdown("SIGINT"))

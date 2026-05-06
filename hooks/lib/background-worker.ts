@@ -7,6 +7,7 @@ export interface BackgroundWorkerJobs {
 export interface BackgroundWorkerOptions {
   intervalMs?: number
   jitterMs?: number
+  onTickComplete?: (durationMs: number) => void
 }
 
 export interface BackgroundWorker {
@@ -24,6 +25,7 @@ export function createBackgroundWorker(
 ): BackgroundWorker {
   const intervalMs = options.intervalMs ?? DEFAULT_INTERVAL_MS
   const jitterMs = options.jitterMs ?? DEFAULT_JITTER_MS
+  const onTickComplete = options.onTickComplete
 
   let timer: ReturnType<typeof setTimeout> | null = null
   let stopped = false
@@ -36,14 +38,23 @@ export function createBackgroundWorker(
   ]
 
   async function runTick(): Promise<void> {
-    for (const [name, job] of orderedJobs) {
-      try {
-        await job()
-      } catch (err) {
-        console.error(
-          `[oh-my-cursor][background-worker] job ${name} failed:`,
-          err instanceof Error ? err.message : String(err),
-        )
+    const tickStart = Date.now()
+    try {
+      for (const [name, job] of orderedJobs) {
+        try {
+          await job()
+        } catch (err) {
+          console.error(
+            `[oh-my-cursor][background-worker] job ${name} failed:`,
+            err instanceof Error ? err.message : String(err),
+          )
+        }
+      }
+    } finally {
+      if (onTickComplete) {
+        try {
+          onTickComplete(Date.now() - tickStart)
+        } catch {}
       }
     }
   }

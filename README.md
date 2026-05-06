@@ -12,6 +12,12 @@ bash install.sh
 
 See [INSTALL.md](INSTALL.md) for all options, Windows, and AI-assisted install.
 
+View slow-handler trips and circuit-breaker state (default sidecar port):
+
+```bash
+curl http://localhost:27847/metrics | jq
+```
+
 ## What It Does
 
 11 specialized agents with dynamic model routing, dispatched through a single orchestrator rule. The root thread's persona changes based on Cursor's mode:

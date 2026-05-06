@@ -78,4 +78,16 @@ describe("createBudgetMiddleware", () => {
     const result = await mw.withBudget("test", 200, async () => ({ value: 42 }))
     expect(result).toEqual({ value: 42 })
   })
+
+  test("throwing handler returns {deferred:true} and does not propagate the error", async () => {
+    const slowHandlerEvents: SlowHandlerEvent[] = []
+    const m = createBudgetMiddleware({ onSlowHandler: (ev) => slowHandlerEvents.push(ev) })
+
+    const result = await m.withBudget("test-throw", 200, async () => {
+      throw new Error("handler crashed")
+    })
+
+    expect(result).toEqual({ deferred: true })
+    expect(m.getCircuitState()["test-throw"]).toBeDefined()
+  })
 })

@@ -39,7 +39,7 @@ function isDeferred(value: unknown): value is { deferred: true } {
 
 function deferredResponse(): Response {
   return new Response(JSON.stringify({ deferred: true }), {
-    status: 503,
+    status: 200,
     headers: { "Content-Type": "application/json" },
   })
 }

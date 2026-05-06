@@ -44,6 +44,31 @@ describe("createBackgroundWorker", () => {
     expect(cleanup).toHaveBeenCalledTimes(1)
   })
 
+  test("onTickComplete is called with the tick duration even if a job throws", async () => {
+    let recordedMs: number | null = null
+    const worker = createBackgroundWorker(
+      {
+        pruneStale: () => { throw new Error("boom") },
+        rotateIfNeeded: () => {},
+        cleanupOldConversationFiles: () => {},
+      },
+      {
+        onTickComplete: (durationMs) => { recordedMs = durationMs },
+      },
+    )
+
+    const originalError = console.error
+    console.error = () => {}
+    try {
+      await worker.runOnceForTesting()
+    } finally {
+      console.error = originalError
+    }
+
+    expect(recordedMs).not.toBeNull()
+    expect(recordedMs as unknown as number).toBeGreaterThanOrEqual(0)
+  })
+
   test("worker stops cleanly before first tick fires", async () => {
     const prune = mock(() => {})
     const rotate = mock(() => {})

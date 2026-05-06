@@ -34,6 +34,7 @@ export interface BudgetMiddleware {
 export function createBudgetMiddleware(options: BudgetMiddlewareOptions = {}): BudgetMiddleware {
   const { onSlowHandler } = options
   const circuits = new Map<string, CircuitEntry>()
+  const HANDLER_ERROR_SENTINEL = Symbol("handler_error")
 
   function getOrCreateCircuit(route: string): CircuitEntry {
     let entry = circuits.get(route)
@@ -89,6 +90,12 @@ export function createBudgetMiddleware(options: BudgetMiddlewareOptions = {}): B
     const handlerPromise = (async () => {
       try {
         return await handler()
+      } catch (err) {
+        console.error(
+          `[oh-my-cursor][budget] handler error on route ${routeName}:`,
+          err instanceof Error ? err.message : String(err),
+        )
+        return HANDLER_ERROR_SENTINEL as unknown as T
       } finally {
         if (timeoutHandle !== null) {
           clearTimeout(timeoutHandle)
@@ -97,8 +104,6 @@ export function createBudgetMiddleware(options: BudgetMiddlewareOptions = {}): B
       }
     })()
 
-    handlerPromise.catch(() => {})
-
     const result = await Promise.race([handlerPromise, timeoutPromise])
 
     const isDeferredSentinel =
@@ -106,8 +111,9 @@ export function createBudgetMiddleware(options: BudgetMiddlewareOptions = {}): B
       result !== null &&
       (result as { deferred?: unknown }).deferred === true &&
       Object.keys(result as object).length === 1
+    const isHandlerError = result === (HANDLER_ERROR_SENTINEL as unknown as T)
 
-    if (isDeferredSentinel) {
+    if (isDeferredSentinel || isHandlerError) {
       const observedMs = Date.now() - start
       const ts = new Date().toISOString()
       recordTrip(routeName, Date.now())

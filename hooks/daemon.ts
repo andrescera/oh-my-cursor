@@ -42,12 +42,33 @@ const DIAGNOSTIC_PATHS = new Set([
   "/status",
   "/backgroundTasks",
   "/agentHistory",
+  "/metrics",
+  "/dashboard",
+  "/dashboard/index.html",
+  "/config",
+  "/config/full",
 ])
 
 function budgetForRoute(route: string): number {
   if (HOT_PATHS.has(route)) return 50
   if (DIAGNOSTIC_PATHS.has(route)) return 500
+  if (route.startsWith("/dashboard/assets/")) return 500
   return 250
+}
+
+function isDeferredResult(r: unknown): r is { deferred: true } {
+  return (
+    typeof r === "object" &&
+    r !== null &&
+    (r as Record<string, unknown>).deferred === true &&
+    Object.keys(r as object).length === 1
+  )
+}
+
+function deferredJsonResponse(): Response {
+  return new Response(JSON.stringify({}), {
+    headers: { "Content-Type": "application/json" },
+  })
 }
 
 const metrics = createMetrics()
@@ -81,18 +102,16 @@ const persistence = new StatePersistence(config.state_persistence.path)
 setPersistence(persistence)
 
 const TWO_HOURS_MS = 2 * 60 * 60 * 1000
-let _workerTickStart = 0
-const backgroundWorker = createBackgroundWorker({
-  pruneStale: () => {
-    _workerTickStart = Date.now()
-    persistence.pruneStale(TWO_HOURS_MS)
+const backgroundWorker = createBackgroundWorker(
+  {
+    pruneStale: () => { persistence.pruneStale(TWO_HOURS_MS) },
+    rotateIfNeeded: drainPendingRotations,
+    cleanupOldConversationFiles: drainCleanup,
   },
-  rotateIfNeeded: drainPendingRotations,
-  cleanupOldConversationFiles: () => {
-    drainCleanup()
-    metrics.recordWorkerTick(Date.now() - _workerTickStart)
+  {
+    onTickComplete: (durationMs) => { metrics.recordWorkerTick(durationMs) },
   },
-})
+)
 
 const DAEMON_BOOT_ID = crypto.randomUUID()
 const DAEMON_PROJECT_ROOT = process.env.OH_MY_CURSOR_PROJECT_DIR || process.cwd()
@@ -347,214 +366,259 @@ const fetchHandler = async (req: Request) => {
   }
 
   if (path === "/dashboard" || path === "/dashboard/index.html") {
-    const html = await getStatusHTML(actualPort)
-    return withCors(new Response(html, {
-      status: 200,
-      headers: {
-        "Content-Type": "text/html; charset=utf-8",
-        "Cache-Control": "no-store",
-      },
-    }))
+    const budgeted = await budgetMiddleware.withBudget(path, budgetForRoute(path), async () => {
+      const html = await getStatusHTML(actualPort)
+      return withCors(new Response(html, {
+        status: 200,
+        headers: {
+          "Content-Type": "text/html; charset=utf-8",
+          "Cache-Control": "no-store",
+        },
+      }))
+    })
+    if (isDeferredResult(budgeted)) return deferredJsonResponse()
+    return budgeted
   }
 
   if (path.startsWith("/dashboard/assets/")) {
-    const requestedRaw = path.slice("/dashboard/assets/".length)
-    let requested: string
-    try {
-      requested = decodeURIComponent(requestedRaw)
-    } catch {
-      return withCors(new Response("Bad Request", { status: 400, headers: { "Content-Type": "text/plain; charset=utf-8" } }))
-    }
-    if (
-      requested.length === 0 ||
-      requested.includes("\0") ||
-      requested.startsWith("/") ||
-      requested.startsWith("\\") ||
-      requested.split(/[/\\]/).some((seg) => seg === "..")
-    ) {
-      return withCors(new Response("Bad Request", { status: 400, headers: { "Content-Type": "text/plain; charset=utf-8" } }))
-    }
-    const resolved = join(DIST_ASSETS_DIR, requested)
-    const rel = pathRelative(DIST_ASSETS_DIR, resolved)
-    if (rel.length === 0 || rel.startsWith("..") || isAbsolute(rel)) {
-      return withCors(new Response("Bad Request", { status: 400, headers: { "Content-Type": "text/plain; charset=utf-8" } }))
-    }
-    const file = Bun.file(resolved)
-    if (!(await file.exists())) {
-      return withCors(new Response(DASHBOARD_ASSETS_NOT_BUILT_BODY, {
-        status: 503,
-        headers: { "Content-Type": "text/html; charset=utf-8" },
+    const budgeted = await budgetMiddleware.withBudget(path, budgetForRoute(path), async () => {
+      const requestedRaw = path.slice("/dashboard/assets/".length)
+      let requested: string
+      try {
+        requested = decodeURIComponent(requestedRaw)
+      } catch {
+        return withCors(new Response("Bad Request", { status: 400, headers: { "Content-Type": "text/plain; charset=utf-8" } }))
+      }
+      if (
+        requested.length === 0 ||
+        requested.includes("\0") ||
+        requested.startsWith("/") ||
+        requested.startsWith("\\") ||
+        requested.split(/[/\\]/).some((seg) => seg === "..")
+      ) {
+        return withCors(new Response("Bad Request", { status: 400, headers: { "Content-Type": "text/plain; charset=utf-8" } }))
+      }
+      const resolved = join(DIST_ASSETS_DIR, requested)
+      const rel = pathRelative(DIST_ASSETS_DIR, resolved)
+      if (rel.length === 0 || rel.startsWith("..") || isAbsolute(rel)) {
+        return withCors(new Response("Bad Request", { status: 400, headers: { "Content-Type": "text/plain; charset=utf-8" } }))
+      }
+      const file = Bun.file(resolved)
+      if (!(await file.exists())) {
+        return withCors(new Response(DASHBOARD_ASSETS_NOT_BUILT_BODY, {
+          status: 503,
+          headers: { "Content-Type": "text/html; charset=utf-8" },
+        }))
+      }
+      const etag = `W/"${file.size.toString(16)}-${file.lastModified.toString(16)}"`
+      const ifNoneMatch = req.headers.get("if-none-match")
+      if (ifNoneMatch === etag) {
+        return withCors(new Response(null, { status: 304, headers: { ETag: etag } }))
+      }
+      const data = await file.arrayBuffer()
+      return withCors(new Response(data, {
+        status: 200,
+        headers: {
+          "Content-Type": contentTypeForAsset(requested),
+          "Cache-Control": "public, max-age=60, must-revalidate",
+          "ETag": etag,
+        },
       }))
-    }
-    const etag = `W/"${file.size.toString(16)}-${file.lastModified.toString(16)}"`
-    const ifNoneMatch = req.headers.get("if-none-match")
-    if (ifNoneMatch === etag) {
-      return withCors(new Response(null, { status: 304, headers: { ETag: etag } }))
-    }
-    const data = await file.arrayBuffer()
-    return withCors(new Response(data, {
-      status: 200,
-      headers: {
-        "Content-Type": contentTypeForAsset(requested),
-        "Cache-Control": "public, max-age=60, must-revalidate",
-        "ETag": etag,
-      },
-    }))
+    })
+    if (isDeferredResult(budgeted)) return deferredJsonResponse()
+    return budgeted
   }
 
   if (path === "/session-log" || path === "/conversation-log") {
-    const rawLimit = parseInt(url.searchParams.get("limit") || "100")
-    const limit = Number.isNaN(rawLimit) || rawLimit < 1 ? 100 : rawLimit
-    const sessionId = url.searchParams.get("session") || url.searchParams.get("conversation") || undefined
-    const event = url.searchParams.get("event") || undefined
-    const action = url.searchParams.get("action") || undefined
-    const events = getEvents({ limit, sessionId, event, action })
-    return new Response(JSON.stringify(events), {
-      headers: { "Content-Type": "application/json" },
+    const budgeted = await budgetMiddleware.withBudget(path, budgetForRoute(path), async () => {
+      const rawLimit = parseInt(url.searchParams.get("limit") || "100")
+      const limit = Number.isNaN(rawLimit) || rawLimit < 1 ? 100 : rawLimit
+      const sessionId = url.searchParams.get("session") || url.searchParams.get("conversation") || undefined
+      const event = url.searchParams.get("event") || undefined
+      const action = url.searchParams.get("action") || undefined
+      const events = getEvents({ limit, sessionId, event, action })
+      return new Response(JSON.stringify(events), {
+        headers: { "Content-Type": "application/json" },
+      })
     })
+    if (isDeferredResult(budgeted)) return deferredJsonResponse()
+    return budgeted
   }
 
   if (path === "/session-log/summary" || path === "/conversation-log/summary") {
-    const sessionId = url.searchParams.get("session") || url.searchParams.get("conversation") || undefined
-    if (!sessionId) {
-      return new Response(JSON.stringify({ error: "Missing required query parameter: session or conversation" }), {
-        status: 400,
-        headers: { "Content-Type": "application/json" },
-      })
-    }
-    const summary = getConversationSummary(sessionId)
-    return new Response(JSON.stringify(summary), {
-      headers: { "Content-Type": "application/json" },
-    })
-  }
-
-  if (path === "/session-log/download" || path === "/conversation-log/download") {
-    const sessionId = url.searchParams.get("session") || url.searchParams.get("conversation") || undefined
-    const filePath = getLogPath(sessionId)
-    try {
-      const file = Bun.file(filePath)
-      if (await file.exists()) {
-        const text = await file.text()
-        return new Response(text, {
-          headers: {
-            "Content-Type": "application/x-ndjson",
-            "Content-Disposition": 'attachment; filename="session-log.jsonl"',
-          },
-        })
-      }
-      return new Response("No log file found", { status: 404 })
-    } catch (err) {
-      return new Response("Failed to read log: " + (err instanceof Error ? err.message : String(err)), { status: 500 })
-    }
-  }
-
-  if ((path === "/session-log/clear" || path === "/conversation-log/clear") && req.method === "POST") {
-    const clearBody = await req.json().catch(() => ({})) as Record<string, unknown>
-    const sessionId = (clearBody.sessionId as string) || (clearBody.conversationId as string) || url.searchParams.get("session") || url.searchParams.get("conversation") || undefined
-    clearLog(sessionId)
-    return new Response(JSON.stringify({ status: "cleared" }), {
-      headers: { "Content-Type": "application/json" },
-    })
-  }
-
-  if (path === "/config" && req.method === "POST") {
-    try {
-      const body = await req.json()
-      const result = OhMyCursorConfigSchema.safeParse(body)
-      if (!result.success) {
-        return new Response(JSON.stringify({ error: "Validation failed", issues: result.error.issues }), {
+    const budgeted = await budgetMiddleware.withBudget(path, budgetForRoute(path), async () => {
+      const sessionId = url.searchParams.get("session") || url.searchParams.get("conversation") || undefined
+      if (!sessionId) {
+        return new Response(JSON.stringify({ error: "Missing required query parameter: session or conversation" }), {
           status: 400,
           headers: { "Content-Type": "application/json" },
         })
       }
-      const configPath = join(process.cwd(), ".cursor", "oh-my-cursor.jsonc")
-      const tmpPath = configPath + ".tmp"
-      writeFileSync(tmpPath, JSON.stringify(result.data, null, 2), "utf-8")
-      renameSync(tmpPath, configPath)
-      resetConfigCache()
-      resetHookConfigCache()
-      return new Response(JSON.stringify({ status: "saved", path: configPath }), {
+      const summary = getConversationSummary(sessionId)
+      return new Response(JSON.stringify(summary), {
         headers: { "Content-Type": "application/json" },
       })
-    } catch (err) {
-      return new Response(JSON.stringify({ error: err instanceof Error ? err.message : String(err) }), {
-        status: 500,
+    })
+    if (isDeferredResult(budgeted)) return deferredJsonResponse()
+    return budgeted
+  }
+
+  if (path === "/session-log/download" || path === "/conversation-log/download") {
+    const budgeted = await budgetMiddleware.withBudget(path, budgetForRoute(path), async () => {
+      const sessionId = url.searchParams.get("session") || url.searchParams.get("conversation") || undefined
+      const filePath = getLogPath(sessionId)
+      try {
+        const file = Bun.file(filePath)
+        if (await file.exists()) {
+          const text = await file.text()
+          return new Response(text, {
+            headers: {
+              "Content-Type": "application/x-ndjson",
+              "Content-Disposition": 'attachment; filename="session-log.jsonl"',
+            },
+          })
+        }
+        return new Response("No log file found", { status: 404 })
+      } catch (err) {
+        return new Response("Failed to read log: " + (err instanceof Error ? err.message : String(err)), { status: 500 })
+      }
+    })
+    if (isDeferredResult(budgeted)) return deferredJsonResponse()
+    return budgeted
+  }
+
+  if ((path === "/session-log/clear" || path === "/conversation-log/clear") && req.method === "POST") {
+    const budgeted = await budgetMiddleware.withBudget(path, budgetForRoute(path), async () => {
+      const clearBody = await req.json().catch(() => ({})) as Record<string, unknown>
+      const sessionId = (clearBody.sessionId as string) || (clearBody.conversationId as string) || url.searchParams.get("session") || url.searchParams.get("conversation") || undefined
+      clearLog(sessionId)
+      return new Response(JSON.stringify({ status: "cleared" }), {
         headers: { "Content-Type": "application/json" },
       })
-    }
+    })
+    if (isDeferredResult(budgeted)) return deferredJsonResponse()
+    return budgeted
+  }
+
+  if (path === "/config" && req.method === "POST") {
+    const budgeted = await budgetMiddleware.withBudget(path, budgetForRoute(path), async () => {
+      try {
+        const body = await req.json()
+        const result = OhMyCursorConfigSchema.safeParse(body)
+        if (!result.success) {
+          return new Response(JSON.stringify({ error: "Validation failed", issues: result.error.issues }), {
+            status: 400,
+            headers: { "Content-Type": "application/json" },
+          })
+        }
+        const configPath = join(process.cwd(), ".cursor", "oh-my-cursor.jsonc")
+        const tmpPath = configPath + ".tmp"
+        writeFileSync(tmpPath, JSON.stringify(result.data, null, 2), "utf-8")
+        renameSync(tmpPath, configPath)
+        resetConfigCache()
+        resetHookConfigCache()
+        return new Response(JSON.stringify({ status: "saved", path: configPath }), {
+          headers: { "Content-Type": "application/json" },
+        })
+      } catch (err) {
+        return new Response(JSON.stringify({ error: err instanceof Error ? err.message : String(err) }), {
+          status: 500,
+          headers: { "Content-Type": "application/json" },
+        })
+      }
+    })
+    if (isDeferredResult(budgeted)) return deferredJsonResponse()
+    return budgeted
   }
 
   if (path === "/config/full") {
-    return new Response(JSON.stringify(loadConfig()), {
-      headers: { "Content-Type": "application/json" },
+    const budgeted = await budgetMiddleware.withBudget(path, budgetForRoute(path), async () => {
+      return new Response(JSON.stringify(loadConfig()), {
+        headers: { "Content-Type": "application/json" },
+      })
     })
+    if (isDeferredResult(budgeted)) return deferredJsonResponse()
+    return budgeted
   }
 
   if (path === "/config") {
-    return new Response(JSON.stringify(getHookConfig()), {
-      headers: { "Content-Type": "application/json" },
+    const budgeted = await budgetMiddleware.withBudget(path, budgetForRoute(path), async () => {
+      return new Response(JSON.stringify(getHookConfig()), {
+        headers: { "Content-Type": "application/json" },
+      })
     })
+    if (isDeferredResult(budgeted)) return deferredJsonResponse()
+    return budgeted
   }
 
 
   if (path === "/webhook/cloud-agent" && req.method === "POST") {
-    const cfg = loadConfig()
-    if (!cfg.experimental.webhooks) {
-      return new Response(JSON.stringify({ error: "webhooks not enabled" }), {
-        status: 404,
-        headers: { "Content-Type": "application/json" },
-      })
-    }
-
-    try {
-      const payload = await req.json()
-      const signature = req.headers.get("x-webhook-signature") || ""
-      const webhookSecret = (cfg as Record<string, unknown>).webhook_secret as string | undefined
-
-      if (webhookSecret && signature) {
-        const encoder = new TextEncoder()
-        const key = await crypto.subtle.importKey(
-          "raw", encoder.encode(webhookSecret),
-          { name: "HMAC", hash: "SHA-256" }, false, ["sign"]
-        )
-        const sig = await crypto.subtle.sign("HMAC", key, encoder.encode(JSON.stringify(payload)))
-        const expected = Array.from(new Uint8Array(sig)).map(b => b.toString(16).padStart(2, "0")).join("")
-        if (signature !== expected) {
-          return new Response(JSON.stringify({ error: "invalid signature" }), {
-            status: 401,
-            headers: { "Content-Type": "application/json" },
-          })
-        }
+    const budgeted = await budgetMiddleware.withBudget(path, budgetForRoute(path), async () => {
+      const cfg = loadConfig()
+      if (!cfg.experimental.webhooks) {
+        return new Response(JSON.stringify({ error: "webhooks not enabled" }), {
+          status: 404,
+          headers: { "Content-Type": "application/json" },
+        })
       }
 
-      logEvent({
-        ts: new Date().toISOString(),
-        event: "/webhook/cloud-agent",
-        sessionId: "",
-        action: "webhook",
-        meta: { agent_id: payload.agent_id, status: payload.status },
-      })
+      try {
+        const payload = await req.json()
+        const signature = req.headers.get("x-webhook-signature") || ""
+        const webhookSecret = (cfg as Record<string, unknown>).webhook_secret as string | undefined
 
-      return new Response(JSON.stringify({ status: "received" }), {
-        headers: { "Content-Type": "application/json" },
-      })
-    } catch (err) {
-      return new Response(JSON.stringify({ error: err instanceof Error ? err.message : String(err) }), {
-        status: 400,
-        headers: { "Content-Type": "application/json" },
-      })
-    }
+        if (webhookSecret && signature) {
+          const encoder = new TextEncoder()
+          const key = await crypto.subtle.importKey(
+            "raw", encoder.encode(webhookSecret),
+            { name: "HMAC", hash: "SHA-256" }, false, ["sign"]
+          )
+          const sig = await crypto.subtle.sign("HMAC", key, encoder.encode(JSON.stringify(payload)))
+          const expected = Array.from(new Uint8Array(sig)).map(b => b.toString(16).padStart(2, "0")).join("")
+          if (signature !== expected) {
+            return new Response(JSON.stringify({ error: "invalid signature" }), {
+              status: 401,
+              headers: { "Content-Type": "application/json" },
+            })
+          }
+        }
+
+        logEvent({
+          ts: new Date().toISOString(),
+          event: "/webhook/cloud-agent",
+          sessionId: "",
+          action: "webhook",
+          meta: { agent_id: payload.agent_id, status: payload.status },
+        })
+
+        return new Response(JSON.stringify({ status: "received" }), {
+          headers: { "Content-Type": "application/json" },
+        })
+      } catch (err) {
+        return new Response(JSON.stringify({ error: err instanceof Error ? err.message : String(err) }), {
+          status: 400,
+          headers: { "Content-Type": "application/json" },
+        })
+      }
+    })
+    if (isDeferredResult(budgeted)) return deferredJsonResponse()
+    return budgeted
   }
 
   if (path === "/metrics") {
-    const snapshot = metrics.getSnapshot()
-    snapshot.circuitState = budgetMiddleware.getCircuitState()
-    return new Response(JSON.stringify(snapshot), {
-      headers: { "Content-Type": "application/json" },
+    const budgeted = await budgetMiddleware.withBudget(path, budgetForRoute(path), async () => {
+      const snapshot = metrics.getSnapshot()
+      snapshot.circuitState = budgetMiddleware.getCircuitState()
+      return new Response(JSON.stringify(snapshot), {
+        headers: { "Content-Type": "application/json" },
+      })
     })
+    if (isDeferredResult(budgeted)) return deferredJsonResponse()
+    return budgeted
   }
 
   if (path === "/events/stream") {
+    // SSE streaming — exempt from budget middleware
     const encoder = new TextEncoder()
     let keepaliveTimer: ReturnType<typeof setInterval> | null = null
     let conversationSnapshotTimer: ReturnType<typeof setInterval> | null = null
@@ -621,6 +685,7 @@ const fetchHandler = async (req: Request) => {
   }
 
   if (path === "/sessions/stream" || path === "/conversations/stream") {
+    // SSE streaming — exempt from budget middleware
     const encoder = new TextEncoder()
     let interval: ReturnType<typeof setInterval> | null = null
 
@@ -658,38 +723,42 @@ const fetchHandler = async (req: Request) => {
   }
 
   if ((path === "/sessions" || path === "/conversations") && req.method === "GET") {
-    const index = mergedConversationIndex()
-    const list = Array.from(index.keys()).map((id) => {
-      const s = conversations.get(id)
-      const meta = index.get(id)!
-      if (s) {
-        return {
-          id,
-          startedAt: s.startedAt,
-          toolCallCount: s.toolCallCount,
-          dispatchCounts: { ...s.dispatchCounts },
-          errorCount: s.errorCount,
-          composerMode: s.composerMode,
-          ralphState: s.ralphState,
-          stoppedAt: s.stoppedAt,
-          recentToolTrail: s.recentToolTrail,
+    const budgeted = await budgetMiddleware.withBudget(path, budgetForRoute(path), async () => {
+      const index = mergedConversationIndex()
+      const list = Array.from(index.keys()).map((id) => {
+        const s = conversations.get(id)
+        const meta = index.get(id)!
+        if (s) {
+          return {
+            id,
+            startedAt: s.startedAt,
+            toolCallCount: s.toolCallCount,
+            dispatchCounts: { ...s.dispatchCounts },
+            errorCount: s.errorCount,
+            composerMode: s.composerMode,
+            ralphState: s.ralphState,
+            stoppedAt: s.stoppedAt,
+            recentToolTrail: s.recentToolTrail,
+          }
         }
-      }
-      return {
-        id: meta.id,
-        startedAt: meta.startedAt,
-        toolCallCount: meta.toolCallCount,
-        dispatchCounts: {},
-        errorCount: meta.errorCount,
-        composerMode: meta.composerMode,
-        ralphState: null,
-        stoppedAt: meta.stoppedAt,
-        recentToolTrail: [],
-      }
+        return {
+          id: meta.id,
+          startedAt: meta.startedAt,
+          toolCallCount: meta.toolCallCount,
+          dispatchCounts: {},
+          errorCount: meta.errorCount,
+          composerMode: meta.composerMode,
+          ralphState: null,
+          stoppedAt: meta.stoppedAt,
+          recentToolTrail: [],
+        }
+      })
+      return new Response(JSON.stringify(list), {
+        headers: { "Content-Type": "application/json" },
+      })
     })
-    return new Response(JSON.stringify(list), {
-      headers: { "Content-Type": "application/json" },
-    })
+    if (isDeferredResult(budgeted)) return deferredJsonResponse()
+    return budgeted
   }
 
   const handler = handlers[path]

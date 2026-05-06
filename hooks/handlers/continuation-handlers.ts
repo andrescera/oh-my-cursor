@@ -11,16 +11,15 @@ import { loadConfig } from "../config"
 import { extractDisplayTitle } from "../display-title"
 import { resolve } from "node:path"
 import { existsSync, readFileSync } from "node:fs"
+import { spawnWithTimeout } from "../lib/spawn-with-timeout"
 
 function sendOsNotification(title: string, message: string, urgency: "low" | "normal" | "critical", projectDir?: string) {
   const config = loadConfig(projectDir)
   if (!config.notifications.enabled) return
   const notifyScript = resolve(import.meta.dir, "../scripts", "notify.sh")
-  try {
-    Bun.spawn(["bash", notifyScript, title, message, urgency])
-  } catch {
-    void 0
-  }
+  spawnWithTimeout(["bash", notifyScript, title, message, urgency], { timeoutMs: 5000 }).catch(() => {
+    /* non-fatal */
+  })
 }
 
 const ABORT_WINDOW_MS = 3000

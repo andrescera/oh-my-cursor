@@ -1,5 +1,6 @@
 import { existsSync, readFileSync, unlinkSync } from "node:fs"
 import { setTimeout as sleep } from "node:timers/promises"
+import { spawnWithTimeout } from "./lib/spawn-with-timeout"
 
 export function isProcessAlive(pid: number): boolean {
   try {
@@ -56,10 +57,8 @@ export type KillPortSquatterResult = "killed" | "absent" | "not_us" | "lsof_miss
 export async function killPortSquatter(port: number, label: string): Promise<KillPortSquatterResult> {
   let lsofOutput: string
   try {
-    const proc = Bun.spawn(["lsof", "-ti", `:${port}`], { stdout: "pipe", stderr: "pipe" })
-    const raw = await new Response(proc.stdout).text()
-    await proc.exited
-    lsofOutput = raw.trim()
+    const result = await spawnWithTimeout(["lsof", "-ti", `:${port}`], { timeoutMs: 300 })
+    lsofOutput = result.stdout.trim()
     // lsof exits 1 with empty stdout when nothing matches - treat as absent
     if (!lsofOutput) return "absent"
   } catch (err) {

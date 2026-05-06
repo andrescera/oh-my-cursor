@@ -8,6 +8,7 @@ import { loadConfig } from "../config"
 import { AgentHistoryStore, getDefaultAgentHistoryStore, recordHistoryEntry } from "../agent-history-store"
 import { appendFileSync } from "node:fs"
 import { resolve } from "node:path"
+import { spawnWithTimeout } from "../lib/spawn-with-timeout"
 
 const SUBAGENT_TIMING_LOG = "/tmp/oh-my-cursor-timing.jsonl"
 const BOOT_ID_KEY = "__oh_my_cursor_runtime_boot_id"
@@ -236,17 +237,18 @@ export function createSubagentHandlers(
           if (config.notifications.enabled) {
             const scriptDir = resolve(import.meta.dir, "../scripts")
             const notifyScript = resolve(scriptDir, "notify.sh")
-            try {
-              Bun.spawn([
+            spawnWithTimeout(
+              [
                 "bash",
                 notifyScript,
                 "oh-my-cursor",
                 `Agent type '${typeKey}' failed 3 times in a row. Try another agent or model.`,
                 "critical",
-              ])
-            } catch {
-              void 0
-            }
+              ],
+              { timeoutMs: 5000 },
+            ).catch(() => {
+              /* non-fatal */
+            })
           }
         }
       }
@@ -286,17 +288,18 @@ export function createSubagentHandlers(
         if (config.notifications.enabled) {
           const scriptDir = resolve(import.meta.dir, "../scripts")
           const notifyScript = resolve(scriptDir, "notify.sh")
-          try {
-            Bun.spawn([
+          spawnWithTimeout(
+            [
               "bash",
               notifyScript,
               "oh-my-cursor",
               `Background task completed: ${subagentType}`,
               "normal",
-            ])
-          } catch {
-            void 0
-          }
+            ],
+            { timeoutMs: 5000 },
+          ).catch(() => {
+            /* non-fatal */
+          })
         }
       }
 

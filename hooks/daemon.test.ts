@@ -7,7 +7,7 @@ import { randomUUID } from "node:crypto"
 import { DEFAULT_CONFIG } from "./config"
 import type { Server } from "bun"
 
-const PORT = 47900
+const PORT = 27849
 let server: ReturnType<typeof import("bun")["serve"]> | null = null
 const BASE = `http://localhost:${PORT}`
 

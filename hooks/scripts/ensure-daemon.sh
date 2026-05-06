@@ -56,10 +56,18 @@ is_heartbeat_fresh() {
 ACTUAL_PORT="$(read_port_file "$PORT_FILE" "$PORT")"
 
 daemon_alive=false
-if curl -s --max-time 1 "http://localhost:${ACTUAL_PORT}/health" >/dev/null 2>&1; then
-  daemon_alive=true
-elif is_heartbeat_fresh && [ -f "$PID_FILE" ] && kill -0 "$(cat "$PID_FILE")" 2>/dev/null; then
-  daemon_alive=true
+if [ -f "$PORT_FILE" ]; then
+  _port_file_age_s=$(( $(date +%s) - $(stat -c %Y "$PORT_FILE" 2>/dev/null || echo 0) ))
+  if (( _port_file_age_s < 2 )) && curl -sf --max-time 0.25 "http://localhost:${ACTUAL_PORT}/health" >/dev/null 2>&1; then
+    daemon_alive=true
+  fi
+fi
+if ! $daemon_alive; then
+  if curl -s --max-time 1 "http://localhost:${ACTUAL_PORT}/health" >/dev/null 2>&1; then
+    daemon_alive=true
+  elif is_heartbeat_fresh && [ -f "$PID_FILE" ] && kill -0 "$(cat "$PID_FILE")" 2>/dev/null; then
+    daemon_alive=true
+  fi
 fi
 
 if ! $daemon_alive; then
@@ -78,7 +86,7 @@ if ! $daemon_alive; then
     # Existing supervisor will restart the daemon; avoid spawning a second supervisor.
     for _ in {1..6}; do
       deadline_exceeded && bail_timeout
-      sleep 0.2
+      sleep 0.025
       ACTUAL_PORT="$(read_port_file "$PORT_FILE" "$PORT")"
       if is_heartbeat_fresh && [ -f "$PID_FILE" ] && kill -0 "$(cat "$PID_FILE")" 2>/dev/null; then
         daemon_alive=true
@@ -92,7 +100,11 @@ if ! $daemon_alive; then
   fi
   if ! $daemon_alive; then
     deadline_exceeded && bail_timeout
-    echo '{}' | bash "$SCRIPT_DIR/start-daemon.sh" >/dev/null 2>&1 || true
+    remaining_ms=$(( TIMEOUT_MS - $(elapsed_ms) - 200 ))
+    if (( remaining_ms > 0 )); then
+      remaining_s=$(awk "BEGIN { printf \"%.3f\", $remaining_ms / 1000 }")
+      echo '{}' | timeout "$remaining_s" bash "$SCRIPT_DIR/start-daemon.sh" >/dev/null 2>&1 || true
+    fi
     deadline_exceeded && bail_timeout
     ACTUAL_PORT="$(read_port_file "$PORT_FILE" "$PORT")"
     curl -s --max-time 0.5 "http://localhost:${ACTUAL_PORT}/health" >/dev/null 2>&1 || true

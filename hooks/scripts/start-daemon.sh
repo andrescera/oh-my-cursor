@@ -48,12 +48,14 @@ is_heartbeat_fresh() {
 
 wait_for_health() {
   local port="$1"
-  local delays=(0.1 0.2 0.4 0.8 1.6)
-  for delay in "${delays[@]}"; do
-    if curl -sf "http://localhost:${port}/health" >/dev/null 2>&1; then
+  local max_attempts=20
+  local attempt=0
+  while (( attempt < max_attempts )); do
+    if curl -sf --max-time 0.5 "http://localhost:${port}/health" >/dev/null 2>&1; then
       return 0
     fi
-    sleep "$delay"
+    sleep 0.05
+    attempt=$((attempt + 1))
   done
   return 1
 }

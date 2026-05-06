@@ -27,6 +27,7 @@ import type { HandlerMap } from "./types"
 import { getDefaultAgentHistoryStore } from "./agent-history-store"
 import { createBudgetMiddleware } from "./lib/budget-middleware"
 import { createBackgroundWorker } from "./lib/background-worker"
+import { createMetrics } from "./lib/metrics"
 
 const HOT_PATHS = new Set([
   "/preToolUse",
@@ -49,11 +50,27 @@ function budgetForRoute(route: string): number {
   return 250
 }
 
+const metrics = createMetrics()
+
 const budgetMiddleware = createBudgetMiddleware({
   onSlowHandler: (ev) => {
     console.warn(
       `[oh-my-cursor][slow-handler] route=${ev.route} budgetMs=${ev.budgetMs} observedMs=${ev.observedMs}`,
     )
+    metrics.recordSlowHandler({
+      route: ev.route,
+      budgetMs: ev.budgetMs,
+      observedMs: ev.observedMs,
+      ts: ev.ts,
+    })
+    logEvent({
+      ts: ev.ts,
+      event: "slow_handler",
+      sessionId: "",
+      action: "slow_handler",
+      durationMs: ev.observedMs,
+      meta: { route: ev.route, budgetMs: ev.budgetMs, deferred: true },
+    })
   },
 })
 
@@ -64,10 +81,17 @@ const persistence = new StatePersistence(config.state_persistence.path)
 setPersistence(persistence)
 
 const TWO_HOURS_MS = 2 * 60 * 60 * 1000
+let _workerTickStart = 0
 const backgroundWorker = createBackgroundWorker({
-  pruneStale: () => { persistence.pruneStale(TWO_HOURS_MS) },
+  pruneStale: () => {
+    _workerTickStart = Date.now()
+    persistence.pruneStale(TWO_HOURS_MS)
+  },
   rotateIfNeeded: drainPendingRotations,
-  cleanupOldConversationFiles: drainCleanup,
+  cleanupOldConversationFiles: () => {
+    drainCleanup()
+    metrics.recordWorkerTick(Date.now() - _workerTickStart)
+  },
 })
 
 const DAEMON_BOOT_ID = crypto.randomUUID()
@@ -522,6 +546,14 @@ const fetchHandler = async (req: Request) => {
     }
   }
 
+  if (path === "/metrics") {
+    const snapshot = metrics.getSnapshot()
+    snapshot.circuitState = budgetMiddleware.getCircuitState()
+    return new Response(JSON.stringify(snapshot), {
+      headers: { "Content-Type": "application/json" },
+    })
+  }
+
   if (path === "/events/stream") {
     const encoder = new TextEncoder()
     let keepaliveTimer: ReturnType<typeof setInterval> | null = null
@@ -799,7 +831,7 @@ writePortCoordination({
   sidecar: actualPort + 1,
   updatedAt: new Date().toISOString(),
 })
-getStatusHTML(actualPort)
+setTimeout(() => { getStatusHTML(actualPort).catch(() => {}) }, 0)
 heartbeatInterval = startHeartbeatWriter()
 persistenceInterval = setInterval(async () => {
   await persistence.save(conversations)

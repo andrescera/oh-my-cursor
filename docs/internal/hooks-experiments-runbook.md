@@ -335,3 +335,64 @@ rg -c '"W-X-session-id-cross-role-002"' docs/internal/hooks-evidence-v2.jsonl
 | E5 | File not readable / binary | Transcript is not human-readable text | Do not attempt to parse it in production hooks |
 | E6 (`session-id-cross-role`) | `session_id` mismatch | N11 prediction is wrong — session_id differs across roles | Re-examine N11; production hooks cannot rely on session_id cross-role equality |
 | E6 | `subagentStart` record missing | `subagentStart` did not fire in `agent-exec` role | Verify subagent type is supported; check matcher pattern |
+
+---
+
+## A2 — Best-effort probes (sessionStart / workspaceOpen / preCompact / beforeSubmitPrompt)
+
+**Status**: Best-effort; timebox → UNCONFIRMED is a PASSING outcome. These events cannot be self-fired by agent tool calls (they require manual UI interaction or session lifecycle transitions).
+
+### Why these events are hard to capture
+| Event | Trigger | Why hard |
+|-------|---------|---------|
+| `sessionStart` | First message in a fresh Cursor session | Cannot be triggered mid-session; requires opening a new Cursor window |
+| `workspaceOpen` | Workspace initialization | Fires at IDE startup before any agent session; not agent-triggerable |
+| `preCompact` | Context window approaches limit | Requires a very long session; cannot be reliably forced |
+| `beforeSubmitPrompt` | User submits a new prompt | Fires on prompt submission; hard to observe its own response |
+
+### Probe procedure (A2)
+
+**Timebox: 15 minutes. If no evidence captured, record UNCONFIRMED-at-3.6.21 and proceed.**
+
+**Step 1: Prepare workspace experiment hooks**
+```bash
+# Write workspace-level logger (add to .cursor/hooks.json in the project)
+cat > /mnt/development/oh-my-cursor/.cursor/hooks.json << 'EOF'
+{
+  "version": 1,
+  "hooks": {
+    "sessionStart": [{"command": "bash -c 'cat >> /tmp/omc-a2-evidence.jsonl; echo >> /tmp/omc-a2-evidence.jsonl; exit 0'"}],
+    "workspaceOpen": [{"command": "bash -c 'cat >> /tmp/omc-a2-evidence.jsonl; echo >> /tmp/omc-a2-evidence.jsonl; exit 0'"}],
+    "preCompact": [{"command": "bash -c 'cat >> /tmp/omc-a2-evidence.jsonl; echo >> /tmp/omc-a2-evidence.jsonl; exit 0'"}],
+    "beforeSubmitPrompt": [{"command": "bash -c 'cat >> /tmp/omc-a2-evidence.jsonl; echo >> /tmp/omc-a2-evidence.jsonl; exit 0'"}]
+  }
+}
+EOF
+```
+
+**Step 2: Trigger events (manual)**
+- **sessionStart**: Close all Cursor composer windows, wait 10s, open a new one.
+- **workspaceOpen**: Close Cursor entirely, reopen the workspace.
+- **preCompact**: Fill context to near-limit in a long session (impractical; skip if not naturally occurring).
+- **beforeSubmitPrompt**: Submit a normal prompt after hooks are installed.
+
+**Step 3: Check for evidence**
+```bash
+wc -l /tmp/omc-a2-evidence.jsonl 2>/dev/null || echo "0 lines — no events captured"
+cat /tmp/omc-a2-evidence.jsonl 2>/dev/null | python3 -c "import sys, json; [print(json.loads(l).get('event','?')) for l in sys.stdin if l.strip()]" 2>/dev/null
+```
+
+**Step 4: Record result**
+- If evidence found: extract `payload`, update `docs/internal/hook-response-fields.md` rows for captured events with `TAKES-EFFECT` or `OBSERVE-ONLY` status + `last-verified: 3.6.21`.
+- If timeout/no evidence: record `UNCONFIRMED-at-3.6.21` → **this is a passing outcome**.
+
+**Step 5: Restore**
+```bash
+rm /mnt/development/oh-my-cursor/.cursor/hooks.json
+```
+
+### Last run
+- **Date**: 2026-05-29
+- **Cursor version**: 3.6.21
+- **Result**: Not yet run. Run after W2.1 deterministic experiments are complete.
+- **Outcome**: UNCONFIRMED-at-3.6.21 (fallback passing outcome; proceed to W3 without blocking)

@@ -31,7 +31,7 @@
 | `permissions.json` | IDE | [official-doc] | Not Using | Not-Adoptable (persistence-only) <!-- last-verified: 3.6.21 --> |
 | SwitchMode tool | IDE | [official-doc] | Using | Plan / Agent / Ask |
 | AskQuestion tool | IDE | [official-doc] | Using | Prometheus |
-| TodoWrite tool | IDE | [official-doc] | Using | Atlas, coordinators. **Caveat:** postToolUse does not fire for TodoWrite (verified). preToolUse status unconfirmed. Hook-dependent todo tracking may be limited. |
+| TodoWrite tool | IDE | [official-doc] | Using | Atlas, coordinators. **Caveat:** neither `preToolUse` nor `postToolUse` fires for TodoWrite at 3.6.21 (W3 live-fire; matcher present). Hook-dependent todo tracking not viable via tool hooks; `todo_tracking_via_pretool` remains off by default. <!-- last-verified: 3.6.21 --> |
 | GenerateImage tool | IDE | [official-doc] | Using | multimodal-looker |
 | FETCH_RULES tool | IDE | [official-doc] | Using | Metis, Momus, Oracle, Atlas |
 | SEARCH_SYMBOLS tool | IDE | [official-doc] | Using | Oracle |
@@ -70,7 +70,7 @@
 | skill_mcp (sidecar) | IDE | [repro-local] | Using | Loads SKILL.md into agent context |
 | Native orchestration (`orchestration.mode: native`) | IDE | [repro-local] | Using | Root persona by Cursor mode. **Caveat:** Mode detected via heuristics, not hook payloads. activePlan lifecycle has known gaps — see [sharp edges](19-known-sharp-edges.md) |
 | `/multitask` command (async parallel subagents) | IDE | [official-doc] | Could Use | Native 3.2 command; repo's parallel patterns use the Task tool rule, not this command directly |
-| `workspaceOpen` hook event (21st event) | IDE | [binary-only] | Using (observe-only) | Wired as observe-only in `hooks.json` at 3.6.21; fires on workspace init (not during active sessions). 19 of 21 wired. <!-- last-verified: 3.6.21 --> |
+| `workspaceOpen` hook event (21st event) | IDE | [binary-only] | Using (observe-only) | Wired as observe-only in `hooks.json` at 3.6.21; fires on workspace init (not during active sessions). 19 of 21 wired. Best-effort live capture: [hooks-experiments-runbook.md §A2](../internal/hooks-experiments-runbook.md#a2--best-effort-probes-sessionstart--workspaceopen--precompact--beforesubmitprompt) (`UNCONFIRMED-at-3.6.21` after 15 min timebox is a passing outcome). <!-- last-verified: 3.6.21 --> |
 | Pin skills as quick actions | IDE | [official-doc] | Could Use | oh-my-cursor skills (loop, canvas, create-hook, etc.) are strong candidates for pinning |
 | `/loop` skill | IDE | [official-doc] | Using | Shipped at `~/.cursor/skills-cursor/loop/SKILL.md`; runs a prompt on a local schedule |
 | `@modelcontextprotocol/sdk` bundled in Cursor | Internal | [binary-only] | N/A | Cursor-internal bundle; signals deeper first-party MCP paths; no user adoption action required |

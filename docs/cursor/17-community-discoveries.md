@@ -2,7 +2,7 @@
 
 > **NON-NORMATIVE**: Everything on this page comes from **third-party sources**. These are **NOT** official Cursor features and may **break**, **violate Terms of Service**, or **change without notice**. Use at your own risk.
 
-> Cursor **3.0.16** context.
+> Cursor 3.6.21 (cursor-bin 3.6.21-1, vscodeVersion 1.105.1, commit e7a7e93f4d75f8272503ecf33cedbaae10114a10) context. Re-audited 2026-05-29; claims carry per-claim `last-verified` markers — unmarked claims retain their 3.0.16 baseline and were not re-verified at 3.6.21.
 
 Do **not** treat the items below as supported product behavior. Prefer [official-doc] pages in this reference and Cursor’s own documentation.
 

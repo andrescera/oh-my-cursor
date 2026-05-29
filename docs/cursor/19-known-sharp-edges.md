@@ -1,6 +1,6 @@
 # Known Sharp Edges
 
-> Operational gotchas and version-dependent behavior. Cursor **3.0.16**.
+> Operational gotchas and version-dependent behavior. Cursor 3.6.21 (cursor-bin 3.6.21-1, vscodeVersion 1.105.1, commit e7a7e93f4d75f8272503ecf33cedbaae10114a10). Re-audited 2026-05-29; claims carry per-claim `last-verified` markers — unmarked claims retain their 3.0.16 baseline and were not re-verified at 3.6.21.
 
 Items are tagged by evidence type. **[community]** and **[binary-only]** entries are **not** stable product guarantees.
 
@@ -17,6 +17,8 @@ Items are tagged by evidence type. **[community]** and **[binary-only]** entries
 ### Hook Tool Coverage
 
 `preToolUse` and `postToolUse` are **not** the same coverage: tools matched by `hooks.json` can still receive `preToolUse` even when Cursor never emits `postToolUse` for them. Verified from a 4.5MB production conversation log (9,452 `postToolUse` events, Cursor 3.0.16): [repro-local]
+
+> **Provenance for the 7/16 ratio:** verified at **3.0.16**; **consistent with the 3.5.38 corpus** (`postToolUse` fires 12,438× with `tool_name` including `Read`/`Grep`/`Shell`/`Write` — all within the documented firing set; see `docs/internal/reaudit-3621/hooks-evidence-3.5.38-summary.md`). The 3.5.38 corpus does not enumerate a full per-tool `postToolUse` breakdown, so the 7-fire / 9-no-fire split is **not** independently re-derived there. Full 3.6.21 re-confirm pending. [repro-local] 3.0.16; 3.6.21 re-confirm pending <!-- last-verified: 3.0.16 -->
 
 **Tools that DO fire `postToolUse`:** `Read` (4,565), `Grep` (2,709), `Shell` (1,212), `Write` (834), `WebSearch` (84), `WebFetch` (41), `Delete` (7).
 

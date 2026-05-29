@@ -560,6 +560,7 @@ Cursor's hooks system (`cursorHooksService`) fires at well-defined lifecycle ste
 | `subagentStart` | Sub-agent spawned |
 | `subagentStop` | Sub-agent terminated |
 | `stop` | Stop signal received |
+| `workspaceOpen` | Workspace opened/initialized — **NEW in 3.6.21** (21st event); defined-but-lightly-wired, no human-readable label found yet <!-- last-verified: 3.6.21 --> |
 
 **cursorHooksService methods:**
 - `executeHookForStep(step, args)` — run hooks for a given step
@@ -585,7 +586,9 @@ Cursor's hooks system (`cursorHooksService`) fires at well-defined lifecycle ste
 
 ### Tool Names [repro-local]
 
-Complete list extracted from `_params` / `_result` / `_stream` pattern matching (78 unique tools):
+Complete list extracted from `_params` / `_result` / `_stream` pattern matching. **At 3.6.21 the prior "78 unique tools" figure was NOT cleanly reproducible.** A fresh extraction over the live bundle yields **141 raw prefixes / 85 with `_params` / 67 with both `_params`+`_result` (best genuine-tool proxy) / 54 with `_stream`** — reconciled genuine agent-tool count: **67**. New v2 tools appear (`read_file_v2`, `list_dir_v2`, `task_v2`, `run_terminal_command_v2`); `codebase_search`, `browser_screenshot`, and `synthesis_subagent` now return **0** occurrences (removed/renamed — `codebase_search` → `semantic_search`/`semantic_search_full`). The enumeration below retains the original 3.0.16 list for reference. [repro-local] <!-- last-verified: 3.6.21 -->
+
+Source: `docs/internal/reaudit-3621/binary-facts-3621.md` (GATE B). Original 3.0.16 enumeration:
 
 **File operations:**
 `read_file`, `read_chunk`, `read_with_linter`, `read_lints`, `new_file`, `save_file`, `edit_file`, `edit_file_v2`, `new_edit`, `undo_edit`, `reapply`, `apply_agent_diff`, `delete_file`, `create_rm_files`
@@ -837,9 +840,9 @@ Privacy mode prevents data from being sent to AI training. Observed state keys:
 
 2. **9 named composer modes.** The `composerModesService` manages: `agent`, `background`, `chat`, `debug`, `edit`, `normal`, `plan`, `project`, `spec`. Not all modes are user-visible; `background` and `normal` are internal routing modes. [repro-local]
 
-3. **78 agent tool names.** The tool surface is substantially larger than what is documented externally. Notable additions: `create_diagram`, `generate_image`, `babysit_pr_in_cloud`, `knowledge_base`, `heal_stale_composer`, `force_background_subagent`, `add_ui_step`, `record_screen`. [repro-local]
+3. **67 genuine agent tools (3.6.21).** Reconciled from the live bundle via the `_(params|result)` proxy (both suffixes present). The prior **"78"** figure was **NOT cleanly reproducible** — fresh extraction yields **141 raw prefixes / 85 with `_params` / 67 with `_params`+`_result` / 54 with `_stream`** (see GATE B in `binary-facts-3621.md`). New v2 tools: `read_file_v2`, `list_dir_v2`, `task_v2`, `run_terminal_command_v2`; removed/renamed (now 0): `codebase_search`, `browser_screenshot`, `synthesis_subagent`. The tool surface remains substantially larger than what is documented externally (notable: `create_diagram`, `generate_image`, `babysit_pr_in_cloud`, `knowledge_base`, `heal_stale_composer`, `force_background_subagent`, `add_ui_step`, `record_screen`). [repro-local] <!-- last-verified: 3.6.21 -->
 
-4. **20 hook step events.** The hooks system covers the full agent lifecycle including MCP execution boundaries (`beforeMCPExecution`, `afterMCPExecution`), shell execution, sub-agent lifecycle, and context compaction. [repro-local]
+4. **21 hook step events (3.6.21).** The canonical enum `Iv` has 21 keys (**+`workspaceOpen`** vs the 20 in 3.0.16's `bv` enum). The hooks system covers the full agent lifecycle including MCP execution boundaries (`beforeMCPExecution`, `afterMCPExecution`), shell execution, sub-agent lifecycle, and context compaction. [repro-local] <!-- last-verified: 3.6.21 -->
 
 5. **cursorVM fleet.** 21 distinct `cursorvm-manager.com` hostnames suggest a fleet of 12+ production VM pools (us1–7 × 2 variants), 2 eval pools, 5 training pools. This is the infrastructure behind background agent compute. [repro-local]
 

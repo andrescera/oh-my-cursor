@@ -45,7 +45,7 @@ Pages are grouped by feature area. Each page explains what the capability is, ho
 
 ## Quick adoption summary
 
-oh-my-cursor currently uses: custom agents, hooks (18 events), slash commands, rules (.mdc), skills, MCP sidecar, native tools (AskQuestion, TodoWrite, SwitchMode), plan system, and plugin manifest. See [Adoption Matrix](18-adoption-matrix.md) for the full breakdown.
+oh-my-cursor currently uses: custom agents, hooks (18 of 21 canonical events wired), slash commands, rules (.mdc), skills, MCP sidecar, native tools (AskQuestion, TodoWrite, SwitchMode), plan system, and plugin manifest. See [Adoption Matrix](18-adoption-matrix.md) for the full breakdown.
 
 ## Related docs
 

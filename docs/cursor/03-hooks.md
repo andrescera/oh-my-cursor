@@ -20,7 +20,7 @@ Cursor 3.1.15 exposes 20 canonical hook events enumerated by the `bv` enum at `w
 
 ## Event Taxonomy
 
-> **last-verified: 3.6.21** — Enum existence re-confirmed 2026-05-29 from live 3.6.21 binary. All 20 events below are present in enum `Iv` at offset 23,065,128 (renamed from `bv` in 3.0.16). **+1 new event in 3.6.21: `workspaceOpen`** (21st event; defined-but-lightly-wired — no human-readable label yet). Empirical evidence rows (fires/status) remain at the 3.1.15 baseline below; behavioral re-testing is pending. [binary-only] [repro-local] <!-- last-verified: 3.6.21 -->
+> **last-verified: 3.6.21** — Enum existence re-confirmed 2026-05-29 from live 3.6.21 binary. **The canonical set is now 21 events** (enum `Iv` at offset 23,065,128, 21 keys; renamed from `bv` in 3.0.16). All 20 events from the 3.1.15/3.0.16 baseline are still present and unchanged; **+1 new event in 3.6.21: `workspaceOpen`** (row 21; defined-but-lightly-wired — no human-readable label yet). Empirical evidence rows (fires/status) for the original 20 remain at the 3.1.15 baseline below; behavioral re-testing is pending. [binary-only] [repro-local] <!-- last-verified: 3.6.21 -->
 
 | # | Event | Category | Enforced output | Evidence fires | Status |
 |---|-------|----------|----------------|---------------|--------|
@@ -44,6 +44,7 @@ Cursor 3.1.15 exposes 20 canonical hook events enumerated by the `bv` enum at `w
 | 18 | `afterAgentResponse` | agent-triggerable / observe | not enforced | 1 | verified |
 | 19 | `afterAgentThought` | agent-triggerable / observe | not enforced | 19 | verified |
 | 20 | `preCompact` | manual-UI / session | N/A | 0 | source-cited |
+| 21 | `workspaceOpen` | binary-only / NEW 3.6.21 | N/A (no label yet) | 0 | binary-only (defined-but-lightly-wired) <!-- last-verified: 3.6.21 --> |
 
 ## Response fields — empirical status
 
@@ -1220,7 +1221,7 @@ Two token sequences were found near the `bv` enum in `workbench.desktop.main.js:
 
 A new hook step event `workspaceOpen` was found in the `Iv` enum of the 3.6.21 binary. It is the 21st canonical hook event. The event name appears exactly twice in the bundle (enum definition + ordered array). It has no human-readable Claude-Code label wired yet and is classified as "defined-but-lightly-wired" — it is present in the canonical set but not yet surfaced with full documentation or a verified firing path via manual UI trigger.
 
-All 20 previously documented events remain unchanged. The existing canonical event list and count in this document reflect the 3.1.15 baseline; `workspaceOpen` is not yet inserted into the numbered taxonomy table above (count reconciliation is handled in a later wave).
+All 20 previously documented events remain unchanged. `workspaceOpen` has been inserted as **row 21** in the numbered Event Taxonomy table above, bringing the canonical count to **21**; its empirical fire/status row stays at the 3.1.15 baseline (0 fires — binary-only) pending a 3.6.21 live-fire capture.
 
 **Adoption relevance:** The `CANONICAL_CURSOR_HOOKS` test constant must include `workspaceOpen`. Affects the `create-hook` skill and any automation that iterates hook event names.
 

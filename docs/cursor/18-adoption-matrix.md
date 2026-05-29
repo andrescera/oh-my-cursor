@@ -1,13 +1,13 @@
 # Adoption Matrix
 
-> oh-my-cursor feature adoption status for Cursor **3.0.16** native capabilities.
+> oh-my-cursor feature adoption status for Cursor 3.6.21 (cursor-bin 3.6.21-1, vscodeVersion 1.105.1, commit e7a7e93f4d75f8272503ecf33cedbaae10114a10) native capabilities. Re-audited 2026-05-29; claims carry per-claim `last-verified` markers — unmarked claims retain their 3.0.16 baseline and were not re-verified at 3.6.21.
 
 **Legend:** **Surface** = where the capability lives. **Evidence** follows the [README taxonomy](README.md#evidence-taxonomy). **Status** reflects this **repository’s** use, not whether Cursor ships the feature.
 
 | Feature | Surface | Evidence | Status | Notes |
 |---------|---------|----------|--------|-------|
 | Custom Agents (`.cursor/agents/`) | IDE | [official-doc] | Using | 11 agent definitions |
-| Agent Hooks (18 events) | IDE | [official-doc] | Using | Via daemon + `hooks/hooks.json`. Only 7/16 tools fire postToolUse — see [sharp edges](19-known-sharp-edges.md#hook-tool-coverage) |
+| Agent Hooks (18 of 21 events wired) | IDE | [official-doc] | Using | Via daemon + `hooks/hooks.json` wires 18 of the 21 canonical events (`workspaceOpen` is new in 3.6.21 and not wired). Only 7/16 tools fire postToolUse — see [sharp edges](19-known-sharp-edges.md#hook-tool-coverage) <!-- last-verified: 3.6.21 --> |
 | Tab Hooks (`beforeTabFileRead`, `afterTabFileEdit`) | IDE | [official-doc] | Not Using | Could Use |
 | Hooks auto-reload | IDE | [official-doc] | Using | Edits to hook config reload without restart |
 | Multi-root workspace hooks | IDE | [changelog] | Using | Behavior fixed 3.0-era; plugin ships project hooks |
@@ -70,7 +70,7 @@
 | skill_mcp (sidecar) | IDE | [repro-local] | Using | Loads SKILL.md into agent context |
 | Native orchestration (`orchestration.mode: native`) | IDE | [repro-local] | Using | Root persona by Cursor mode. **Caveat:** Mode detected via heuristics, not hook payloads. activePlan lifecycle has known gaps — see [sharp edges](19-known-sharp-edges.md) |
 | `/multitask` command (async parallel subagents) | IDE | [official-doc] | Could Use | Native 3.2 command; repo's parallel patterns use the Task tool rule, not this command directly |
-| `workspaceOpen` hook event (21st event) | IDE | [binary-only] | Not Using | New canonical event present at 3.6.21; not yet wired in `hooks.json`; hook-count reconciliation pending (Wave 4) |
+| `workspaceOpen` hook event (21st event) | IDE | [binary-only] | Not Using | New canonical event present at 3.6.21; not wired in `hooks.json`. Canonical set reconciled to 21 events; 18 of 21 wired |
 | Pin skills as quick actions | IDE | [official-doc] | Could Use | oh-my-cursor skills (loop, canvas, create-hook, etc.) are strong candidates for pinning |
 | `/loop` skill | IDE | [official-doc] | Using | Shipped at `~/.cursor/skills-cursor/loop/SKILL.md`; runs a prompt on a local schedule |
 | `@modelcontextprotocol/sdk` bundled in Cursor | Internal | [binary-only] | N/A | Cursor-internal bundle; signals deeper first-party MCP paths; no user adoption action required |

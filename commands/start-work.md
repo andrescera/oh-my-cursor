@@ -64,6 +64,8 @@ The root thread adopts **Atlas coordination personality** and executes the plan 
    - `subagent_type="sisyphus"` for multi-file or cross-cutting work
    - Use the **Model** from the plan's Recommended Agent Profile as the `model` parameter on the Task call. If the plan task omits Model, omit the parameter to inherit the parent model.
    - Each **Task** dispatch MUST use the six-section brief format below
+   - After dispatching all wave agents, do NOT poll — wait for end-of-turn completion notifications. Only use `AwaitShell` when blocking on shell commands (not Task results).
+   - **Await pattern**: use `AwaitShell(shell_id=...)` for shell commands that must finish before the next step; do NOT use `AwaitShell` for Task agent completions.
 5. After each wave completes, verify every task:
    - **ReadLints** on changed files — must be clean
    - **Read** changed files to confirm correctness

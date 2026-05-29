@@ -156,6 +156,16 @@ Plan (Plan mode or Prometheus) → Explore → Execute (sisyphus/atlas) → Done
 **Phase chain** (complex features): plan → explore → pass context to executor → executor self-verifies → done.
 **Session continuity**: always resume existing agent sessions for follow-ups.
 
+### Native 3.6.21 commands
+
+| Capability | When to use | Notes |
+|------------|-------------|-------|
+| **`/multitask`** | Interactive multi-session parallelism | Starts multiple parallel agent tabs; distinct from Task tool (no programmatic result capture). See `commands/plan.md` and `/start-work` wave dispatch. |
+| **`/worktree`** | Isolated branch experiments | Creates a git worktree + branch; maps to `cursor worktree`. See [`commands/worktree.md`](../commands/worktree.md). |
+| **`/best-of-n`** | Compare N parallel attempts | Same prompt in N worktrees; pick winner. Maps to `cursor best-of-n`. See [`commands/best-of-n.md`](../commands/best-of-n.md). |
+| **`Await` tool** | Block on shell/long-running commands | Use `AwaitShell(shell_id=...)` for shell output. Do NOT use for Task completions — rely on end-of-turn notifications. |
+| **Build in Parallel** | Plan quick action for independent steps | Auto-parallelizes independent plan steps; programmatic equivalent is simultaneous `Task(run_in_background=true)` per wave. |
+
 ## Sub-Agent Dispatch Limits (HARD CONSTRAINTS)
 
 | Rule | Limit |

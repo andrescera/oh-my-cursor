@@ -135,9 +135,18 @@ Agent–IDE / Glass-related keys (e.g. `cursor.agentIdeUnification.*`, `cursor.g
   - **Inherit** the parent agent's current model.
   - **Disable** Explore subagents entirely.
   - General model names (e.g. `opus`) always resolve to the newest model in that family.
-- **Setting key (binary):** `cursor.composer.subagentModel` (see binary inventory above).
+- **Setting key (binary):** `cursor.composer.subagentModel` (see binary inventory above). The Settings UI may expose this as **Explore subagent model**; some builds also reference `cursor.agent.exploreSubagentModel` — confirm the active key in **Cursor Settings** on your install.
+- **Practical use:** Controls which model runs for `Task(subagent_type="explore")`. Prefer a fast/cheap model for explore agents (read-only search). <!-- last-verified: 3.6.21 -->
 - **Version:** 3.3 (May 7, 2026)
 - **Evidence:** `[official-doc]`
+
+### SF-06 · `--add-mcp <json>` CLI flag [official-doc] [repro-local]
+
+- **What:** Injects an MCP server configuration for a **single** CLI or agent run without editing `~/.cursor/mcp.json`.
+- **Example:** `cursor --add-mcp '{"mcpServers":{"my-server":{"command":"node","args":["server.js"]}}}'`
+- **Use case:** One-off MCP server testing or CI scripts that need a temporary server definition.
+- **Version:** present in `cursor --help` at 3.6.21 <!-- last-verified: 3.6.21 -->
+- **Evidence:** `[official-doc]` `[repro-local]`
 
 ---
 

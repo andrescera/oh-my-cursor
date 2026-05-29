@@ -7,14 +7,14 @@
 | Feature | Surface | Evidence | Status | Notes |
 |---------|---------|----------|--------|-------|
 | Custom Agents (`.cursor/agents/`) | IDE | [official-doc] | Using | 11 agent definitions |
-| Agent Hooks (18 of 21 events wired) | IDE | [official-doc] | Using | Via daemon + `hooks/hooks.json` wires 18 of the 21 canonical events (`workspaceOpen` is new in 3.6.21 and not wired). Only 7/16 tools fire postToolUse — see [sharp edges](19-known-sharp-edges.md#hook-tool-coverage) <!-- last-verified: 3.6.21 --> |
+| Agent Hooks (19 of 21 events wired) | IDE | [official-doc] | Using | Via daemon + `hooks/hooks.json` wires 19 of the 21 canonical events (`beforeTabFileRead`, `afterTabFileEdit` not wired). Only 7/16 tools fire postToolUse — see [sharp edges](19-known-sharp-edges.md#hook-tool-coverage) <!-- last-verified: 3.6.21 --> |
 | Tab Hooks (`beforeTabFileRead`, `afterTabFileEdit`) | IDE | [official-doc] | Not Using | Could Use |
 | Hooks auto-reload | IDE | [official-doc] | Using | Edits to hook config reload without restart |
 | Multi-root workspace hooks | IDE | [changelog] | Using | Behavior fixed 3.0-era; plugin ships project hooks |
 | Enterprise / team / MDM hooks | IDE | [official-doc] | Not Using | Enterprise |
 | Third-party hook mapping (e.g. Claude Code) | IDE | [official-doc] | Not Using | Could Use |
 | Slash Commands (plugin `commands/`) | IDE | [official-doc] | Using | 16 commands |
-| Built-in `/worktree`, `/best-of-n` | IDE | [changelog] | Not Using | Could Use |
+| Built-in `/worktree`, `/best-of-n` | IDE | [changelog] | Using (documented) | Thin wrappers at [`commands/worktree.md`](../../commands/worktree.md), [`commands/best-of-n.md`](../../commands/best-of-n.md) <!-- last-verified: 3.6.21 --> |
 | Rules (`.mdc` / `.md`) | IDE | [official-doc] | Using | 7 rules <!-- last-verified: 3.6.21 --> |
 | Rule types (Always, Glob, Intelligent, Manual) | IDE | [official-doc] | Using | Via frontmatter + settings |
 | Team Rules | IDE | [official-doc] | Not Using | Enterprise |
@@ -49,7 +49,7 @@
 | Branch selection (agent workflows, 3.1) | IDE | [changelog] | Not Using | N/A |
 | Composer checkpoints / revert | IDE | [official-doc] | Not Using | Could Use |
 | Queued composer messages | IDE | [official-doc] | Not Using | N/A (UX) |
-| Await tool | IDE | [changelog] | Not Using | Could Use |
+| Await tool | IDE | [changelog] | Using (documented) | `AwaitShell` for shell commands only; Task completions via end-of-turn notifications — see `orchestrator-reference.mdc`, `commands/start-work.md` <!-- last-verified: 3.6.21 --> |
 | Browser automation tools | IDE | [official-doc] | Not Using | Could Use |
 | CLI `--mode` | CLI | [official-doc] | Not Using | Could Use |
 | CLI `--print` / `--output-format` | CLI | [official-doc] | Not Using | Could Use |
@@ -70,7 +70,7 @@
 | skill_mcp (sidecar) | IDE | [repro-local] | Using | Loads SKILL.md into agent context |
 | Native orchestration (`orchestration.mode: native`) | IDE | [repro-local] | Using | Root persona by Cursor mode. **Caveat:** Mode detected via heuristics, not hook payloads. activePlan lifecycle has known gaps — see [sharp edges](19-known-sharp-edges.md) |
 | `/multitask` command (async parallel subagents) | IDE | [official-doc] | Could Use | Native 3.2 command; repo's parallel patterns use the Task tool rule, not this command directly |
-| `workspaceOpen` hook event (21st event) | IDE | [binary-only] | Not Using | New canonical event present at 3.6.21; not wired in `hooks.json`. Canonical set reconciled to 21 events; 18 of 21 wired |
+| `workspaceOpen` hook event (21st event) | IDE | [binary-only] | Using (observe-only) | Wired as observe-only in `hooks.json` at 3.6.21; fires on workspace init (not during active sessions). 19 of 21 wired. <!-- last-verified: 3.6.21 --> |
 | Pin skills as quick actions | IDE | [official-doc] | Could Use | oh-my-cursor skills (loop, canvas, create-hook, etc.) are strong candidates for pinning |
 | `/loop` skill | IDE | [official-doc] | Using | Shipped at `~/.cursor/skills-cursor/loop/SKILL.md`; runs a prompt on a local schedule |
 | `@modelcontextprotocol/sdk` bundled in Cursor | Internal | [binary-only] | N/A | Cursor-internal bundle; signals deeper first-party MCP paths; no user adoption action required |
@@ -78,7 +78,7 @@
 | Cursor SDK `@cursor/sdk` | HTTP/CLI | [official-doc] | Could Use | SDK skill shipped (`sdk/SKILL.md`); repo does not yet use `@cursor/sdk` programmatically |
 | Explore subagent model controls | Setting | [official-doc] | Could Use | Sub-agent model-selection rules exist; Cursor's Explore subagent setting not explicitly configured in this repo |
 | Compact chat response density | Setting | [official-doc] | N/A | User-level UI preference (Compact/Balanced/Detailed); not a repo configuration concern |
-| `--add-mcp <json>` CLI flag | CLI | [official-doc] [repro-local] | Could Use | MCP servers used extensively; this CLI flag not referenced in docs or repo automation |
+| `--add-mcp <json>` CLI flag | CLI | [official-doc] [repro-local] | Using (documented) | Documented in `docs/cursor/15-settings-and-flags.md` <!-- last-verified: 3.6.21 --> |
 | `--chat` CLI flag | CLI | [binary-only] | Not Using | Could Use; opens standalone chat window without full IDE; present in `cursor --help` at 3.6.21 |
 | `serve-web` CLI subcommand removed | CLI | [repro-local] | N/A | **Breaking:** absent in 3.6.21; any automation using `cursor serve-web` must be updated |
 | `cursor-agent-worker` / `cursorPseudoterminal` | Extension | [binary-only] | N/A | Cursor-internal architecture split of `cursor-agent`; no user-facing extension contract exposed |

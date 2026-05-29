@@ -15,6 +15,11 @@ import { createContextWindowMonitor } from "./context-window-monitor"
 import { createCommentChecker } from "./comment-checker"
 import { createToolOutputTruncator } from "./tool-output-truncator"
 import { createDelegateTaskRetry } from "./delegate-task-retry"
+import { createRulesInjectorHandler } from "./rules-injector"
+import { createDirectoryReadmeInjectorHandler } from "./directory-readme-injector"
+import { createAgentUsageReminderHandler } from "./agent-usage-reminder"
+import { createBashFileReadGuardHandler } from "./bash-file-read-guard"
+import { createHashlineReadEnhancerHandler } from "./hashline-read-enhancer"
 import { contextCollector } from "../context-collector"
 
 const PLAN_MODE_ALLOWED_AGENTS = new Set(["explore", "metis", "momus", "librarian", "oracle"])
@@ -81,6 +86,17 @@ function buildSkillReminderContextLines(conversation: ConversationState): string
     lines.push("Edits across 3+ distinct files recently — consider Task(sisyphus-junior) for parallel multi-file edits.")
   }
 
+  const recentTaskDispatch = recentWindow.some((e) => TASK_DELEGATION_TOOLS.has(e.tool))
+  if (
+    conversation.composerMode === "agent" &&
+    conversation.toolCallsSinceTaskDispatch >= 3 &&
+    !recentTaskDispatch
+  ) {
+    lines.push(
+      "Available skills for delegation: git-master, playwright, review-work, frontend-ui-ux, dev-browser. Use Task with the relevant skill loaded.",
+    )
+  }
+
   return lines
 }
 
@@ -101,6 +117,21 @@ export function createToolGuardHandlers(
   const toolOutputTruncator = createToolOutputTruncator()
   const delegateTaskRetry = createDelegateTaskRetry()
 
+  const rulesInjector = createRulesInjectorHandler(_conversations)
+  const directoryReadmeInjector = createDirectoryReadmeInjectorHandler(_conversations)
+  const agentUsageReminder = createAgentUsageReminderHandler(_conversations)
+  const bashFileReadGuard = createBashFileReadGuardHandler(_conversations)
+  const hashlineReadEnhancer = createHashlineReadEnhancerHandler(_conversations)
+  const portedPostToolUse = [
+    rulesInjector,
+    directoryReadmeInjector,
+    agentUsageReminder,
+    bashFileReadGuard,
+    hashlineReadEnhancer,
+  ]
+    .map((handler) => handler["/postToolUse"])
+    .filter((fn): fn is NonNullable<typeof fn> => typeof fn === "function")
+
   return {
     "/preToolUse": (input) => {
       const toolName = (input.tool_name as string) || ""
@@ -117,10 +148,19 @@ export function createToolGuardHandlers(
             const allowed = rawPath.includes(".cursor/plans/") || rawPath.includes(".cursor/drafts/")
             if (!allowed) {
               const reason = `[mode-guard] Write is restricted to .cursor/plans/ and .cursor/drafts/ in Plan mode. Refusing: ${rawPath}`
+              const advisory = `[mode-guard] Write blocked in Plan mode: ${rawPath}. Only .cursor/plans/ and .cursor/drafts/ are writable in Plan mode. Switch to Agent mode to write to this path.`
+              contextCollector.register(convId, {
+                id: "plan-write-guard",
+                source: "plan-write-guard",
+                content: advisory,
+                priority: "critical",
+              })
+              const pending = contextCollector.consume(convId)
               return {
                 permission: "deny",
                 userMessage: reason,
                 agentMessage: reason,
+                additional_context: pending.merged || advisory,
                 hookSpecificOutput: {
                   hookEventName: "PreToolUse",
                   permissionDecision: "deny",
@@ -186,10 +226,20 @@ export function createToolGuardHandlers(
 
           if (resolvedMode === "ask") {
             const reason = "[mode-guard] Task dispatches are not allowed in Ask mode."
+            const advisory =
+              "[mode-guard] Task dispatches blocked in Ask mode. Ask mode is read-only advisory — switch to Agent mode to dispatch subagents."
+            contextCollector.register(convId, {
+              id: "ask-task-guard",
+              source: "ask-task-guard",
+              content: advisory,
+              priority: "critical",
+            })
+            const pending = contextCollector.consume(convId)
             return {
               permission: "deny",
               userMessage: reason,
               agentMessage: reason,
+              additional_context: pending.merged || advisory,
               hookSpecificOutput: {
                 hookEventName: "PreToolUse",
                 permissionDecision: "deny",
@@ -200,10 +250,19 @@ export function createToolGuardHandlers(
 
           if (resolvedMode === "plan" && !PLAN_MODE_ALLOWED_AGENTS.has(normalized)) {
             const reason = `[mode-guard] Agent type '${normalized}' is not allowed in Plan mode. Only explore, metis, momus, librarian, and oracle are allowed.`
+            const advisory = `[mode-guard] Agent type '${normalized}' blocked in Plan mode. Only explore, metis, momus, librarian, and oracle are allowed in Plan mode.`
+            contextCollector.register(convId, {
+              id: "plan-agent-guard",
+              source: "plan-agent-guard",
+              content: advisory,
+              priority: "critical",
+            })
+            const pending = contextCollector.consume(convId)
             return {
               permission: "deny",
               userMessage: reason,
               agentMessage: reason,
+              additional_context: pending.merged || advisory,
               hookSpecificOutput: {
                 hookEventName: "PreToolUse",
                 permissionDecision: "deny",
@@ -504,6 +563,10 @@ export function createToolGuardHandlers(
             priority: "high",
           })
         }
+      }
+
+      for (const portedHandler of portedPostToolUse) {
+        portedHandler(input)
       }
 
       if (!config.context_collector.enabled) {

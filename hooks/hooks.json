@@ -21,6 +21,7 @@
     "afterAgentThought": [{ "command": "bash \"$HOME/.cursor/plugins/local/oh-my-cursor/hooks/scripts/post-daemon.sh\" /afterAgentThought" }],
     "preCompact": [{ "command": "bash \"$HOME/.cursor/plugins/local/oh-my-cursor/hooks/scripts/post-daemon.sh\" /preCompact" }],
     "stop": [{ "command": "bash \"$HOME/.cursor/plugins/local/oh-my-cursor/hooks/scripts/post-daemon.sh\" /stop", "loop_limit": null }],
-    "beforeSubmitPrompt": [{ "command": "bash \"$HOME/.cursor/plugins/local/oh-my-cursor/hooks/scripts/post-daemon.sh\" /beforeSubmitPrompt" }]
+    "beforeSubmitPrompt": [{ "command": "bash \"$HOME/.cursor/plugins/local/oh-my-cursor/hooks/scripts/post-daemon.sh\" /beforeSubmitPrompt" }],
+    "workspaceOpen": [{ "command": "bash \"$HOME/.cursor/plugins/local/oh-my-cursor/hooks/scripts/post-daemon.sh\" /workspaceOpen" }]
   }
 }

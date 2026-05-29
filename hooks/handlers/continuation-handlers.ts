@@ -294,10 +294,20 @@ export function createContinuationHandlers(
       const isAgentMode =
         inputMode === "agent" || conversation.composerMode === "agent" || (!conversation.composerMode && !inputMode && !isPlanMode)
 
+      const previousMode = conversation.composerMode
+
       if (isPlanMode) {
         conversation.composerMode = "plan"
       } else if (inputMode) {
         conversation.composerMode = inputMode
+      }
+
+      if (previousMode === "plan" && conversation.composerMode !== "plan") {
+        for (const planPhaseId of PLAN_PHASE_IDS) {
+          if (conversation.todoStates.get(planPhaseId) === "in_progress") {
+            conversation.todoStates.set(planPhaseId, "completed")
+          }
+        }
       }
 
       console.log(`[oh-my-cursor][beforeSubmitPrompt] isPlanMode=${isPlanMode} | isAgentMode=${isAgentMode} | composerModeAfter=${conversation.composerMode}`)

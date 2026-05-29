@@ -31,6 +31,7 @@ export const ContextCollectorSchema = z.object({
     })
     .default({ critical: 20000, high: 15000, normal: 10000, low: 5000 }),
   todo_tracking_via_pretool: z.boolean().default(false),
+  hashline_edit: z.boolean().default(false),
 })
 
 export const CompactionSchema = z.object({
@@ -106,6 +107,7 @@ export const OhMyCursorConfigSchema = z.object({
     max_entry_chars: 8000,
     priority_budgets: { critical: 20000, high: 15000, normal: 10000, low: 5000 },
     todo_tracking_via_pretool: false,
+    hashline_edit: false,
   }),
   compaction: CompactionSchema.default({ prompt_enabled: true }),
   experimental: ExperimentalSchema.default({

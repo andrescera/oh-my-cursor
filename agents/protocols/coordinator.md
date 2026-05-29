@@ -63,7 +63,9 @@ Every Task prompt MUST include ALL 6 sections:
 Spawn search agents asynchronously (`run_in_background: true`) while you continue working with direct tools on non-overlapping tasks. Best for explore/librarian agents.
 
 ### Fire-and-Collect
-Spawn multiple workers for independent implementation tasks, then verify each result. Best for parallel sisyphus-junior workers.
+Spawn multiple workers for independent implementation tasks, then verify each result. Best for parallel sisyphus-junior workers. After dispatching all wave agents, do NOT poll — wait for end-of-turn completion notifications.
+
+**Await**: Use `AwaitShell` for shell commands that must complete before next steps. For Task agents, rely on end-of-turn completion notifications — do NOT poll with `AwaitShell` for Task results. This avoids blocking the orchestrator while agents work.
 
 ### Research-then-Act
 Spawn search agents first, collect results, then use findings to guide implementation work. Best when you need context before deciding approach.
@@ -111,7 +113,8 @@ After every worker returns:
 
 - Explore/Librarian: ALWAYS `run_in_background: true`
 - Implementation (sisyphus-junior): ALWAYS `run_in_background: false`
-- Collect results with Await before relying on them
+- Task agents: collect results via end-of-turn completion notifications — do NOT poll with `AwaitShell`
+- Shell commands: use `AwaitShell(shell_id=...)` when the next step depends on command output
 - Cancel disposable tasks individually when done
 - NEVER cancel all background tasks at once - kills tasks whose results you haven't collected
 

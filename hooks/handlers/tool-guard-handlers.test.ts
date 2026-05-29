@@ -379,6 +379,44 @@ describe("createToolGuardHandlers Plan-mode Write-path guard", () => {
   })
 })
 
+describe("P0 guard advisory", () => {
+  beforeEach(() => {
+    conversations.delete(CONV)
+  })
+
+  it("plan-mode Write guard emits additional_context advisory", () => {
+    const tracker = makeTracker({ [CONV]: [] })
+    const { "/preToolUse": handler } = createToolGuardHandlers(conversations, tracker)
+    handler({ tool_name: "Read", conversation_id: CONV, tool_input: { path: "/tmp/x" } })
+    conversations.get(CONV)!.composerMode = "plan"
+
+    const result = handler({
+      tool_name: "Write",
+      conversation_id: CONV,
+      tool_input: { file_path: "/tmp/forbidden.md", contents: "x" },
+    }) as { permission?: string; additional_context?: string }
+
+    expect(result.permission).toBe("deny")
+    expect(result.additional_context).toContain("[mode-guard]")
+  })
+
+  it("ask-mode Task deny emits additional_context advisory", () => {
+    const tracker = makeTracker({ [CONV]: [] })
+    const { "/preToolUse": handler } = createToolGuardHandlers(conversations, tracker)
+    handler({ tool_name: "Read", conversation_id: CONV, tool_input: { path: "/tmp/x" } })
+    conversations.get(CONV)!.composerMode = "ask"
+
+    const result = handler({
+      tool_name: "Task",
+      conversation_id: CONV,
+      tool_input: { subagent_type: "sisyphus", description: "Forbidden in ask mode" },
+    }) as { permission?: string; additional_context?: string }
+
+    expect(result.permission).toBe("deny")
+    expect(result.additional_context).toContain("[mode-guard]")
+  })
+})
+
 describe("TodoWrite tracking via preToolUse", () => {
   let projectDir: string
 

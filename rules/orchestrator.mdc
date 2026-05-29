@@ -76,4 +76,10 @@ When a model is unavailable, Cursor falls back to the next available model:
 
 **Mode-specific constraints** (FORBIDDEN lists per mode) are in `orchestrator-reference.mdc`. Obey the FORBIDDEN list for the active mode.
 
+### Native parallelism
+
+- Use `/multitask` when you need to run multiple independent agent sessions in parallel tabs (each gets its own context; results arrive asynchronously). Prefer `Task(run_in_background=true)` for programmatic parallelism; `/multitask` for interactive multi-session workflows.
+- **Build in Parallel**: When a plan's wave has no intra-wave dependencies, dispatch all wave tasks simultaneously via `Task(run_in_background=true)` and collect results via end-of-turn notifications. Do NOT serialize wave tasks unless there are explicit dependencies.
+- **`Await` tool**: After dispatching background Tasks, use `AwaitShell` to block on results when the next step depends on them. For Task dispatches, rely on end-of-turn completion notifications rather than polling.
+
 **Reference:** For detailed workflows, dispatch limits, delegation format, patterns, and FETCH_RULES: see `orchestrator-reference.mdc`.

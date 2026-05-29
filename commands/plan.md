@@ -188,6 +188,10 @@ Skipping Metis is a hard constraint violation. Mark completed. Proceed immediate
 
 6. **Write plan** -- Mark `plan-write` in_progress. Write plan to `.cursor/plans/<name>.plan.md` using Write. The file must start with YAML frontmatter (`name`, `overview`, `todos`, `isProject`) before the markdown body so Cursor's plan UI can detect it; the `todos` array uses `{id, content, status}` shape matching the plan's TODOs section. Must include: TL;DR, problem analysis, implementation tasks in parallel waves, dependency matrix (mandatory for 3+ tasks), per-task acceptance criteria, QA scenarios, commit strategy, final verification wave. The dependency matrix MUST use the 4-column table format (`Task | Depends On | Blocks | Can Parallelize With`). ASCII diagrams and bullet lists are NOT valid substitutes. Mark completed.
 
+   **Parallel execution notes:**
+   - **Build in Parallel** (plan UI quick action) maps to dispatching all tasks in a wave simultaneously as `Task(run_in_background=true)` during `/start-work` — do NOT serialize independent wave tasks.
+   - **`/multitask`** is the interactive equivalent for users running multi-session parallel work outside the Task orchestration flow.
+
    The plan's Final Verification Wave MUST include these four review tasks with their assigned agents (see `agents/prometheus.md` for full descriptions):
    - F1: Plan Compliance Audit — `oracle`
    - F2: Code Quality Review

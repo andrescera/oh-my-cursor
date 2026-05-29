@@ -1,40 +1,44 @@
 {
+  "cursor_version": "3.6.21",
   "binary": "/usr/share/cursor/resources/app/out/vs/workbench/workbench.desktop.main.js",
-  "binary_sha256": "29aa9ec0549fa55452794c29f50f6d3ad3c1d5b24c51b068fd371a0a2aec44ef",
-  "ts": "2026-04-17T15:41:11Z",
-  "methodology": "Offline binary strings sweep. Extracted event-name-like tokens from a 200-line window around the `bv` enum literal in workbench.desktop.main.js; classified each against the canonical 20-event set.",
+  "binary_sha256": "205317ade21ccf6a2b415ef7fa63c1e4c5d394db626f7ada0151a943e1ecc950",
+  "bundle_sha256": "205317ade21ccf6a2b415ef7fa63c1e4c5d394db626f7ada0151a943e1ecc950",
+  "sweep_date": "2026-05-29",
+  "ts": "2026-05-29T00:00:00Z",
+  "methodology": "Offline binary strings sweep (re-pinned 3.6.21). Extracted event-name-like tokens from a ~16 KiB window around the `Iv` enum literal (byte offset 23065128) in workbench.desktop.main.js; classified each against the canonical 21-event set. Global hook-shaped quoted-string scan for noise count.",
   "canonical_set": [
-    "beforeShellExecution",
-    "beforeMCPExecution",
-    "afterShellExecution",
-    "afterMCPExecution",
-    "beforeReadFile",
-    "afterFileEdit",
-    "beforeTabFileRead",
-    "afterTabFileEdit",
-    "stop",
-    "beforeSubmitPrompt",
     "afterAgentResponse",
     "afterAgentThought",
-    "sessionStart",
-    "sessionEnd",
+    "afterFileEdit",
+    "afterMCPExecution",
+    "afterShellExecution",
+    "afterTabFileEdit",
+    "beforeMCPExecution",
+    "beforeReadFile",
+    "beforeShellExecution",
+    "beforeSubmitPrompt",
+    "beforeTabFileRead",
+    "postToolUse",
+    "postToolUseFailure",
     "preCompact",
+    "preToolUse",
+    "sessionEnd",
+    "sessionStart",
+    "stop",
     "subagentStart",
     "subagentStop",
-    "preToolUse",
-    "postToolUse",
-    "postToolUseFailure"
+    "workspaceOpen"
   ],
   "candidates_extracted": 50,
   "plausible_ghosts": [
     {
       "name": "beforeFullFileContent",
-      "source": "near bv enum",
+      "source": "protobuf diff payload fields (efi/k9o); not in Iv enum",
       "classification": "plausible_ghost"
     },
     {
       "name": "afterFullFileContent",
-      "source": "near bv enum",
+      "source": "protobuf diff payload fields (efi/k9o); not in Iv enum",
       "classification": "plausible_ghost"
     }
   ],
@@ -61,8 +65,9 @@
     "SessionStart",
     "Stop",
     "SubagentStart",
-    "SubagentStop"
+    "SubagentStop",
+    "WorkspaceOpen"
   ],
-  "noise_count": 44,
-  "conclusion": "Regex scan near `bv` enum: 50 unique tokens (cap 50); 4 skipped as canonical; 2 plausible_ghost surplus (`beforeFullFileContent`, `afterFullFileContent`); 44 noise (mostly `*Response` RPC fields and session/subagent metadata). Snake_case (word-boundary): eight underscore forms appear including `stop` (ambiguous common word) and hook-related fragments like `pre_tool_use`, `session_start`. PascalCase substrings appear (often inside longer identifiers, e.g. `executeAfterFileEditHook`). v1 hooks-empirical-report.md already confirmed parser fail-fast: `beforeToolUse`, `onError`, `BeforeCompact`, `sessionResume`, `userPromptSubmit` logged `Unknown hook type`."
+  "noise_count": 157,
+  "conclusion": "3.6.21 sweep: `Iv` self-mapping enum at offset 23065128 lists exactly 21 parser-accepted hook events (+`workspaceOpen` vs 3.1.15 `bv` set of 20). Window scan: 42 unique quoted tokens (cap 50); 0 hook-shaped surplus inside the enum window. Global hook-shaped quoted strings: 178 unique; 157 non-canonical noise. Two persistent plausible ghosts (`beforeFullFileContent`, `afterFullFileContent`) appear as protobuf diff field names, not in `Iv`. Snake_case (word-boundary): eight underscore forms including `stop` (ambiguous). PascalCase substrings include `WorkspaceOpen` and appear inside longer identifiers (e.g. `executeAfterFileEditHook`). v1/v2 parser fail-fast for speculative names unchanged."
 }

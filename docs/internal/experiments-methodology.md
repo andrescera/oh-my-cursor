@@ -25,11 +25,11 @@ All v2 experiments were run against:
 
 | Field | Value |
 |---|---|
-| Cursor version | `3.1.15` |
-| Workbench bundle sha256 | `29aa9ec0549fa55452794c29f50f6d3ad3c1d5b24c51b068fd371a0a2aec44ef` |
+| Cursor version | `3.6.21` |
+| Workbench bundle sha256 | `205317ade21ccf6a2b415ef7fa63c1e4c5d394db626f7ada0151a943e1ecc950` |
 | Bundle path | `/usr/share/cursor/resources/app/out/vs/workbench/workbench.desktop.main.js` |
 
-The bundle sha256 is the ground truth for the event canonical set. Any new Cursor version must be re-pinned before running new experiments. See `docs/internal/hooks-v2-ghost-hunt.json` for the offline binary-strings sweep that validated the canonical 20-event set against this bundle.
+The bundle sha256 is the ground truth for the event canonical set. Any new Cursor version must be re-pinned before running new experiments. See `docs/internal/hooks-v2-ghost-hunt.json` for the offline binary-strings sweep that validated the canonical 21-event set (including `workspaceOpen`) against this bundle.
 
 ---
 

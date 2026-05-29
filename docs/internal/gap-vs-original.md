@@ -11,7 +11,7 @@ _See also: [hook-response-fields.md](./hook-response-fields.md) for empirical re
 
 ## Executive Summary
 
-The reference (`oh-my-openagent-original`) is a Bun/TypeScript OpenCode plugin (oh-my-opencode v3.17.0) with 52 programmatic hooks, 11 named agents, 9 builtin commands, 8 builtin skills, 3 MCPs, and GitHub Actions CI; this repo is a Cursor plugin with a 20-event `hooks.json` surface where agents, commands, skills, and rules are static markdown. The agent personas and command set are equivalent at the markdown level, and all 3 original MCPs are already-ported declaratively. The critical gap is the OpenCode programmatic-hook surface: of 52 original hooks, 6 are already-ported, 19 require cycle-2 field-catalog knowledge to port, and 15 are unbridgeable by architecture (attached to OpenCode-only events such as `chat.message` mutation, `chat.params`, `experimental.chat.messages.transform`, and `tool.definition`).
+The reference (`oh-my-openagent-original`) is a Bun/TypeScript OpenCode plugin (oh-my-opencode v3.17.0) with 52 programmatic hooks, 11 named agents, 9 builtin commands, 8 builtin skills, 3 MCPs, and GitHub Actions CI; this repo is a Cursor plugin with a 21-event `hooks.json` surface (18 wired at 3.6.21) where agents, commands, skills, and rules are static markdown. The agent personas and command set are equivalent at the markdown level, and all 3 original MCPs are already-ported declaratively. The critical gap is the OpenCode programmatic-hook surface: of 52 original hooks, 6 are already-ported, 19 require cycle-2 field-catalog knowledge to port, and 15 are unbridgeable by architecture (attached to OpenCode-only events such as `chat.message` mutation, `chat.params`, `experimental.chat.messages.transform`, and `tool.definition`).
 
 ### Tier counts (all 7 surfaces, aggregated)
 
@@ -139,7 +139,7 @@ The original repo has one explicit rules file (`modular-code-enforcement`) plus 
 
 ## Surface S5 — Hooks
 
-The hooks surface is the largest (52 rows) and the primary driver of the gap. Cursor's 20-event `hooks.json` contract covers a subset of OpenCode's event stream; 19 hooks require cycle-2 field-catalog confirmation before porting can proceed, and 15 are unbridgeable by architecture.
+The hooks surface is the largest (52 rows) and the primary driver of the gap. Cursor's 21-event `hooks.json` contract (18 wired at 3.6.21) covers a subset of OpenCode's event stream; <!-- last-verified: 3.6.21 --> 19 hooks require cycle-2 field-catalog confirmation before porting can proceed, and 15 are unbridgeable by architecture.
 
 > **Reconciliation applied:** `rules-injector` row has `cycle-2-dep` corrected from N (W1e) to Y (unified with W1d; see Methodology Addendum). `model-fallback` remains `unbridgeable-by-architecture` per W1e analysis (see Methodology Addendum).
 
@@ -256,7 +256,7 @@ Enumerates every unbridgeable item across all 7 surfaces, grouped by category. A
 
 ### OpenCode-only hook events
 
-Hooks in this group are attached exclusively to OpenCode events not exposed by Cursor's 20-event `hooks.json` surface.
+Hooks in this group are attached exclusively to OpenCode events not exposed by Cursor's 21-event `hooks.json` surface. <!-- last-verified: 3.6.21 -->
 
 **`chat.message` mutation (no Cursor equivalent event):**
 - `src/hooks/think-mode/hook.ts` — mutates user message parts via `chat.message` + `event`.
@@ -393,7 +393,7 @@ Port acceptance bar: intent-equivalence (not behavioral). Each port added a `## 
 
 2. **`rules-injector` cycle-2-dep unified to Y** — W1e fragment set cycle-2-dep = N for the S5 hooks row; W1d fragment set cycle-2-dep = Y for the S4 rules row. Y is adopted in both tables: rules-injector fundamentally requires `postToolUse.additional_context` behavior (a cycle-2 response field) to approximate proximity rule injection in Cursor.
 
-3. **`model-fallback` reclassification** — Pre-planning analysis hinted this might be Tier 3 (portable-with-cycle-2) via a `preToolUse.updated_input` path. W1e agent analysis found that `src/hooks/model-fallback/hook.ts` attaches **only** to `chat.message`; there is no `preToolUse.updated_input` path in the original code. Since `chat.message` mutation is not in Cursor's 20-event surface, the correct classification is `unbridgeable-by-architecture`. W1e's analysis is adopted. ROI 4 is preserved as a marker of conceptual value for a potential redesigned implementation.
+3. **`model-fallback` reclassification** — Pre-planning analysis hinted this might be Tier 3 (portable-with-cycle-2) via a `preToolUse.updated_input` path. W1e agent analysis found that `src/hooks/model-fallback/hook.ts` attaches **only** to `chat.message`; there is no `preToolUse.updated_input` path in the original code. Since `chat.message` mutation is not in Cursor's 21-event surface, the correct classification is `unbridgeable-by-architecture`. <!-- last-verified: 3.6.21 --> W1e's analysis is adopted. ROI 4 is preserved as a marker of conceptual value for a potential redesigned implementation.
 
 ## Notes
 
@@ -401,7 +401,7 @@ Port acceptance bar: intent-equivalence (not behavioral). Each port added a `## 
 - `playwright.ts` in the original exports both `playwrightSkill` and `agentBrowserSkill`; the latter maps to `skills/agent-browser/SKILL.md` in this repo (two S3 rows share the same original-path for this reason).
 - MCP table (S6) normalized from W1f's 7-column format (Feature/Original/Current/Tier/ROI/Rationale/Notes) to the standard 7-column schema; cycle-2-dep = N for all MCP rows (no response-field dependency).
 - CI+Packaging table (S7) normalized from W1g's column order (Artifact/Original/Current/Tier/ROI/cycle-2-dep/Rationale) to standard schema order; presence indicators (Yes/No) converted to paths and em-dashes.
-- Total additions enumerated: 18 (7 commands + 6 rules + 1 MCP + 3 CI/packaging + 1 agent = 18); satisfies acceptance criterion #10 (≥7 rows).
+- Total additions enumerated: 19 (7 commands + 7 rules + 1 MCP + 3 CI/packaging + 1 agent = 19); satisfies acceptance criterion #10 (≥7 rows). <!-- last-verified: 3.6.21 -->
 - `agent-nativeness-audit.md` cross-reference cited in the header; that audit covers Cursor tool-use nativeness patterns, not the gap-vs-original comparison documented here.
 
 ## Oracle review reconciliations (applied post-W3.1)

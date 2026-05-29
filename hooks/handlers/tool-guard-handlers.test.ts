@@ -1,6 +1,10 @@
-import { describe, it, expect, beforeEach } from "bun:test"
+import { describe, it, expect, beforeEach, afterEach } from "bun:test"
+import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs"
+import { tmpdir } from "node:os"
+import { join } from "node:path"
 import { createToolGuardHandlers } from "./tool-guard-handlers"
 import type { BackgroundTracker } from "./background-tracker"
+import { resetConfigCache } from "../config"
 import { conversations, PLAN_PHASE_IDS } from "../shared"
 
 type ActiveTask = { agentId: string; agentType: string; description: string; startTime: number; elapsedMs: number; conversationId: string }
@@ -372,5 +376,75 @@ describe("createToolGuardHandlers Plan-mode Write-path guard", () => {
 
       expect(result?.permission).not.toBe("deny")
     })
+  })
+})
+
+describe("TodoWrite tracking via preToolUse", () => {
+  let projectDir: string
+
+  beforeEach(() => {
+    conversations.delete(CONV)
+    resetConfigCache()
+    projectDir = mkdtempSync(join(tmpdir(), "tool-guard-todo-pretool-"))
+    mkdirSync(join(projectDir, ".cursor"), { recursive: true })
+  })
+
+  afterEach(() => {
+    resetConfigCache()
+    rmSync(projectDir, { recursive: true, force: true })
+  })
+
+  function warmSession(handler: (input: Record<string, unknown>) => Record<string, unknown>) {
+    handler({ tool_name: "Read", conversation_id: CONV, tool_input: { path: "/tmp/x" } })
+    conversations.get(CONV)!.env.OH_MY_CURSOR_PROJECT_DIR = projectDir
+  }
+
+  it("tracks todo state in preToolUse when todo_tracking_via_pretool=true", () => {
+    writeFileSync(
+      join(projectDir, ".cursor", "oh-my-cursor.jsonc"),
+      JSON.stringify({ context_collector: { todo_tracking_via_pretool: true } }),
+      "utf-8",
+    )
+    resetConfigCache()
+
+    const tracker = makeTracker({ [CONV]: [] })
+    const { "/preToolUse": handler } = createToolGuardHandlers(conversations, tracker)
+    warmSession(handler)
+
+    handler({
+      tool_name: "TodoWrite",
+      conversation_id: CONV,
+      tool_input: {
+        todos: [
+          { id: "task-a", content: "First", status: "in_progress" },
+          { id: "task-b", content: "Second", status: "pending" },
+        ],
+        merge: true,
+      },
+    })
+
+    const conversation = conversations.get(CONV)!
+    expect(conversation.todoStates.get("task-a")).toBe("in_progress")
+    expect(conversation.todoStates.get("task-b")).toBe("pending")
+    expect(conversation.lastTodoSnapshot).toContain("task-a")
+  })
+
+  it("does NOT track in preToolUse when todo_tracking_via_pretool=false (default)", () => {
+    const tracker = makeTracker({ [CONV]: [] })
+    const { "/preToolUse": handler } = createToolGuardHandlers(conversations, tracker)
+    warmSession(handler)
+
+    handler({
+      tool_name: "TodoWrite",
+      conversation_id: CONV,
+      tool_input: {
+        todos: [{ id: "task-a", content: "First", status: "in_progress" }],
+        merge: true,
+      },
+    })
+
+    const conversation = conversations.get(CONV)!
+    expect(conversation.todoStates.size).toBe(0)
+    expect(conversation.lastTodoSnapshot).toBe("")
   })
 })

@@ -15,7 +15,7 @@
 | Third-party hook mapping (e.g. Claude Code) | IDE | [official-doc] | Not Using | Could Use |
 | Slash Commands (plugin `commands/`) | IDE | [official-doc] | Using | 16 commands |
 | Built-in `/worktree`, `/best-of-n` | IDE | [changelog] | Not Using | Could Use |
-| Rules (`.mdc` / `.md`) | IDE | [official-doc] | Using | 6 rules |
+| Rules (`.mdc` / `.md`) | IDE | [official-doc] | Using | 7 rules <!-- last-verified: 3.6.21 --> |
 | Rule types (Always, Glob, Intelligent, Manual) | IDE | [official-doc] | Using | Via frontmatter + settings |
 | Team Rules | IDE | [official-doc] | Not Using | Enterprise |
 | Remote Rules (GitHub / install) | IDE | [official-doc] | Not Using | Could Use |
@@ -28,7 +28,7 @@
 | MCP OAuth | IDE | [official-doc] | Not Using | Could Use |
 | `vscode.cursor.mcp.registerServer()` | Extension | [repro-local] | Not Using | Could Use; see also `vscode.lm.registerMcpServerDefinitionProvider` in [Extension API](14-extension-api.md) |
 | `vscode.lm.registerMcpServerDefinitionProvider` | Extension | [repro-local] | Not Using | Could Use |
-| `permissions.json` | IDE | [official-doc] | Not Using | Could Use |
+| `permissions.json` | IDE | [official-doc] | Not Using | Not-Adoptable (persistence-only) <!-- last-verified: 3.6.21 --> |
 | SwitchMode tool | IDE | [official-doc] | Using | Plan / Agent / Ask |
 | AskQuestion tool | IDE | [official-doc] | Using | Prometheus |
 | TodoWrite tool | IDE | [official-doc] | Using | Atlas, coordinators. **Caveat:** postToolUse does not fire for TodoWrite (verified). preToolUse status unconfirmed. Hook-dependent todo tracking may be limited. |

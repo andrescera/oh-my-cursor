@@ -31,7 +31,7 @@ The ULW (Ultrawork) loop is built on the same primitives with an Oracle verifica
 
 ## Cursor constraints
 
-Cursor's `hooks.json` surface exposes exactly 20 canonical events. The SDK layer is unavailable:
+Cursor's `hooks.json` surface exposes **21 canonical events** (18 wired in this plugin at 3.6.21; `workspaceOpen` is observe-only and not wired). <!-- last-verified: 3.6.21 --> The SDK layer is unavailable:
 
 | Constraint | Impact |
 |---|---|
@@ -173,7 +173,7 @@ Each item below has no path to a Cursor hook implementation.
 | `session.promptAsync` | OpenCode SDK; Cursor approximates via `stop.followup_message` (confirmed) but cannot inject at arbitrary points |
 | `session.messages` transcript scan | OpenCode SDK; partial approximation via `agent_transcript_path` in `subagentStop` payload IF E5 confirms format |
 | `session.todo` | OpenCode SDK; approximated via `postToolUse` capture on TodoWrite, but lacks full SDK read semantics |
-| `chat.message` mutation | OpenCode event not in Cursor's 20-event surface; blocks think-mode, model-fallback, keyword-detector, no-sisyphus-gpt, no-hephaestus-non-gpt |
+| `chat.message` mutation | OpenCode event not in Cursor's 21-event surface; blocks think-mode, model-fallback, keyword-detector, no-sisyphus-gpt, no-hephaestus-non-gpt <!-- last-verified: 3.6.21 --> |
 | `experimental.chat.messages.transform` | OpenCode event; tool-pair-validator cannot port |
 | `chat.params` | OpenCode event; anthropic-effort injection (thinking.budget_tokens) cannot port |
 | `tool.definition` | OpenCode event; todo-description-override cannot port |

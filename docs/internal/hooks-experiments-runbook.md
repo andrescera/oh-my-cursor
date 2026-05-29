@@ -27,16 +27,18 @@ The methodology framework lives in [experiments-methodology.md](./experiments-me
 
 ## Pre-flight
 
+> Re-pinned to 3.6.21 on 2026-05-29.
+
 Before running any Wave X experiment, verify ALL of the following:
 
 ```bash
 # 1. Confirm Cursor version
 cursor --version
-# Expected: 3.1.15  (see experiments-methodology.md §Pinning for the sha256)
+# Expected: 3.6.21  (see experiments-methodology.md §Pinning for the sha256)
 
 # 2. Confirm workbench bundle sha256
 sha256sum /usr/share/cursor/resources/app/out/vs/workbench/workbench.desktop.main.js
-# Expected: 29aa9ec0549fa55452794c29f50f6d3ad3c1d5b24c51b068fd371a0a2aec44ef
+# Expected: 205317ade21ccf6a2b415ef7fa63c1e4c5d394db626f7ada0151a943e1ecc950
 
 # 3. Confirm bun is on PATH (required by experiment-logger-v2.sh and transcript-probe.sh)
 bun --version

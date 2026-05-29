@@ -66,6 +66,20 @@ _Generated: 2026-04-17_
 | `afterTabFileEdit` | any response field | `OBSERVE-ONLY` | Claim 20 | Tab/UI-only path. `n/a-descope` in claim diff. |
 | `workspaceOpen` | any response field | `UNCONFIRMED` | binary-facts-3621 GATE A | **NEW EVENT in 3.6.21** — added to canonical set (20 → 21 events, enum `Iv`). Appears twice in bundle (enum object + ordered array); no Claude-Code name label wired yet (defined-but-lightly-wired per 3.6.21 binary analysis). Zero records in 3.5.38 corpus — event did not fire during chat sessions captured 2026-05-27–29. Likely fires only on workspace initialization, not during active agent sessions. No response-field probe run; status presumed `OBSERVE-ONLY` by analogy but empirically `UNCONFIRMED`. _Still-unknown at 3.6.21; no live-fire capture as of 2026-05-29._ |
 
+### W0.4 — `~/.cursor/permissions.json` spike (2026-05-29)
+
+**Determination:** **Not adoptable for plugin enforcement** — Cursor-owned **persistence-only** store for tool/MCP allow/deny decisions the user makes in the IDE; not a documented surface for oh-my-cursor to seed or rewrite policy.
+
+| Evidence | Finding |
+|---|---|
+| [official-doc] `docs/cursor/07-mcp.md` §Permissions | Wording is “permission **persistence**” at `~/.cursor/permissions.json`; no plugin-authored schema, no pre-grant/pre-deny API. |
+| [repro-local] `~/.cursor/permissions.json` | **Absent** on spike host until Cursor creates it (Read 2026-05-29); typical first-create-on-user-allow pattern. |
+| `docs/cursor/16-binary-analysis.md`, `15-settings-and-flags.md` | No `permissions.json` references at 3.6.21 re-audit. |
+| Repo code | No reads/writes of `permissions.json`; `tool-guard-handlers` enforcement is hook `permission` responses (`beforeMCPExecution`, `preToolUse`, `beforeShellExecution`), not this file. |
+| Adoption matrix | Notes → `Not-Adoptable (persistence-only)` <!-- last-verified: 3.6.21 --> |
+
+**Implication for W1.2:** Do not add `permissions-loader` or file-based deny/ask seeding; continue MCP/tool gating via hooks and `mcp_allowlist` in plugin config.
+
 ---
 
 ## Ghost events (not accepted by parser)

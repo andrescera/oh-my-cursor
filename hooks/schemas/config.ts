@@ -29,7 +29,7 @@ export const ContextCollectorSchema = z.object({
       normal: z.number().int().default(10000),
       low: z.number().int().default(5000),
     })
-    .default({}),
+    .default({ critical: 20000, high: 15000, normal: 10000, low: 5000 }),
   todo_tracking_via_pretool: z.boolean().default(false),
 })
 

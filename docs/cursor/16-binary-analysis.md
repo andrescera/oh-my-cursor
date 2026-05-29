@@ -1,6 +1,6 @@
 # Binary Analysis
 
-> Cursor 3.0.16 (cursor-bin 3.0.16-1, vscodeVersion 1.105.1). All findings tagged [repro-local].
+> Cursor 3.6.21 (cursor-bin 3.6.21-1, vscodeVersion 1.105.1). All findings tagged [repro-local]. Re-audited 2026-05-29; claims carry per-claim `last-verified` markers — unmarked claims retain their 3.0.16 baseline and were not re-verified at 3.6.21.
 > Items here are observed in the binary and MUST NOT be treated as stable user-facing features.
 
 ---
@@ -8,15 +8,15 @@
 ## Methodology
 
 **Environment:** Linux (arch), Cursor installed at `/usr/share/cursor/resources/app/`  
-**Build date:** 2026-04-09T05:33:51.767Z  
-**Commit:** `475871d112608994deb2e3065dfb7c6b0baa0c50`  
-**Real commit:** `475871d112608994deb2e3065dfb7c6b0baa0c54`  
-**Analysis date:** 2026-04-14
+**Build date:** `2026-05-28T21:45:36.072Z` <!-- last-verified: 3.6.21 -->  
+**Commit:** `e7a7e93f4d75f8272503ecf33cedbaae10114a10` <!-- last-verified: 3.6.21 -->  
+**Real commit:** `e7a7e93f4d75f8272503ecf33cedbaae10114a15` (last 5 hex chars differ from commit) <!-- last-verified: 3.6.21 -->  
+**Analysis date:** 2026-05-29 <!-- last-verified: 3.6.21 -->
 
 ### Steps
 
 1. **node_modules.asar inspection** — File is an empty archive (`{"files":{}}`, 28 bytes). Actual modules live in the uncompressed `node_modules/` directory alongside it. `@electron/asar` was used to verify the archive structure.
-2. **Module inventory** — `ls -1 /usr/share/cursor/resources/app/node_modules/` enumerated 334 top-level entries (scoped + unscoped).
+2. **Module inventory** — `python3 os.listdir` enumerated 364 top-level entries (scoped + unscoped). <!-- last-verified: 3.6.21 -->
 3. **product.json analysis** — `python3 -c "import json"` parsed the 57 KB product.json for all keys.
 4. **workbench.desktop.main.js analysis** — `rg` (ripgrep) against the 56 MB minified bundle for string patterns, object keys, URL literals, and handler path fragments.
 5. **vscode.d.ts inspection** — `grep` against the 21 038-line type declaration file for Cursor-specific exports.
@@ -25,7 +25,9 @@
 
 ## Node Module Inventory
 
-**Total top-level packages:** 334 directories (scoped + unscoped)
+**Total top-level packages:** 364 directories (scoped + unscoped) <!-- last-verified: 3.6.21 -->
+
+> **last-verified: 3.6.21** — Re-audited 2026-05-29. +30 new top-level entries vs 3.0.16 (334→364). Notable additions: `@modelcontextprotocol/sdk`, `@hono/node-server`, `@fastify/busboy`. All previously documented packages still present. Count via `python3 os.listdir` (shell `ls` hung on this dir). [repro-local]
 
 ### Cursor / Anysphere-specific scoped packages [repro-local]
 
@@ -65,13 +67,15 @@ These are not standard VS Code or Electron packages; their presence reveals capa
 
 ### Identity [repro-local]
 
+> **last-verified: 3.6.21** — All identity fields re-extracted from live `product.json` 2026-05-29. [repro-local]
+
 | Key | Value |
 |-----|-------|
-| `version` | `3.0.16` |
+| `version` | `3.6.21` <!-- last-verified: 3.6.21 --> |
 | `vscodeVersion` | `1.105.1` |
-| `commit` | `475871d112608994deb2e3065dfb7c6b0baa0c50` |
-| `realCommit` | `475871d112608994deb2e3065dfb7c6b0baa0c54` (note: last char differs) |
-| `date` | `2026-04-09T05:33:51.767Z` |
+| `commit` | `e7a7e93f4d75f8272503ecf33cedbaae10114a10` <!-- last-verified: 3.6.21 --> |
+| `realCommit` | `e7a7e93f4d75f8272503ecf33cedbaae10114a15` (last 5 hex chars differ from commit) <!-- last-verified: 3.6.21 --> |
+| `date` | `2026-05-28T21:45:36.072Z` <!-- last-verified: 3.6.21 --> |
 | `quality` | `stable` |
 | `applicationName` | `cursor` |
 | `serverApplicationName` | `cursor-server` |
@@ -115,11 +119,13 @@ These are not standard VS Code or Electron packages; their presence reveals capa
 
 ### File checksums [repro-local]
 
+> **last-verified: 3.6.21** — Checksums re-extracted from live `product.json` 2026-05-29. The `workbench.desktop.main.js` base64 hash (`IFMXreIcz2orQV73+mPB5MXTlNtib3raAVGpQ+HsyVA`) independently confirmed against `sha256sum` hex output `205317ade21ccf6a2b415ef7fa63c1e4c5d394db626f7ada0151a943e1ecc950`. [repro-local]
+
 | File | SHA-256 (base64) |
 |------|-----------------|
-| `vs/workbench/workbench.desktop.main.js` | `oslZMHp29tLjQ0JOLR7bMBq+q7PNg1f3A3Y3ZVLJvIg` |
-| `vs/code/electron-sandbox/workbench/workbench.html` | `E6RG2gbwOjtPjaYkC1efQqCWiKpnCZMWMfP5HSPG4/A` |
-| `vs/base/parts/sandbox/electron-sandbox/preload.js` | `a2wyuvLuF/KaIMb1CBWByRWQFNsEqYWE4otiQ3iMw/Q` |
+| `vs/workbench/workbench.desktop.main.js` | `IFMXreIcz2orQV73+mPB5MXTlNtib3raAVGpQ+HsyVA` <!-- last-verified: 3.6.21 --> |
+| `vs/code/electron-sandbox/workbench/workbench.html` | `g2I3CZ/xPc/Mp8LOXiN6rdC20u8PNfzsAesoQeNeswg` <!-- last-verified: 3.6.21 --> |
+| `vs/base/parts/sandbox/electron-sandbox/preload.js` | `EpLUvbBCdWP0lXuFoDAfomYd6KZPq7ntPkZS2ngJvuc` <!-- last-verified: 3.6.21 --> |
 
 ### `removeLinesBeforeCompilingIfTheyContainTheseWords` — Full array [repro-local]
 
@@ -167,15 +173,18 @@ __GULPFILE_REMOVE_LINE_BEFORE_COMPILING____disable_statsig__
 __GULPFILE_REMOVE_LINE_BEFORE_COMPILING____disable_dev_backend_and_login_argv_args__
 __GULPFILE_REMOVE_LINE_BEFORE_COMPILING____disable_fill_screen__
 __GULPFILE_REMOVE_LINE_BEFORE_COMPILING____disable_user_intent_agents__
+__GULPFILE_REMOVE_LINE_BEFORE_COMPILING____disable_local_mode__
 ```
 
-**Capability areas inferred** (41 entries, stable build removes all of these debugging paths):
+> **last-verified: 3.6.21** — Array re-verified 2026-05-29. Entry count: **42** (+1 vs 3.0.16's 41). All 41 prior entries still present. New entry: `disable_local_mode` (compile-time strip for "local mode" capability). [repro-local] <!-- last-verified: 3.6.21 -->
+
+**Capability areas inferred** (42 entries, stable build removes all of these debugging paths): <!-- last-verified: 3.6.21 -->
 
 - **Debugging hooks**: composer debugging, AI debugger, shadow workspace debugging, menubar debugging, CPP control token, CPP eval, AI assert
 - **Dev tooling**: development tooling, console.log, console.error, dev flush logs, dev backend/login argv args, prompt quality link, HMR, cursoreval
 - **Dev-only features**: EXTENSION_IS_DEV, separate product.json for remote SSH, backend selection keyboard shortcuts, default prod backend override
 - **AI features (experimental)**: multi-file applies, embedding model switch, cursor prediction options, always-on fast apply chunk speculation, runnable code blocks, auto import experiments, multiple embeddings
-- **System features**: resume (conversation resume), RCP server, agent CLI formatter, performance events, statsig (disabled in dev), user intent agents, kill all modes and surface background, fill screen
+- **System features**: resume (conversation resume), RCP server, agent CLI formatter, performance events, statsig (disabled in dev), user intent agents, kill all modes and surface background, fill screen, **local mode** *(new in 3.6.21)*
 - **Privacy**: allow skip privacy mode grace period
 - **Migration**: composer migration warning
 
@@ -184,7 +193,9 @@ __GULPFILE_REMOVE_LINE_BEFORE_COMPILING____disable_user_intent_agents__
 ## workbench.desktop.main.js String Analysis
 
 File: `/usr/share/cursor/resources/app/out/vs/workbench/workbench.desktop.main.js`  
-Size: **56,451,489 bytes** (~56 MB, minified)
+Size: **61,321,015 bytes** (~61 MB, minified) <!-- last-verified: 3.6.21 -->
+
+> **last-verified: 3.6.21** — Size confirmed 2026-05-29 (~+8.6% vs 3.0.16's 56,451,489 bytes). SHA-256 (hex): `205317ade21ccf6a2b415ef7fa63c1e4c5d394db626f7ada0151a943e1ecc950`; SHA-256 (base64): `IFMXreIcz2orQV73+mPB5MXTlNtib3raAVGpQ+HsyVA`. Lines: 59,004 (minified); hook enum `Iv` at line 35,968, byte offset 23,065,128. [repro-local]
 
 ### Mode Switching [repro-local]
 
@@ -238,6 +249,8 @@ m = new dit({fromModeId: u, toModeId: ...})
 ```
 
 ### Feature Flags (Statsig) [repro-local]
+
+> **last-verified: 3.6.21** — Statsig config key presence spot-checked 2026-05-29. `hooks_config`, `meta_agent_config`, `synthesis_subagent_config`, `webhook_config` all still present. New: `composer_session_goal_hook_prompt_config`. [repro-local] [binary-only] <!-- last-verified: 3.6.21 -->
 
 Cursor uses Statsig for A/B experiments and feature gates. Config names are string-keyed `*_config` objects with `fallbackValues`.
 
@@ -519,9 +532,11 @@ Notable user-facing configuration keys (subset from 198 observed `cursor.*` stri
 
 ### Hook Events [repro-local]
 
+> **last-verified: 3.6.21** — Enum existence re-confirmed 2026-05-29. Enum identifier renamed from `bv` (3.0.16) to `Iv` (3.6.21) at byte offset 23,065,128 (line 35,968). All 20 documented events still present. **+1 new event: `workspaceOpen`** (21st event, defined-but-lightly-wired). `cursorHooksService` and all methods (`executeHookForStep`, `hasHookForStep`, `hasAnyHooks`, `getAllConfiguredHooks`, `getHooksCounts`, `onDidHooksChange`) confirmed present. [repro-local] [binary-only] <!-- last-verified: 3.6.21 -->
+
 Cursor's hooks system (`cursorHooksService`) fires at well-defined lifecycle steps. Each hook step can block execution or respond with `{continue: false, user_message: "..."}`.
 
-**Hook step enum** (`zf.*` in minified code):
+**Hook step enum** (`Iv.*` in minified code): <!-- last-verified: 3.6.21 -->
 
 | Step name | Trigger |
 |-----------|---------|
@@ -687,18 +702,26 @@ createdFromBackgroundAgent?: {
 - `claude-4.6-opus-high-fast`
 - `claude-4-5-sonnet-20250929` (dated variant)
 
-**OpenAI GPT / O-series:**
+**OpenAI GPT / O-series:** <!-- last-verified: 3.6.21 -->
 - `gpt-3.5-turbo`, `gpt-4`, `gpt-4o`, `gpt-4o-mini`, `gpt-4.1-mini`
 - `gpt-5`, `gpt-5-high`, `gpt-5-mini`
-- `gpt-5.1-codex`, `gpt-5.2-codex-high`
-- `o1-mini`, `o1-preview`, `o3-mini`
+- `gpt-5.1-codex`, ~~`gpt-5.2-codex-high`~~ *(removed in 3.6.21)*, **`gpt-5.5`** *(new in 3.6.21)*
+- `o1`, `o1-mini`, `o1-preview`, `o3`, `o3-mini`
 
 **Google Gemini:**
 - `gemini-1.5-flash`, `gemini-1.5-flash-8b`, `gemini-1.5-preview`
 - `gemini-2.5-flash`, `gemini-2.5-pro`
 
+**Cursor Composer models** *(new family in 3.6.21):* <!-- last-verified: 3.6.21 -->
+- `composer-1`, `composer-2`, `composer-2.5`, `composer-2.5-fast`, `composer-2-training`, `composer-2-matterhorn-training`
+
+**Grok models** *(new family in 3.6.21):* <!-- last-verified: 3.6.21 -->
+- `grok-3`, `grok-4`, `grok-composer-2`, `grok-composer-2.5`
+
 **Cursor internal:**
 - `cursor-default` (route to default model per account tier)
+
+> **last-verified: 3.6.21** — Model slug set re-verified 2026-05-29 from live bundle. `gpt-5.2-codex-high` removed; Composer and Grok families added; `gpt-5.5` added. [repro-local] <!-- last-verified: 3.6.21 -->
 
 ### API Endpoints [repro-local]
 
@@ -822,6 +845,6 @@ Privacy mode prevents data from being sent to AI training. Observed state keys:
 
 6. **Fine-tuned model.** `claude-3.7-sonnet-finetuned-cursor-20250514-v1` is present — a custom Cursor fine-tune of Claude 3.7 Sonnet, presumably for better code editing behaviour. [repro-local]
 
-7. **41 compile-time strips.** The `removeLinesBeforeCompiling` array reveals 41 capability areas that exist in source but are removed for stable builds. Many indicate sophisticated debugging tooling (AI debugger, CPP eval, cursoreval) that is only active in dev/nightly. [repro-local]
+7. **42 compile-time strips.** The `removeLinesBeforeCompiling` array reveals 42 capability areas that exist in source but are removed for stable builds (+1 vs 3.0.16: new `disable_local_mode` entry). Many indicate sophisticated debugging tooling (AI debugger, CPP eval, cursoreval) that is only active in dev/nightly. [repro-local] <!-- last-verified: 3.6.21 -->
 
 8. **vscode.d.ts additions are minimal.** Only 3 Cursor-specific symbols added to the extension API: `cursorVersion`, `ExtensionContext.isDevelopment`, `env.bundledNodePath()`. [repro-local]

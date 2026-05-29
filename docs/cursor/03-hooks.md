@@ -20,6 +20,8 @@ Cursor 3.1.15 exposes 20 canonical hook events enumerated by the `bv` enum at `w
 
 ## Event Taxonomy
 
+> **last-verified: 3.6.21** — Enum existence re-confirmed 2026-05-29 from live 3.6.21 binary. All 20 events below are present in enum `Iv` at offset 23,065,128 (renamed from `bv` in 3.0.16). **+1 new event in 3.6.21: `workspaceOpen`** (21st event; defined-but-lightly-wired — no human-readable label yet). Empirical evidence rows (fires/status) remain at the 3.1.15 baseline below; behavioral re-testing is pending. [binary-only] [repro-local] <!-- last-verified: 3.6.21 -->
+
 | # | Event | Category | Enforced output | Evidence fires | Status |
 |---|-------|----------|----------------|---------------|--------|
 | 1 | `sessionStart` | manual-UI / session | N/A | 0 | source-cited |
@@ -1207,9 +1209,10 @@ Two token sequences were found near the `bv` enum in `workbench.desktop.main.js:
 
 ## Cursor 3.1 → 3.6 changes
 
+> **last-verified: 3.6.21** — Re-audited 2026-05-29.  
 > **Scope:** New and changed hook-related features from Cursor 3.1 (Apr 13, 2026) through 3.6.21 (binary date 2026-05-28).  
 > **Evidence tags:** `[binary-only]` = seen only in live binary/extension manifests, no official changelog entry; `[official-doc]` = cursor.com/changelog.  
-> **Source:** Wave 3 T3.1 feature discovery (docs/internal/reaudit-3621/feature-discovery-3.1-3.6.md).
+> **Source:** Wave 3 T3.1 feature discovery (docs/internal/reaudit-3621/feature-discovery-3.1-3.6.md). <!-- last-verified: 3.6.21 -->
 
 ### H-01 · `workspaceOpen` — New 21st Hook Step Event
 

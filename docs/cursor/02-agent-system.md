@@ -1,6 +1,6 @@
 # Agent System
 
-> Cursor 3.0.16. Evidence tags per claim.
+> Cursor 3.6.21 (cursor-bin 3.6.21-1, vscodeVersion 1.105.1, commit e7a7e93f4d75f8272503ecf33cedbaae10114a10). Evidence tags per claim. Re-audited 2026-05-29; claims carry per-claim `last-verified` markers — unmarked claims retain their 3.0.16 baseline and were not re-verified at 3.6.21.
 
 This page describes Cursor’s **Agent** experience, **subagents** (Task tool), **custom agent definitions**, how **oh-my-cursor** uses them, and known **limitations**. Unless a tag says otherwise, treat behavioral details as **product documentation paraphrase**, not a formal API spec.
 
@@ -80,7 +80,7 @@ The following is a **field guide** compiled from **observed Cursor behavior, UI 
 
 ## Cursor 3.1 → 3.6 Changes
 
-Feature deltas for the agent/subagent surface from Cursor 3.1 (Apr 13, 2026) through 3.6.21 (binary date 2026-05-28). Full evidence in `docs/internal/reaudit-3621/feature-discovery-3.1-3.6.md` Section 2. Evidence tags per claim.
+> **last-verified: 3.6.21** — Re-audited 2026-05-29. Feature deltas for the agent/subagent surface from Cursor 3.1 (Apr 13, 2026) through 3.6.21 (binary date 2026-05-28). Full evidence in `docs/internal/reaudit-3621/feature-discovery-3.1-3.6.md` Section 2. Evidence tags per claim. <!-- last-verified: 3.6.21 -->
 
 ### A-01 · `/multitask` — Async Subagent Parallelism
 

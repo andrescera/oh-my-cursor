@@ -1,6 +1,6 @@
 # Settings & Feature Flags
 
-> Cursor 3.0.16. Evidence tags per claim.
+> Cursor 3.6.21 (cursor-bin 3.6.21-1, vscodeVersion 1.105.1, commit e7a7e93f4d75f8272503ecf33cedbaae10114a10). Evidence tags per claim. Re-audited 2026-05-29; claims carry per-claim `last-verified` markers — unmarked claims retain their 3.0.16 baseline and were not re-verified at 3.6.21.
 
 This page groups **documented settings**, **locally observed keys**, **Statsig / build metadata from shipped binaries**, and **update channels**. Items sourced from binaries are **[binary-only]** — they are **not** stable APIs and may change every build.
 
@@ -94,7 +94,7 @@ Agent–IDE / Glass-related keys (e.g. `cursor.agentIdeUnification.*`, `cursor.g
 
 ## Cursor 3.1 → 3.6 changes
 
-New settings and flags introduced between Cursor 3.1 (Apr 13, 2026) and 3.6.21 (binary date 2026-05-28). Evidence tags follow the same convention as the rest of this page.
+> **last-verified: 3.6.21** — Re-audited 2026-05-29. New settings and flags introduced between Cursor 3.1 (Apr 13, 2026) and 3.6.21 (binary date 2026-05-28). Evidence tags follow the same convention as the rest of this page. Source: `docs/internal/reaudit-3621/binary-facts-3621.md` and `docs/internal/reaudit-3621/feature-discovery-3.1-3.6.md`. <!-- last-verified: 3.6.21 -->
 
 ### SF-01 · `disable_local_mode` — New Compile-Time Strip [binary-only]
 

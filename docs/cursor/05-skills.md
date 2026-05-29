@@ -1,6 +1,6 @@
 # Skills
 
-> Cursor 3.0.16. Evidence tags per claim.
+> Cursor 3.6.21 (cursor-bin 3.6.21-1, vscodeVersion 1.105.1, commit e7a7e93f4d75f8272503ecf33cedbaae10114a10). Evidence tags per claim. Re-audited 2026-05-29; claims carry per-claim `last-verified` markers — unmarked claims retain their 3.0.16 baseline and were not re-verified at 3.6.21.
 
 ## Overview
 
@@ -46,6 +46,8 @@ The **oh-my-cursor** MCP sidecar exposes a **`skill_mcp`** tool that loads skill
 The **oh-my-cursor** plugin ships **seven** skills under `~/.cursor/plugins/local/oh-my-cursor/skills/` (when installed from this project): `agent-browser`, `ai-slop-remover`, `dev-browser`, `frontend-ui-ux`, `git-master`, `playwright`, `review-work`. [repro-local]
 
 ## Cursor 3.1 → 3.6 changes
+
+> **last-verified: 3.6.21** — Re-audited 2026-05-29. Evidence tags per item. Source: `docs/internal/reaudit-3621/feature-discovery-3.1-3.6.md`. <!-- last-verified: 3.6.21 -->
 
 ### SK-01 · Pin Skills as Quick-Action Pills
 

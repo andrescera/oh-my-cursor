@@ -1,6 +1,6 @@
 # MCP (Model Context Protocol)
 
-> Cursor 3.0.16. Evidence tags per claim.
+> Cursor 3.6.21 (cursor-bin 3.6.21-1, vscodeVersion 1.105.1, commit e7a7e93f4d75f8272503ecf33cedbaae10114a10). Evidence tags per claim. Re-audited 2026-05-29; claims carry per-claim `last-verified` markers — unmarked claims retain their 3.0.16 baseline and were not re-verified at 3.6.21.
 
 Evidence tags: `[official-doc]`, `[changelog]`, `[repro-local]`, `[binary-only]`, `[community]`.
 
@@ -58,7 +58,7 @@ MCP availability for **subagents** follows Cursor’s documented inheritance rul
 
 ## Cursor 3.1 → 3.6 changes
 
-> Extraction date: 2026-05-29. Source: Wave 3 T3.1 feature discovery (`docs/internal/reaudit-3621/feature-discovery-3.1-3.6.md` § 6).
+> **last-verified: 3.6.21** — Re-audited 2026-05-29. Extraction date: 2026-05-29. Source: Wave 3 T3.1 feature discovery (`docs/internal/reaudit-3621/feature-discovery-3.1-3.6.md` § 6). <!-- last-verified: 3.6.21 -->
 
 ### M-01 · `@modelcontextprotocol/sdk` bundled in Cursor
 

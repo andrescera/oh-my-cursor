@@ -1,6 +1,6 @@
 # Plugin System
 
-> Cursor 3.0.16. Evidence tags per claim.
+> Cursor 3.6.21 (cursor-bin 3.6.21-1, vscodeVersion 1.105.1, commit e7a7e93f4d75f8272503ecf33cedbaae10114a10). Evidence tags per claim. Re-audited 2026-05-29; claims carry per-claim `last-verified` markers — unmarked claims retain their 3.0.16 baseline and were not re-verified at 3.6.21.
 
 Evidence tags: `[official-doc]`, `[changelog]`, `[repro-local]`, `[binary-only]`, `[community]`.
 
@@ -91,6 +91,8 @@ See [`INSTALL.md`](../../INSTALL.md#dashboard-ui-build) for the user-facing flag
 This project ships **oh-my-cursor** as a Cursor plugin (manifest above), extending the editor with orchestration commands, hooks, and MCP sidecar integration. [repro-local]
 
 ## Cursor 3.1 → 3.6 changes
+
+> **last-verified: 3.6.21** — Re-audited 2026-05-29. Evidence tags per item. Source: `docs/internal/reaudit-3621/feature-discovery-3.1-3.6.md`. <!-- last-verified: 3.6.21 -->
 
 ### R-02 · Plugin bundle components + distribution modes `[official-doc]`
 

@@ -1,15 +1,17 @@
 # Extension API
 
-> Cursor 3.0.16. Findings tagged [repro-local].
+> Cursor 3.6.21 (cursor-bin 3.6.21-1, vscodeVersion 1.105.1, commit e7a7e93f4d75f8272503ecf33cedbaae10114a10). Findings tagged [repro-local]. Re-audited 2026-05-29; claims carry per-claim `last-verified` markers — unmarked claims retain their 3.0.16 baseline and were not re-verified at 3.6.21.
 > Cursor-specific extension API is NOT officially documented and may change between versions.
 
-This page inventories first-party extensions shipped under `/usr/share/cursor/resources/app/extensions/cursor-*` [repro-local], their `package.json` metadata, and additions in `vscode.d.ts` from the same install (commit `475871d112608994deb2e3065dfb7c6b0baa0c50` per bundled source maps) [repro-local]. It also notes runtime-only APIs visible in small, readable extension bundles where typings are absent.
+This page inventories first-party extensions shipped under `/usr/share/cursor/resources/app/extensions/cursor-*` [repro-local], their `package.json` metadata, and additions in `vscode.d.ts` from the same install (commit `e7a7e93f4d75f8272503ecf33cedbaae10114a10`; realCommit `e7a7e93f4d75f8272503ecf33cedbaae10114a15` per bundled source maps) <!-- last-verified: 3.6.21 --> [repro-local]. It also notes runtime-only APIs visible in small, readable extension bundles where typings are absent.
 
 **Project note:** oh-my-openagent / oh-my-cursor currently relies on MCP via `mcp.json` (user configuration), not on registering MCP servers from a third-party extension. This document describes what the product ships and what extensions *could* use.
 
 ---
 
 ## First-party `cursor-*` extensions (alphabetical by folder)
+
+> **last-verified: 3.6.21** — Extension inventory re-verified 2026-05-29. See "Cursor 3.1 → 3.6 changes" section at the bottom of this page for delta from 3.0.16 baseline (`cursor-agent` removed; `cursor-agent-worker` added; `cursorPseudoterminal` proposal added to `cursor-agent-exec`). Total count: 18 (unchanged). [repro-local] <!-- last-verified: 3.6.21 -->
 
 Extension identifier is implied as `{publisher}.{name}` from each `package.json` (e.g. `anysphere.cursor-mcp`) [repro-local].
 
@@ -377,6 +379,8 @@ Shipped under folder `cursor-worktree-textmate` but **`package.json` `name` is `
 
 ## Cursor-specific surface in `vscode.d.ts` [repro-local]
 
+> **last-verified: 3.6.21** — `vscode.d.ts` surface re-verified 2026-05-29. File: 21,038 lines (unchanged). All 3 Cursor-specific symbols (`cursorVersion`, `ExtensionContext.isDevelopment`, `env.bundledNodePath()`) still present at same positions. No new Cursor-specific additions. [repro-local] <!-- last-verified: 3.6.21 -->
+
 Path: `/usr/share/cursor/resources/app/out/vscode-dts/vscode.d.ts`.
 
 File banner states Cursor-specific proposed API is folded into this typings file [repro-local].
@@ -417,7 +421,7 @@ Today, MCP is typically configured through **user/project `mcp.json`** (and Curs
 
 ## Cursor 3.1 → 3.6 changes
 
-> Evidence tags: `[binary-only]` = seen in live 3.6.21 binary/extension manifests only; `[repro-local]` = verified on live 3.6.21 install. No official changelog entries exist for these items as of 2026-05-29.  
+> **last-verified: 3.6.21** — Re-audited 2026-05-29. Evidence tags: `[binary-only]` = seen in live 3.6.21 binary/extension manifests only; `[repro-local]` = verified on live 3.6.21 install. No official changelog entries exist for these items as of 2026-05-29.  
 > Source: `docs/internal/reaudit-3621/extension-facts-3621.md` and `docs/internal/reaudit-3621/feature-discovery-3.1-3.6.md`.
 
 ### A-04 · `cursor-agent` REMOVED — split into `cursor-agent-exec` + `cursor-agent-worker` (NEW) `[binary-only]` `[repro-local]`

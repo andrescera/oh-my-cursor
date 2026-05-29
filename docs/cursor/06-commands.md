@@ -1,6 +1,6 @@
 # Commands
 
-> Cursor 3.0.16. Evidence tags per claim.
+> Cursor 3.6.21 (cursor-bin 3.6.21-1, vscodeVersion 1.105.1, commit e7a7e93f4d75f8272503ecf33cedbaae10114a10). Evidence tags per claim. Re-audited 2026-05-29; claims carry per-claim `last-verified` markers — unmarked claims retain their 3.0.16 baseline and were not re-verified at 3.6.21.
 
 Evidence tags: `[official-doc]`, `[changelog]`, `[repro-local]`, `[binary-only]`, `[community]`.
 
@@ -40,8 +40,7 @@ These are **project-defined** Cursor commands (see plugin `commands/`), not a gu
 
 ## Cursor 3.1 → 3.6 changes
 
-New and changed commands introduced between Cursor 3.1 (Apr 13, 2026) and 3.6.21 (2026-05-28).  
-Evidence tags follow the same convention as the rest of this document.
+> **last-verified: 3.6.21** — Re-audited 2026-05-29. New and changed commands introduced between Cursor 3.1 (Apr 13, 2026) and 3.6.21 (binary date 2026-05-28). Evidence tags follow the same convention as the rest of this document. Source: `docs/internal/reaudit-3621/feature-discovery-3.1-3.6.md`. <!-- last-verified: 3.6.21 -->
 
 ### IDE slash-commands (Agents Window / editor)
 

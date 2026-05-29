@@ -20,6 +20,12 @@ import { createDirectoryReadmeInjectorHandler } from "./directory-readme-injecto
 import { createAgentUsageReminderHandler } from "./agent-usage-reminder"
 import { createBashFileReadGuardHandler } from "./bash-file-read-guard"
 import { createHashlineReadEnhancerHandler } from "./hashline-read-enhancer"
+import { createWriteExistingFileGuardHandler } from "./write-existing-file-guard"
+import { createPrometheusMdOnlyHandler } from "./prometheus-md-only"
+import { createTasksTodowriteDisablerHandler } from "./tasks-todowrite-disabler"
+import { createNonInteractiveEnvHandler } from "./non-interactive-env"
+import { createWebfetchRedirectGuardHandler } from "./webfetch-redirect-guard"
+import { createSisyphusJuniorNotepadHandler } from "./sisyphus-junior-notepad"
 import { contextCollector } from "../context-collector"
 
 const PLAN_MODE_ALLOWED_AGENTS = new Set(["explore", "metis", "momus", "librarian", "oracle"])
@@ -122,12 +128,29 @@ export function createToolGuardHandlers(
   const agentUsageReminder = createAgentUsageReminderHandler(_conversations)
   const bashFileReadGuard = createBashFileReadGuardHandler(_conversations)
   const hashlineReadEnhancer = createHashlineReadEnhancerHandler(_conversations)
+  const writeExistingFileGuard = createWriteExistingFileGuardHandler(_conversations)
+  const prometheusMdOnly = createPrometheusMdOnlyHandler(_conversations)
+  const tasksTodowriteDisabler = createTasksTodowriteDisablerHandler(_conversations)
+  const nonInteractiveEnv = createNonInteractiveEnvHandler(_conversations)
+  const webfetchGuard = createWebfetchRedirectGuardHandler(_conversations)
+  const sisyphusNotepad = createSisyphusJuniorNotepadHandler(_conversations)
+  const portedPreToolUse = [
+    tasksTodowriteDisabler,
+    nonInteractiveEnv,
+    writeExistingFileGuard,
+    prometheusMdOnly,
+    webfetchGuard,
+    sisyphusNotepad,
+  ]
+    .map((handler) => handler["/preToolUse"])
+    .filter((fn): fn is NonNullable<typeof fn> => typeof fn === "function")
   const portedPostToolUse = [
     rulesInjector,
     directoryReadmeInjector,
     agentUsageReminder,
     bashFileReadGuard,
     hashlineReadEnhancer,
+    webfetchGuard,
   ]
     .map((handler) => handler["/postToolUse"])
     .filter((fn): fn is NonNullable<typeof fn> => typeof fn === "function")
@@ -139,6 +162,13 @@ export function createToolGuardHandlers(
       const conversation = getOrCreateConversation(convId, wasResolvedViaFallback(input), derivedProjectRoot(input))
       const toolInput = (input.tool_input as Record<string, unknown>) || {}
       console.log(`[oh-my-cursor][preToolUse] convId=${convId} | tool=${toolName} | composerMode=${conversation.composerMode} | toolCallCount=${conversation.toolCallCount}`)
+
+      for (const portedHandler of portedPreToolUse) {
+        const portedResult = portedHandler(input)
+        if (portedResult && Object.keys(portedResult).length > 0) {
+          return portedResult
+        }
+      }
 
       if (["Write", "write"].includes(toolName)) {
         const currentMode = (input.mode as string) || (input.composerMode as string) || conversation.composerMode
@@ -328,6 +358,13 @@ export function createToolGuardHandlers(
               }
             }
           }
+        }
+      }
+
+      for (const portedHandler of portedPreToolUse) {
+        const result = portedHandler(input)
+        if (result.permission === "deny") {
+          return result
         }
       }
 

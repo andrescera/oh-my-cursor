@@ -1,7 +1,7 @@
 import { describe, test, expect, beforeEach, afterEach } from "bun:test"
 import { isHookEnabled, getHookConfig, resetHookConfigCache } from "./hook-config"
 
-/** Canonical 20 Cursor hook event paths (leading slash). Order matches docs/internal/hooks-v1-vs-v2-claim-diff.md Claim 21. */
+/** Canonical 21 Cursor hook event paths (3.6.21; +workspaceOpen) (leading slash). Order matches docs/internal/hooks-v1-vs-v2-claim-diff.md Claim 21. */
 const CANONICAL_CURSOR_HOOKS = [
   "/sessionStart",
   "/sessionEnd",
@@ -23,6 +23,7 @@ const CANONICAL_CURSOR_HOOKS = [
   "/beforeSubmitPrompt",
   "/beforeTabFileRead",
   "/afterTabFileEdit",
+  "/workspaceOpen",
 ] as const
 
 let originalEnv: string | undefined
@@ -54,7 +55,7 @@ describe("hook-config", () => {
     })
 
     describe("#when getHookConfig is called", () => {
-      test("#then enabled includes all 20 canonical Cursor hooks and Tab hooks; excludes daemon-only routes", () => {
+      test("#then enabled includes all 21 canonical Cursor hooks and Tab hooks; excludes daemon-only routes", () => {
         const { enabled } = getHookConfig()
 
         for (const hook of CANONICAL_CURSOR_HOOKS) {

@@ -8,6 +8,7 @@ const GIT_GREP_BASE_PATHSPECS = [
   ".",
   ":(exclude)docs/internal/hooks-evidence-v2.jsonl",
   ":(exclude)docs/cursor/16-binary-analysis.md",
+  ":(exclude)CHANGELOG.md",
   ":(exclude)hooks/no-stale-slugs.test.ts",
   ":(exclude)agent-transcripts",
   ":(exclude)node_modules",

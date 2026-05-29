@@ -89,3 +89,14 @@ See [`INSTALL.md`](../../INSTALL.md#dashboard-ui-build) for the user-facing flag
 ## oh-my-cursor as a plugin
 
 This project ships **oh-my-cursor** as a Cursor plugin (manifest above), extending the editor with orchestration commands, hooks, and MCP sidecar integration. [repro-local]
+
+## Cursor 3.1 → 3.6 changes
+
+### R-02 · Plugin bundle components + distribution modes `[official-doc]`
+
+- **Version:** May 1, 2026 (between 3.2 and 3.3)
+- Team Marketplace plugins can bundle any combination of: **MCP servers**, **skills**, **subagents**, **rules**, and **hooks**. Rules are now a first-class bundleable asset alongside the other plugin components already listed in the manifest format above.
+- Three distribution modes control how bundled assets are applied to plugin recipients:
+  - **Default Off** — assets are installed but inactive; individual users opt-in per-asset.
+  - **Default On** — assets activate on install; individual users can opt-out.
+  - **Required** — assets are enforced by the team admin and cannot be disabled locally.

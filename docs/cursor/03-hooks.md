@@ -1202,3 +1202,45 @@ Two token sequences were found near the `bv` enum in `workbench.desktop.main.js:
 - **Wave H:** `postToolUse` canary injection — LLM response validation of injected context
 - **Wave EK:** `stop` followup_message loop_limit variants
 - **Wave F:** Prompt-type hook behavior on `beforeShellExecution`
+
+---
+
+## Cursor 3.1 → 3.6 changes
+
+> **Scope:** New and changed hook-related features from Cursor 3.1 (Apr 13, 2026) through 3.6.21 (binary date 2026-05-28).  
+> **Evidence tags:** `[binary-only]` = seen only in live binary/extension manifests, no official changelog entry; `[official-doc]` = cursor.com/changelog.  
+> **Source:** Wave 3 T3.1 feature discovery (docs/internal/reaudit-3621/feature-discovery-3.1-3.6.md).
+
+### H-01 · `workspaceOpen` — New 21st Hook Step Event
+
+`[binary-only]` · version: unknown (binary-confirmed present at 3.6.21; no changelog entry as of 2026-05-29)
+
+A new hook step event `workspaceOpen` was found in the `Iv` enum of the 3.6.21 binary. It is the 21st canonical hook event. The event name appears exactly twice in the bundle (enum definition + ordered array). It has no human-readable Claude-Code label wired yet and is classified as "defined-but-lightly-wired" — it is present in the canonical set but not yet surfaced with full documentation or a verified firing path via manual UI trigger.
+
+All 20 previously documented events remain unchanged. The existing canonical event list and count in this document reflect the 3.1.15 baseline; `workspaceOpen` is not yet inserted into the numbered taxonomy table above (count reconciliation is handled in a later wave).
+
+**Adoption relevance:** The `CANONICAL_CURSOR_HOOKS` test constant must include `workspaceOpen`. Affects the `create-hook` skill and any automation that iterates hook event names.
+
+### H-02 · Hook Invocation / Path-Length and Git-Prompt Bug Fix
+
+`[official-doc]` · version: 3.4 (May 13, 2026)
+
+Fixed hook invocation failures caused by path-length issues and Git prompt-related regressions that could silently prevent hooks from running. Users on deep directory structures or repos with unusual git configurations (e.g. custom `GIT_PS1` or long `PS1` that overwrote the hook's working-directory context) may have experienced hooks not firing in 3.1–3.3.
+
+**Adoption relevance:** Relevant edge-cases section. Hooks that appeared to be silently failing on deep repo paths or git-customised shells should be re-tested against 3.4+.
+
+### H-03 · Multi-Root Workspace Hook Loading Fix
+
+`[official-doc]` · version: 3.0 (Apr 2, 2026)
+
+Fixed hook loading so that multi-root workspaces read project-level hook files (`.cursor/hooks.json`) from **all** workspace folders, not only the first one. Previously, only the first folder's hooks were picked up, silently dropping hooks defined in sibling workspace roots.
+
+**Adoption relevance:** Oh-my-cursor users with monorepo setups or multi-root workspaces should verify that per-folder `.cursor/hooks.json` files are now correctly merged. This fix is present in the current 3.1.15 baseline used for this doc's empirical data.
+
+### H-04 · `composer_session_goal_hook_prompt_config` — New Statsig Feature Flag
+
+`[binary-only]` · version: unknown (present at 3.6.21; no changelog entry as of 2026-05-29)
+
+A new Statsig dynamic config key `composer_session_goal_hook_prompt_config` was found in the 3.6.21 bundle. It controls hook-prompt behavior during Composer sessions — likely governs whether and how a session-goal prompt is injected before hook dispatch. The flag has not been activated via a public rollout as of the binary inspection date.
+
+**Adoption relevance:** May affect hook firing order or context injection when the flag is enabled via Statsig rollout. Monitor Cursor changelog for activation announcement. No action required until the flag is confirmed live.

@@ -268,3 +268,63 @@ The **`cursor`** shell launcher (as installed under `/usr/share/cursor/` on this
 - Fallback: `${XDG_CONFIG_HOME:-$HOME/.config}/electron-flags.conf`
 
 [repro-local]
+
+## Cursor 3.1 → 3.6 changes
+
+> Wave 3 T3.2 feature folding. Evidence tags follow the project convention. Banner/provenance update is Wave 4.
+
+### CL-01 · `--chat` flag — Standalone Chat Window
+
+- **Description:** New `cursor --chat` flag opens a standalone chat window without launching the full IDE. Visible in `cursor --help` on this host at 3.6.21 (see verbatim block above).
+- **Version:** unknown (present at 3.6.21; no official changelog entry found as of 2026-05-29)
+- **Evidence:** `[binary-only]` `[repro-local]`
+- **Usage:** `cursor --chat`
+
+### CL-02 · `serve-web` Subcommand Removed
+
+- **Description:** The `cursor serve-web` subcommand present in 3.0.16 is absent in 3.6.21. Any automation or script invoking `cursor serve-web` will fail silently on 3.6.21+.
+- **Version:** unknown (absent at 3.6.21; removal not announced in official changelog)
+- **Evidence:** `[binary-only]` `[repro-local]`
+- **Migration:** Remove `cursor serve-web` calls from tooling; no direct replacement documented.
+
+### CL-03 · `/debug`, `/btw`, `/config`, `/statusline` Commands
+
+Four new interactive commands shipped with the CLI release of Apr 14, 2026:
+
+| Command | Description |
+|---|---|
+| `/debug` | Generates hypotheses, adds log statements, and uses runtime information to pinpoint bugs before making targeted fixes. |
+| `/btw` | Ask a quick side question without interrupting the agent's main task; response is given without stopping the current run. |
+| `/config` | Opens an interactive settings panel inside the CLI for viewing and changing model choices, defaults, and runtime preferences. |
+| `/statusline` | Customize the CLI footer/status bar to surface session signals: mode, branch, environment, active task hints. Corresponds to oh-my-cursor's `statusline` skill. |
+
+- **Version:** Apr 14, 2026 (between 3.1 and 3.2)
+- **Evidence:** `[official-doc]`
+- **See also:** SK-03 · `/update-cli-config` skill — ask Cursor to apply config changes from within the conversation.
+
+### CL-04 · Image Paste in CLI
+
+- **Description:** Image paste from clipboard is now supported in the CLI, including `Ctrl+V` in terminals that do not natively support paste.
+- **Version:** Apr 14, 2026
+- **Evidence:** `[official-doc]`
+
+### CL-05 · Footer Shows Working Directory, Worktree, and Branch
+
+- **Description:** The CLI footer now displays the current working directory, active worktree name, and current git branch. Provides persistent at-a-glance context without running a separate command.
+- **Version:** Apr 14, 2026
+- **Evidence:** `[official-doc]`
+
+### CL-06 · Cursor SDK — `@cursor/sdk`
+
+- **Description:** `npm install @cursor/sdk` provides programmatic access to the same agent runtime that powers Cursor IDE. Supports TypeScript, local and cloud execution, SSE streaming, run-scoped cancellation, and status queries. A built-in `/sdk` skill bootstraps agent code from within a conversation.
+- **Version:** Apr 29, 2026
+- **Evidence:** `[official-doc]`
+- **Install:** `npm install @cursor/sdk`
+- **See also:** `docs/cursor/11-cloud-agents-api.md`; oh-my-cursor `sdk` skill at `/home/andres/.cursor/skills-cursor/sdk/SKILL.md`.
+
+### CL-07 · `cursor agent` Subcommand — Present but Headless Binary Absent on This Host
+
+- **Description:** `cursor agent --help` is a registered IDE subcommand at 3.6.21, but on this host it falls back to the standard IDE usage block because the separate headless agent binary (`~/.local/bin/agent`) is not installed. `cursor agent acp --help` similarly falls back. The `--help` blocks above (§ agent -- full `--help`) were captured at 3.0.16 with the agent binary present.
+- **Version:** unknown; present at 3.6.21
+- **Evidence:** `[binary-only]` `[repro-local]`
+- **Note:** The headless agent binary is distributed separately from the IDE launcher. Users who need headless `cursor agent` functionality must install it independently; presence of the subcommand in `cursor --help` does not imply the binary is available.

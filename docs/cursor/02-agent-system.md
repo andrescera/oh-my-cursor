@@ -78,6 +78,52 @@ The following is a **field guide** compiled from **observed Cursor behavior, UI 
 
 ---
 
+## Cursor 3.1 → 3.6 Changes
+
+Feature deltas for the agent/subagent surface from Cursor 3.1 (Apr 13, 2026) through 3.6.21 (binary date 2026-05-28). Full evidence in `docs/internal/reaudit-3621/feature-discovery-3.1-3.6.md` Section 2. Evidence tags per claim.
+
+### A-01 · `/multitask` — Async Subagent Parallelism
+
+**[official-doc]** · v3.2 (Apr 24, 2026)
+
+- `/multitask` spawns async subagents **in parallel** rather than queuing requests sequentially. Cursor automatically decomposes larger tasks into smaller chunks and assigns each to its own subagent.
+- Queued messages can be redirected to multitask execution mid-run.
+- **v3.3 extension (May 7, 2026):** `/multitask` now exposes **Explore-subagent controls** — max depth, concurrency ceiling, and cost ceiling — available in both Agents Window and editor.
+
+### A-02 · Explore Subagent Model Controls
+
+**[official-doc]** · v3.3 (May 7, 2026)
+
+- New settings to control Explore subagent behavior per session:
+  - Choose a **specific model** for Explore subagents.
+  - **Inherit** the parent agent's model.
+  - **Disable** Explore subagents entirely.
+- **General model names** are now supported in agent configuration: `model: opus` always resolves to the newest Opus model in that family. Applies in Task tool `model` fields and custom agent definition frontmatter.
+
+### A-06 · v2 Agent Tools — Versioned Successors
+
+**[binary-only]** · v unknown; present at 3.6.21
+
+- Four v2 tool variants are present in the bundle alongside their v1 originals: `read_file_v2`, `list_dir_v2`, `task_v2`, `run_terminal_command_v2`.
+- The **reconciled genuine tool count** (tools with both `_params` and `_result` defined) is **~67**. The previously documented figure of 78 is non-reproducible under reconciled counting methodology; a global count reconciliation is deferred to Wave 4. Do not rely on the 78 figure for tooling or tests.
+
+### A-07 · `codebase_search` Removed; `semantic_search` Added
+
+**[binary-only]** (semantic_search presence) · **[official-doc]** (browser surface reduction, v3.0) · version likely 3.0–3.2; confirmed at 3.6.21
+
+- `codebase_search` is **absent** from the 3.6.21 bundle (0 occurrences); it is superseded by **`semantic_search`** and **`semantic_search_full`**.
+- `browser_screenshot` is also **removed**; the browser tool surface was tightened per the 3.0 changelog.
+- Any hook using `postToolUse` / `preToolUse` that matches tool names by string must be updated: replace `codebase_search` references with `semantic_search`.
+
+### A-10 · `Await` Tool for Agents
+
+**[official-doc]** · v3.0 (Apr 2, 2026) — not present in 3.0.16 docs baseline
+
+- Agents can now **wait** for background shell commands and subagents to complete, or wait for **specific output patterns** (e.g., `"Ready"` or `"Error"`).
+- Enables agents to start long-running background processes and resume only once a target state is reached, without manual polling.
+
+---
+
 ## Limitations
 
 | Topic | Note |

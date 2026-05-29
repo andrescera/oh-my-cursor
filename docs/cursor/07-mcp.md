@@ -53,3 +53,61 @@ MCP availability for **subagents** follows Cursor’s documented inheritance rul
 - **Sidecar:** local MCP sidecar exposing **8** tools (project wiring; see plugin MCP config). [repro-local]
 - **MCP Apps:** dashboard-oriented usage where applicable. [repro-local]
 - **External MCP:** optional third-party servers (e.g. web search, grep) configured per user/project. [repro-local]
+
+---
+
+## Cursor 3.1 → 3.6 changes
+
+> Extraction date: 2026-05-29. Source: Wave 3 T3.1 feature discovery (`docs/internal/reaudit-3621/feature-discovery-3.1-3.6.md` § 6).
+
+### M-01 · `@modelcontextprotocol/sdk` bundled in Cursor
+
+The official MCP SDK (`@modelcontextprotocol/sdk`) is now present in Cursor's bundled `node_modules` at 3.6.21. It was absent in 3.0.16. This signals deeper first-party MCP integration paths and reduces per-plugin SDK version conflicts for extension developers.
+
+- **Version:** unknown (present at 3.6.21; no changelog entry)
+- **Evidence:** `[binary-only]` `[repro-local]`
+
+### M-02 · MCP auth token lifecycle improvements
+
+Stale credential cleanup on re-auth, transient 401 handling, and large-token edge-case fixes were delivered across two releases:
+
+- **3.3 (May 7, 2026):** stale token cleanup on re-auth; explicit stale credential handling; transient 401 recovery. `[official-doc]`
+- **3.4 (May 13, 2026):** additional large-token handling fixes; auth token lifecycle hardening. `[official-doc]`
+
+Relevant to MCP servers using OAuth flows (e.g. via the `cursor://anysphere.cursor-mcp/oauth/callback` redirect URI).
+
+### M-03 · MCP connection stability under high parallelism
+
+Enhanced MCP connection stability when many subagents are running concurrently (e.g. via `/multitask`). Prevents connection drops under load that were observable in 3.0–3.2 with heavy parallel agent trees.
+
+- **Version:** 3.3 (May 7, 2026)
+- **Evidence:** `[official-doc]` `[community]`
+
+Directly relevant to oh-my-cursor sidecar configurations that serve MCP tools to multiple simultaneous subagents.
+
+### M-04 · MCP structured content support
+
+MCP Apps now support **structured content** in tool outputs, enabling richer responses beyond plain text (e.g. typed data, tables, embedded artifacts).
+
+- **Version:** 3.0 (Apr 2, 2026)
+- **Evidence:** `[official-doc]`
+
+### M-05 · Bugbot MCP support
+
+Bugbot can access configured MCP servers for additional context during automated code reviews. Configurable per team in the Bugbot dashboard (Teams and Enterprise plans).
+
+- **Version:** Apr 8, 2026 (between 3.0 and 3.1)
+- **Evidence:** `[official-doc]`
+
+### M-06 · `--add-mcp <json>` CLI flag
+
+New CLI flag to register an MCP server definition without editing `mcp.json` by hand. Accepts a JSON server definition inline. Companion flag `--mcp-workspace` scopes the registration to the workspace rather than the user profile.
+
+```bash
+cursor --add-mcp '{"name":"my-server","command":"npx","args":["-y","my-mcp-server"]}' --mcp-workspace
+```
+
+- **Version:** confirmed present at 3.6.21; first-seen version unknown
+- **Evidence:** `[repro-local]` (captured in `cli-facts-3621.md`)
+
+Also documented in `docs/cursor/09-cli.md`.

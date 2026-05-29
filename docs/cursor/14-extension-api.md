@@ -412,3 +412,40 @@ File banner states Cursor-specific proposed API is folded into this typings file
 ## oh-my-openagent / oh-my-cursor relevance
 
 Today, MCP is typically configured through **user/project `mcp.json`** (and Cursor settings), not by shipping an extension that calls `registerMcpServerDefinitionProvider`. This page records **what the Cursor 3.0.16 build ships** so you can compare with that approach if you ever adopt dynamic MCP registration or other proposed APIs [repro-local].
+
+---
+
+## Cursor 3.1 → 3.6 changes
+
+> Evidence tags: `[binary-only]` = seen in live 3.6.21 binary/extension manifests only; `[repro-local]` = verified on live 3.6.21 install. No official changelog entries exist for these items as of 2026-05-29.  
+> Source: `docs/internal/reaudit-3621/extension-facts-3621.md` and `docs/internal/reaudit-3621/feature-discovery-3.1-3.6.md`.
+
+### A-04 · `cursor-agent` REMOVED — split into `cursor-agent-exec` + `cursor-agent-worker` (NEW) `[binary-only]` `[repro-local]`
+
+- **Version:** unknown — present at 3.6.21; `cursor-agent` absent from 3.6.21 install
+- **Feature ID:** A-04
+
+The monolithic `cursor-agent` extension (0.0.1, `enabledApiProposals`: `control`, `cursor`, `cursorTracing`; `activationEvents`: `*`; bundle ~4.3 MB) is **removed** from 3.6.21. Its responsibilities are split into two separate extensions:
+
+| Extension | Status | `enabledApiProposals` | Role |
+| --- | --- | --- | --- |
+| `cursor-agent-exec` | CHANGED (pre-existing) | `control`, `cursor`, `cursorTracing`, **`cursorPseudoterminal`** *(added)* | Agent execution host — runs commands, file interaction, user permission approvals |
+| `cursor-agent-worker` | **NEW** (0.0.1, anysphere) | `cursor`, `cursorNoDeps` | Install / run worker process; manages agent worker lifecycle |
+
+The total first-party extension count remains 18 (`cursor-agent` removed, `cursor-agent-worker` added).
+
+### A-05 · `cursorPseudoterminal` — New `enabledApiProposals` Entry in `cursor-agent-exec` `[binary-only]` `[repro-local]`
+
+- **Version:** unknown — present at 3.6.21; not in 3.0.16 `enabledApiProposals` union
+- **Feature ID:** A-05
+
+`cursorPseudoterminal` is a new proposal present exclusively in the `cursor-agent-exec` manifest at 3.6.21. It was not part of the 3.0.16 `enabledApiProposals` union across any first-party extension. It likely enables PTY allocation and terminal emulation within agent execution flows (resize events, pseudo-terminal control), giving agents finer-grained shell interaction capabilities. May affect shell hook behavior (`beforeShellExecution`, `afterShellExecution`).
+
+**Updated `enabledApiProposals` union additions (3.6.21 vs 3.0.16):**
+
+| Proposal | Added to | Change |
+| --- | --- | --- |
+| `cursorPseudoterminal` | `cursor-agent-exec` | **NEW** — not present in 3.0.16 |
+| `cursorNoDeps` | `cursor-agent-worker` | Proposal pre-existed; `cursor-agent-worker` is a new consumer |
+
+> The complete updated union table for 3.6.21 is in `docs/internal/reaudit-3621/extension-facts-3621.md` §2c.

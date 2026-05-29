@@ -38,3 +38,21 @@ The **Agent Control Protocol** includes a **`cursor/create_plan`** method for ex
 
 - **Prometheus** (planner agent) **writes** plans via the **Write** tool to .cursor/plans/. [repro-local]
 - **Atlas** (orchestrator) **executes** plan phases. [repro-local]
+
+## Cursor 3.1 → 3.6 changes
+
+### P-01 / A-08 · Build in Parallel (v3.3) `[official-doc]`
+
+"Build in Parallel" quick action on any plan identifies independent steps and runs them simultaneously via async subagents; dependent steps remain ordered. Triggers the same `/multitask` machinery described in A-01.
+
+### P-02 · Plan Tabs as Documents (v3.1) `[official-doc]`
+
+Plan tabs now behave like file documents: reliable loading, dirty tracking, reload on plan changes, ability to save/copy/export as Markdown.
+
+### P-03 · Plans in Shared Chats (v3.0) `[official-doc]`
+
+Plans are included in shared chat transcripts alongside the conversation, enabling collaborators to see the full plan-execution context.
+
+### P-04 · Plan Mode in CLI — `--plan` / `--ask` Flags `[community]`
+
+`cursor --plan "description"` for offline planning; `cursor --ask "question"` for quick queries. Cloud handoff with `&` suffix. Introduced in v2.4 (Jan 2026) per community sources; not confirmed in official 3.x changelog. See also `docs/cursor/09-cli.md`.

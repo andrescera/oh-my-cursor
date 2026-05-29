@@ -92,6 +92,55 @@ Agent–IDE / Glass-related keys (e.g. `cursor.agentIdeUnification.*`, `cursor.g
 
 ---
 
+## Cursor 3.1 → 3.6 changes
+
+New settings and flags introduced between Cursor 3.1 (Apr 13, 2026) and 3.6.21 (binary date 2026-05-28). Evidence tags follow the same convention as the rest of this page.
+
+### SF-01 · `disable_local_mode` — New Compile-Time Strip [binary-only]
+
+- **What:** `__GULPFILE_REMOVE_LINE_BEFORE_COMPILING____disable_local_mode__` is the **42nd entry** in `removeLinesBeforeCompilingIfTheyContainTheseWords` (up from 41 entries at 3.0.16). Signals a "local mode" execution path that can be compile-time stripped from stable builds.
+- **Inferred area:** Enterprise local-vs-cloud agent routing — when stripped, forces all execution through cloud paths.
+- **Version:** unknown (present at 3.6.21; no changelog entry as of 2026-05-29)
+- **Evidence:** `[binary-only]`
+
+### SF-02 · Model Access Controls (Enterprise) [official-doc]
+
+- **What:** Granular provider-level and model-level allow/block lists for admins. Admins can:
+  - Block entire providers or specific model configs (by speed tier or context-window size).
+  - Enable "block new providers/model versions by default" to lock the allowed surface going forward.
+  - **Migration deadline:** existing blocklists must be migrated by **June 1, 2026**.
+- **Version:** May 4, 2026
+- **Evidence:** `[official-doc]`
+
+### SF-03 · Soft Spend Limits with Usage Alerts [official-doc]
+
+- **What:** Admins can configure soft spend limits (non-blocking) instead of hard cutoffs. Automatic alert emails are sent to affected users at **50%, 80%, and 100%** of the configured threshold.
+- **Version:** May 4, 2026
+- **Evidence:** `[official-doc]`
+
+### SF-04 · Compact Chat Response Density [official-doc]
+
+- **What:** New per-user "tool call density" setting controlling how much agent tool activity is surfaced per response. Three modes:
+  - **Compact** — minimal tool-call detail shown inline.
+  - **Balanced** — moderate tool-call detail (default).
+  - **Detailed** — full tool activity expanded by default.
+- **Setting key (binary):** `cursor.composer.usageSummaryDisplay` (see binary inventory above).
+- **Version:** 3.4 (May 13, 2026)
+- **Evidence:** `[official-doc]`
+
+### SF-05 · Explore Subagent Model Setting [official-doc]
+
+- **What:** New setting to control the model used by Explore subagents, independent of the parent agent model. Options:
+  - Choose a **specific model** for all Explore subagents.
+  - **Inherit** the parent agent's current model.
+  - **Disable** Explore subagents entirely.
+  - General model names (e.g. `opus`) always resolve to the newest model in that family.
+- **Setting key (binary):** `cursor.composer.subagentModel` (see binary inventory above).
+- **Version:** 3.3 (May 7, 2026)
+- **Evidence:** `[official-doc]`
+
+---
+
 ## See also
 
 - [Extension API](14-extension-api.md) — `vscode.d.ts` additions vs internal namespaces.

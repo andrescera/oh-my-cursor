@@ -69,6 +69,21 @@
 | Cloud agents (no MCP) | IDE | [official-doc] | N/A | Documented limitation |
 | skill_mcp (sidecar) | IDE | [repro-local] | Using | Loads SKILL.md into agent context |
 | Native orchestration (`orchestration.mode: native`) | IDE | [repro-local] | Using | Root persona by Cursor mode. **Caveat:** Mode detected via heuristics, not hook payloads. activePlan lifecycle has known gaps — see [sharp edges](19-known-sharp-edges.md) |
+| `/multitask` command (async parallel subagents) | IDE | [official-doc] | Could Use | Native 3.2 command; repo's parallel patterns use the Task tool rule, not this command directly |
+| `workspaceOpen` hook event (21st event) | IDE | [binary-only] | Not Using | New canonical event present at 3.6.21; not yet wired in `hooks.json`; hook-count reconciliation pending (Wave 4) |
+| Pin skills as quick actions | IDE | [official-doc] | Could Use | oh-my-cursor skills (loop, canvas, create-hook, etc.) are strong candidates for pinning |
+| `/loop` skill | IDE | [official-doc] | Using | Shipped at `~/.cursor/skills-cursor/loop/SKILL.md`; runs a prompt on a local schedule |
+| `@modelcontextprotocol/sdk` bundled in Cursor | Internal | [binary-only] | N/A | Cursor-internal bundle; signals deeper first-party MCP paths; no user adoption action required |
+| Build in Parallel from plans | IDE | [official-doc] | Could Use | Plans used via Prometheus/Atlas; parallel step dispatch via "Build in Parallel" not yet explicit in workflow |
+| Cursor SDK `@cursor/sdk` | HTTP/CLI | [official-doc] | Could Use | SDK skill shipped (`sdk/SKILL.md`); repo does not yet use `@cursor/sdk` programmatically |
+| Explore subagent model controls | Setting | [official-doc] | Could Use | Sub-agent model-selection rules exist; Cursor's Explore subagent setting not explicitly configured in this repo |
+| Compact chat response density | Setting | [official-doc] | N/A | User-level UI preference (Compact/Balanced/Detailed); not a repo configuration concern |
+| `--add-mcp <json>` CLI flag | CLI | [official-doc] [repro-local] | Could Use | MCP servers used extensively; this CLI flag not referenced in docs or repo automation |
+| `--chat` CLI flag | CLI | [binary-only] | Not Using | Could Use; opens standalone chat window without full IDE; present in `cursor --help` at 3.6.21 |
+| `serve-web` CLI subcommand removed | CLI | [repro-local] | N/A | **Breaking:** absent in 3.6.21; any automation using `cursor serve-web` must be updated |
+| `cursor-agent-worker` / `cursorPseudoterminal` | Extension | [binary-only] | N/A | Cursor-internal architecture split of `cursor-agent`; no user-facing extension contract exposed |
+| Plugins bundle rules/skills/hooks/MCP/subagents (distribution modes) | IDE | [official-doc] | Using | Plugin already ships hooks, skills, rules, and MCP via `plugin.json`; Default Off/On/Required modes now available per bundled item |
+| Context Usage Breakdown panel | IDE | [official-doc] | Could Use | Useful for right-sizing oh-my-cursor rules; UI panel, not programmatically controllable |
 
 ---
 

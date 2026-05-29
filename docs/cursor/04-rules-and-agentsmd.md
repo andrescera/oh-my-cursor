@@ -55,3 +55,20 @@ Team > Project > User.
 - Six rule files: `orchestrator.mdc`, `orchestrator-reference.mdc`, `coding-standards.mdc`, `anti-patterns.mdc`, `modular-code-enforcement.mdc`, `agent-tool-restrictions.mdc`.
 - Uses `alwaysApply` (orchestrator) and glob patterns.
 - FETCH_RULES used by read-only agents for dynamic context loading.
+
+## Cursor 3.1 → 3.6 changes
+
+### R-01 · Context Usage Breakdown `[official-doc]`
+
+- **Version:** 3.3 (May 6–7, 2026)
+- A new panel shows agent context consumption broken down by category: **rules**, **skills**, **MCPs**, and **subagents**. Use it to diagnose which rules or files are consuming context budget and right-size rule content accordingly.
+
+### R-02 · Plugins bundle rules `[official-doc]`
+
+- **Version:** May 1, 2026 (between 3.2 and 3.3)
+- Team Marketplace plugins can now bundle rules alongside MCP servers, skills, hooks, and subagents. Rules are a **first-class deliverable** inside plugins. Three distribution modes control how bundled rules are applied to recipients: **Default Off**, **Default On**, and **Required**. See `docs/cursor/12-plugin-system.md` for full plugin bundling details.
+
+### R-03 · `/Generate Cursor Rules` `[community]` `[repro-local]`
+
+- **Version:** 0.49.x (Apr 2025); confirmed present at 3.6.21
+- Command to auto-generate `.cursor/rules` from codebase patterns. Inspects existing project conventions and emits rule files; useful for bootstrapping rules in new or inherited projects.

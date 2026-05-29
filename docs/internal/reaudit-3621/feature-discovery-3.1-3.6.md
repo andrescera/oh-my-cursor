@@ -186,7 +186,7 @@ Adoption-relevance: `docs/cursor/05-skills.md`, `docs/cursor/18-adoption-matrix.
 - **Description:** `/loop` skill runs a prompt repeatedly on a local schedule. If no fixed interval is specified, the agent decides when/what event should wake it. Examples: "check deploy status every 5 minutes", "work on this feature until tests pass."
 - **Version:** 3.5 (May 20, 2026)
 - **Evidence:** `[official-doc]`
-- **Adoption relevance:** `docs/cursor/05-skills.md`; `docs/cursor/06-commands.md`. Directly affects oh-my-cursor's own `loop` skill (`/home/andres/.cursor/skills-cursor/loop/SKILL.md`).
+- **Adoption relevance:** `docs/cursor/05-skills.md`; `docs/cursor/06-commands.md`. Directly affects oh-my-cursor's own `loop` skill (`~/.cursor/skills-cursor/loop/SKILL.md`).
 
 ### SK-03 · `/update-cli-config` Skill (CLI)
 

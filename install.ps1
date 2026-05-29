@@ -101,6 +101,17 @@ function Test-Prerequisites {
 # --- Version management ---
 
 function Get-SourceVersion {
+    # hooks/package.json is the single source of truth for the code version.
+    # .cursor-plugin/plugin.json is the Cursor plugin manifest — kept in sync
+    # but NOT the authoritative source (bumping hooks/package.json is sufficient).
+    $pkgPath = Join-Path $ScriptDir "hooks\package.json"
+    if (Test-Path $pkgPath) {
+        try {
+            $pkg = Get-Content $pkgPath -Raw | ConvertFrom-Json
+            if ($pkg.version) { return $pkg.version }
+        } catch {}
+    }
+    # Fallback: .cursor-plugin/plugin.json
     $manifestPath = Join-Path $ScriptDir ".cursor-plugin\plugin.json"
     if (-not (Test-Path $manifestPath)) {
         Write-Err "Plugin manifest not found: $manifestPath"

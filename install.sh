@@ -87,6 +87,23 @@ check_prerequisites() {
 # --- Version helpers ---
 
 get_source_version() {
+  # hooks/package.json is the single source of truth for the code version.
+  # .cursor-plugin/plugin.json is the Cursor plugin manifest — kept in sync
+  # but NOT the authoritative source (bumping hooks/package.json is sufficient).
+  local pkg="$SCRIPT_DIR/hooks/package.json"
+  if [[ -f "$pkg" ]]; then
+    if command -v python3 &>/dev/null; then
+      local v
+      v="$(python3 -c "import json; print(json.load(open('$pkg'))['version'])" 2>/dev/null)"
+      if [[ -n "$v" && "$v" != "unknown" ]]; then echo "$v"; return; fi
+    fi
+    if command -v jq &>/dev/null; then
+      local v
+      v="$(jq -r '.version' "$pkg" 2>/dev/null)"
+      if [[ -n "$v" && "$v" != "null" ]]; then echo "$v"; return; fi
+    fi
+  fi
+  # Fallback: .cursor-plugin/plugin.json
   local manifest="$SCRIPT_DIR/.cursor-plugin/plugin.json"
   if [[ ! -f "$manifest" ]]; then
     echo "unknown"

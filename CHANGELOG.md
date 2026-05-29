@@ -7,6 +7,53 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.7.0] - 2026-05-29
+
+### Added
+
+#### Cursor 3.6.21 uplift — observability, injectors, guards, native features
+
+**Wave 0 — Observability foundation**
+- `ContextCollector` redesigned with per-entry char cap (`max_entry_chars: 8000`), per-priority budgets (`critical/high/normal/low: 20000/15000/10000/5000`), and an explicit suppression footer (`[oh-my-cursor: N advisories suppressed (budget exceeded)]`) replacing silent tail-truncation.
+- `todo_tracking_via_pretool` feature flag added to config (default `false`); TodoWrite state tracking relocated to `preToolUse` handler, gated by the flag. W2 empirical probe confirmed TodoWrite does NOT fire any hook event at 3.6.21 — flag stays off, limitation documented.
+- `permissions.json` research spike: file is persistence-only (Cursor-written, not plugin-writable for enforcement). Adoption matrix updated to `Not-Adoptable (persistence-only)`.
+- Doc counts reconciled: 7 rules (was 6), 21 canonical / 19 wired hook events (was 20). Experiments harness re-pinned to Cursor 3.6.21 (sha256 `205317ade…`); ghost-hunt regenerated with 21-event canonical set including `workspaceOpen`.
+
+**Wave 1 — User-visible value**
+- Six `postToolUse.additional_context` injectors ported from oh-my-openagent-original, each with TDD and `OH_MY_CURSOR_DISABLED_HOOKS` toggle:
+  - `rules-injector`: proximity-discovers `.cursor/rules/*.mdc`, distance-matches glob patterns, deduplicates per session.
+  - `directory-readme-injector`: walks up to projectRoot injecting `README.md` once per directory per session.
+  - `agent-usage-reminder`: reminds orchestrators to delegate after 3+ searches without `Task` (max 3/session).
+  - `bash-file-read-guard`: warns on simple `cat`/`head`/`tail` reads — prefer the `Read` tool.
+  - `hashline-read-enhancer`: advisory-only hash-anchor enhancement, gated on `hashline_edit` config (default `false`).
+  - `category-skill-reminder`: extended `buildSkillReminderContextLines()` with skill list after 3+ calls without `Task` in agent mode.
+- P0 guard hardening: all three `preToolUse` deny paths (plan-mode Write, Ask-mode Task, plan-mode disallowed agent) now return `additional_context` advisory alongside `permission: "deny"` — guards work even if deny is a no-op at 3.6.21.
+- `beforeSubmitPrompt` mode-gating: clears stale `in_progress` PLAN_PHASE_IDS todos on plan → agent mode transition.
+- `workspaceOpen` wired as observe-only in `hooks.json` (19 of 21 canonical events now wired).
+- Root `AGENTS.md` added (1178 chars) — injected into agent context by the AGENTS.md walk-up injector.
+- `docs/cursor/15-settings-and-flags.md` updated: Explore subagent model setting and `--add-mcp <json>` CLI flag documented.
+- Orchestrator rules updated: `/multitask`, Build-in-Parallel, `Await`/`AwaitShell` semantics; new `commands/worktree.md` and `commands/best-of-n.md` wrappers; coordinator protocol promotes `Await` as first-class.
+
+**Wave 2 — Empirical verification**
+- Self-fired deterministic events (Read/Shell/Grep) via workspace observe-only logger; JSONL evidence in `docs/internal/hooks-evidence-v3.jsonl`.
+- Key findings at 3.6.21: `postToolUse.additional_context` TAKES-EFFECT (re-confirmed); `preToolUse.permission:deny` UNCONFIRMED; `preToolUse.updated_input` UNCONFIRMED; TodoWrite NOT-FIRED for any hook event.
+- `hook-response-fields.md` updated with `NOT-FIRED` legend and TodoWrite row; adoption matrix and sharp-edges doc updated.
+- A2 best-effort probes runbook added (`§A2`) with 15-minute timebox and UNCONFIRMED-at-3.6.21 as a passing outcome.
+
+**Wave 3 — Gated ports**
+- Six additional handlers ported with gated deny/rewrite + advisory fallback (all advisory-only paths since deny/updated_input UNCONFIRMED):
+  - `write-existing-file-guard`: warns + denies Write to existing unread files.
+  - `prometheus-md-only`: restricts Prometheus agent writes to `.md`/`.mdc` or `.cursor/plans/`.
+  - `tasks-todowrite-disabler`: advisory flag (`tasks_todowrite_disabler_enabled`, default `false`) — advisory-only since TodoWrite NOT-FIRED.
+  - `non-interactive-env`: warns on interactive shell commands; advises env vars for git (updated_input unconfirmed).
+  - `webfetch-redirect-guard`: warns on short-link domains pre-fetch; warns on redirect errors post-fetch.
+  - `sisyphus-junior-notepad`: registers notepad-path advisory when Atlas dispatches sisyphus-junior with an active plan.
+
+### Changed
+- `contextCollector.consume()` now enforces budget and returns suppression footer; `clipAdditionalContext()` in tool-guard-handlers removed.
+- `ContextCollectorSchema` extended: `max_entry_chars`, `priority_budgets`, `todo_tracking_via_pretool`, `hashline_edit`, `tasks_todowrite_disabler_enabled`.
+- Adoption matrix: 21 canonical / 19 wired; 7 rules; workspaceOpen Using; --add-mcp Using; permissions.json Not-Adoptable; /worktree+/best-of-n Using; Await Using.
+
 ## [0.6.0] - 2026-05-01
 
 ### Added

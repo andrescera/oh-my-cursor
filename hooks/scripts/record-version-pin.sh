@@ -3,8 +3,9 @@ set -euo pipefail
 
 EVIDENCE_DIR="/tmp/cursor-hooks-evidence"
 REPO_ROOT="${REPO_ROOT:-$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)}"
-WORKBENCH_PATH="/usr/share/cursor/resources/app/out/vs/workbench/workbench.desktop.main.js"
-PLUGIN_VERSION_FILE="${HOME}/.cursor/plugins/local/oh-my-cursor/.version"
+WORKBENCH_PATH="${WORKBENCH_PATH:-/usr/share/cursor/resources/app/out/vs/workbench/workbench.desktop.main.js}"
+PLUGIN_VERSION_FILE="${PLUGIN_VERSION_FILE:-$HOME/.cursor/plugins/local/oh-my-cursor/.version}"
+PLUGIN_DIR="${PLUGIN_DIR:-}"
 
 die() {
   echo "record-version-pin: $*" >&2
@@ -31,11 +32,22 @@ binary_sha256="$(sha256sum "$WORKBENCH_PATH" | awk '{print $1}')"
 
 if [[ -f "$PLUGIN_VERSION_FILE" ]]; then
   plugin_version="$(tr -d '\n' <"$PLUGIN_VERSION_FILE" || true)"
-  [[ -n "$plugin_version" ]] || plugin_version="none"
-else
+fi
+
+# Fallback 1: explicit PLUGIN_DIR override
+if [[ -z "${plugin_version:-}" && -n "$PLUGIN_DIR" && -f "$PLUGIN_DIR/.version" ]]; then
+  plugin_version="$(tr -d '\n' <"$PLUGIN_DIR/.version" || true)"
+fi
+
+# Fallback 2: repo-local .cursor-plugin/.version
+if [[ -z "${plugin_version:-}" && -f "${REPO_ROOT}/.cursor-plugin/.version" ]]; then
+  plugin_version="$(tr -d '\n' <"${REPO_ROOT}/.cursor-plugin/.version" || true)"
+fi
+
+if [[ -z "${plugin_version:-}" ]]; then
+  echo "record-version-pin: WARNING: plugin_version could not be resolved (tried: ${PLUGIN_VERSION_FILE}, PLUGIN_DIR=${PLUGIN_DIR:-<unset>}, ${REPO_ROOT}/.cursor-plugin/.version); falling back to \"none\"" >&2
   plugin_version="none"
 fi
-[[ -n "$plugin_version" ]] || die "plugin_version is empty"
 
 git_sha="$(git -C "$REPO_ROOT" rev-parse HEAD)"
 [[ -n "$git_sha" ]] || die "git_sha is empty"

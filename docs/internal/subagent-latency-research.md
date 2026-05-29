@@ -1,6 +1,6 @@
 # Subagent Dispatch Latency Research
 
-> Model names updated to valid Cursor Task model slugs (2026-04-15); opus 4.6 migrated to 4.7, fast -> composer-2-fast (2026-04-16).
+> Model names updated to valid Cursor Task model slugs (2026-04-15); opus 4.6 migrated to 4.7, fast -> composer-2-fast (2026-04-16). Model slug inventory refreshed 2026-05-29 against 3.6.21 binary findings (see note in §Verified Model IDs).
 
 **Date:** 2026-04-13
 
@@ -136,25 +136,25 @@ Findings below come from **this research pass** over Cursor docs, changelogs, fo
 
 ## Verified Model IDs
 
-Ground-truth list from `cursor agent models` CLI output (2026-04-13).
+> **Refreshed 2026-05-29 (Cursor 3.6.21).** `cursor agent models` returned no output on this host (headless agent binary `~/.local/bin/agent` absent). Slug inventory below cross-checked against the model slugs visible in the Cursor Task tool's available model list at 3.6.21. Previous slugs from 2026-04-13 CLI capture noted where changed.
 
 Models referenced by oh-my-cursor agent definitions in this repo (`agents/*.md` and orchestration rules):
 
-| Agent | Verified model ID |
-| --- | --- |
-| explore | `composer-2-fast` |
-| librarian | `composer-2-fast` (Task tool parameter; selects a smaller/faster model — not a row in the CLI model list) |
-| sisyphus-junior | `composer-2-fast` |
-| sisyphus | `claude-opus-4-7-thinking-xhigh` |
-| hephaestus | `gpt-5.5-extra-high` |
-| atlas | `claude-4.6-sonnet-medium-thinking` |
-| oracle | `gpt-5.4-medium` |
-| prometheus | `claude-opus-4-7-thinking-xhigh` |
-| metis | `gpt-5.4-medium` |
-| momus | `gpt-5.5-extra-high` |
-| multimodal-looker | `gemini-3.1-pro` |
+| Agent | Verified model ID | Change from 2026-04-13 |
+| --- | --- | --- |
+| explore | `composer-2.5-fast` | renamed from `composer-2-fast` |
+| librarian | `composer-2.5-fast` (Task tool parameter; selects a smaller/faster model) | renamed from `composer-2-fast` |
+| sisyphus-junior | `composer-2.5-fast` | renamed from `composer-2-fast` |
+| sisyphus | `claude-opus-4-8-thinking-high` | was `claude-opus-4-7-thinking-xhigh` |
+| hephaestus | `gpt-5.5-high` | was `gpt-5.5-extra-high` |
+| atlas | `claude-4.6-sonnet-medium-thinking` | unchanged |
+| oracle | `gpt-5.4-medium` | unchanged |
+| prometheus | `claude-opus-4-8-thinking-high` | was `claude-opus-4-7-thinking-xhigh` |
+| metis | `gpt-5.4-medium` | unchanged |
+| momus | `gpt-5.5-high` | was `gpt-5.5-extra-high` |
+| multimodal-looker | `gemini-3.1-pro` | unchanged |
 
-**Note:** `composer-2-fast` is a Task tool parameter (not in the `cursor agent models` list) that selects a smaller/faster model.
+**Note:** `composer-2.5-fast` is a Task tool parameter (not in the `cursor agent models` list) that selects a smaller/faster model. Full available slug list at 3.6.21: `claude-4.6-sonnet-medium-thinking`, `claude-opus-4-8-thinking-high`, `composer-2.5`, `composer-2.5-fast`, `gemini-3.1-pro`, `gpt-5.3-codex-xhigh-fast`, `gpt-5.4-medium`, `gpt-5.5-high`.
 
 ---
 

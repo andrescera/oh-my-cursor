@@ -6,15 +6,15 @@ Evidence tags: `[official-doc]`, `[changelog]`, `[repro-local]`, `[binary-only]`
 
 ## Captured `--help` output (this host)
 
-**Environment:** Cursor **3.0.16**; IDE launcher `/usr/share/cursor/cursor`; headless **`agent`** binary `~/.local/bin/agent`. Warnings emitted by Chromium flag forwarding may appear on stderr. [repro-local]
+**Environment:** Cursor **3.6.21** (commit `e7a7e93f4d75f8272503ecf33cedbaae10114a10`, x64); IDE launcher `/usr/bin/cursor`; headless **`agent`** binary `~/.local/bin/agent` is **absent** on this host (captured 2026-05-29). Warnings emitted by Chromium flag forwarding may appear on stderr. [repro-local]
 
-The task requested `cursor --help` and `cursor agent --help`. Here, **`/usr/share/cursor/cursor --help`** matches the IDE’s top-level help (the first 80 lines are a prefix of the full text below). On this host, **`/usr/share/cursor/cursor agent --help`** prints the same IDE usage block (no nested agent flag list). Agent-specific flags come from the **`agent`** executable (`Usage: agent [options] [command]`), which is what many installs invoke as **`cursor agent`** via the shell shim. [repro-local]
+`cursor --help` returns the IDE’s top-level help block. On this host, **`cursor agent --help`** falls back to the same IDE usage block — no nested agent flag list is surfaced — because the headless agent binary is absent. The agent-specific flags documented below (§ agent --help) were captured at **3.0.16** with the agent binary present and are labeled accordingly. [repro-local]
 
 ### `cursor` (IDE binary) -- full `--help`
 
 ```text
 Warning: 'disable-oom-score-adj' is not in the list of known options, but still passed to Electron/Chromium.
-Cursor 3.0.16
+Cursor 3.6.21
 
 Usage: cursor [options][paths...]
 
@@ -37,7 +37,7 @@ Options
                                              specified line and character
                                              position.
   -n --new-window                            Force to open a new window.
-  -r --reuse-window                          Open a file or folder in
+  -r --reuse-window                          Force to open a file or folder in
                                              an already opened window.
   --suppress-popups-on-startup               Suppress notification popups on
                                              startup.
@@ -147,13 +147,12 @@ Troubleshooting
 Subcommands
   tunnel       Make the current machine accessible from vscode.dev or other
                machines through a secure tunnel
-  serve-web    Run a server that displays the editor UI in browsers.
   agent        Start the Cursor agent in your terminal.
 ```
 
 [repro-local]
 
-### `agent` -- full `--help` (headless Cursor Agent CLI)
+### `agent` -- full `--help` (headless Cursor Agent CLI) — captured at 3.0.16; not reproducible on this host at 3.6.21
 
 ```text
 Usage: agent [options] [command] [prompt...]
@@ -235,7 +234,7 @@ Commands:
 
 [repro-local]
 
-### `agent acp` -- `--help`
+### `agent acp` -- `--help` — captured at 3.0.16; not reproducible on this host at 3.6.21
 
 ```text
 Usage: agent acp [options]

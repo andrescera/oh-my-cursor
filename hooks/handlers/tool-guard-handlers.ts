@@ -84,12 +84,12 @@ function buildSkillReminderContextLines(conversation: ConversationState): string
   return lines
 }
 
-function clipAdditionalContext(text: string, maxChars: number): string {
-  if (text.length <= maxChars) return text
-  return (
-    text.slice(0, maxChars) +
-    "\n\n[oh-my-cursor: additional context truncated to max_context_chars]"
-  )
+function applyContextCollectorConfig(config: ReturnType<typeof loadConfig>): void {
+  contextCollector.setConfig({
+    maxEntryChars: config.context_collector.max_entry_chars,
+    maxContextChars: config.context_collector.max_context_chars,
+    priorityBudgets: config.context_collector.priority_budgets,
+  })
 }
 
 export function createToolGuardHandlers(
@@ -237,6 +237,41 @@ export function createToolGuardHandlers(
       conversation.dispatchCounts[toolName] = (conversation.dispatchCounts[toolName] || 0) + 1
       conversation.dispatchCountsThisTurn[toolName] = (conversation.dispatchCountsThisTurn[toolName] || 0) + 1
 
+      if (["TodoWrite", "todowrite", "todo_write"].includes(toolName)) {
+        const config = loadConfig(conversation.env.OH_MY_CURSOR_PROJECT_DIR)
+        if (config.context_collector.todo_tracking_via_pretool) {
+          const todos = toolInput.todos as Array<{ id: string; content: string; status: string }> | undefined
+          const merge = toolInput.merge as boolean | undefined
+          if (todos && Array.isArray(todos)) {
+            if (merge === false) conversation.todoStates.clear()
+            const validStatuses = new Set(["pending", "in_progress", "completed", "cancelled"])
+            for (const todo of todos) {
+              if (todo.id && typeof todo.id === "string" && typeof todo.status === "string") {
+                const normalized = validStatuses.has(todo.status) ? todo.status as "pending" | "in_progress" | "completed" | "cancelled" : "pending"
+                conversation.todoStates.set(todo.id, normalized)
+              }
+            }
+            const sorted = Array.from(conversation.todoStates.entries()).sort((a, b) => a[0].localeCompare(b[0]))
+            conversation.lastTodoSnapshot = JSON.stringify(sorted)
+            for (const todo of todos) {
+              if (todo.id.startsWith("plan-") && todo.status === "in_progress") {
+                if (!conversation.activePlan) {
+                  conversation.activePlan = { path: "", phase: todo.id, completedTasks: [] }
+                } else {
+                  conversation.activePlan.phase = todo.id
+                }
+              }
+              if ((todo.id.includes("plan-write") || todo.id.includes("plan-draft")) && todo.status === "in_progress") {
+                conversation.momusIterations = 0
+              }
+              if (todo.id.includes("plan-momus") && todo.status === "in_progress") {
+                conversation.momusIterations = 0
+              }
+            }
+          }
+        }
+      }
+
       return {}
     },
 
@@ -246,6 +281,7 @@ export function createToolGuardHandlers(
       const convId = resolveConversationId(input)
       const conversation = getOrCreateConversation(convId, wasResolvedViaFallback(input), derivedProjectRoot(input))
       const toolInput = (input.tool_input as Record<string, unknown>) || {}
+      const config = loadConfig(conversation.env.OH_MY_CURSOR_PROJECT_DIR)
 
       const contextNote = `[${new Date().toISOString()}] ${toolName} completed`
       conversation.contextHistory.push(contextNote)
@@ -355,7 +391,7 @@ export function createToolGuardHandlers(
         conversation.reminderInjected = false
       }
 
-      if (["TodoWrite", "todowrite", "todo_write"].includes(toolName)) {
+      if (["TodoWrite", "todowrite", "todo_write"].includes(toolName) && !config.context_collector.todo_tracking_via_pretool) {
         const todos = toolInput.todos as Array<{ id: string; content: string; status: string }> | undefined
         const merge = toolInput.merge as boolean | undefined
         if (todos && Array.isArray(todos)) {
@@ -470,7 +506,6 @@ export function createToolGuardHandlers(
         }
       }
 
-      const config = loadConfig(conversation.env.OH_MY_CURSOR_PROJECT_DIR)
       if (!config.context_collector.enabled) {
         contextCollector.clear(convId)
         const out: Record<string, unknown> = {}
@@ -480,8 +515,9 @@ export function createToolGuardHandlers(
         return Object.keys(out).length > 0 ? out : {}
       }
 
+      applyContextCollectorConfig(config)
       const pending = contextCollector.consume(convId)
-      const merged = clipAdditionalContext(pending.merged, config.context_collector.max_context_chars)
+      const merged = pending.merged
       const out: Record<string, unknown> = {}
       if (pending.hasContent) {
         out.additional_context = merged
@@ -531,11 +567,9 @@ export function createToolGuardHandlers(
           priority: "critical",
         })
       }
+      applyContextCollectorConfig(config)
       const failurePending = contextCollector.consume(convId)
-      const failureMerged = clipAdditionalContext(
-        failurePending.merged,
-        config.context_collector.max_context_chars,
-      )
+      const failureMerged = failurePending.merged
       return failurePending.hasContent
         ? {
             additional_context: failureMerged,

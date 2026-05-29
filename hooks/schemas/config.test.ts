@@ -105,6 +105,52 @@ describe("OhMyCursorConfigSchema", () => {
     }
   })
 
+  test("context_collector todo_tracking_via_pretool defaults to false", () => {
+    const parsed = OhMyCursorConfigSchema.parse({})
+    expect(parsed.context_collector.todo_tracking_via_pretool).toBe(false)
+
+    const enabled = OhMyCursorConfigSchema.parse({
+      context_collector: { todo_tracking_via_pretool: true },
+    })
+    expect(enabled.context_collector.todo_tracking_via_pretool).toBe(true)
+  })
+
+  test("context_collector budget fields default correctly", () => {
+    const parsed = OhMyCursorConfigSchema.parse({})
+    expect(parsed.context_collector.max_entry_chars).toBe(8000)
+    expect(parsed.context_collector.priority_budgets).toEqual({
+      critical: 20000,
+      high: 15000,
+      normal: 10000,
+      low: 5000,
+    })
+  })
+
+  test("context_collector budget fields accept overrides", () => {
+    const r = OhMyCursorConfigSchema.safeParse({
+      context_collector: {
+        max_entry_chars: 4000,
+        priority_budgets: { critical: 30000, high: 12000, normal: 8000, low: 2000 },
+      },
+    })
+    expect(r.success).toBe(true)
+    if (r.success) {
+      expect(r.data.context_collector.max_entry_chars).toBe(4000)
+      expect(r.data.context_collector.priority_budgets.critical).toBe(30000)
+      expect(r.data.context_collector.priority_budgets.low).toBe(2000)
+    }
+  })
+
+  test("context_collector max_entry_chars below min fails", () => {
+    const r = OhMyCursorConfigSchema.safeParse({
+      context_collector: { max_entry_chars: 50 },
+    })
+    expect(r.success).toBe(false)
+    if (!r.success) {
+      expect(r.error.issues.some((i) => i.path.join(".").includes("max_entry_chars"))).toBe(true)
+    }
+  })
+
   test("parses safety continuation and MCP LLM review defaults and overrides", () => {
     const defaults = OhMyCursorConfigSchema.parse({})
     expect(defaults.safety.continuation.max_wallclock_ms).toBe(3_600_000)

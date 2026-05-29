@@ -234,3 +234,126 @@ describe("ContextCollector", () => {
     })
   })
 })
+
+describe("ContextCollector budget enforcement", () => {
+  const SUPPRESSION_RE = /\[oh-my-cursor: \d+ advisories suppressed \(budget exceeded\)\]/
+
+  describe("#given a tight total budget", () => {
+    test("#then merged output never exceeds max_context_chars", () => {
+      const collector = new ContextCollector({
+        maxEntryChars: 1000,
+        maxContextChars: 1500,
+        priorityBudgets: { critical: 5000, high: 5000, normal: 5000, low: 5000 },
+      })
+      for (let i = 0; i < 20; i++) {
+        collector.register("s1", {
+          id: `e${i}`,
+          source: "src",
+          content: "x".repeat(300),
+          priority: i % 2 === 0 ? "high" : "low",
+        })
+      }
+
+      const result = collector.consume("s1")
+      expect(result.merged.length).toBeLessThanOrEqual(1500)
+    })
+  })
+
+  describe("#given entries are skipped because budgets overflow", () => {
+    test("#then a suppression footer reports the skipped count", () => {
+      const collector = new ContextCollector({
+        maxEntryChars: 1000,
+        maxContextChars: 50000,
+        priorityBudgets: { critical: 5000, high: 5000, normal: 5000, low: 250 },
+      })
+      collector.register("s1", { id: "k", source: "src", content: "keep", priority: "critical" })
+      collector.register("s1", { id: "a", source: "src", content: "y".repeat(200), priority: "low" })
+      collector.register("s1", { id: "b", source: "src", content: "z".repeat(200), priority: "low" })
+
+      const result = collector.consume("s1")
+      expect(result.merged).toMatch(SUPPRESSION_RE)
+      expect(result.merged).toContain("1 advisories suppressed")
+      expect(result.merged).toContain("keep")
+    })
+  })
+
+  describe("#given an entry larger than max_entry_chars", () => {
+    test("#then its content is capped at max_entry_chars", () => {
+      const maxEntryChars = 500
+      const collector = new ContextCollector({
+        maxEntryChars,
+        maxContextChars: 50000,
+        priorityBudgets: { critical: 50000, high: 50000, normal: 50000, low: 50000 },
+      })
+      collector.register("s1", {
+        id: "big",
+        source: "src",
+        content: "a".repeat(5000),
+        priority: "normal",
+      })
+
+      const result = collector.consume("s1")
+      expect(result.entries).toHaveLength(1)
+      expect(result.entries[0].content.length).toBeLessThanOrEqual(maxEntryChars)
+      expect(result.entries[0].content).toContain("[truncated]")
+    })
+  })
+
+  describe("#given low-priority entries overflow but critical fits", () => {
+    test("#then critical content survives while low content is suppressed", () => {
+      const collector = new ContextCollector({
+        maxEntryChars: 1000,
+        maxContextChars: 50000,
+        priorityBudgets: { critical: 5000, high: 5000, normal: 5000, low: 100 },
+      })
+      collector.register("s1", {
+        id: "crit",
+        source: "src",
+        content: "CRITICAL-PAYLOAD",
+        priority: "critical",
+      })
+      collector.register("s1", { id: "l1", source: "src", content: "l".repeat(80), priority: "low" })
+      collector.register("s1", { id: "l2", source: "src", content: "m".repeat(80), priority: "low" })
+
+      const result = collector.consume("s1")
+      expect(result.merged).toContain("CRITICAL-PAYLOAD")
+      expect(result.merged).toMatch(SUPPRESSION_RE)
+    })
+  })
+
+  describe("#given nothing needs to be suppressed", () => {
+    test("#then no suppression footer is appended", () => {
+      const collector = new ContextCollector({
+        maxEntryChars: 1000,
+        maxContextChars: 50000,
+        priorityBudgets: { critical: 5000, high: 5000, normal: 5000, low: 5000 },
+      })
+      collector.register("s1", { id: "a", source: "src", content: "alpha", priority: "high" })
+      collector.register("s1", { id: "b", source: "src", content: "beta", priority: "low" })
+
+      const result = collector.consume("s1")
+      expect(result.merged).toBe("alpha\n\n---\n\nbeta")
+      expect(result.merged).not.toMatch(SUPPRESSION_RE)
+    })
+  })
+
+  describe("#given setConfig is used to inject config", () => {
+    test("#then the injected budgets are applied", () => {
+      const collector = new ContextCollector()
+      collector.setConfig({
+        maxEntryChars: 100,
+        maxContextChars: 50000,
+        priorityBudgets: { critical: 50000, high: 50000, normal: 50000, low: 50000 },
+      })
+      collector.register("s1", {
+        id: "big",
+        source: "src",
+        content: "a".repeat(5000),
+        priority: "normal",
+      })
+
+      const result = collector.consume("s1")
+      expect(result.entries[0].content.length).toBeLessThanOrEqual(100)
+    })
+  })
+})

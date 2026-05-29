@@ -21,6 +21,16 @@ export const DaemonSchema = z.object({
 export const ContextCollectorSchema = z.object({
   enabled: z.boolean().default(true),
   max_context_chars: z.number().int().min(1000).max(500000).default(50000),
+  max_entry_chars: z.number().int().min(100).max(50000).default(8000),
+  priority_budgets: z
+    .object({
+      critical: z.number().int().default(20000),
+      high: z.number().int().default(15000),
+      normal: z.number().int().default(10000),
+      low: z.number().int().default(5000),
+    })
+    .default({}),
+  todo_tracking_via_pretool: z.boolean().default(false),
 })
 
 export const CompactionSchema = z.object({
@@ -90,7 +100,13 @@ export const OhMyCursorConfigSchema = z.object({
     path: "/tmp/oh-my-cursor-state.json",
   }),
   daemon: DaemonSchema.default({ port: 27847, mcp_port: 27848 }),
-  context_collector: ContextCollectorSchema.default({ enabled: true, max_context_chars: 50000 }),
+  context_collector: ContextCollectorSchema.default({
+    enabled: true,
+    max_context_chars: 50000,
+    max_entry_chars: 8000,
+    priority_budgets: { critical: 20000, high: 15000, normal: 10000, low: 5000 },
+    todo_tracking_via_pretool: false,
+  }),
   compaction: CompactionSchema.default({ prompt_enabled: true }),
   experimental: ExperimentalSchema.default({
     cloud_agents: false,

@@ -31,10 +31,44 @@ const PRIORITY_ORDER: Record<ContextPriority, number> = {
 }
 
 const CONTEXT_SEPARATOR = "\n\n---\n\n"
+const ENTRY_TRUNCATE_SUFFIX = " [truncated]"
+
+const DEFAULT_PRIORITY_BUDGETS: Record<ContextPriority, number> = {
+  critical: 20000,
+  high: 15000,
+  normal: 10000,
+  low: 5000,
+}
+
+type ContextCollectorConfig = {
+  maxEntryChars: number
+  maxContextChars: number
+  priorityBudgets: Record<ContextPriority, number>
+}
+
+function suppressionFooter(count: number): string {
+  return `\n\n[oh-my-cursor: ${count} advisories suppressed (budget exceeded)]`
+}
 
 export class ContextCollector {
   private conversations: Map<string, Map<string, ContextEntry>> = new Map()
   private conversationCounters: Map<string, number> = new Map()
+
+  private maxEntryChars = 8000
+  private maxContextChars = 50000
+  private priorityBudgets: Record<ContextPriority, number> = { ...DEFAULT_PRIORITY_BUDGETS }
+
+  constructor(config?: Partial<ContextCollectorConfig>) {
+    if (config) this.setConfig(config)
+  }
+
+  setConfig(config: Partial<ContextCollectorConfig>): void {
+    if (config.maxEntryChars !== undefined) this.maxEntryChars = config.maxEntryChars
+    if (config.maxContextChars !== undefined) this.maxContextChars = config.maxContextChars
+    if (config.priorityBudgets) {
+      this.priorityBudgets = { ...this.priorityBudgets, ...config.priorityBudgets }
+    }
+  }
 
   register(conversationId: string, options: RegisterContextOptions): void {
     if (!this.conversations.has(conversationId)) {
@@ -71,9 +105,61 @@ export class ContextCollector {
   }
 
   consume(conversationId: string): PendingContext {
-    const pending = this.getPending(conversationId)
+    const conversationMap = this.conversations.get(conversationId)
+    if (!conversationMap || conversationMap.size === 0) {
+      this.clear(conversationId)
+      return { merged: "", entries: [], hasContent: false }
+    }
+
+    const sorted = this.sortEntries([...conversationMap.values()])
+    const result = this.applyBudget(sorted)
     this.clear(conversationId)
-    return pending
+    return result
+  }
+
+  private applyBudget(sorted: ContextEntry[]): PendingContext {
+    const perPriorityUsed: Record<ContextPriority, number> = {
+      critical: 0,
+      high: 0,
+      normal: 0,
+      low: 0,
+    }
+    const kept: ContextEntry[] = []
+    let suppressed = 0
+
+    for (const entry of sorted) {
+      const content = this.capEntry(entry.content)
+      const budget = this.priorityBudgets[entry.priority]
+      if (perPriorityUsed[entry.priority] + content.length > budget) {
+        suppressed++
+        continue
+      }
+      kept.push({ ...entry, content })
+      perPriorityUsed[entry.priority] += content.length
+    }
+
+    // Enforce the total cap last, dropping the lowest-priority (tail) entries
+    // first so that higher-priority advisories survive truncation pressure.
+    let merged = this.buildMerged(kept, suppressed)
+    while (kept.length > 0 && merged.length > this.maxContextChars) {
+      kept.pop()
+      suppressed++
+      merged = this.buildMerged(kept, suppressed)
+    }
+
+    return { merged, entries: kept, hasContent: kept.length > 0 }
+  }
+
+  private capEntry(content: string): string {
+    if (content.length <= this.maxEntryChars) return content
+    const room = Math.max(0, this.maxEntryChars - ENTRY_TRUNCATE_SUFFIX.length)
+    return content.slice(0, room) + ENTRY_TRUNCATE_SUFFIX
+  }
+
+  private buildMerged(entries: ContextEntry[], suppressed: number): string {
+    let merged = entries.map((e) => e.content).join(CONTEXT_SEPARATOR)
+    if (suppressed > 0) merged += suppressionFooter(suppressed)
+    return merged
   }
 
   hasPending(conversationId: string): boolean {

@@ -13,6 +13,29 @@ import { spawnWithTimeout } from "../lib/spawn-with-timeout"
 const SUBAGENT_TIMING_LOG = "/tmp/oh-my-cursor-timing.jsonl"
 const BOOT_ID_KEY = "__oh_my_cursor_runtime_boot_id"
 
+const timingLogQueue: string[] = []
+let timingFlushScheduled = false
+
+function flushTimingQueue(): void {
+  timingFlushScheduled = false
+  if (timingLogQueue.length === 0) return
+  const chunk = timingLogQueue.join("")
+  timingLogQueue.length = 0
+  try {
+    appendFileSync(SUBAGENT_TIMING_LOG, chunk)
+  } catch {
+    void 0
+  }
+}
+
+function queueTimingLog(record: Record<string, unknown>): void {
+  timingLogQueue.push(JSON.stringify(record) + "\n")
+  if (!timingFlushScheduled) {
+    timingFlushScheduled = true
+    setImmediate(flushTimingQueue)
+  }
+}
+
 function getDaemonBootId(): string {
   const fromEnv = process.env.OH_MY_CURSOR_DAEMON_BOOT_ID
   if (typeof fromEnv === "string" && fromEnv.length > 0) {
@@ -116,23 +139,16 @@ export function createSubagentHandlers(
       }
 
       const exitMs = Date.now()
-      try {
-        appendFileSync(
-          SUBAGENT_TIMING_LOG,
-          JSON.stringify({
-            event: "subagentStart",
-            agentType,
-            agentId,
-            entryMs,
-            exitMs,
-            durationMs: exitMs - entryMs,
-            hadAdditionalContext: Boolean(additional_context),
-            timestamp: new Date(exitMs).toISOString(),
-          }) + "\n",
-        )
-      } catch {
-        void 0
-      }
+      queueTimingLog({
+        event: "subagentStart",
+        agentType,
+        agentId,
+        entryMs,
+        exitMs,
+        durationMs: exitMs - entryMs,
+        hadAdditionalContext: Boolean(additional_context),
+        timestamp: new Date(exitMs).toISOString(),
+      })
 
       return additional_context ? { additional_context } : {}
     },
@@ -304,24 +320,17 @@ export function createSubagentHandlers(
       }
 
       const exitMs = Date.now()
-      try {
-        appendFileSync(
-          SUBAGENT_TIMING_LOG,
-          JSON.stringify({
-            event: "subagentStop",
-            agentType: typeKey,
-            agentId,
-            entryMs,
-            exitMs,
-            durationMs: exitMs - entryMs,
-            subagentDurationMs: duration_ms,
-            status,
-            timestamp: new Date(exitMs).toISOString(),
-          }) + "\n",
-        )
-      } catch {
-        void 0
-      }
+      queueTimingLog({
+        event: "subagentStop",
+        agentType: typeKey,
+        agentId,
+        entryMs,
+        exitMs,
+        durationMs: exitMs - entryMs,
+        subagentDurationMs: duration_ms,
+        status,
+        timestamp: new Date(exitMs).toISOString(),
+      })
 
       return emptyTaskDetector({
         output,

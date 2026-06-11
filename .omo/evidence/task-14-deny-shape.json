@@ -1,0 +1,14 @@
+{
+  "decision": "deny",
+  "user_message": "Command blocked for safety: rm -rf /",
+  "agent_message": "Command blocked for safety: rm -rf /. Use a safer alternative.",
+  "continue": false,
+  "permission": "deny",
+  "userMessage": "Command blocked for safety: rm -rf /",
+  "agentMessage": "Command blocked for safety: rm -rf /. Use a safer alternative.",
+  "hookSpecificOutput": {
+    "hookEventName": "PreToolUse",
+    "permissionDecision": "deny",
+    "permissionDecisionReason": "Command blocked for safety: rm -rf /. Use a safer alternative."
+  }
+}

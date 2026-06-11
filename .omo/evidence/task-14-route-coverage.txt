@@ -1,0 +1,25 @@
+# Task 14 — daemon route coverage (isolated daemon port 28855)
+# 2026-06-11T19:15:14Z  | live daemon pid 4144443 preserved
+# event -> HTTP status (expect 200 for all 19 registered hooks.json events)
+
+/sessionStart -> 200
+/sessionEnd -> 200
+/preToolUse -> 200
+/postToolUse -> 200
+/postToolUseFailure -> 200
+/subagentStart -> 200
+/subagentStop -> 200
+/beforeShellExecution -> 200
+/afterShellExecution -> 200
+/beforeMCPExecution -> 200
+/afterMCPExecution -> 200
+/beforeReadFile -> 200
+/afterFileEdit -> 200
+/afterAgentResponse -> 200
+/afterAgentThought -> 200
+/preCompact -> 200
+/stop -> 200
+/beforeSubmitPrompt -> 200
+/workspaceOpen -> 200
+
+RESULT: ALL 19 ROUTES RETURNED 200

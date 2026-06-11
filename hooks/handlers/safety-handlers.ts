@@ -20,15 +20,24 @@ export function createSafetyHandlers(): HandlerMap {
 
       for (const pattern of dangerousPatterns) {
         if (pattern.test(command)) {
+          const userReason = `Command blocked for safety: ${command}`
+          const agentReason = `Command blocked for safety: ${command}. Use a safer alternative.`
           return {
+            // Cursor beforeShellExecution deny contract (docs/cursor/03-hooks.md §8 + Response Contract Overview):
+            // decision/user_message/agent_message are the enforced, documented field names.
+            decision: "deny",
+            user_message: userReason,
+            agent_message: agentReason,
+            // Retained Claude-Code-compat + internal-metric fields: shared.ts classifyAction()/extractMeta()
+            // read `permission`/`userMessage`; existing daemon tests assert hookSpecificOutput. Additive, not a rename.
             continue: false,
             permission: "deny",
-            userMessage: `Command blocked for safety: ${command}`,
-            agentMessage: `Command blocked for safety: ${command}. Use a safer alternative.`,
+            userMessage: userReason,
+            agentMessage: agentReason,
             hookSpecificOutput: {
               hookEventName: "PreToolUse",
               permissionDecision: "deny",
-              permissionDecisionReason: `Command blocked for safety: ${command}. Use a safer alternative.`,
+              permissionDecisionReason: agentReason,
             },
           }
         }
@@ -70,6 +79,9 @@ export function createSafetyHandlers(): HandlerMap {
         if (pattern.test(filePath)) {
           const reason = `Access to sensitive file blocked: ${filePath}`
           return {
+            decision: "deny",
+            user_message: reason,
+            agent_message: reason,
             continue: false,
             permission: "deny",
             userMessage: reason,
@@ -116,9 +128,14 @@ export function createSafetyHandlers(): HandlerMap {
         return {}
       }
 
+      const reason = `MCP server "${serverName}" is not in the configured allowlist. Add it to mcp_allowlist in your oh-my-cursor config.`
       return {
-        decision: "block",
-        reason: `MCP server "${serverName}" is not in the configured allowlist. Add it to mcp_allowlist in your oh-my-cursor config.`,
+        decision: "deny",
+        user_message: reason,
+        agent_message: reason,
+        permission: "deny",
+        userMessage: reason,
+        reason,
       }
     },
 

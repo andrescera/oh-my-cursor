@@ -992,6 +992,73 @@ describe("hook daemon", () => {
     })
   })
 
+  describe("Cursor response-contract alignment (Task 14)", () => {
+    test("/beforeShellExecution deny carries Cursor decision/user_message/agent_message", async () => {
+      const result = await post("/beforeShellExecution", {
+        command: "rm -rf /",
+        conversation_id: "conv-contract-shell",
+      })
+      expect(result.decision).toBe("deny")
+      expect(String(result.user_message)).toContain("blocked for safety")
+      expect(String(result.agent_message)).toContain("safer alternative")
+      expect(result.permission).toBe("deny")
+    })
+
+    test("/beforeReadFile deny carries Cursor decision/user_message", async () => {
+      const result = await post("/beforeReadFile", {
+        file_path: "/app/.env.production",
+        conversation_id: "conv-contract-read",
+      })
+      expect(result.decision).toBe("deny")
+      expect(String(result.user_message)).toContain("sensitive file")
+      expect(result.permission).toBe("deny")
+    })
+
+    test("/workspaceOpen is routed and returns empty object (no 404)", async () => {
+      const res = await fetch(`${BASE}/workspaceOpen`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ conversation_id: "conv-ws-open" }),
+      })
+      expect(res.status).toBe(200)
+      const data = await res.json()
+      expect(Object.keys(data).length).toBe(0)
+    })
+  })
+
+  describe("fail-open vs fail-closed error handling (Task 14)", () => {
+    test("observe route (/postToolUse) fails open with 200 {} when handler throws", async () => {
+      const res = await fetch(`${BASE}/postToolUse`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          tool_name: "Read",
+          tool_input: { file_path: 12345 },
+          conversation_id: "conv-failopen-observe",
+        }),
+      })
+      expect(res.status).toBe(200)
+      const data = await res.json()
+      expect(Object.keys(data).length).toBe(0)
+    })
+
+    test("guard route (/preToolUse) keeps explicit 500 error when handler throws", async () => {
+      const res = await fetch(`${BASE}/preToolUse`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          tool_name: "Write",
+          tool_input: { file_path: 12345 },
+          conversation_id: "conv-failclosed-guard",
+        }),
+      })
+      expect(res.status).toBe(500)
+      const data = await res.json()
+      expect(data.error).toBeDefined()
+      expect(data.hook).toBe("/preToolUse")
+    })
+  })
+
   describe("unknown route", () => {
     test("returns 404", async () => {
       const res = await fetch(`${BASE}/nonexistent`, { method: "POST" })

@@ -14,6 +14,11 @@ Items are tagged by evidence type. **[community]** and **[binary-only]** entries
 - **Detection:** Hooks may **not** be recognized **immediately** after **creating** the config file; editor reload or a short delay may be needed. [community]
 - **Multi-root:** Hooks from **all** workspace roots load in **3.0**-era behavior (earlier versions were inconsistent). [changelog]
 
+### Prompt-type `beforeMCPExecution` hook & `workspaceOpen` routing
+
+- **Prompt-type hook (`hooks.json` `beforeMCPExecution` entry with `type: "prompt"`):** **Verified retained, not daemon-routed.** Per `docs/cursor/03-hooks.md` Appendix C #3, a `type: "prompt"` hook does **not** invoke the `command` shell script — Cursor evaluates the `prompt` field internally via its LLM, so it never reaches the oh-my-cursor daemon (`post-daemon.sh`/`ensure-daemon.sh`). It is a Cursor-native, defense-in-depth LLM safety review layered on top of the command-type `beforeMCPExecution` allowlist guard (which **does** route to the daemon). Its enforcement is `UNCONFIRMED` (analogy to `beforeShellExecution`; no live-fire deny capture), but it is a valid registration and removing it would drop a safety layer — **kept**. [binary-only] <!-- last-verified: 3.6.21 -->
+- **`workspaceOpen` (canonical event 21):** Registered in `hooks.json` but had **no daemon route** (POST → 404). A **no-op route** returning `{}` now backstops it. `workspaceOpen` is `OBSERVE-ONLY`/binary-only (no response field enforced; zero live fires in the 3.5.38 corpus). [binary-only] <!-- last-verified: 3.6.21 -->
+
 ### Hook Tool Coverage
 
 `preToolUse` and `postToolUse` are **not** the same coverage: tools matched by `hooks.json` can still receive `preToolUse` even when Cursor never emits `postToolUse` for them. Verified from a 4.5MB production conversation log (9,452 `postToolUse` events, Cursor 3.0.16): [repro-local]

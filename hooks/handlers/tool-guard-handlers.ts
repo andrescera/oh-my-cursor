@@ -33,6 +33,25 @@ const PLAN_MODE_ALLOWED_AGENTS = new Set(["explore", "metis", "momus", "libraria
 const RECENT_TOOL_TRAIL_MAX = 15
 const SKILL_REMINDER_INTERVAL = 20
 
+const EXISTS_CACHE_TTL_MS = 30_000
+const EXISTS_CACHE_MAX = 500
+const existsCache = new Map<string, { exists: boolean; ts: number }>()
+
+function cachedExistsSync(filePath: string): boolean {
+  const now = Date.now()
+  const hit = existsCache.get(filePath)
+  if (hit && now - hit.ts < EXISTS_CACHE_TTL_MS) return hit.exists
+  const exists = existsSync(filePath)
+  existsCache.set(filePath, { exists, ts: now })
+  if (existsCache.size > EXISTS_CACHE_MAX) {
+    for (const [k, v] of existsCache) {
+      if (now - v.ts >= EXISTS_CACHE_TTL_MS) existsCache.delete(k)
+    }
+    if (existsCache.size > EXISTS_CACHE_MAX) existsCache.clear()
+  }
+  return exists
+}
+
 const SHELL_TOOL_NAMES = new Set(["bash", "shell", "Shell", "Bash"])
 const READ_GREP_TOOL_NAMES = new Set(["read", "Read", "grep", "Grep"])
 const EDIT_TOOL_NAMES = new Set(["write", "Write", "str_replace", "StrReplace", "edit", "Edit"])
@@ -187,6 +206,9 @@ export function createToolGuardHandlers(
               })
               const pending = contextCollector.consume(convId)
               return {
+                decision: "deny",
+                user_message: reason,
+                agent_message: reason,
                 permission: "deny",
                 userMessage: reason,
                 agentMessage: reason,
@@ -207,7 +229,7 @@ export function createToolGuardHandlers(
         const rawWritePath = (toolInput.file_path || toolInput.path) as string
         const filePath = rawWritePath ? resolve(rawWritePath) : ""
         if (!isEditOperation && filePath && !filePath.includes(".sisyphus") && !filePath.includes("node_modules") && !filePath.includes(".cursor/")) {
-          if (existsSync(filePath) && !conversation.readPaths.has(filePath)) {
+          if (cachedExistsSync(filePath) && !conversation.readPaths.has(filePath)) {
             console.log(`[oh-my-cursor][read-guard] WARN write without read: "${filePath}" | conversation: ${convId}`)
             contextCollector.register(convId, {
               id: "read-before-write",
@@ -266,6 +288,9 @@ export function createToolGuardHandlers(
             })
             const pending = contextCollector.consume(convId)
             return {
+              decision: "deny",
+              user_message: reason,
+              agent_message: reason,
               permission: "deny",
               userMessage: reason,
               agentMessage: reason,
@@ -289,6 +314,9 @@ export function createToolGuardHandlers(
             })
             const pending = contextCollector.consume(convId)
             return {
+              decision: "deny",
+              user_message: reason,
+              agent_message: reason,
               permission: "deny",
               userMessage: reason,
               agentMessage: reason,

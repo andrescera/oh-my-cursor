@@ -37,6 +37,23 @@ const HOT_PATHS = new Set([
   "/beforeReadFile",
   "/beforeSubmitPrompt",
 ])
+
+const FAIL_OPEN_OBSERVE_ROUTES = new Set([
+  "/postToolUse",
+  "/postToolUseFailure",
+  "/afterShellExecution",
+  "/afterMCPExecution",
+  "/afterFileEdit",
+  "/afterAgentResponse",
+  "/afterAgentThought",
+  "/subagentStop",
+  "/sessionStart",
+  "/sessionEnd",
+  "/preCompact",
+  "/beforeSubmitPrompt",
+  "/stop",
+  "/workspaceOpen",
+])
 const DIAGNOSTIC_PATHS = new Set([
   "/health",
   "/heartbeat",
@@ -331,6 +348,9 @@ const handlers: HandlerMap = {
   ...createContinuationHandlers(conversations),
   ...createSafetyHandlers(),
   ...createSubagentHandlers(conversations, tracker),
+  // workspaceOpen is registered in hooks.json (canonical event 21, OBSERVE-ONLY/binary-only per
+  // docs/cursor/03-hooks.md). No-op route prevents a 404 on POST; no response field is enforced.
+  "/workspaceOpen": () => ({}),
   "/sessionHistory": createConversationHistoryHandler(conversations),
   "/backgroundTasks": createBackgroundTasksHandler(tracker),
   "/agentHistory": createAgentHistoryHandler(historyStore),
@@ -826,10 +846,41 @@ const fetchHandler = async (req: Request) => {
       console.log(`[oh-my-cursor][daemon] ${path} | inputKeys=${Object.keys(parsed).join(",")}`)
     }
     const handlerStart = Date.now()
-    const result = await budgetMiddleware.withBudget(path, budgetForRoute(path), () =>
-      Promise.resolve(handler(parsed)),
-    )
+    let handlerThrew = false
+    let handlerErrorMessage = ""
+    // The handler is wrapped here (not in the outer catch) because budgetMiddleware
+    // swallows handler throws into a deferred sentinel — the outer catch never sees them.
+    // Catch-and-return (instead of re-throw) keeps the middleware's timeout/circuit logic intact.
+    const result = await budgetMiddleware.withBudget(path, budgetForRoute(path), async () => {
+      try {
+        return await Promise.resolve(handler(parsed))
+      } catch (handlerErr) {
+        handlerThrew = true
+        handlerErrorMessage = handlerErr instanceof Error ? handlerErr.message : String(handlerErr)
+        console.error(`[oh-my-cursor] Hook handler error on ${path}:`, handlerErr instanceof Error ? handlerErr.stack : handlerErr)
+        return {}
+      }
+    })
     const handlerDurationMs = Date.now() - handlerStart
+
+    if (handlerThrew) {
+      logEvent({
+        ts: new Date().toISOString(),
+        event: path,
+        sessionId: errorSessionId,
+        action: "error",
+        error: handlerErrorMessage,
+      })
+      if (!FAIL_OPEN_OBSERVE_ROUTES.has(path)) {
+        return new Response(
+          JSON.stringify({ error: handlerErrorMessage, hook: path }),
+          { status: 500, headers: { "Content-Type": "application/json" } },
+        )
+      }
+      return new Response(JSON.stringify({}), {
+        headers: { "Content-Type": "application/json" },
+      })
+    }
 
     if (path !== "/health" && path !== "/heartbeat" && path !== "/status") {
       const toolInput = (parsed.tool_input as Record<string, unknown>) || {}
@@ -861,6 +912,15 @@ const fetchHandler = async (req: Request) => {
       error: message,
       meta: err instanceof Error && err.stack ? { stack: err.stack } : undefined,
     })
+    // Observe-only hook routes fail open: a handler crash must not surface an error
+    // payload to Cursor (it cannot block anyway). Guard routes (preToolUse,
+    // beforeShellExecution, beforeMCPExecution, beforeReadFile, subagentStart) and
+    // internal routes keep the explicit 500 so blocking/diagnostic intent is preserved.
+    if (FAIL_OPEN_OBSERVE_ROUTES.has(path)) {
+      return new Response(JSON.stringify({}), {
+        headers: { "Content-Type": "application/json" },
+      })
+    }
     return new Response(
       JSON.stringify({ error: message, hook: path }),
       {

@@ -1,0 +1,10 @@
+# Task 14 — fail-open (observe) vs explicit-error (guard) on handler throw
+# 2026-06-11T19:15:15Z
+
+OBSERVE /postToolUse (handler throws on numeric file_path) -> expect 200 {}
+{}
+__STATUS__200
+
+GUARD /preToolUse (handler throws on numeric file_path) -> expect 500 explicit error
+{"error":"The \"paths[0]\" property must be of type string, got number","hook":"/preToolUse"}
+__STATUS__500

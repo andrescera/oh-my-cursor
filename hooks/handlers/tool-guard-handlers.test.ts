@@ -305,11 +305,15 @@ describe("createToolGuardHandlers Plan-mode Write-path guard", () => {
         tool_name: "Write",
         conversation_id: CONV,
         tool_input: { file_path: "/mnt/development/oh-my-openagent/src/foo.ts", contents: "x" },
-      }) as { permission?: string; userMessage?: string }
+      }) as { permission?: string; userMessage?: string; decision?: string; user_message?: string; agent_message?: string }
 
       expect(result.permission).toBe("deny")
       expect(result.userMessage).toContain(".cursor/plans/")
       expect(result.userMessage).toContain("Write")
+
+      expect(result.decision).toBe("deny")
+      expect(result.user_message).toContain(".cursor/plans/")
+      expect(result.agent_message).toContain(".cursor/plans/")
     })
 
     it("does NOT register the denied write in pendingWriteArgs (denied before tracking)", () => {

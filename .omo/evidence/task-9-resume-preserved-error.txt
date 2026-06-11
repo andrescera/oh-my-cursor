@@ -1,0 +1,31 @@
+Task 9 — Legitimate mid-plan resume PRESERVED (crash without stop)
+=================================================================
+Date: 2026-06-11
+Command: cd hooks && bun test handlers/continuation-handlers.test.ts -t "zombie"
+
+INVARIANT UNDER TEST
+--------------------
+A daemon crash mid-run (NO explicit /stop-continuation, NO idle-deactivation) must
+NOT be mistaken for a stop. continuationStoppedAt stays null, activePlan survives
+as a DURABLE field, and after restart the boulder loop legitimately resumes the
+plan. This proves the tombstone fix does NOT over-trigger and break recovery —
+i.e. write-through clearing only fires on real stops, never on a crash.
+
+SCENARIO 2 — crash without stop -> restart -> plan RESUMES
+----------------------------------------------------------
+Setup: activePlan=.cursor/plans/resume.plan.md (Wave 2), toolCallCount=12,
+continuationStoppedAt=null. forceFlush persists. In-memory dropped (crash),
+rehydrated from disk (continuationStoppedAt still null, activePlan preserved).
+
+[oh-my-cursor][/stop] conversation=zombie-crash-... | composerMode=null | activePlan=true | toolCallDelta=12 | consecutiveZeroDeltas=0
+[oh-my-cursor][/stop] RESULT=continue msg="Continue executing plan: .cursor/plans/resume.plan.md. Current phase: Wave 2. Do"
+(pass) durable continuation tombstone (task-9 zombie resurrection prevention) > crash without stop then restart resumes the plan (no tombstone, boulder re-created)
+
+Guard evaluated: activePlan != null AND continuationStoppedAt === null  -> boulder
+re-created (active:true), followup "Continue executing plan" returned. Resume path
+preserved without error.
+
+RESULT
+------
+ 4 pass
+ 0 fail

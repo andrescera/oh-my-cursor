@@ -65,6 +65,8 @@ export const ConversationStateSchema = z.object({
       completedTasks: z.array(z.string()),
     })
     .nullable(),
+  // default(null) keeps pre-tombstone persisted records loadable (absent key -> null)
+  continuationStoppedAt: z.string().nullable().default(null),
   // Map<string, "pending"|"in_progress"|"completed"|"cancelled"> serializes to object
   todoStates: z.record(z.string(), z.enum(["pending", "in_progress", "completed", "cancelled"])),
   continuationCooldownUntil: z.number().nullable(),
@@ -112,6 +114,7 @@ export const DurableConversationFieldsSchema = ConversationStateSchema.pick({
   lastCompactionEpoch: true,
   compactionSnapshot: true,
   activePlan: true,
+  continuationStoppedAt: true,
   todoStates: true,
   momusIterations: true,
   subagentOutcomes: true,

@@ -45,6 +45,7 @@ export function partitionState(
     lastCompactionEpoch: state.lastCompactionEpoch,
     compactionSnapshot: state.compactionSnapshot,
     activePlan: state.activePlan,
+    continuationStoppedAt: state.continuationStoppedAt,
     todoStates: state.todoStates,
     momusIterations: state.momusIterations,
     subagentOutcomes: state.subagentOutcomes,

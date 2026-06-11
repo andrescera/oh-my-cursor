@@ -67,6 +67,9 @@ export type ConversationState = {
   lastCompactionEpoch: number
   compactionSnapshot: unknown | null
   activePlan: { path: string; phase: string; completedTasks: string[] } | null
+  // Durable tombstone (ISO ts): set when continuation is stopped, cleared on
+  // /start-work reactivation. Blocks boulder resurrection across restarts.
+  continuationStoppedAt: string | null
   todoStates: Map<string, "pending" | "in_progress" | "completed" | "cancelled">
   continuationCooldownUntil: number | null
   consecutiveContinuationFailures: number
@@ -109,6 +112,7 @@ export type DurableConversationFields = Pick<
   | "lastCompactionEpoch"
   | "compactionSnapshot"
   | "activePlan"
+  | "continuationStoppedAt"
   | "todoStates"
   | "momusIterations"
   | "subagentOutcomes"

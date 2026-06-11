@@ -796,3 +796,139 @@ describe("createContinuationHandlers", () => {
     })
   })
 })
+
+describe("durable continuation tombstone (task-9 zombie resurrection prevention)", () => {
+  const PROJECT = "/tmp/omc-qa-9-project"
+  let tmpDir: string
+  let persistence: StatePersistence
+  let handlers: ReturnType<typeof createContinuationHandlers>
+
+  beforeEach(() => {
+    conversations.clear()
+    tmpDir = `/tmp/omc-qa-9-${randomUUID()}`
+    persistence = new StatePersistence(tmpDir, 600_000)
+    persistence.setIdentity(PROJECT, "boot-qa-9")
+    setPersistence(persistence)
+    handlers = createContinuationHandlers(conversations)
+  })
+
+  afterEach(() => {
+    conversations.clear()
+    try {
+      rmSync(tmpDir, { recursive: true, force: true })
+    } catch {
+      void 0
+    }
+  })
+
+  it("stop then restart does not resurrect the boulder loop (cleared plan + tombstone persisted write-through)", () => {
+    const convId = `zombie-stop-${randomUUID()}`
+    const conv = getOrCreateConversation(convId, false, PROJECT)
+    conv.composerMode = "agent"
+    conv.activePlan = { path: ".cursor/plans/x.plan.md", phase: "Wave 1", completedTasks: [] }
+    conv.toolCallCount = 7
+    persistence.markDirty(convId)
+    persistence.forceFlush(conversations)
+
+    handlers["/beforeSubmitPrompt"]({
+      conversation_id: convId,
+      prompt: "/stop-continuation",
+      workspace_roots: [PROJECT],
+    })
+
+    expect(conv.activePlan).toBeNull()
+    expect(conv.boulderState).toBeNull()
+    expect(conv.continuationStoppedAt).not.toBeNull()
+
+    const onDisk = persistence.loadOne(convId, PROJECT)
+    expect(onDisk).not.toBeNull()
+    expect(onDisk!.activePlan).toBeNull()
+    expect(onDisk!.continuationStoppedAt).not.toBeNull()
+
+    conversations.clear()
+    const revived = getOrCreateConversation(convId, false, PROJECT)
+    expect(revived.activePlan).toBeNull()
+    expect(revived.continuationStoppedAt).not.toBeNull()
+
+    const result = handlers["/stop"](baseStopInput(convId, { workspace_roots: [PROJECT] }))
+    expect(result).toEqual({})
+    expect(revived.boulderState).toBeNull()
+  })
+
+  it("crash without stop then restart resumes the plan (no tombstone, boulder re-created)", () => {
+    const convId = `zombie-crash-${randomUUID()}`
+    const conv = getOrCreateConversation(convId, false, PROJECT)
+    conv.composerMode = "agent"
+    conv.activePlan = { path: ".cursor/plans/resume.plan.md", phase: "Wave 2", completedTasks: ["t1"] }
+    conv.toolCallCount = 12
+    persistence.markDirty(convId)
+    persistence.forceFlush(conversations)
+    expect(conv.continuationStoppedAt).toBeNull()
+
+    conversations.clear()
+    const revived = getOrCreateConversation(convId, false, PROJECT)
+    expect(revived.activePlan).not.toBeNull()
+    expect(revived.continuationStoppedAt).toBeNull()
+
+    const result = handlers["/stop"](baseStopInput(convId, { workspace_roots: [PROJECT] })) as {
+      followup_message?: string
+      decision?: string
+    }
+    expect(result.followup_message).toContain("Continue executing plan")
+    expect(result.followup_message).toContain(".cursor/plans/resume.plan.md")
+    expect(result.decision).toBe("block")
+    expect(revived.boulderState?.active).toBe(true)
+  })
+
+  it("idle-deactivation then restart does not resurrect the boulder loop", () => {
+    const convId = `zombie-idle-${randomUUID()}`
+    const conv = getOrCreateConversation(convId, false, PROJECT)
+    conv.composerMode = "agent"
+    conv.activePlan = { path: ".cursor/plans/idle.plan.md", phase: "Wave 0", completedTasks: [] }
+    conv.toolCallCount = 4
+    conv.toolCallCountAtLastStop = 4
+    conv.consecutiveZeroDeltas = 2
+    persistence.markDirty(convId)
+    persistence.forceFlush(conversations)
+
+    const idleResult = handlers["/stop"](baseStopInput(convId, { workspace_roots: [PROJECT] }))
+    expect(idleResult).toEqual({})
+    expect(conv.activePlan).toBeNull()
+    expect(conv.continuationStoppedAt).not.toBeNull()
+
+    const onDisk = persistence.loadOne(convId, PROJECT)
+    expect(onDisk!.activePlan).toBeNull()
+    expect(onDisk!.continuationStoppedAt).not.toBeNull()
+
+    conversations.clear()
+    const revived = getOrCreateConversation(convId, false, PROJECT)
+    expect(revived.activePlan).toBeNull()
+    expect(revived.continuationStoppedAt).not.toBeNull()
+
+    const result = handlers["/stop"](baseStopInput(convId, { workspace_roots: [PROJECT] }))
+    expect(result).toEqual({})
+    expect(revived.boulderState).toBeNull()
+  })
+
+  it("/start-work after a stop clears the tombstone and re-enables continuation", () => {
+    const convId = `zombie-reactivate-${randomUUID()}`
+    const conv = getOrCreateConversation(convId, false, PROJECT)
+    conv.composerMode = "agent"
+    conv.activePlan = { path: ".cursor/plans/re.plan.md", phase: "Wave 0", completedTasks: [] }
+    conv.continuationStoppedAt = new Date().toISOString()
+
+    handlers["/beforeSubmitPrompt"]({
+      conversation_id: convId,
+      prompt: "/start-work",
+      workspace_roots: [PROJECT],
+    })
+    expect(conv.continuationStoppedAt).toBeNull()
+
+    conv.toolCallCount = 3
+    const result = handlers["/stop"](baseStopInput(convId, { workspace_roots: [PROJECT] })) as {
+      followup_message?: string
+    }
+    expect(result.followup_message).toContain("Continue executing plan")
+    expect(conv.boulderState?.active).toBe(true)
+  })
+})

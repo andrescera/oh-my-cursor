@@ -37,6 +37,7 @@ describe("state partition helpers", () => {
       lastCompactionEpoch: 12,
       compactionSnapshot: { tail: 10 },
       activePlan: { path: ".cursor/plans/test.plan.md", phase: "Wave 0", completedTasks: ["t0"] },
+      continuationStoppedAt: "2026-04-29T08:06:00.000Z",
       todoStates: new Map([["t0", "completed"]]),
       continuationCooldownUntil: Date.now() + 10_000,
       consecutiveContinuationFailures: 3,

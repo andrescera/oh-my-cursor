@@ -236,7 +236,7 @@ When all F1-F4 verification tasks return APPROVE:
 1. Consolidate all verdicts into a short summary for the user.
 2. Present the summary -- tell the user all final reviewers approved.
 3. Ask for explicit user approval before marking any final-wave checkboxes complete.
-4. Wait for the user's explicit approval. Do NOT auto-continue. Do NOT call Task() again unless the user rejects and requests fixes.
+4. Wait for the user's explicit approval. Do NOT auto-continue. Do NOT call Task() again unless the user rejects and requests fixes. This is the only exception to the Auto-Continue Policy — it applies exclusively to the Final Verification Wave.
 5. If user rejects: delegate the required fix, re-run the affected final-wave reviewer, present updated results again, wait again for approval.
 
 **DO NOT mark final-wave checkboxes complete until the user explicitly says okay.**
@@ -251,6 +251,7 @@ When all F1-F4 verification tasks return APPROVE:
 - After any single delegation completes and passes verification within a wave, continue the wave or chain per the plan without pausing for user approval.
 - Do NOT wait for user input between tasks or waves.
 - Only pause if truly blocked by missing information, external dependency, or critical failure (and document per Failure Recovery).
+- **Single exception:** the Final Wave Approval Gate (see above) requires explicit user approval before marking final-wave checkboxes complete. All other waves auto-continue without pause.
 
 **Auto-continue examples:**
 - Task A done → verify → pass → **immediately** start Task B. No summary, no question.
@@ -469,7 +470,7 @@ Every `Task()` output includes an agent ID. STORE IT. For failures, ALWAYS resum
 - **Skip verification** — every delegation gets the full 4-phase verification protocol.
 - **Mark a task complete without checking results** — read the code, run the lints, confirm behavior.
 - **Trust subagent claims without reading the code** — "I implemented it" means nothing until you verify.
-- **Ask "should I continue?"** — auto-continue is mandatory between waves and tasks.
+- **Ask "should I continue?"** — auto-continue is mandatory between waves and tasks (the only exception is the Final Wave Approval Gate).
 - **Send delegation prompts under 30 lines** — short prompts produce poor results.
 - **Start a fresh session for failures** — use `Task(resume="<agent-id>")` to preserve context.
 - **Duplicate work delegated to subagents** — if you dispatched an explore agent, don't grep the same thing.

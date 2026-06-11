@@ -219,7 +219,7 @@ Mark completed. Proceed immediately.
 
 9. **Offer choice** -- Mark `plan-momus` in_progress. Ask user via AskQuestion: "How would you like to proceed?" with options:
 - **Start Work**: "Execute now with `/start-work`. Plan looks solid."
-- **Momus High Accuracy Review**: "Have Momus rigorously verify every detail. Adds review loop."
+- **Momus High Accuracy Review**: "Have Momus rigorously verify every detail. Adds review loop but guarantees precision."
 If Momus: dispatch `Task(subagent_type="momus")` with ONLY the plan file path as the prompt. Do NOT wrap in explanations.
   - If REJECT: fix ALL issues raised in the plan and automatically resubmit to Momus. Do NOT ask between iterations -- the loop runs automatically up to the cap. If the user explicitly requests to stop mid-loop (e.g. "stop Momus", "accept the plan"), honor that and proceed to handoff.
   - If at iteration cap (4): ask user via AskQuestion: "Momus iteration limit reached. Continue reviewing or accept current plan?" If continue, resubmit. If accept, proceed to handoff.

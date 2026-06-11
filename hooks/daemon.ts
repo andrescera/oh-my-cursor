@@ -3,7 +3,7 @@ import { writeFileSync, renameSync, unlinkSync, existsSync } from "node:fs"
 import { dirname, isAbsolute, join, relative as pathRelative } from "node:path"
 import { fileURLToPath } from "node:url"
 import { getStatusHTML } from "./mcp-app"
-import { logEvent, getEvents, getConversationSummary, getLogPath, clearLog, onEvent, offEvent, flushEventLog, drainPendingRotations, drainCleanup } from "./event-logger"
+import { logEvent, getEvents, getConversationSummary, getLogPath, clearLog, onEvent, offEvent, flushEventLog, flushNow, drainPendingRotations, drainCleanup } from "./event-logger"
 import type { EventEntry } from "./event-logger"
 import { bindWithRetry, flushOnCrash } from "./bind-with-retry"
 import { conversations, parseInput, extractMeta, classifyAction, setPersistence } from "./shared"
@@ -271,7 +271,7 @@ let heartbeatInterval: ReturnType<typeof setInterval> | null = null
 let persistenceInterval: ReturnType<typeof setInterval> | null = null
 const activeStreams = new Set<ReadableStreamDefaultController>()
 
-function gracefulShutdown(reason: string): void {
+async function gracefulShutdown(reason: string): Promise<void> {
   if (isShuttingDown) return
   isShuttingDown = true
 
@@ -299,6 +299,12 @@ function gracefulShutdown(reason: string): void {
   activeStreams.clear()
 
   persistence.forceFlush(conversations)
+
+  try {
+    await flushNow()
+  } catch (err) {
+    console.error("[oh-my-cursor] Event log flush failed during shutdown:", err instanceof Error ? err.message : String(err))
+  }
 
   if (server) {
     server.stop(true)
@@ -907,8 +913,14 @@ persistenceInterval = setInterval(async () => {
 }, 30_000)
 backgroundWorker.start()
 
-process.on("SIGTERM", () => gracefulShutdown("SIGTERM"))
-process.on("SIGINT", () => gracefulShutdown("SIGINT"))
+process.on("SIGTERM", () => { void gracefulShutdown("SIGTERM") })
+process.on("SIGINT", () => { void gracefulShutdown("SIGINT") })
+
+process.on("beforeExit", () => {
+  void flushNow().catch((err) => {
+    console.error("[oh-my-cursor] beforeExit event log flush failed:", err instanceof Error ? err.message : String(err))
+  })
+})
 
 process.on("unhandledRejection", (reason) => {
   console.error("[oh-my-cursor] Unhandled rejection:", reason instanceof Error ? reason.stack : reason)

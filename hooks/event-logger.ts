@@ -122,7 +122,17 @@ function scheduleFlush(): void {
   if (flushTimer) return
   flushTimer = setTimeout(() => {
     flushTimer = null
-    flushPending()
+    // Debounced steady-state flush. Errors are logged, not thrown: an uncaught
+    // throw inside a timer callback would crash the daemon. flushPending()
+    // restores `pending` on failure so the next scheduleFlush retries.
+    try {
+      flushPending()
+    } catch (err) {
+      console.error(
+        "[oh-my-cursor][event-logger] scheduled flush failed:",
+        err instanceof Error ? err.message : String(err),
+      )
+    }
   }, FLUSH_DELAY)
 }
 
@@ -134,29 +144,52 @@ export function flushEventLog(): void {
   flushPending()
 }
 
+export async function flushNow(): Promise<void> {
+  if (flushTimer) {
+    clearTimeout(flushTimer)
+    flushTimer = null
+  }
+  try {
+    flushPending()
+  } catch (err) {
+    console.error(
+      "[oh-my-cursor][event-logger] flushNow failed:",
+      err instanceof Error ? err.message : String(err),
+    )
+    throw err
+  }
+}
+
 function flushPending(): void {
   if (pending.length === 0) return
   const entries = pending
   pending = []
 
-  if (!existsSync(logDir)) mkdirSync(logDir, { recursive: true })
+  try {
+    if (!existsSync(logDir)) mkdirSync(logDir, { recursive: true })
 
-  const grouped = new Map<string, EventEntry[]>()
-  for (const entry of entries) {
-    const key = entry.sessionId || ""
-    const group = grouped.get(key)
-    if (group) group.push(entry)
-    else grouped.set(key, [entry])
+    const grouped = new Map<string, EventEntry[]>()
+    for (const entry of entries) {
+      const key = entry.sessionId || ""
+      const group = grouped.get(key)
+      if (group) group.push(entry)
+      else grouped.set(key, [entry])
+    }
+
+    for (const [sessionId, group] of grouped) {
+      const filePath = getLogPathForConversation(sessionId || undefined)
+      const chunk = group.map((e) => JSON.stringify(e)).join("\n") + "\n"
+      appendFileSync(filePath, chunk)
+      scheduleRotation(filePath)
+    }
+
+    scheduleCleanup()
+  } catch (err) {
+    // Write failed: put the entries back at the front so a later flush retries
+    // them rather than dropping them on the floor.
+    pending = entries.concat(pending)
+    throw err
   }
-
-  for (const [sessionId, group] of grouped) {
-    const filePath = getLogPathForConversation(sessionId || undefined)
-    const chunk = group.map((e) => JSON.stringify(e)).join("\n") + "\n"
-    appendFileSync(filePath, chunk)
-    scheduleRotation(filePath)
-  }
-
-  scheduleCleanup()
 }
 
 function rotateIfNeeded(filePath: string): void {

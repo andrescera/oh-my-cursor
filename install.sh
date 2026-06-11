@@ -282,7 +282,10 @@ restore_backup() {
 
 merge_mcp_config() {
   local target="$MCP_CONFIG"
-  local source="$SCRIPT_DIR/mcp.json"
+  # Prefer the installed (port-templated) copy so the merged user config
+  # carries the resolved sidecar port; fall back to the repo source.
+  local source="$PLUGIN_DIR/mcp.json"
+  [[ -f "$source" ]] || source="$SCRIPT_DIR/mcp.json"
 
   if [[ ! -f "$source" ]]; then
     warn "Source mcp.json not found at $source"
@@ -489,9 +492,15 @@ copy_plugin_files() {
   for dir in "${dirs[@]}"; do
     local src="$SCRIPT_DIR/$dir"
     [[ -d "$src" ]] || continue
-    if [[ "$dir" == "hooks" ]] && [[ "$DASHBOARD_BUILD_SKIPPED" == "true" ]]; then
-      copy_hooks_skip_dashboard_dist "$src" "$PLUGIN_DIR/hooks"
-      log "[ok] Copied $dir/ (skipped dashboard-ui/dist/)"
+    if [[ "$dir" == "hooks" ]]; then
+      # Always exclude *.test.ts from the installed hooks tree; conditionally
+      # also skip dashboard-ui/dist/ when the dashboard build was skipped.
+      copy_hooks_filtered "$src" "$PLUGIN_DIR/hooks"
+      if [[ "$DASHBOARD_BUILD_SKIPPED" == "true" ]]; then
+        log "[ok] Copied $dir/ (excluded *.test.ts, skipped dashboard-ui/dist/)"
+      else
+        log "[ok] Copied $dir/ (excluded *.test.ts)"
+      fi
     else
       cp -r "$src" "$PLUGIN_DIR/"
       log "[ok] Copied $dir/"
@@ -507,31 +516,39 @@ copy_plugin_files() {
     fi
   done
 
+  template_mcp_port "$PLUGIN_DIR/mcp.json"
   write_version_file
   seed_user_config
 }
 
-# Copy $src (a hooks/ source tree) into $dest, excluding dashboard-ui/dist/.
-# Prefers rsync --exclude; falls back to a find-based enumeration that copies
-# every entry whose path does not start with dashboard-ui/dist.
-copy_hooks_skip_dashboard_dist() {
+# Copy $src (a hooks/ source tree) into $dest, always excluding *.test.ts.
+# When DASHBOARD_BUILD_SKIPPED is true, also excludes dashboard-ui/dist/.
+# Prefers rsync --exclude; falls back to a find-based enumeration.
+copy_hooks_filtered() {
   local src="$1" dest="$2"
   mkdir -p "$dest"
 
   if command -v rsync &>/dev/null; then
-    rsync -a \
-      --exclude='dashboard-ui/dist' \
-      --exclude='dashboard-ui/dist/' \
-      "$src/" "$dest/"
+    local rsync_args=(-a --exclude='*.test.ts')
+    if [[ "$DASHBOARD_BUILD_SKIPPED" == "true" ]]; then
+      rsync_args+=(--exclude='dashboard-ui/dist' --exclude='dashboard-ui/dist/')
+    fi
+    rsync "${rsync_args[@]}" "$src/" "$dest/"
     return
   fi
 
-  local entry rel
+  local entry rel base
   while IFS= read -r -d '' entry; do
     rel="${entry#"$src"/}"
-    case "$rel" in
-      dashboard-ui/dist|dashboard-ui/dist/*) continue ;;
+    base="${entry##*/}"
+    case "$base" in
+      *.test.ts) continue ;;
     esac
+    if [[ "$DASHBOARD_BUILD_SKIPPED" == "true" ]]; then
+      case "$rel" in
+        dashboard-ui/dist|dashboard-ui/dist/*) continue ;;
+      esac
+    fi
     if [[ -d "$entry" && ! -L "$entry" ]]; then
       mkdir -p "$dest/$rel"
     else
@@ -539,6 +556,18 @@ copy_hooks_skip_dashboard_dist() {
       cp -P "$entry" "$dest/$rel"
     fi
   done < <(find "$src" -mindepth 1 -print0)
+}
+
+# Substitute the resolved MCP sidecar port into an installed mcp.json copy.
+# The repo mcp.json hardcodes DEFAULT_MCP_PORT; at install time we rewrite it
+# to OH_MY_CURSOR_MCP_PORT (default DEFAULT_MCP_PORT) so the installed config
+# matches the port the sidecar actually binds.
+template_mcp_port() {
+  local target="$1"
+  [[ -f "$target" ]] || return 0
+  local mcp_port="${OH_MY_CURSOR_MCP_PORT:-$DEFAULT_MCP_PORT}"
+  local tmp="${target}.tmp.$$"
+  sed "s|http://localhost:${DEFAULT_MCP_PORT}/mcp|http://localhost:${mcp_port}/mcp|g" "$target" > "$tmp" && mv "$tmp" "$target"
 }
 
 seed_user_config() {
@@ -906,7 +935,13 @@ else
   cleanup_legacy_loose_files
   copy_plugin_files
   merge_mcp_config
-  start_daemon || warn "Daemon start failed — plugin files are installed, daemon can be started manually"
+  if ! start_daemon; then
+    _install_failed=false
+    release_lock
+    trap - EXIT
+    err "Daemon failed to start on fresh install. Plugin files were installed to $PLUGIN_DIR, but the daemon is not running. Check /tmp/oh-my-cursor-daemon.log and re-run install. (Updates tolerate daemon-start failures; fresh installs abort to avoid a half-working setup.)"
+    exit 1
+  fi
   _install_failed=false
   verify_installation || true
   release_lock

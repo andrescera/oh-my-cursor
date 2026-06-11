@@ -195,24 +195,21 @@ function Stop-OhMyCursorDaemon {
 function Start-OhMyCursorDaemon {
     if ($DryRun) {
         Write-Host "[dry-run] Would start daemon"
-        return
+        return $true
     }
 
     $startScript = Join-Path $PluginDir "hooks\scripts\start-daemon.sh"
     if (-not (Test-Path $startScript)) {
         Write-Warn "  Daemon start script not found, skipping"
-        return
+        return $false
     }
 
     try {
-        if ($IsLinux -or $IsMacOS) {
-            & bash $startScript
-        } else {
-            & bash $startScript 2>$null
-        }
+        # Suppress all child streams so they do not leak into the return value.
+        & bash $startScript *> $null
     } catch {
         Write-Warn "  Failed to start daemon: $_"
-        return
+        return $false
     }
 
     # Health check with retry
@@ -228,10 +225,11 @@ function Start-OhMyCursorDaemon {
         try {
             $resp = Invoke-RestMethod -Uri "http://localhost:${port}/health" -TimeoutSec 2
             Write-Log "  Daemon healthy (port: $port)"
-            return
+            return $true
         } catch {}
     }
     Write-Warn "  Daemon started but health check did not pass after ${maxRetries}s"
+    return $false
 }
 
 # --- Installation verification ---
@@ -321,7 +319,12 @@ function Write-JsonSafe {
 }
 
 function Merge-McpConfig {
-    $sourceMcp = Join-Path $ScriptDir "mcp.json"
+    # Prefer the installed (port-templated) copy so the merged user config
+    # carries the resolved sidecar port; fall back to the repo source.
+    $sourceMcp = Join-Path $PluginDir "mcp.json"
+    if (-not (Test-Path $sourceMcp)) {
+        $sourceMcp = Join-Path $ScriptDir "mcp.json"
+    }
     if (-not (Test-Path $sourceMcp)) {
         Write-Warn "  Source mcp.json not found, skipping MCP merge"
         return
@@ -556,6 +559,86 @@ function Remove-DirectoryExcluding {
     _RemoveExcept -Current $rootFull -ExcludeFull $excludeFull
 }
 
+# Copy a hooks/ source tree into $Destination, always excluding *.test.ts files.
+# When -ExcludeDashboardDist is set, also skips dashboard-ui\dist. Uses a
+# Where-Object FullName filter (NOT Copy-Item -Exclude, which is shallow under
+# -Recurse) so nested *.test.ts files are excluded at every depth.
+function Copy-HooksFiltered {
+    param(
+        [Parameter(Mandatory)] [string]$Source,
+        [Parameter(Mandatory)] [string]$Destination,
+        [switch]$ExcludeDashboardDist
+    )
+    if (-not (Test-Path $Source)) { return }
+    if (-not (Test-Path $Destination)) {
+        New-Item -ItemType Directory -Path $Destination -Force | Out-Null
+    }
+    $sourceFull = (Resolve-Path $Source).Path
+    $sep = [IO.Path]::DirectorySeparatorChar
+    $excludeDistFull = Join-Path $sourceFull "dashboard-ui\dist"
+    Get-ChildItem -Path $sourceFull -Recurse -Force |
+        Where-Object { $_.FullName -notmatch '\.test\.ts$' } |
+        ForEach-Object {
+            $itemFull = $_.FullName
+            if ($ExcludeDashboardDist) {
+                if ($itemFull -eq $excludeDistFull) { return }
+                if ($itemFull.StartsWith($excludeDistFull + $sep)) { return }
+            }
+            $rel = $itemFull.Substring($sourceFull.Length).TrimStart([char]$sep, [char][IO.Path]::AltDirectorySeparatorChar)
+            $target = Join-Path $Destination $rel
+            if ($_.PSIsContainer) {
+                if (-not (Test-Path $target)) {
+                    New-Item -ItemType Directory -Path $target -Force | Out-Null
+                }
+            } else {
+                $targetDir = Split-Path -Parent $target
+                if ($targetDir -and -not (Test-Path $targetDir)) {
+                    New-Item -ItemType Directory -Path $targetDir -Force | Out-Null
+                }
+                Copy-Item -Path $itemFull -Destination $target -Force
+            }
+        }
+}
+
+# Substitute the resolved MCP sidecar port into an installed mcp.json copy so
+# the installed config matches the port the sidecar actually binds.
+function Update-McpPort {
+    param([Parameter(Mandatory)] [string]$Path)
+    if (-not (Test-Path $Path)) { return }
+    $mcpPort = if ($env:OH_MY_CURSOR_MCP_PORT) { $env:OH_MY_CURSOR_MCP_PORT } else { $DefaultMcpPort }
+    $content = Get-Content $Path -Raw
+    $updated = $content -replace "http://localhost:$DefaultMcpPort/mcp", "http://localhost:$mcpPort/mcp"
+    Set-Content -Path $Path -Value $updated -Encoding UTF8 -NoNewline
+}
+
+# Seed config.default.jsonc to the user config location if absent (parity with
+# install.sh seed_user_config). hooks/config.ts resolves the user config from
+# process.env.HOME + "/.config/oh-my-cursor/config.jsonc"; on Windows HOME is
+# often unset, so fall back to USERPROFILE (the same profile dir the daemon's
+# bun runtime resolves HOME to).
+function Initialize-UserConfig {
+    $template = Join-Path $ScriptDir "config.default.jsonc"
+    if (-not (Test-Path $template)) { return }
+
+    $homeBase = if ($env:HOME) { $env:HOME } else { $env:USERPROFILE }
+    $configDir = Join-Path $homeBase ".config\oh-my-cursor"
+    $configFile = Join-Path $configDir "config.jsonc"
+
+    if (Test-Path $configFile) {
+        Write-Host "  [skip] User config already exists at $configFile"
+        return
+    }
+    if ($DryRun) {
+        Write-Host "[dry-run] Would seed config to $configFile"
+        return
+    }
+    if (-not (Test-Path $configDir)) {
+        New-Item -ItemType Directory -Path $configDir -Force | Out-Null
+    }
+    Copy-Item -Path $template -Destination $configFile -Force
+    Write-Log "  Created config at $configFile"
+}
+
 function Copy-PluginFiles {
     if ($DryRun) {
         if ($script:DashboardBuildSkipped) {
@@ -574,10 +657,16 @@ function Copy-PluginFiles {
     foreach ($d in $dirs) {
         $src = Join-Path $ScriptDir $d
         if (-not (Test-Path $src)) { continue }
-        if ($d -eq "hooks" -and $script:DashboardBuildSkipped) {
+        if ($d -eq "hooks") {
+            # Always exclude *.test.ts from the installed hooks tree; conditionally
+            # also skip dashboard-ui\dist when the dashboard build was skipped.
             $dst = Join-Path $PluginDir $d
-            Copy-DirectoryExcluding -Source $src -Destination $dst -ExcludeRelative "dashboard-ui\dist"
-            Write-Host "  [ok] $d/ (preserved hooks\dashboard-ui\dist\)"
+            Copy-HooksFiltered -Source $src -Destination $dst -ExcludeDashboardDist:$script:DashboardBuildSkipped
+            if ($script:DashboardBuildSkipped) {
+                Write-Host "  [ok] $d/ (excluded *.test.ts, preserved hooks\dashboard-ui\dist\)"
+            } else {
+                Write-Host "  [ok] $d/ (excluded *.test.ts)"
+            }
         } else {
             Copy-Item -Path $src -Destination $PluginDir -Recurse -Force
             Write-Host "  [ok] $d/"
@@ -593,7 +682,9 @@ function Copy-PluginFiles {
         }
     }
 
+    Update-McpPort -Path (Join-Path $PluginDir "mcp.json")
     Write-VersionFile
+    Initialize-UserConfig
     Write-Log "  Plugin files installed to $PluginDir"
 }
 
@@ -790,7 +881,15 @@ try {
     Merge-McpConfig
 
     Write-Host "==> Starting daemon"
-    Start-OhMyCursorDaemon
+    $daemonOk = Start-OhMyCursorDaemon
+    if (-not $daemonOk -and -not $isUpdate -and -not $DryRun) {
+        Release-InstallLock
+        Write-Err "  Daemon failed to start on fresh install. Plugin files were installed to $PluginDir, but the daemon is not running. Check the daemon log and re-run install. (Updates tolerate daemon-start failures; fresh installs abort to avoid a half-working setup.)"
+        exit 1
+    }
+    if (-not $daemonOk -and $isUpdate) {
+        Write-Warn "  Daemon start failed - plugin files are installed, daemon can be started manually."
+    }
 
     Write-Host "==> Verifying installation"
     $valid = Test-Installation

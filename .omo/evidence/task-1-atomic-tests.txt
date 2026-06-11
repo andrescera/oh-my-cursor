@@ -1,0 +1,29 @@
+=== ATOMIC FILE TESTS ===
+Test Run: 2026-06-11
+
+bun test v1.3.14 (0d9b296a)
+
+lib/atomic-file.test.ts:
+(pass) atomic-file > writeFileAtomic > writes content correctly [1.12ms]
+(pass) atomic-file > writeFileAtomic > writes JSON content correctly [0.48ms]
+(pass) atomic-file > writeFileAtomic > writes Buffer content correctly [0.38ms]
+(pass) atomic-file > writeFileAtomic > creates parent directories if missing [0.08ms]
+(pass) atomic-file > writeFileAtomic > applies mode via chmod before rename [0.07ms]
+(pass) atomic-file > writeFileAtomic > cleans up temp file on write failure [0.70ms]
+(pass) atomic-file > writeFileAtomic > overwrites existing file atomically [0.09ms]
+(pass) atomic-file > writeFileAtomic > temp file is in same directory as target [0.08ms]
+(pass) atomic-file > writeFileAtomicAsync > writes content correctly [0.21ms]
+(pass) atomic-file > writeFileAtomicAsync > writes JSON content correctly [0.11ms]
+(pass) atomic-file > writeFileAtomicAsync > writes Buffer content correctly [0.09ms]
+(pass) atomic-file > writeFileAtomicAsync > creates parent directories if missing [0.08ms]
+(pass) atomic-file > writeFileAtomicAsync > applies mode via chmod before rename [0.08ms]
+(pass) atomic-file > writeFileAtomicAsync > cleans up temp file on write failure [0.12ms]
+(pass) atomic-file > writeFileAtomicAsync > overwrites existing file atomically [0.09ms]
+(pass) atomic-file > writeFileAtomicAsync > temp file is in same directory as target [0.10ms]
+
+ 16 pass
+ 0 fail
+ 30 expect() calls
+Ran 16 tests across 1 file. [62.00ms]
+
+RESULT: ✓ All tests pass

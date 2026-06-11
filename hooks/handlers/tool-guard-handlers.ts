@@ -468,7 +468,9 @@ export function createToolGuardHandlers(
                 })
                 injectedCount++
               }
-            } catch { /* AGENTS.md is optional */ }
+             } catch (err) { 
+               console.debug('[tool-guard] path check:', agentsPath, err)
+             }
           }
           if (current === projectRoot) break
           current = current.substring(0, current.lastIndexOf("/")) || ""

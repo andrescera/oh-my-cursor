@@ -1,0 +1,18 @@
+bun test v1.3.14 (0d9b296a)
+
+agent-history-store.test.ts:
+(pass) AgentHistoryStore > round-trips record(entry) through query({}) [1.43ms]
+(pass) AgentHistoryStore > redacts secrets in recordHistoryEntry before persistence [0.31ms]
+(pass) AgentHistoryStore > truncates description to 500 chars after redaction [0.16ms]
+(pass) AgentHistoryStore > enforces cap at 200 entries and drops oldest [55.79ms]
+(pass) AgentHistoryStore > is idempotent by (agentId, startTime), updating status instead of duplicating [0.18ms]
+(pass) AgentHistoryStore > keeps terminal status when a lower-rank status arrives for same key [0.07ms]
+(pass) AgentHistoryStore > clamps durationMs to 0 when completedAt is earlier than startTime [0.05ms]
+(pass) AgentHistoryStore > skips schema-drift and corrupted lines without throwing [0.20ms]
+(pass) AgentHistoryStore > writes exactly N entries when recording N rapidly, leaving no .tmp files [2.31ms]
+(pass) AgentHistoryStore > recovers and writes valid output when the existing file is corrupt [0.13ms]
+
+ 10 pass
+ 0 fail
+ 27 expect() calls
+Ran 10 tests across 1 file. [79.00ms]

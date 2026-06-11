@@ -202,6 +202,12 @@ Two-layer config with JSONC format:
 
 Merge order: defaults → user → project. Config cached 30s.
 
+### worktrees.json (Cursor-native)
+
+`worktrees.json` at the repo root is a **Cursor-native worktree setup config**, not oh-my-cursor logic. Cursor reads `.cursor/worktrees.json` when creating a git worktree (`agent --worktree`, the `/worktree` command, `/best-of-n`) and runs its `setup-worktree` script entries in the new worktree; `--skip-worktree-setup` bypasses it. See [docs/cursor/09-cli.md](docs/cursor/09-cli.md) (`--skip-worktree-setup`) and the `cursor.worktreesSetup` setting in [docs/cursor/15-settings-and-flags.md](docs/cursor/15-settings-and-flags.md).
+
+The shipped script copies the workspace `.cursor/` directory into the fresh worktree so oh-my-cursor rules, plans, and state are available there. The installers (`install.sh`, `install.ps1`) copy this file into the plugin directory alongside `mcp.json` and `sandbox.json`. No hook or daemon code reads it at runtime.
+
 ## Conversation Management
 
 Conversations are tracked in-memory with periodic persistence to `/tmp/oh-my-cursor-state.json`. Each conversation tracks: tool calls, dispatch counts, Ralph/Boulder loop state, compaction epochs, and error counts.

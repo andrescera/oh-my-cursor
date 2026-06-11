@@ -1,0 +1,11 @@
+bun test v1.3.14 (0d9b296a)
+
+agent-history-store.test.ts:
+(pass) AgentHistoryStore > skips schema-drift and corrupted lines without throwing [1.18ms]
+(pass) AgentHistoryStore > recovers and writes valid output when the existing file is corrupt [0.11ms]
+
+ 2 pass
+ 8 filtered out
+ 0 fail
+ 8 expect() calls
+Ran 2 tests across 1 file. [18.00ms]

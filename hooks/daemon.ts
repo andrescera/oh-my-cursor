@@ -217,7 +217,9 @@ try {
     unlinkSync(mdcPath)
     console.log("[oh-my-cursor] Cleaned up stale oh-my-cursor-context.mdc")
   }
-} catch {}
+} catch (err) {
+  console.error('[daemon] MDC cleanup failed:', err)
+}
 
 const ENV_PORT = process.env.OH_MY_CURSOR_PORT
 const DEFAULT_PORT = config.daemon.port

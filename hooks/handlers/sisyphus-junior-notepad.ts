@@ -1,3 +1,5 @@
+import { existsSync } from "node:fs"
+import { isAbsolute, join } from "node:path"
 import type { ConversationState, HandlerMap } from "../types"
 import { contextCollector } from "../context-collector"
 import {
@@ -33,13 +35,26 @@ export function createSisyphusJuniorNotepadHandler(
       if (!NOTEPAD_AGENT_TYPES.has(normalized)) return {}
 
       const convId = resolveConversationId(input)
+      const projectRoot = derivedProjectRoot(input)
       const conversation = getOrCreateConversation(
         convId,
         wasResolvedViaFallback(input),
-        derivedProjectRoot(input),
+        projectRoot,
       )
 
       if (!conversation.activePlan) return {}
+
+      // Unknown project root ("") is intentionally non-blocking: cannot validate, so preserve prior behavior.
+      const planPath = conversation.activePlan.path
+      if (projectRoot && planPath) {
+        const planFullPath = isAbsolute(planPath) ? planPath : join(projectRoot, planPath)
+        if (!existsSync(planFullPath)) {
+          console.warn(
+            `[oh-my-cursor][sisyphus-junior-notepad] activePlan.path does not exist (${planFullPath}); skipping notepad advisory.`,
+          )
+          return {}
+        }
+      }
 
       const notepadPath = notepadPathFromPlan(conversation.activePlan)
       const displayType = agentTypeRaw

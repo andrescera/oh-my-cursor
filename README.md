@@ -48,7 +48,7 @@ You (root thread)
        └── Task(multimodal-looker) ── Visual analysis (gemini-3.1-pro, readonly)
 ```
 
-A persistent **hook daemon** (Bun HTTP server) handles 20 hook events (2 are Tab-UI-only) through 30+ handlers -- session tracking, context injection, dangerous command blocking, dispatch limits, and continuation control. Minimal per-event overhead (shell script to persistent daemon).
+A persistent **hook daemon** (Bun HTTP server) handles 19 wired hook events (of 21 canonical; 2 are Tab-UI-only) through 30+ handlers -- session tracking, context injection, dangerous command blocking, dispatch limits, and continuation control. Minimal per-event overhead (shell script to persistent daemon).
 
 An **MCP sidecar** adds 8 tools not in Cursor's built-in set (visual file analysis, persistent tmux sessions, dispatch stats, transcript search, daemon logs, session log, status dashboard).
 

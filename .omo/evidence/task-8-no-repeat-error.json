@@ -1,0 +1,8 @@
+{
+  "test": "Fix B — consume() delivers pending context once; it does not repeat on the next prompt",
+  "registered_advisory": "[conversation-recovery] Permission denied",
+  "firstPrompt_contains_advisory": true,
+  "secondPrompt_contains_advisory": false,
+  "secondPrompt_still_has_persona": true,
+  "verdict": "PASS — advisory delivered exactly once, cleared after consume"
+}

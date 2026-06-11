@@ -1,14 +1,18 @@
 import { describe, it, expect, beforeEach } from "bun:test"
+import { mkdtempSync, rmSync, writeFileSync } from "node:fs"
+import { tmpdir } from "node:os"
+import { join } from "node:path"
 import { createSisyphusJuniorNotepadHandler } from "./sisyphus-junior-notepad"
 import { contextCollector } from "../context-collector"
 import { conversations, getOrCreateConversation } from "../shared"
 
 const CONV = "sisyphus-junior-notepad-test-conv"
 
-function task(subagentType: string) {
+function task(subagentType: string, projectRoot?: string) {
   return {
     tool_name: "Task",
     conversation_id: CONV,
+    ...(projectRoot ? { workspace_roots: [projectRoot] } : {}),
     tool_input: { subagent_type: subagentType, prompt: "do work" },
   }
 }
@@ -54,5 +58,57 @@ describe("sisyphus-junior-notepad", () => {
     handler(task("explore"))
 
     expect(contextCollector.getPending(CONV).hasContent).toBe(false)
+  })
+
+  it("skips advisory and warns when activePlan.path does not exist under project root", () => {
+    const projectRoot = mkdtempSync(join(tmpdir(), "omc-notepad-"))
+    try {
+      getOrCreateConversation(CONV)
+      const conv = conversations.get(CONV)!
+      conv.activePlan = {
+        path: ".cursor/plans/phantom.plan.md",
+        phase: "plan-execute",
+        completedTasks: [],
+      }
+
+      const warnings: string[] = []
+      const originalWarn = console.warn
+      console.warn = (...args: unknown[]) => {
+        warnings.push(args.map(String).join(" "))
+      }
+
+      try {
+        const handler = createSisyphusJuniorNotepadHandler(conversations)["/preToolUse"]!
+        handler(task("sisyphus-junior", projectRoot))
+      } finally {
+        console.warn = originalWarn
+      }
+
+      expect(contextCollector.getPending(CONV).hasContent).toBe(false)
+      expect(warnings.some((w) => w.includes("activePlan.path does not exist"))).toBe(true)
+    } finally {
+      rmSync(projectRoot, { recursive: true, force: true })
+    }
+  })
+
+  it("registers advisory when activePlan.path exists under project root", () => {
+    const projectRoot = mkdtempSync(join(tmpdir(), "omc-notepad-"))
+    try {
+      const planRel = "real.plan.md"
+      writeFileSync(join(projectRoot, planRel), "# plan")
+
+      getOrCreateConversation(CONV)
+      const conv = conversations.get(CONV)!
+      conv.activePlan = { path: planRel, phase: "plan-execute", completedTasks: [] }
+
+      const handler = createSisyphusJuniorNotepadHandler(conversations)["/preToolUse"]!
+      handler(task("sisyphus-junior", projectRoot))
+
+      const pending = contextCollector.getPending(CONV)
+      expect(pending.hasContent).toBe(true)
+      expect(pending.merged).toContain(".cursor/notepads/real/")
+    } finally {
+      rmSync(projectRoot, { recursive: true, force: true })
+    }
   })
 })

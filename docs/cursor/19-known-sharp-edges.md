@@ -26,6 +26,10 @@ Items are tagged by evidence type. **[community]** and **[binary-only]** entries
 
 **Implication for hook developers:** Do not rely on `postToolUse` to track `TodoWrite` calls, `SwitchMode` mode changes, or `Task` dispatches. Do not expect `SwitchMode` on any hook stage. Use `preToolUse` where configured (e.g. for `Task` / `Glob`), plus alternatives such as `afterAgentResponse` parsing, `beforeSubmitPrompt` context injection, or `subagentStart`/`subagentStop` for Task tracking.
 
+### Environment Variable: `OH_MY_CURSOR_DISABLED_HOOKS`
+
+Changing the `OH_MY_CURSOR_DISABLED_HOOKS` environment variable **requires daemon restart** — the 30-second config TTL reads the config file, not the env var directly. If you disable hooks via this env var, you must restart the daemon (kill the process or restart Cursor) for the change to take effect. [repro-local]
+
 ### Cursor Command Expansion
 
 Cursor slash commands defined in `commands/*.md` are **expanded by Cursor before reaching `beforeSubmitPrompt`**. The hook receives the user's additional text (after the command prefix), not the literal `/plan`, `/start-work`, etc. For example, when the user types `/plan find bugs`, the `beforeSubmitPrompt` hook receives `"find bugs"` as the prompt — not `"/plan find bugs"`. [repro-local]

@@ -1,0 +1,29 @@
+== Task 10 QA: flush-on-shutdown (isolated daemon) ==
+PORT=28853 PROJECT_DIR=/tmp/omc-qa-10/proj STATE=/tmp/omc-qa-10/state
+daemon pid=3590508
+-- heartbeat --
+{"alive":true,"timestamp":1781202526194,"uptime":133}
+-- POST /sessionStart --
+{"additional_context":"## oh-my-cursor Context\n\nSession: qa-conv-1\nProject: /tmp/omc-qa-10/proj\nStarted: 2026-06-11T18:28:46.209Z\n\n**Identity (mandatory, by Cursor mode):** Plan→Prometheus (strategic planner; say \"I am Prometheus\" if asked). Agent→Orchestrator/Atlas when a plan exists (pure dispatcher). Debug→diagnose; suggest fixes, do not apply. Ask→advisor; read-only.\n**Forbidden tools:** Plan→Shell, Delete, StrReplace, Task(sisyphus/hephaestus/sisyphus-junior/atlas). Agent→direct Write/StrReplace/Delete/Shell (delegate all implementation via Task). Debug→Write, Shell, StrReplace, Delete, Task(non-explore). Ask→Write, Shell, StrReplace, Delete, Task.\n**Agent mode:** Never edit files directly; all implementation via Task using the 6-section brief. Routing, limits, workflows: `orchestrator.mdc` + `orchestrator-reference.mdc`.","env":{"OH_MY_CURSOR_SESSION_ID":"qa-conv-1","OH_MY_CURSOR_PROJECT_DIR":"/tmp/omc-qa-10/proj","OH_MY_CURSOR_DAEMON_PORT":"28853","OH_MY_CURSOR_SIDECAR_PORT":"28854"},"hookSpecificOutput":{"hookEventName":"SessionStart","additionalContext":"## oh-my-cursor Context\n\nSession: qa-conv-1\nProject: /tmp/omc-qa-10/proj\nStarted: 2026-06-11T18:28:46.209Z\n\n**Identity (mandatory, by Cursor mode):** Plan→Prometheus (strategic planner; say \"I am Prometheus\" if asked). Agent→Orchestrator/Atlas when a plan exists (pure dispatcher). Debug→diagnose; suggest fixes, do not apply. Ask→advisor; read-only.\n**Forbidden tools:** Plan→Shell, Delete, StrReplace, Task(sisyphus/hephaestus/sisyphus-junior/atlas). Agent→direct Write/StrReplace/Delete/Shell (delegate all implementation via Task). Debug→Write, Shell, StrReplace, Delete, Task(non-explore). Ask→Write, Shell, StrReplace, Delete, Task.\n**Agent mode:** Never edit files directly; all implementation via Task using the 6-section brief. Routing, limits, workflows: `orchestrator.mdc` + `orchestrator-reference.mdc`."}}
+-- POST /shutdown --
+{"status":"shutting_down"}
+shutdown elapsed: .131673208s
+-- state dir contents --
+total 8
+drwxr-xr-x 2 andres andres  80 Jun 11 13:28 .
+drwxr-xr-x 6 andres andres 160 Jun 11 13:28 ..
+-rw-r--r-- 1 andres andres 888 Jun 11 13:28 4345d8cd-qa-conv-1.json
+-rw-r--r-- 1 andres andres 149 Jun 11 13:28 index.json
+-- state file JSON validation --
+file: /tmp/omc-qa-10/state/4345d8cd-qa-conv-1.json
+VALID JSON: schemaVersion=2 id=qa-conv-1 projectRoot=/tmp/omc-qa-10/proj
+RESULT: PASS (project-scoped state file present + valid JSON)
+-- daemon log tail --
+[oh-my-cursor] Port file written: /tmp/oh-my-cursor-daemon.port (port 28853)
+[oh-my-cursor] Hook daemon ready on http://localhost:28853
+[oh-my-cursor][daemon] /sessionStart | inputKeys=conversation_id,workspace_roots
+[oh-my-cursor][daemon] /shutdown | inputKeys=
+[oh-my-cursor] Shutting down: shutdown endpoint
+[oh-my-cursor] HTTP server closed
+[oh-my-cursor] PID file removed
+[oh-my-cursor] Shutdown complete

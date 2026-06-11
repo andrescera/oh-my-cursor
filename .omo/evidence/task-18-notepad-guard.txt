@@ -1,0 +1,13 @@
+bun test v1.3.14 (0d9b296a)
+
+handlers/sisyphus-junior-notepad.test.ts:
+(pass) sisyphus-junior-notepad > registers advisory for sisyphus-junior Task when activePlan exists [0.72ms]
+(pass) sisyphus-junior-notepad > does not register advisory when activePlan is missing [0.04ms]
+(pass) sisyphus-junior-notepad > does not register advisory for explore agent type [0.05ms]
+(pass) sisyphus-junior-notepad > skips advisory and warns when activePlan.path does not exist under project root [0.38ms]
+(pass) sisyphus-junior-notepad > registers advisory when activePlan.path exists under project root [0.15ms]
+
+ 5 pass
+ 0 fail
+ 10 expect() calls
+Ran 5 tests across 1 file. [20.00ms]

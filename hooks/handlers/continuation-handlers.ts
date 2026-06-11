@@ -20,8 +20,8 @@ function sendOsNotification(title: string, message: string, urgency: "low" | "no
   const config = loadConfig(projectDir)
   if (!config.notifications.enabled) return
   const notifyScript = resolve(import.meta.dir, "../scripts", "notify.sh")
-  spawnWithTimeout(["bash", notifyScript, title, message, urgency], { timeoutMs: 5000 }).catch(() => {
-    /* non-fatal */
+  spawnWithTimeout(["bash", notifyScript, title, message, urgency], { timeoutMs: 5000 }).catch((err) => {
+    console.error('[continuation] notification spawn failed:', err)
   })
 }
 

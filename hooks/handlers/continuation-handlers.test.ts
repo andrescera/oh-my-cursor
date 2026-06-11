@@ -1,7 +1,10 @@
 import { describe, it, expect, beforeEach, afterEach } from "bun:test"
 import { randomUUID } from "node:crypto"
 import { createContinuationHandlers } from "./continuation-handlers"
-import { getOrCreateConversation, conversations } from "../shared"
+import { getOrCreateConversation, conversations, setPersistence } from "../shared"
+import { contextCollector } from "../context-collector"
+import { StatePersistence } from "../state-persistence"
+import { rmSync } from "node:fs"
 
 function makeConvId(): string {
   return `continuation-test-${randomUUID()}`
@@ -32,6 +35,7 @@ describe("createContinuationHandlers", () => {
 
   afterEach(() => {
     conversations.delete(convId)
+    contextCollector.clear(convId)
   })
 
   describe("/stop handler", () => {
@@ -663,6 +667,81 @@ describe("createContinuationHandlers", () => {
 
         expect(conversation.composerMode).toBe("plan")
         expect(result.additional_context).toContain("[mode:plan]")
+      })
+    })
+
+    describe("context delivery (task-8: single-channel + consume + rehydration)", () => {
+      it("delivers context via additional_context only and never duplicates it into user_message (Fix A)", () => {
+        const result = handlers["/beforeSubmitPrompt"]({
+          prompt: "/plan build the thing",
+          conversation_id: convId,
+        }) as {
+          user_message?: string
+          additional_context?: string
+          hookSpecificOutput?: { additionalContext?: string }
+        }
+
+        expect(result.additional_context).toContain("[command:plan]")
+        expect(result.user_message).toBeUndefined()
+        expect(result.hookSpecificOutput?.additionalContext).toBe(result.additional_context)
+      })
+
+      it("delivers registered pending context once, then does not repeat it on the next prompt (Fix B)", () => {
+        getOrCreateConversation(convId)
+        contextCollector.register(convId, {
+          id: "pending-advisory",
+          source: "test-pending",
+          content: "[test-pending] one-shot advisory that must appear exactly once",
+          priority: "high",
+        })
+
+        const first = handlers["/beforeSubmitPrompt"]({
+          prompt: "continue",
+          conversation_id: convId,
+        }) as { additional_context?: string }
+        expect(first.additional_context).toContain("[test-pending] one-shot advisory")
+
+        const second = handlers["/beforeSubmitPrompt"]({
+          prompt: "continue again",
+          conversation_id: convId,
+        }) as { additional_context?: string }
+        expect(second.additional_context ?? "").not.toContain("[test-pending] one-shot advisory")
+        expect(second.additional_context).toContain("Identity: Plan=Prometheus")
+      })
+
+      it("clears pending contextCollector entries when a conversation is rehydrated from persistence (Fix C)", () => {
+        const rehydrateId = makeConvId()
+        const templateId = makeConvId()
+        const template = getOrCreateConversation(templateId)
+        conversations.delete(templateId)
+
+        contextCollector.register(rehydrateId, {
+          id: "stale",
+          source: "test-stale",
+          content: "[stale] must not survive rehydration",
+          priority: "normal",
+        })
+        expect(contextCollector.hasPending(rehydrateId)).toBe(true)
+
+        const fakePersistence = {
+          loadOne: (id: string) => (id === rehydrateId ? template : null),
+          markDirty: () => {},
+        } as unknown as Parameters<typeof setPersistence>[0]
+        // Restore stub: a null-equivalent persistence that no-ops every method,
+        // so it cannot break later tests whose handlers call other persistence
+        // methods (loadOne returns undefined -> create path, same as no persistence).
+        const inertPersistence = new Proxy({}, { get: () => () => undefined }) as unknown as Parameters<typeof setPersistence>[0]
+
+        try {
+          setPersistence(fakePersistence)
+          const rehydrated = getOrCreateConversation(rehydrateId, false, "")
+          expect(rehydrated).toBe(template)
+          expect(contextCollector.hasPending(rehydrateId)).toBe(false)
+        } finally {
+          setPersistence(inertPersistence)
+          contextCollector.clear(rehydrateId)
+          conversations.delete(rehydrateId)
+        }
       })
     })
   })

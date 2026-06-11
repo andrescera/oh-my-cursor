@@ -1,5 +1,6 @@
 import type { ConversationState } from "./types"
 import type { StatePersistence } from "./state-persistence"
+import { contextCollector } from "./context-collector"
 
 export const conversations = new Map<string, ConversationState>()
 
@@ -19,6 +20,12 @@ export function markDirty(convId: string): void {
   _persistence?.markDirty(convId)
 }
 
+// Synchronous write-through flush (bypasses debounced save()) for stop paths
+// that must persist a cleared plan before returning, even across a crash.
+export function forceFlush(): void {
+  _persistence?.forceFlush(conversations)
+}
+
 export function getOrCreateConversation(
   conversationId: string,
   viaFallback?: boolean,
@@ -33,6 +40,9 @@ export function getOrCreateConversation(
     if (loaded) {
       conversations.set(conversationId, loaded)
       state = loaded
+      // Fix C (task-8): drop in-memory advisories from a prior daemon lifecycle
+      // so a rehydrated conversation starts clean and never replays stale context.
+      contextCollector.clear(conversationId)
     }
   }
   if (!state) {
@@ -62,6 +72,7 @@ export function getOrCreateConversation(
       lastCompactionEpoch: 0,
       compactionSnapshot: null,
       activePlan: null,
+      continuationStoppedAt: null,
       todoStates: new Map(),
       continuationCooldownUntil: null,
       consecutiveContinuationFailures: 0,

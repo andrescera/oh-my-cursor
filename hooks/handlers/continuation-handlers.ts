@@ -6,8 +6,11 @@ import {
   PLAN_PHASE_IDS,
   transitionFromPlanMode,
   derivedProjectRoot,
+  markDirty,
+  forceFlush,
 } from "../shared"
 import { loadConfig } from "../config"
+import { contextCollector } from "../context-collector"
 import { extractDisplayTitle } from "../display-title"
 import { resolve } from "node:path"
 import { existsSync, readFileSync } from "node:fs"
@@ -20,6 +23,16 @@ function sendOsNotification(title: string, message: string, urgency: "low" | "no
   spawnWithTimeout(["bash", notifyScript, title, message, urgency], { timeoutMs: 5000 }).catch(() => {
     /* non-fatal */
   })
+}
+
+// Clears plan+boulder, stamps the durable tombstone, and write-through flushes
+// (NOT debounced) so a crash mid-debounce cannot resurrect the boulder loop.
+function clearContinuationDurably(conversation: ConversationState, convId: string): void {
+  conversation.activePlan = null
+  conversation.boulderState = null
+  conversation.continuationStoppedAt = new Date().toISOString()
+  markDirty(convId)
+  forceFlush()
 }
 
 const ABORT_WINDOW_MS = 3000
@@ -198,16 +211,21 @@ export function createContinuationHandlers(
       if (conversation.consecutiveZeroDeltas >= maxZeroDeltas) {
         if (conversation.activePlan) {
           sendOsNotification("Plan Complete", "Agent idle — continuation deactivated.", "normal", conversation.env.OH_MY_CURSOR_PROJECT_DIR)
-          conversation.activePlan = null
-          conversation.boulderState = null
           conversation.consecutiveContinuationFailures = 0
           conversation.continuationCooldownUntil = null
+          clearContinuationDurably(conversation, convId)
         }
         console.log(`[oh-my-cursor][/stop] RESULT=noop reason=idleDeactivation`)
         return {}
       }
 
       if (conversation.activePlan) {
+        // Auto-restart guard: a non-null tombstone means continuation was stopped
+        // and not yet superseded by a /start-work reactivation — do not resurrect.
+        if (conversation.continuationStoppedAt !== null) {
+          console.log(`[oh-my-cursor][/stop] RESULT=noop reason=continuationStopped`)
+          return {}
+        }
         if (!conversation.boulderState) {
           conversation.boulderState = {
             active: true,
@@ -225,8 +243,7 @@ export function createContinuationHandlers(
           ? Date.now() - new Date(conversation.boulderState.loopStartedAt).getTime()
           : 0
         if (boulderAgeMs > config.safety.continuation.max_wallclock_ms) {
-          conversation.activePlan = null
-          conversation.boulderState = null
+          clearContinuationDurably(conversation, convId)
           console.log(`[oh-my-cursor][/stop] RESULT=noop reason=boulderWallclockExceeded`)
           return {}
         }
@@ -264,6 +281,12 @@ export function createContinuationHandlers(
       const userMessage = (input.prompt as string) || (input.user_message as string) || ""
       const convId = resolveConversationId(input)
       const conversation = getOrCreateConversation(convId, wasResolvedViaFallback(input), derivedProjectRoot(input))
+
+      // Fix B (task-8): consume() drains context that observe-only events
+      // (/subagentStop) and /preToolUse non-deny paths registered but never
+      // delivered. Must run before building additionalContext so entries merge
+      // into the single channel below and clear — preventing repeats next prompt.
+      const pendingContext = contextCollector.consume(convId)
 
       // Seed the per-session display title from the first non-empty user
       // message; never overwrite (so the title remains stable for the
@@ -369,9 +392,8 @@ export function createContinuationHandlers(
       if (userMessage.startsWith("/stop-continuation") || userMessage.startsWith("/cancel-ralph")) {
         conversation.stoppedAt = new Date().toISOString()
         conversation.ralphState = null
-        conversation.boulderState = null
-        conversation.activePlan = null
         conversation.consecutiveZeroDeltas = 0
+        clearContinuationDurably(conversation, convId)
         additionalContext += "\n[stop] Continuation loops stopped. Returning to normal chat."
       }
 
@@ -385,6 +407,8 @@ export function createContinuationHandlers(
 
       if (userMessage.startsWith("/start-work")) {
         transitionFromPlanMode(conversation)
+        // Reactivation supersedes any prior stop tombstone, re-enabling boulder.
+        conversation.continuationStoppedAt = null
 
         if (!conversation.activePlan) {
           const projectDir = conversation.env.OH_MY_CURSOR_PROJECT_DIR ?? process.env.OH_MY_CURSOR_PROJECT_DIR ?? process.cwd()
@@ -438,11 +462,23 @@ export function createContinuationHandlers(
         additionalContext += "\n" + UNKNOWN_SLASH_COMMAND_HINT
       }
 
-      if (additionalContext) {
-        const trimmed = additionalContext.trim()
+      if (additionalContext || pendingContext.hasContent) {
+        let trimmed = additionalContext.trim()
+        if (pendingContext.hasContent) {
+          trimmed = trimmed ? pendingContext.merged + "\n\n" + trimmed : pendingContext.merged
+        }
+        // Fix A (task-8): deliver context through ONE logical channel only.
+        // docs/cursor/03-hooks.md §17 documents beforeSubmitPrompt input as
+        // `prompt` with N/A enforced output; docs/internal/hook-response-fields.md
+        // lists `additional_context` (+ the Claude-Code `hookSpecificOutput`
+        // mirror) as the context-delivery field, matching the proven
+        // `postToolUse.additional_context` (TAKES-EFFECT). The dropped
+        // `user_message` field re-embedded the same text into the user's literal
+        // prompt — a second channel that duplicated the payload and corrupted the
+        // user's actual message. additional_context + its hookSpecificOutput
+        // mirror carry identical content by design (same pattern as /sessionStart).
         return {
           continue: true,
-          user_message: userMessage + "\n\n" + trimmed,
           additional_context: trimmed,
           hookSpecificOutput: {
             hookEventName: "UserPromptSubmit",

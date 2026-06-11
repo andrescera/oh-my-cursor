@@ -1,7 +1,9 @@
-import { existsSync, mkdirSync, readFileSync, unlinkSync, readdirSync, writeFileSync } from "node:fs"
+import { existsSync, mkdirSync, readFileSync, unlinkSync, readdirSync } from "node:fs"
+import { createHash } from "node:crypto"
 import type { ConversationState } from "./types"
 import { partitionState, mergeFromDurable } from "./state-partition"
 import { PersistedRecordSchema } from "./schemas/conversation"
+import { writeFileAtomic, writeFileAtomicAsync } from "./lib/atomic-file"
 
 const DEFAULT_DIR = "/tmp/oh-my-cursor-state"
 const LEGACY_FILE = "/tmp/oh-my-cursor-state.json"
@@ -47,35 +49,53 @@ export class StatePersistence {
     this.dirty.add(convId)
   }
 
+  // Project-scoped state filename: state for the same conv_id under a different
+  // projectRoot lands in a distinct file, so a daemon serving multiple Cursor
+  // projects cannot clobber another project's persisted state.
+  private stateFileName(convId: string): string {
+    const prefix = createHash("sha256").update(this.projectRoot).digest("hex").slice(0, 8)
+    return `${prefix}-${convId}.json`
+  }
+
+  private statePath(convId: string): string {
+    return `${this.dirPath}/${this.stateFileName(convId)}`
+  }
+
+  // Pre-project-scoping filename (`${convId}.json`). Read-only legacy fallback
+  // used by the migration grace path in loadOne / cleanup in removeConversation.
+  private legacyStatePath(convId: string): string {
+    return `${this.dirPath}/${convId}.json`
+  }
+
   save(conversations: Map<string, ConversationState>): Promise<void> {
     if (this.debounceTimer) return Promise.resolve()
-    this.debounceTimer = setTimeout(async () => {
+    this.debounceTimer = setTimeout(() => {
       this.debounceTimer = null
-      await this.writeDirty(conversations)
+      this.writeDirty(conversations).catch((err) => {
+        console.error("[state-persistence] scheduled flush error", err)
+      })
     }, this.debounceMs)
     return Promise.resolve()
   }
 
+  // Synchronous: steady-state and crash callers keep a void API and state lands
+  // before the next statement / process.exit() rather than in a later microtask.
   forceFlush(conversations: Map<string, ConversationState>): void {
+    this.clearDebounce()
+    this.flushDirtySync(conversations)
+  }
+
+  // Awaitable shutdown flush: resolves only once every write has landed.
+  async forceFlushAll(conversations: Map<string, ConversationState>): Promise<void> {
+    this.clearDebounce()
+    await this.flushDirtyAsync(conversations)
+  }
+
+  private clearDebounce(): void {
     if (this.debounceTimer) {
       clearTimeout(this.debounceTimer)
       this.debounceTimer = null
     }
-    if (!existsSync(this.dirPath)) {
-      mkdirSync(this.dirPath, { recursive: true })
-    }
-    for (const convId of this.dirty) {
-      const conv = conversations.get(convId)
-      if (!conv) continue
-      const filePath = `${this.dirPath}/${convId}.json`
-      try {
-        writeFileSync(filePath, JSON.stringify(this.serializeConversation(conv)), "utf-8")
-      } catch (err) {
-        console.error(`[oh-my-cursor] Failed to flush conversation ${convId}:`, err instanceof Error ? err.message : String(err))
-      }
-    }
-    this.dirty.clear()
-    this.writeIndexSync(conversations)
   }
 
   // Loads a persisted conversation. Returns null when the file is missing,
@@ -87,9 +107,19 @@ export class StatePersistence {
   // When `expectedProjectRoot` is omitted, project verification is skipped
   // (used by tests and tooling that operate outside a hook context).
   loadOne(convId: string, expectedProjectRoot?: string): ConversationState | null {
-    const filePath = `${this.dirPath}/${convId}.json`
+    const primaryPath = this.statePath(convId)
+    const legacyPath = this.legacyStatePath(convId)
+    let filePath: string
+    let isLegacy = false
+    if (existsSync(primaryPath)) {
+      filePath = primaryPath
+    } else if (existsSync(legacyPath)) {
+      filePath = legacyPath
+      isLegacy = true
+    } else {
+      return null
+    }
     try {
-      if (!existsSync(filePath)) return null
       const text = readFileSync(filePath, "utf-8")
       if (!text.trim()) return null
       const data = JSON.parse(text) as Record<string, unknown>
@@ -134,11 +164,29 @@ export class StatePersistence {
         pendingWriteArgs: new Map(Object.entries(durableSerialized.pendingWriteArgs)),
         todoStates: new Map(Object.entries(durableSerialized.todoStates)),
       })
+
+      if (isLegacy) this.migrateLegacyFile(convId, legacyPath, primaryPath, merged)
       return merged
     } catch (err) {
       console.error(`[oh-my-cursor] Failed to load conversation ${convId}:`, err instanceof Error ? err.message : String(err))
       return null
     }
+  }
+
+  // Crash-safe ordering: unlink legacy strictly after the scoped write succeeds.
+  private migrateLegacyFile(
+    convId: string,
+    legacyPath: string,
+    primaryPath: string,
+    merged: ConversationState,
+  ): void {
+    try {
+      writeFileAtomic(primaryPath, JSON.stringify(this.serializeConversation(merged)))
+      try { unlinkSync(legacyPath) } catch { /* best-effort */ }
+    } catch (err) {
+      console.error("[state-persistence] legacy migration failed for", convId, err)
+    }
+    this.markDirty(convId)
   }
 
   loadIndex(): Map<string, ConversationMetadata> {
@@ -163,11 +211,12 @@ export class StatePersistence {
   }
 
   removeConversation(convId: string): void {
-    const filePath = `${this.dirPath}/${convId}.json`
-    try {
-      if (existsSync(filePath)) unlinkSync(filePath)
-    } catch (err) {
-      console.error(`[oh-my-cursor] Failed to remove conversation ${convId}:`, err instanceof Error ? err.message : String(err))
+    for (const filePath of [this.statePath(convId), this.legacyStatePath(convId)]) {
+      try {
+        if (existsSync(filePath)) unlinkSync(filePath)
+      } catch (err) {
+        console.error(`[oh-my-cursor] Failed to remove conversation ${convId}:`, err instanceof Error ? err.message : String(err))
+      }
     }
     this.dirty.delete(convId)
     const index = this.loadIndex()
@@ -183,7 +232,6 @@ export class StatePersistence {
       const now = Date.now()
       for (const file of files) {
         if (!file.endsWith(".json") || file === "index.json") continue
-        const convId = file.slice(0, -5)
         const filePath = `${this.dirPath}/${file}`
         try {
           const text = readFileSync(filePath, "utf-8")
@@ -191,6 +239,7 @@ export class StatePersistence {
           if (data && typeof data.startedAt === "string") {
             const ageMs = now - new Date(data.startedAt).getTime()
             if (ageMs > maxAgeMs) {
+              const convId = typeof data.id === "string" ? data.id : file.slice(0, -5)
               unlinkSync(filePath)
               this.dirty.delete(convId)
               pruned.push(convId)
@@ -210,26 +259,47 @@ export class StatePersistence {
   }
 
   private async writeDirty(conversations: Map<string, ConversationState>): Promise<void> {
-    if (!existsSync(this.dirPath)) {
-      mkdirSync(this.dirPath, { recursive: true })
-    }
-    const dirtyIds = Array.from(this.dirty)
-    this.dirty.clear()
+    await this.flushDirtyAsync(conversations)
+  }
+
+  // Swap the dirty set for a fresh one before any await, so markDirty() calls
+  // arriving during the async write land in the next batch instead of being
+  // dropped. Failed writes are re-queued for the next flush.
+  private async flushDirtyAsync(conversations: Map<string, ConversationState>): Promise<void> {
+    const toFlush = this.dirty
+    this.dirty = new Set()
     const writes: Promise<void>[] = []
-    for (const convId of dirtyIds) {
+    for (const convId of toFlush) {
       const conv = conversations.get(convId)
       if (!conv) continue
-      const filePath = `${this.dirPath}/${convId}.json`
+      const filePath = this.statePath(convId)
+      const payload = JSON.stringify(this.serializeConversation(conv))
       writes.push(
-        Bun.write(filePath, JSON.stringify(this.serializeConversation(conv)))
-          .then(() => {})
-          .catch((err) => {
-            console.error(`[oh-my-cursor] Failed to write conversation ${convId}:`, err instanceof Error ? err.message : String(err))
-          }),
+        writeFileAtomicAsync(filePath, payload).catch((err) => {
+          console.error("[state-persistence] flush error for", convId, err)
+          this.dirty.add(convId)
+        }),
       )
     }
     await Promise.all(writes)
     await this.writeIndexAsync(conversations)
+  }
+
+  private flushDirtySync(conversations: Map<string, ConversationState>): void {
+    const toFlush = this.dirty
+    this.dirty = new Set()
+    for (const convId of toFlush) {
+      const conv = conversations.get(convId)
+      if (!conv) continue
+      const filePath = this.statePath(convId)
+      try {
+        writeFileAtomic(filePath, JSON.stringify(this.serializeConversation(conv)))
+      } catch (err) {
+        console.error("[state-persistence] flush error for", convId, err)
+        this.dirty.add(convId)
+      }
+    }
+    this.writeIndexSync(conversations)
   }
 
   private serializeConversation(conv: ConversationState) {
@@ -262,7 +332,7 @@ export class StatePersistence {
     const indexPath = `${this.dirPath}/index.json`
     const metadata = Array.from(conversations.values()).map((conv) => this.buildMetadata(conv))
     try {
-      await Bun.write(indexPath, JSON.stringify(metadata))
+      await writeFileAtomicAsync(indexPath, JSON.stringify(metadata))
     } catch (err) {
       console.error("[oh-my-cursor] Failed to write index:", err instanceof Error ? err.message : String(err))
     }
@@ -272,7 +342,7 @@ export class StatePersistence {
     const indexPath = `${this.dirPath}/index.json`
     const metadata = Array.from(conversations.values()).map((conv) => this.buildMetadata(conv))
     try {
-      writeFileSync(indexPath, JSON.stringify(metadata), "utf-8")
+      writeFileAtomic(indexPath, JSON.stringify(metadata))
     } catch (err) {
       console.error("[oh-my-cursor] Failed to write index:", err instanceof Error ? err.message : String(err))
     }
@@ -282,7 +352,7 @@ export class StatePersistence {
     const indexPath = `${this.dirPath}/index.json`
     const metadata = Array.from(index.values())
     try {
-      writeFileSync(indexPath, JSON.stringify(metadata), "utf-8")
+      writeFileAtomic(indexPath, JSON.stringify(metadata))
     } catch (err) {
       console.error("[oh-my-cursor] Failed to write index:", err instanceof Error ? err.message : String(err))
     }

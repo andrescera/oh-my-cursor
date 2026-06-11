@@ -1,5 +1,6 @@
 import { describe, test, expect, beforeEach, afterEach } from "bun:test"
-import { existsSync, readFileSync, rmSync, writeFileSync } from "node:fs"
+import { existsSync, readFileSync, rmSync, writeFileSync, renameSync, readdirSync } from "node:fs"
+import { createHash } from "node:crypto"
 import { StatePersistence } from "./state-persistence"
 import type { ConversationState } from "./types"
 
@@ -29,6 +30,7 @@ function createTestConversation(id: string): ConversationState {
     lastCompactionEpoch: 0,
     compactionSnapshot: null,
     activePlan: null,
+    continuationStoppedAt: null,
     todoStates: new Map([["task-a", "pending"]]),
     continuationCooldownUntil: null,
     consecutiveContinuationFailures: 0,
@@ -52,6 +54,11 @@ function createTestConversation(id: string): ConversationState {
   }
 }
 
+function hashedName(projectRoot: string, convId: string): string {
+  const prefix = createHash("sha256").update(projectRoot).digest("hex").slice(0, 8)
+  return `${prefix}-${convId}.json`
+}
+
 function cleanup(): void {
   try {
     rmSync(TEST_PATH, { recursive: true, force: true })
@@ -69,7 +76,7 @@ describe("StatePersistence", () => {
   beforeEach(cleanup)
   afterEach(cleanup)
 
-  test("forceFlush and loadOne round-trip preserves Sets and Maps", () => {
+  test("forceFlush and loadOne round-trip preserves Sets and Maps", async () => {
     const persistence = new StatePersistence(TEST_PATH, 60_000)
     const a = createTestConversation("sess-1")
     const b = createTestConversation("sess-2")
@@ -106,7 +113,7 @@ describe("StatePersistence", () => {
     expect(persistence.loadOne("does-not-exist")).toBeNull()
   })
 
-  test("forceFlush writes only dirty conversation files", () => {
+  test("forceFlush writes only dirty conversation files", async () => {
     const persistence = new StatePersistence(TEST_PATH, 60_000)
     const conversations = new Map<string, ConversationState>([
       ["dirty-id", createTestConversation("dirty-id")],
@@ -115,11 +122,11 @@ describe("StatePersistence", () => {
     persistence.markDirty("dirty-id")
     persistence.forceFlush(conversations)
 
-    expect(existsSync(`${TEST_PATH}/dirty-id.json`)).toBe(true)
-    expect(existsSync(`${TEST_PATH}/clean-id.json`)).toBe(false)
+    expect(persistence.loadOne("dirty-id")).not.toBeNull()
+    expect(persistence.loadOne("clean-id")).toBeNull()
   })
 
-  test("loadIndex returns metadata for all conversations after forceFlush", () => {
+  test("loadIndex returns metadata for all conversations after forceFlush", async () => {
     const persistence = new StatePersistence(TEST_PATH, 60_000)
     const c1 = createTestConversation("meta-1")
     c1.toolCallCount = 7
@@ -155,7 +162,7 @@ describe("StatePersistence", () => {
     expect(m2.stoppedAt).toBeNull()
   })
 
-  test("removeConversation deletes file and drops from index", () => {
+  test("removeConversation deletes file and drops from index", async () => {
     const persistence = new StatePersistence(TEST_PATH, 60_000)
     const conversations = new Map<string, ConversationState>([
       ["keep-me", createTestConversation("keep-me")],
@@ -168,12 +175,11 @@ describe("StatePersistence", () => {
     persistence.removeConversation("drop-me")
 
     expect(persistence.loadOne("drop-me")).toBeNull()
-    expect(existsSync(`${TEST_PATH}/drop-me.json`)).toBe(false)
     expect(persistence.loadIndex().has("drop-me")).toBe(false)
     expect(persistence.loadOne("keep-me")).not.toBeNull()
   })
 
-  test("pruneStale removes old conversations and returns their ids", () => {
+  test("pruneStale removes old conversations and returns their ids", async () => {
     const persistence = new StatePersistence(TEST_PATH, 60_000)
     const stale = createTestConversation("stale-one")
     stale.startedAt = new Date(Date.now() - 3_600_000).toISOString()
@@ -189,7 +195,6 @@ describe("StatePersistence", () => {
     const pruned = persistence.pruneStale(1_800_000)
     expect(pruned).toContain("stale-one")
     expect(pruned).not.toContain("fresh-one")
-    expect(existsSync(`${TEST_PATH}/stale-one.json`)).toBe(false)
     expect(persistence.loadOne("stale-one")).toBeNull()
     expect(persistence.loadOne("fresh-one")).not.toBeNull()
     expect(persistence.loadIndex().has("stale-one")).toBe(false)
@@ -206,5 +211,106 @@ describe("StatePersistence", () => {
     const persistence = new StatePersistence(TEST_PATH, 60_000)
     writeFileSync(`${TEST_PATH}/broken.json`, "not valid json {{{", "utf-8")
     expect(persistence.loadOne("broken")).toBeNull()
+  })
+
+  test("flush uses atomic writes: project-scoped name, valid JSON, no temp residue", async () => {
+    const persistence = new StatePersistence(TEST_PATH, 60_000)
+    persistence.setIdentity("/proj/atomic", "boot-atomic")
+    const conversations = new Map<string, ConversationState>([
+      ["atomic-1", createTestConversation("atomic-1")],
+    ])
+    persistence.markDirty("atomic-1")
+    await persistence.forceFlushAll(conversations)
+
+    const expectedFile = `${TEST_PATH}/${hashedName("/proj/atomic", "atomic-1")}`
+    expect(existsSync(expectedFile)).toBe(true)
+
+    const residue = readdirSync(TEST_PATH).filter((f) => f.includes(".tmp-"))
+    expect(residue).toEqual([])
+
+    const parsed = JSON.parse(readFileSync(expectedFile, "utf-8")) as Record<string, unknown>
+    expect(parsed.schemaVersion).toBe(2)
+    expect(parsed.projectRoot).toBe("/proj/atomic")
+  })
+
+  test("dirty-set swap keeps markDirty calls made during an in-flight flush", async () => {
+    const persistence = new StatePersistence(TEST_PATH, 60_000)
+    const conversations = new Map<string, ConversationState>([
+      ["swap-a", createTestConversation("swap-a")],
+      ["swap-b", createTestConversation("swap-b")],
+    ])
+    persistence.markDirty("swap-a")
+    const flush = persistence.forceFlushAll(conversations)
+    persistence.markDirty("swap-b")
+    await flush
+
+    expect(persistence.loadOne("swap-a")).not.toBeNull()
+    expect(persistence.loadOne("swap-b")).toBeNull()
+
+    await persistence.forceFlushAll(conversations)
+    expect(persistence.loadOne("swap-b")).not.toBeNull()
+  })
+
+  test("loadOne migrates a matching legacy-named file to the project-scoped name", async () => {
+    const writer = new StatePersistence(TEST_PATH, 60_000)
+    writer.setIdentity("/proj/mig", "boot-1")
+    writer.markDirty("mig-1")
+    writer.forceFlush(new Map([["mig-1", createTestConversation("mig-1")]]))
+
+    const hashed = `${TEST_PATH}/${hashedName("/proj/mig", "mig-1")}`
+    const legacy = `${TEST_PATH}/mig-1.json`
+    renameSync(hashed, legacy)
+    expect(existsSync(hashed)).toBe(false)
+    expect(existsSync(legacy)).toBe(true)
+
+    const reader = new StatePersistence(TEST_PATH, 60_000)
+    reader.setIdentity("/proj/mig", "boot-2")
+    const loaded = reader.loadOne("mig-1", "/proj/mig")
+
+    expect(loaded).not.toBeNull()
+    expect(loaded!.toolCallCount).toBe(5)
+    expect(loaded!.readPaths.has("file1.ts")).toBe(true)
+
+    expect(existsSync(legacy)).toBe(false)
+    expect(existsSync(hashed)).toBe(true)
+    const parsed = JSON.parse(readFileSync(hashed, "utf-8")) as Record<string, unknown>
+    expect(parsed.projectRoot).toBe("/proj/mig")
+  })
+
+  test("loadOne migrates an empty-projectRoot legacy file via the grace path", async () => {
+    const writer = new StatePersistence(TEST_PATH, 60_000)
+    writer.markDirty("mig-empty")
+    writer.forceFlush(new Map([["mig-empty", createTestConversation("mig-empty")]]))
+
+    const writtenHashed = `${TEST_PATH}/${hashedName("", "mig-empty")}`
+    const legacy = `${TEST_PATH}/mig-empty.json`
+    renameSync(writtenHashed, legacy)
+
+    const reader = new StatePersistence(TEST_PATH, 60_000)
+    reader.setIdentity("/proj/grace", "boot-2")
+    const loaded = reader.loadOne("mig-empty", "/proj/grace")
+
+    expect(loaded).not.toBeNull()
+    expect(existsSync(legacy)).toBe(false)
+    expect(existsSync(`${TEST_PATH}/${hashedName("/proj/grace", "mig-empty")}`)).toBe(true)
+  })
+
+  test("loadOne refuses a legacy file whose projectRoot stamp mismatches", async () => {
+    const writer = new StatePersistence(TEST_PATH, 60_000)
+    writer.setIdentity("/proj/a", "boot-1")
+    writer.markDirty("mismatch-1")
+    writer.forceFlush(new Map([["mismatch-1", createTestConversation("mismatch-1")]]))
+
+    const hashedA = `${TEST_PATH}/${hashedName("/proj/a", "mismatch-1")}`
+    const legacy = `${TEST_PATH}/mismatch-1.json`
+    renameSync(hashedA, legacy)
+
+    const reader = new StatePersistence(TEST_PATH, 60_000)
+    reader.setIdentity("/proj/b", "boot-2")
+    const loaded = reader.loadOne("mismatch-1", "/proj/b")
+
+    expect(loaded).toBeNull()
+    expect(existsSync(legacy)).toBe(true)
+    expect(existsSync(`${TEST_PATH}/${hashedName("/proj/b", "mismatch-1")}`)).toBe(false)
   })
 })

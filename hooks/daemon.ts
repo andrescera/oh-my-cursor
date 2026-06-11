@@ -299,7 +299,7 @@ async function gracefulShutdown(reason: string): Promise<void> {
   }
   activeStreams.clear()
 
-  persistence.forceFlush(conversations)
+  await persistence.forceFlushAll(conversations)
 
   try {
     await flushNow()

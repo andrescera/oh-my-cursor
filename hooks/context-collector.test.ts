@@ -113,6 +113,29 @@ describe("ContextCollector", () => {
       })
     })
 
+    describe("#when many same-priority entries are consumed repeatedly", () => {
+      test("#then the order is identical across 5 runs", () => {
+        const orderings: string[][] = []
+        for (let run = 0; run < 5; run++) {
+          const c = new ContextCollector()
+          for (let i = 0; i < 10; i++) {
+            c.register("s1", {
+              id: `entry-${i}`,
+              source: "src",
+              content: `content-${i}`,
+              priority: "normal",
+            })
+          }
+          orderings.push(c.consume("s1").entries.map((e) => e.id))
+        }
+
+        const expected = Array.from({ length: 10 }, (_, i) => `entry-${i}`)
+        for (const ordering of orderings) {
+          expect(ordering).toEqual(expected)
+        }
+      })
+    })
+
     describe("#when the same key is re-registered", () => {
       test("#then it upserts the entry", () => {
         collector.register("s1", {

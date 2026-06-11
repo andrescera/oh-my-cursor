@@ -1,0 +1,10 @@
+bun test v1.3.14 (0d9b296a)
+
+handlers/background-tracker.test.ts:
+(pass) BackgroundTracker > #when cleaning up stale tasks > removes exactly the stale tasks without throwing when a new task is tracked alongside [13.90ms]
+
+ 1 pass
+ 18 filtered out
+ 0 fail
+ 2 expect() calls
+Ran 1 test across 1 file. [74.00ms]

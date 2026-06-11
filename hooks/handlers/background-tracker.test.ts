@@ -110,6 +110,20 @@ describe("BackgroundTracker", () => {
       expect(tasks).toHaveLength(1)
       expect(tasks[0].agentId).toBe("fresh")
     })
+
+    it("removes exactly the stale tasks without throwing when a new task is tracked alongside", () => {
+      tracker.track("fresh-1", "explore", "Fresh 1", "conv-default")
+      injectStaleTask(tracker, "stale-1", "explore", "Stale 1", "conv-default")
+      tracker.track("fresh-2", "librarian", "Fresh 2", "conv-default")
+      injectStaleTask(tracker, "stale-2", "librarian", "Stale 2", "conv-default")
+      tracker.track("fresh-3", "explore", "Fresh 3", "conv-default")
+      tracker.track("fresh-4", "explore", "Fresh 4", "conv-default")
+
+      expect(() => tracker.cleanup()).not.toThrow()
+
+      const remaining = tracker.getActiveTasks().map((t) => t.agentId).sort()
+      expect(remaining).toEqual(["fresh-1", "fresh-2", "fresh-3", "fresh-4"])
+    })
   })
 })
 

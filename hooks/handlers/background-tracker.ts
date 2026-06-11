@@ -101,22 +101,28 @@ export class BackgroundTracker {
 
   cleanup(): void {
     const now = Date.now()
+    const expired: string[] = []
     for (const [agentId, task] of this.tasks) {
       if (now - task.startTime > STALE_THRESHOLD_MS) {
-        const completedAt = Date.now()
-        recordHistoryEntry({
-          status: "abandoned",
-          agentId,
-          agentType: task.agentType,
-          description: task.description,
-          startTime: task.startTime,
-          completedAt,
-          durationMs: completedAt - task.startTime,
-          projectRoot: task.projectRoot ?? "",
-          daemonBootId: getDaemonBootId(),
-        }, this.historyStore)
-        this.tasks.delete(agentId)
+        expired.push(agentId)
       }
+    }
+    for (const agentId of expired) {
+      const task = this.tasks.get(agentId)
+      if (!task) continue
+      const completedAt = Date.now()
+      recordHistoryEntry({
+        status: "abandoned",
+        agentId,
+        agentType: task.agentType,
+        description: task.description,
+        startTime: task.startTime,
+        completedAt,
+        durationMs: completedAt - task.startTime,
+        projectRoot: task.projectRoot ?? "",
+        daemonBootId: getDaemonBootId(),
+      }, this.historyStore)
+      this.tasks.delete(agentId)
     }
   }
 

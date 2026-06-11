@@ -291,7 +291,7 @@ async function gracefulShutdown(reason: string): Promise<void> {
   }
 
   const encoder = new TextEncoder()
-  for (const controller of activeStreams) {
+  for (const controller of [...activeStreams]) {
     try {
       controller.enqueue(encoder.encode(`event: shutdown\ndata: {}\n\n`))
       controller.close()

@@ -181,7 +181,11 @@ export class ContextCollector {
     return entries.sort((a, b) => {
       const priorityDiff = PRIORITY_ORDER[a.priority] - PRIORITY_ORDER[b.priority]
       if (priorityDiff !== 0) return priorityDiff
-      return a.registrationOrder - b.registrationOrder
+      const orderDiff = a.registrationOrder - b.registrationOrder
+      if (orderDiff !== 0) return orderDiff
+      // Final tiebreak on the composite key (`source:id`) so ordering is fully
+      // deterministic even if two entries ever share a registrationOrder.
+      return `${a.source}:${a.id}`.localeCompare(`${b.source}:${b.id}`)
     })
   }
 }

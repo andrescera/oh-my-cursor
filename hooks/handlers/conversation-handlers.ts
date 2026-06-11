@@ -1,5 +1,6 @@
 import type { StatePersistence } from "../state-persistence"
 import type { ConversationState, HandlerMap } from "../types"
+import type { BackgroundTracker } from "./background-tracker"
 import {
   getOrCreateConversation,
   getFallbackConversationsCreatedSinceBoot,

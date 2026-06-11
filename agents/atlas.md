@@ -200,7 +200,7 @@ Select the right QA approach based on what changed:
 
 | Change Type | QA Method | What to Check |
 |-------------|-----------|---------------|
-| Frontend/UI | dev-browser or playwright skill | Load page, click through flow, check console for errors, verify visual state |
+| Frontend/UI | playwright skill | Load page, click through flow, check console for errors, verify visual state |
 | CLI tool | Shell with good and bad input | Run command with valid args, invalid args, missing args, edge cases (empty string, special chars) |
 | API endpoint | Shell with curl | Hit endpoint, check response body and status code, send malformed input, verify error responses |
 | Library/SDK | Shell running test script | Import and call functions, check return values, test error paths |

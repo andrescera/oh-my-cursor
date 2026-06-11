@@ -137,5 +137,6 @@ A Linear issue was moved to In Progress. Implement it:
 6. Open a PR with a clear description linking to the Linear issue
 
 Follow the coding standards in AGENTS.md and .cursor/rules/.
+Note: cloud agents do not automatically load `.cursor/rules/` — paste any critical rules directly into the automation prompt if they must be enforced.
 Run lints and tests before pushing.
 ```

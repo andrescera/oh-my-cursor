@@ -15,6 +15,6 @@ Type `/best-of-n` in the chat. Cursor will:
 - Generating N variations of a UI component or algorithm
 
 ## Agent equivalent
-The `best-of-n-runner` subagent_type (`Task(subagent_type="best-of-n-runner")`) is the programmatic equivalent, managed by the task orchestration system.
+This is a native Cursor feature with no programmatic `subagent_type` equivalent. For parallel agent work from code, use `Task(run_in_background=true)` with multiple dispatches to existing agents (e.g. `sisyphus-junior`) and compare results manually.
 
 See also: [`/worktree`](./worktree.md)

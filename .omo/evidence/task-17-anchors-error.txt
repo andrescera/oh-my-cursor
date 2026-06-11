@@ -1,0 +1,51 @@
+# Task 17 — Preserved Anchor Re-Verification
+# Generated: 2026-06-11
+# All anchors from docs/internal/preserved-behaviors.md verified PRESENT after edits
+
+## Anchor Verification Results
+
+✓ prometheus-plan-brief.mdc:69
+  Match: "NEVER use `CreatePlan` / `cursor.create_plan` / Cursor's native plan tool..."
+  grep -n "NEVER use \`CreatePlan\`" rules/prometheus-plan-brief.mdc → line 69
+
+✓ agent-tool-restrictions.mdc:40
+  Match: "- **Forbidden:** Write (non-.md), Shell (implementation), StrReplace (source code), Task(worker/coordinator agents), CreatePlan"
+  grep -n "Forbidden:.*CreatePlan" rules/agent-tool-restrictions.mdc → line 40
+
+✓ agent-tool-restrictions.mdc:67
+  Match: "- **Forbidden:** Write (non-.md files), Shell (implementation commands), StrReplace (source code), Task (sub-agent dispatch), CreatePlan"
+  grep -n "Forbidden:.*CreatePlan" rules/agent-tool-restrictions.mdc → line 67
+
+✓ plan.md:187
+  Match: "> Use the `Write` tool. **DO NOT** use `CreatePlan` / `cursor.create_plan` / the native plan tool..."
+  grep -n "DO NOT.*CreatePlan" commands/plan.md → line 187
+
+✓ start-work.md:19
+  Match: "> No plan files found at `.cursor/plans/*.plan.md`. If you just ran `/plan` and saw the model emit..."
+  grep -n "If you just ran.*plan.*saw the model emit" commands/start-work.md → line 19
+
+✓ 19-known-sharp-edges.md:101
+  Match: "- **Non-deterministic placement:** `CreatePlan` sometimes writes to `~/.cursor/plans/`..."
+  grep -n "Non-deterministic placement.*CreatePlan" docs/cursor/19-known-sharp-edges.md → line 101
+
+✓ 19-known-sharp-edges.md:102
+  Match: "- **No hook events:** `CreatePlan` does not fire `preToolUse` or `postToolUse` hooks..."
+  grep -n "No hook events.*CreatePlan" docs/cursor/19-known-sharp-edges.md → line 102
+
+✓ 19-known-sharp-edges.md:103
+  Match: "- **Required approach:** Use `Write` to create plan files directly at `.cursor/plans/<name>.plan.md`..."
+  grep -n "Required approach.*Use.*Write" docs/cursor/19-known-sharp-edges.md → line 103
+
+✓ orchestrator-reference.mdc:223
+  Match: "2+ steps → TodoWrite immediately. Mark in_progress on dispatch, completed on success."
+  grep -n "2+ steps.*TodoWrite immediately" rules/orchestrator-reference.mdc → line 223
+
+✓ start-work.md:59
+  Match: "2. **Task breakdown (MANDATORY)** — Decompose every plan task into granular, implementation-level sub-steps..."
+  grep -n "Task breakdown (MANDATORY)" commands/start-work.md → line 59
+
+## Summary
+All 10 preserved anchors: PASS (10/10)
+No anchor was modified by Task 17 edits.
+Files edited by Task 17: commands/best-of-n.md, agents/atlas.md, agents/prometheus.md, commands/plan.md, automations/README.md
+None of these files contain preserved anchors (anchors live in prometheus-plan-brief.mdc, agent-tool-restrictions.mdc, start-work.md, 19-known-sharp-edges.md, orchestrator-reference.mdc).

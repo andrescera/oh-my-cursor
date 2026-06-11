@@ -1135,9 +1135,9 @@ Default planner behavior as defined in this document applies. Claude handles rea
 
 This agent's plan template and workflow are adapted from the oh-my-opencode project. Key alignment points:
 
-- **Plan template structure**: `../oh-my-openagent-original/src/agents/prometheus/plan-template.ts`
-- **Dependency matrix format**: `../oh-my-openagent-original/src/hooks/keyword-detector/ultrawork/planner.ts` (4-column: Task | Depends On | Blocks | Can Parallelize With)
-- **GPT-optimized variant**: `../oh-my-openagent-original/src/agents/prometheus/gpt.ts`
-- **Task system types**: `../oh-my-openagent-original/src/tools/task/types.ts` (Zod TaskObject with blocks/blockedBy)
+- **Plan template structure**: `src/agents/prometheus/plan-template.ts` in the oh-my-opencode reference repo
+- **Dependency matrix format**: `src/hooks/keyword-detector/ultrawork/planner.ts` in the oh-my-opencode reference repo (4-column: Task | Depends On | Blocks | Can Parallelize With)
+- **GPT-optimized variant**: `src/agents/prometheus/gpt.ts` in the oh-my-opencode reference repo
+- **Task system types**: `src/tools/task/types.ts` in the oh-my-opencode reference repo (Zod TaskObject with blocks/blockedBy)
 
 These are informational references for maintainers. The original repo is not a runtime dependency.

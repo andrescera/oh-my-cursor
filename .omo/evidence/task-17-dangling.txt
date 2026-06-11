@@ -1,0 +1,31 @@
+# Task 17 — Dangling Reference Verification & Fix Evidence
+# Generated: 2026-06-11
+
+## Per-Item Verification Table
+
+| # | Claim | File | Verified True? | Action Taken |
+|---|-------|------|----------------|--------------|
+| 1 | `best-of-n-runner` subagent_type doesn't exist | commands/best-of-n.md:18 | TRUE — no agents/best-of-n-runner.md in agents/ dir | FIXED: rewrote line to describe native Cursor feature; no subagent_type named |
+| 2 | agents/librarian.md context7 broken ref | agents/librarian.md:19 | FALSE POSITIVE — mcp.json:7 registers context7 at https://mcp.context7.com/mcp | CLOSED: no change needed |
+| 3 | agents/atlas.md dev-browser vs playwright ambiguity | agents/atlas.md:204 | TRUE — "dev-browser" is not a defined agent/skill in this repo | FIXED: replaced "dev-browser or playwright skill" with "playwright skill" |
+| 4 | agents/prometheus.md stale ../oh-my-openagent-original/ refs | agents/prometheus.md:1138-1141 | TRUE — directory doesn't exist at runtime; dead relative paths | FIXED: removed relative path prefix, kept description text with "in the oh-my-opencode reference repo" |
+| 5 | commands/plan.md:3 stale ../oh-my-openagent-original/ ref | commands/plan.md:3 | TRUE — dead relative path | FIXED: removed relative path, kept informational text |
+| 6 | rules/orchestrator.mdc missing multimodal-looker row | rules/orchestrator.mdc | FALSE — row already present at line 43 | CLOSED: no change needed |
+| 7 | automations/README.md:139 cloud agents clarification | automations/README.md:139 | TRUE — no mention that cloud agents don't read .cursor/rules/ | FIXED: added one clarifying sentence |
+
+## Post-Fix Grep Results
+
+### best-of-n-runner in commands/ agents/ rules/
+$ grep -rn "best-of-n-runner" commands/ agents/ rules/
+(no output — 0 matches)
+
+### oh-my-openagent-original in agents/ commands/ rules/
+$ grep -rn "oh-my-openagent-original" agents/ commands/ rules/
+(no output — 0 matches)
+
+## Files Changed
+1. commands/best-of-n.md — line 18: removed nonexistent subagent_type reference
+2. agents/atlas.md — line 204: removed "dev-browser or" from QA method
+3. agents/prometheus.md — lines 1138-1141: removed dead ../oh-my-openagent-original/ path prefix
+4. commands/plan.md — line 3: removed dead ../oh-my-openagent-original/ path prefix
+5. automations/README.md — line 139: added cloud agents clarification sentence

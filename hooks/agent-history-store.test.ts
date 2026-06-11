@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it } from "bun:test"
-import { appendFileSync, mkdtempSync, rmSync } from "node:fs"
+import { appendFileSync, mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from "node:fs"
 import { tmpdir } from "node:os"
 import { join } from "node:path"
 import { AgentHistoryStore, recordHistoryEntry } from "./agent-history-store"
@@ -202,5 +202,32 @@ describe("AgentHistoryStore", () => {
 
     expect(entries.some((e) => e.agentId === "schema-drift")).toBe(false)
     expect(entries.map((e) => e.agentId)).toEqual(expect.arrayContaining(["valid-1", "valid-2"]))
+  })
+
+  it("writes exactly N entries when recording N rapidly, leaving no .tmp files", () => {
+    for (let i = 0; i < 50; i++) {
+      store.record(makeEntry({ agentId: `rapid-${i}`, startTime: 20_000 + i, completedAt: 20_050 + i }))
+    }
+
+    const lines = readFileSync(tempFile, "utf-8").trim().split("\n")
+    expect(lines).toHaveLength(50)
+    expect(store.query({})).toHaveLength(50)
+
+    const leftovers = readdirSync(tempDir).filter((name) => name.includes(".tmp"))
+    expect(leftovers).toEqual([])
+  })
+
+  it("recovers and writes valid output when the existing file is corrupt", () => {
+    writeFileSync(tempFile, "}{ not json at all\n\u0000\u0000garbage", "utf-8")
+
+    expect(() => store.record(makeEntry({ agentId: "recovered", startTime: 30_000, completedAt: 30_100 }))).not.toThrow()
+
+    const lines = readFileSync(tempFile, "utf-8").trim().split("\n")
+    expect(lines).toHaveLength(1)
+    expect(JSON.parse(lines[0]!).agentId).toBe("recovered")
+
+    const entries = store.query({})
+    expect(entries).toHaveLength(1)
+    expect(entries[0]?.agentId).toBe("recovered")
   })
 })

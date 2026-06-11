@@ -1,5 +1,6 @@
-import { appendFileSync, existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs"
-import { dirname, join } from "node:path"
+import { existsSync, readFileSync } from "node:fs"
+import { join } from "node:path"
+import { writeFileAtomic } from "./lib/atomic-file"
 import { redactSecrets } from "./secret-redactor"
 import type { AgentHistoryEntry, AgentHistoryStatus } from "./types"
 
@@ -234,15 +235,10 @@ export class AgentHistoryStore {
       maxBytes: DEFAULT_MAX_BYTES,
     })
 
-    // Bad input should throw above; disk I/O should never crash the daemon.
+    // Single atomic temp+rename (not append+rewrite): a crash mid-write can no
+    // longer leave a raw appended entry duplicated against the pruned file.
     try {
-      const dirPath = dirname(this.filePath)
-      if (!existsSync(dirPath)) mkdirSync(dirPath, { recursive: true })
-
-      const chunk = JSON.stringify(normalized) + "\n"
-      appendFileSync(this.filePath, chunk)
-
-      writeFileSync(this.filePath, jsonlString(pruned), "utf-8")
+      writeFileAtomic(this.filePath, jsonlString(pruned))
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error)
       console.warn(`[oh-my-cursor][agent-history] failed to persist entry: ${message}`)

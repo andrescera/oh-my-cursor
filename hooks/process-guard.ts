@@ -14,11 +14,25 @@ export function isProcessAlive(pid: number): boolean {
   }
 }
 
-export function cleanupStaleProcess(
+const STALE_KILL_WAIT_MS = 2000
+const STALE_KILL_POLL_MS = 50
+
+function unlinkTolerant(path: string): void {
+  try {
+    unlinkSync(path)
+  } catch (err) {
+    // Tolerate ESRCH/ENOENT — the file (or process) is already gone, which is
+    // exactly the post-condition we want.
+    const code = (err as { code?: string } | null)?.code
+    if (code !== "ENOENT" && code !== "ESRCH") throw err
+  }
+}
+
+export async function cleanupStaleProcess(
   pidFile: string,
   portFile?: string,
   label = "process",
-): { cleaned: boolean; killedPid?: number } {
+): Promise<{ cleaned: boolean; killedPid?: number }> {
   if (!existsSync(pidFile)) return { cleaned: false }
 
   try {
@@ -26,7 +40,7 @@ export function cleanupStaleProcess(
     const pid = parseInt(pidStr, 10)
     if (isNaN(pid)) {
       console.log(`[oh-my-cursor] Removing invalid ${label} PID file`)
-      unlinkSync(pidFile)
+      unlinkTolerant(pidFile)
       return { cleaned: true }
     }
 
@@ -34,11 +48,26 @@ export function cleanupStaleProcess(
     if (alive) {
       console.log(`[oh-my-cursor] Killing stale ${label} (PID ${pid})`)
       try { process.kill(pid, "SIGTERM") } catch {}
+      // Wait for the process to actually exit before unlinking its PID file. A
+      // successor that unlinks the PID file while the predecessor is still alive
+      // re-opens the same startup race we are trying to eliminate.
+      const deadline = Date.now() + STALE_KILL_WAIT_MS
+      while (isProcessAlive(pid) && Date.now() < deadline) {
+        await sleep(STALE_KILL_POLL_MS)
+      }
+      if (isProcessAlive(pid)) {
+        console.warn(`[oh-my-cursor] Stale ${label} (PID ${pid}) still alive after ${STALE_KILL_WAIT_MS}ms; escalating to SIGKILL`)
+        try { process.kill(pid, "SIGKILL") } catch {}
+        const killDeadline = Date.now() + STALE_KILL_POLL_MS * 6
+        while (isProcessAlive(pid) && Date.now() < killDeadline) {
+          await sleep(STALE_KILL_POLL_MS)
+        }
+      }
     }
 
-    unlinkSync(pidFile)
+    unlinkTolerant(pidFile)
     if (portFile) {
-      try { if (existsSync(portFile)) unlinkSync(portFile) } catch {}
+      try { if (existsSync(portFile)) unlinkTolerant(portFile) } catch {}
     }
     return { cleaned: true, killedPid: alive ? pid : undefined }
   } catch (err) {

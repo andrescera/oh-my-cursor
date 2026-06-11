@@ -28,6 +28,7 @@ import { getDefaultAgentHistoryStore } from "./agent-history-store"
 import { createBudgetMiddleware } from "./lib/budget-middleware"
 import { createBackgroundWorker } from "./lib/background-worker"
 import { createMetrics } from "./lib/metrics"
+import { acquireStartupLock, releaseStartupLock } from "./lib/startup-lock"
 
 const HOT_PATHS = new Set([
   "/preToolUse",
@@ -314,6 +315,7 @@ async function gracefulShutdown(reason: string): Promise<void> {
   removePidFile()
   removePortFile()
   removeHeartbeatFile()
+  releaseStartupLock(DAEMON_PROJECT_ROOT)
 
   console.log("[oh-my-cursor] Shutdown complete")
   process.exit(0)
@@ -360,8 +362,6 @@ const handlers: HandlerMap = {
     }
   },
 }
-
-cleanupStaleProcess(PID_FILE, PORT_FILE, "daemon")
 
 const fetchHandler = async (req: Request) => {
   const url = new URL(req.url)
@@ -872,6 +872,28 @@ const fetchHandler = async (req: Request) => {
 const envPort = ENV_PORT ? parseInt(ENV_PORT) : NaN
 let actualPort = Number.isNaN(envPort) ? DEFAULT_PORT : envPort
 
+// Per-project singleton gate. Three concurrent `bun daemon.ts` invocations are
+// three OS processes racing the same PID/port files; O_EXCL on a project-scoped
+// lock makes exactly one of them the winner. Losers defer to a healthy daemon
+// and exit cleanly instead of killing it.
+const lockOutcome = await acquireStartupLock(DAEMON_PROJECT_ROOT, actualPort)
+if (!lockOutcome.acquired) {
+  if (lockOutcome.reason === "already-running") {
+    console.log(
+      `[oh-my-cursor] Daemon already running for project ${DAEMON_PROJECT_ROOT} (PID ${lockOutcome.holder.pid}); exiting cleanly.`,
+    )
+  } else {
+    console.log(
+      `[oh-my-cursor] Lost startup race for project ${DAEMON_PROJECT_ROOT}; another daemon is starting. Exiting cleanly.`,
+    )
+  }
+  process.exit(0)
+}
+if (lockOutcome.reason === "stale-takeover") {
+  console.warn(`[oh-my-cursor] Took over stale daemon lock at ${lockOutcome.path}`)
+}
+process.on("exit", () => releaseStartupLock(DAEMON_PROJECT_ROOT))
+
 if (ENV_PORT) {
   console.log(`[oh-my-cursor] Hook daemon starting on port ${actualPort} (env override)...`)
   try {
@@ -898,6 +920,8 @@ if (ENV_PORT) {
     process.exit(1)
   }
 }
+
+await cleanupStaleProcess(PID_FILE, PORT_FILE, "daemon")
 
 writePidFile()
 writePortFile(actualPort)

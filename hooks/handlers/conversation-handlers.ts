@@ -47,7 +47,7 @@ export function createConversationHandlers(
     "/health": (input) => {
       const TWO_HOURS = 2 * 60 * 60 * 1000
       const now = Date.now()
-      for (const [id, conversation] of conversations) {
+      for (const [id, conversation] of [...conversations]) {
         const age = now - new Date(conversation.startedAt).getTime()
         if (age > TWO_HOURS) {
           conversations.delete(id)

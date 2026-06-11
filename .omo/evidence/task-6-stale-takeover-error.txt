@@ -1,0 +1,19 @@
+=== Task 6 QA: stale-lock takeover (dead holder) ===
+date: 2026-06-11T12:55:18-05:00
+lock: /tmp/oh-my-cursor-036722ca.lock
+
+--- planted STALE lock (holder pid 2000000000 is guaranteed dead) ---
+{"pid":2000000000,"startedAt":"2020-01-01T00:00:00.000Z"}
+
+--- daemon startup log (expect 'Took over stale daemon lock', then 'ready') ---
+[oh-my-cursor] Took over stale daemon lock at /tmp/oh-my-cursor-036722ca.lock
+[oh-my-cursor] Hook daemon ready on http://localhost:28847
+
+--- GET /health after takeover ---
+{"status":"ok","conversations":1,"conversationCount":1,"uptime":3.0122741179999997,"toolCalls":0,"exploreCounts":0,"workerCounts":0,"ralphActive":false,"continuationLoopsActive":0,"allDispatchCounts":{},"fallbackConversationsCreatedSinceBoot":0}
+
+
+--- lock now owned by the new daemon (pid replaced 2000000000) ---
+{"pid":3055937,"startedAt":"2026-06-11T17:55:15.762Z"}
+
+RESULT: PASS (daemon took over stale lock and is serving)

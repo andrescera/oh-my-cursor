@@ -7,6 +7,69 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.8.0] - 2026-06-11
+
+### Added
+
+#### Audit remediation — context delivery, daemon lifecycle, state isolation, security hardening, installer fixes
+
+**Context delivery (Task 8)**
+- Single-channel context delivery: `/beforeSubmitPrompt` now returns context exclusively via `additional_context` field (removed duplicate `user_message` channel that was mutating the user's literal prompt).
+- `contextCollector.consume()` wired at the top of `/beforeSubmitPrompt` to catch context registered on observe-only events (`/subagentStop`) or non-deny `/preToolUse` paths before the turn ends.
+- Rehydration cleanup: `getOrCreateConversation` now calls `contextCollector.clear(conversationId)` when loading persisted state, ensuring rehydrated conversations start with a clean advisory slate.
+
+**Daemon lifecycle (Task 6)**
+- Daemon singleton lock per project: `startup-lock.ts` enforces one daemon per `projectRoot` via atomic file lock, preventing port conflicts and stale process accumulation.
+- Graceful shutdown: `/shutdown` endpoint, `process.on("beforeExit")` backstop, and `flushNow()` awaitable path ensure all pending events are persisted before daemon exit.
+
+**Zombie state cleanup (Task 9)**
+- Atomic continuation state reset: `activePlan` and `boulderState` cleared atomically with a `continuationStoppedAt` tombstone on `/stop` when continuation is halted.
+- `clearContinuationDurably()` + `forceFlush()` ensure state changes are persisted immediately, preventing stale state from leaking into the next session.
+
+**State isolation and persistence (Tasks 10, 11, 12, 13)**
+- Atomic state persistence: all writes use `atomic-file.ts` (write-to-temp, rename-on-success) to prevent corruption on crash.
+- Project-scoped state keys: conversation state files now use hashed project root in filename (`{projectRoot_hash}.{conversationId}.json`), preventing cross-project state leakage.
+- Automatic state-file migration: legacy flat-named files are migrated to project-scoped names on first load (grace path: empty `projectRoot` loads legacy files and writes back under new hashed name).
+- Cross-conversation isolation guards: `loadOne` enforces `projectRoot` and `daemonBootId` matching, refusing to rehydrate state from a different project or boot cycle.
+
+**Hook response contract alignment (Task 14)**
+- Cursor response fields standardized: `/beforeShellExecution` and `/beforeReadFile` deny responses now carry `decision: "deny"` + `user_message` + `agent_message` (where applicable) per Cursor's contract.
+- `workspaceOpen` routed and returns empty object (no 404).
+- Fail-open vs fail-closed semantics: observe routes (e.g., `/postToolUse`) fail open with 200 `{}` on handler error; guard routes (e.g., `/preToolUse`) keep explicit 500 errors.
+
+**Security hardening (Task 15)**
+- Localhost-only token auth: diagnostic routes (`/session-log`, `/agentHistory`, `/config`, `/getBackgroundTasks`) require Bearer token or `?token=` query param; token stored at `~/.config/oh-my-cursor/daemon.token` (0600 perms).
+- CORS removed: no `Access-Control-Allow-Origin` header on any response (strict same-origin policy).
+- Blocked command logging: dangerous shell commands logged to session event stream with `action: "blocked"` for audit trail.
+- File permissions: state files written with 0600 (owner read/write only).
+
+**Installer fixes (Task 16)**
+- Test file exclusion: `install.sh` and `install.ps1` now exclude `*.test.ts` files from the plugin bundle (prevents test dependencies from shipping).
+- Windows config seeding: `install.ps1` creates `~/.config/oh-my-cursor/config.jsonc` with defaults on fresh install (parity with bash).
+- Port templating: `hooks.json` port references use `{PORT}` placeholder, substituted at daemon startup (supports custom ports via `OH_MY_CURSOR_PORT` env var).
+- Fatal fresh-install failure: if `bun install` or `vite build` fails on fresh/force install, abort cleanly before touching `$PLUGIN_DIR` (update installs preserve existing bundle on build failure).
+
+**Documentation corrections (Task 17)**
+- Hook event counts reconciled: 21 canonical / 19 wired (was 20).
+- Broken references fixed: `docs/cursor/12-plugin-system.md` updated with correct hook counts and worktree docs aligned.
+- Token file location documented: `~/.config/oh-my-cursor/daemon.token` (new in Task 15).
+- State-file migration documented as automatic (grace path, no user action required).
+
+### Changed
+- `ConversationState` now includes `continuationStoppedAt` field (Task 9) for atomic continuation cleanup.
+- State persistence uses project-scoped filenames with automatic legacy migration (Tasks 10-13).
+- `/beforeSubmitPrompt` returns context exclusively via `additional_context` (Task 8).
+- Daemon enforces per-project singleton lock on startup (Task 6).
+- Hook response fields aligned to Cursor contract (Task 14).
+- Diagnostic routes require token auth (Task 15).
+
+### Fixed
+- Context duplication: single-channel delivery eliminates duplicate advisories in user's prompt (Task 8).
+- Zombie state: `activePlan` and `boulderState` now cleared atomically on continuation stop (Task 9).
+- Cross-project state leakage: project-scoped state keys prevent conversation state from bleeding across projects (Tasks 10-13).
+- Daemon port conflicts: startup lock ensures one daemon per project (Task 6).
+- Installer test pollution: test files excluded from plugin bundle (Task 16).
+
 ## [0.7.0] - 2026-05-29
 
 ### Added

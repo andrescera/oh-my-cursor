@@ -1,8 +1,0 @@
-Fix C — getOrCreateConversation rehydration path clears the contextCollector
-
-registered stale advisory for task8-C-a78ab449-4d16-478c-9925-55523255e7ae
-hasPending BEFORE rehydration            = true
-rehydrated object === persisted template = true  (confirms loadOne/rehydration branch taken)
-hasPending AFTER rehydration             = false
-
-PASS — contextCollector.clear(id) ran on the rehydration branch; conversation starts clean

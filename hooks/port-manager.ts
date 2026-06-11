@@ -1,4 +1,5 @@
-import { existsSync, readFileSync, writeFileSync } from "node:fs"
+import { existsSync, readFileSync } from "node:fs"
+import { writeFileAtomic } from "./lib/atomic-file"
 
 const DEFAULT_PORTS_FILE = "/tmp/oh-my-cursor-ports.json"
 
@@ -16,7 +17,7 @@ export type PortCoordination = {
 }
 
 export function writePortCoordination(ports: PortCoordination): void {
-  writeFileSync(getPortsFile(), JSON.stringify(ports, null, 2), "utf-8")
+  writeFileAtomic(getPortsFile(), JSON.stringify(ports, null, 2))
 }
 
 export function readPortCoordination(): PortCoordination | null {

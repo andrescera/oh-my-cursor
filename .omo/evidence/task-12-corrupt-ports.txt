@@ -1,0 +1,47 @@
+Task 12 — Corrupt Ports File QA Evidence
+Generated: 2026-06-11
+
+## QA Scenario: Corrupt ports file → daemon starts cleanly
+
+### Setup
+- Ports file: /tmp/omc-qa-12-ports.json
+- Initial content: {invalid json  (deliberately corrupt)
+- Daemon port: 28854 (isolated, never 27847)
+- HOME: /tmp/omc-qa-12 (isolated state dir)
+
+### Daemon startup output
+[oh-my-cursor] Hook daemon starting on port 28854 (env override)...
+[oh-my-cursor] PID file written: /tmp/oh-my-cursor-daemon.pid (PID 3236381)
+[oh-my-cursor] Port file written: /tmp/oh-my-cursor-daemon.port (port 28854)
+[oh-my-cursor] Hook daemon ready on http://localhost:28854
+
+### Health check response
+{"status":"ok","conversations":0,"conversationCount":0,"uptime":2.014064885,"toolCalls":0,...}
+
+### Ports file after daemon start (rewritten with valid JSON via atomic write)
+{
+  "daemon": 28854,
+  "sidecar": 28855,
+  "updatedAt": "2026-06-11T18:07:48.466Z"
+}
+
+### Verdict
+PASS — daemon started cleanly with corrupt ports file; readPortCoordination returned null
+(no crash); daemon rewrote ports file with valid JSON via atomic write.
+
+## Unit test results (port-manager.test.ts) — 15/15 pass
+- readPortCoordination: missing file → null
+- readPortCoordination: corrupt JSON → null
+- readPortCoordination: truncated JSON → null
+- readPortCoordination: missing required fields → null
+- readPortCoordination: valid JSON → parsed object
+- writePortCoordination: writes valid JSON
+- writePortCoordination: no .tmp files left behind (atomic write)
+- writePortCoordination: overwrites corrupt file with valid JSON
+- env-injectable: writes to custom path (OH_MY_CURSOR_PORTS_FILE)
+- env-injectable: corrupt file at custom path → null
+- getDaemonPort: no file → default
+- getDaemonPort: valid file → file port
+- getDaemonPort: corrupt file → default
+- getSidecarPort: no file → default
+- getSidecarPort: valid file → daemon+1

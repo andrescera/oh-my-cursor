@@ -11,14 +11,35 @@ function getPluginRoot(): string {
   return resolve(import.meta.dir, "..", "..")
 }
 
-const MCP_PORT_FILE = "/tmp/oh-my-cursor-sidecar.port"
-const MCP_PID_FILE = "/tmp/oh-my-cursor-sidecar.pid"
-const DAEMON_PORT_FILE = "/tmp/oh-my-cursor-daemon.port"
+const SIDECAR_PORT_BASENAME = "oh-my-cursor-sidecar.port"
+const SIDECAR_PID_BASENAME = "oh-my-cursor-sidecar.pid"
+const DAEMON_PORT_BASENAME = "oh-my-cursor-daemon.port"
+
+function stateDir(): string {
+  return process.env.OH_MY_CURSOR_STATE_DIR ?? "/tmp"
+}
+function mcpPortFile(): string {
+  return resolve(stateDir(), SIDECAR_PORT_BASENAME)
+}
+function mcpPidFile(): string {
+  return resolve(stateDir(), SIDECAR_PID_BASENAME)
+}
+function daemonPortFile(): string {
+  return resolve(stateDir(), DAEMON_PORT_BASENAME)
+}
+
+// Gates the destructive bootstrap below (kills live sidecar PID, clobbers
+// port/pid files, rewrites shared ports.json). Removing this guard re-leaks
+// test runs into live state. Bun sets NODE_ENV=test; BUN_TEST=1 is explicit.
+export function isTestMode(): boolean {
+  return process.env.BUN_TEST === "1" || process.env.NODE_ENV === "test"
+}
 
 function resolvePreferredMcpPortFromDaemonFile(fallbackMcpPort: number): number {
   try {
-    if (!existsSync(DAEMON_PORT_FILE)) return fallbackMcpPort
-    const raw = readFileSync(DAEMON_PORT_FILE, "utf-8").trim()
+    const file = daemonPortFile()
+    if (!existsSync(file)) return fallbackMcpPort
+    const raw = readFileSync(file, "utf-8").trim()
     const daemonPort = parseInt(raw, 10)
     if (Number.isFinite(daemonPort) && daemonPort >= 1 && daemonPort <= 65535) {
       return daemonPort + 1
@@ -31,12 +52,13 @@ function resolvePreferredMcpPortFromDaemonFile(fallbackMcpPort: number): number 
 
 
 function writePortFile(port: number): void {
-  writeFileSync(MCP_PORT_FILE, String(port), "utf-8")
+  writeFileSync(mcpPortFile(), String(port), "utf-8")
 }
 
 function removePortFile(): void {
   try {
-    if (existsSync(MCP_PORT_FILE)) unlinkSync(MCP_PORT_FILE)
+    const file = mcpPortFile()
+    if (existsSync(file)) unlinkSync(file)
   } catch {
     // best-effort cleanup
   }
@@ -49,16 +71,18 @@ export async function startSidecar(
   const envMcpPort = process.env.OH_MY_CURSOR_MCP_PORT
   const defaultMcpPort = config.daemon.mcp_port
 
-  cleanupStaleProcess(MCP_PID_FILE, MCP_PORT_FILE, "sidecar")
+  const testMode = isTestMode()
+
+  if (!testMode) await cleanupStaleProcess(mcpPidFile(), mcpPortFile(), "sidecar")
 
   process.on("SIGTERM", () => {
     removePortFile()
-    try { unlinkSync(MCP_PID_FILE) } catch {}
+    try { unlinkSync(mcpPidFile()) } catch {}
     process.exit(0)
   })
   process.on("SIGINT", () => {
     removePortFile()
-    try { unlinkSync(MCP_PID_FILE) } catch {}
+    try { unlinkSync(mcpPidFile()) } catch {}
     process.exit(0)
   })
 
@@ -98,12 +122,14 @@ export async function startSidecar(
     }
   }
 
-  writePortFile(actualMcpPort)
-  writeFileSync(MCP_PID_FILE, String(process.pid), "utf-8")
+  if (!testMode) {
+    writePortFile(actualMcpPort)
+    writeFileSync(mcpPidFile(), String(process.pid), "utf-8")
 
-  const coord = readPortCoordination()
-  if (coord) {
-    writePortCoordination({ ...coord, sidecar: actualMcpPort, updatedAt: new Date().toISOString() })
+    const coord = readPortCoordination()
+    if (coord) {
+      writePortCoordination({ ...coord, sidecar: actualMcpPort, updatedAt: new Date().toISOString() })
+    }
   }
 
   console.log(`[oh-my-cursor] MCP sidecar ready on http://localhost:${actualMcpPort}`)

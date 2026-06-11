@@ -1,0 +1,22 @@
+# Task 5 — No-leak evidence (echo test-from-mcp-sidecar must NOT reach live surfaces)
+
+Symptom under repair: 'echo test-from-mcp-sidecar' from mcp-sidecar.test.ts:206
+leaking into the live 'oh-my-cursor' tmux session / live daemon.
+
+## Live 'oh-my-cursor' tmux pane scrollback grep for the test string (expect 0)
+occurrences: 0
+
+## Live daemon log grep for the test string (expect 0)
+occurrences: 0
+
+## Where the echo actually went (isolated, per-pid session)
+interactive_bash now targets OH_MY_CURSOR_TMUX_SESSION=omc-test-<pid>, created and
+killed inside the test (afterAll). The live 'oh-my-cursor' session is never a target.
+Sidecar bound to a random port (46836 this run), never the live 27848.
+
+## Regression tests (from task-5-test-run.txt)
+(pass) test harness isolation (regression) > suite never mutates the live /tmp/oh-my-cursor-ports.json [0.34ms]
+(pass) test harness isolation (regression) > interactive_bash falls back to the isolated session, never live 'oh-my-cursor' [502.22ms]
+(pass) test harness isolation (regression) > production default tmux session stays 'oh-my-cursor' when unisolated [501.42ms]
+
+VERDICT: NO LEAK — test string absent from all live surfaces. PASS

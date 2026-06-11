@@ -1,0 +1,42 @@
+# Task 5 — Isolation evidence (ports + tmux, before/after bun test mcp-sidecar.test.ts)
+
+## /tmp/oh-my-cursor-ports.json checksum
+BEFORE sha256: 1da74bd28bbbd01c229c04191ed50627ba4ea3f92cffe5db353ec6ec4cfed09d
+AFTER  sha256: 1da74bd28bbbd01c229c04191ed50627ba4ea3f92cffe5db353ec6ec4cfed09d
+VERDICT: IDENTICAL — live ports file UNMODIFIED by the test run. PASS
+
+## ports.json mtime
+BEFORE: 2026-06-11 11:59:30.790141699 -0500
+AFTER : 2026-06-11 11:59:30.790141699 -0500
+
+## Live MCP sidecar process (must NOT be killed by the test)
+sidecar.pid: 1447736 -> YES (pid 1447736 still running)
+
+## Sidecar bound port during test (from test-run log; must be random, NOT 27848)
+[oh-my-cursor] MCP sidecar ready on http://localhost:46836
+
+## tmux sessions BEFORE
+Work: 1 windows (created Tue Jun  9 16:51:03 2026)
+aoe_Ceralive_Stack_76b06960: 1 windows (created Thu Jun 11 08:53:04 2026)
+aoe_Khitans_29f43706: 1 windows (created Thu Jun 11 10:03:45 2026) (attached)
+aoe_Oh-my-opencode_24861e55: 1 windows (created Wed Jun 10 20:23:00 2026)
+aoe_Theseus-focusing_cb6b4791: 1 windows (created Wed Jun 10 07:31:56 2026)
+aoe_Tickets_9ed07bff: 1 windows (created Wed Jun 10 13:07:34 2026)
+aoe_theseus-finstacart_ed53bc3b: 1 windows (created Tue Jun  9 23:33:49 2026)
+dbpush: 1 windows (created Tue Jun  9 23:54:40 2026)
+oh-my-cursor: 1 windows (created Thu Jun 11 10:09:15 2026)
+-- 'oh-my-cursor' pane tail (read-only capture):
+
+## tmux sessions AFTER
+Work: 1 windows (created Tue Jun  9 16:51:03 2026)
+aoe_Ceralive_Stack_76b06960: 1 windows (created Thu Jun 11 08:53:04 2026)
+aoe_Khitans_29f43706: 1 windows (created Thu Jun 11 10:03:45 2026) (attached)
+aoe_Oh-my-opencode_24861e55: 1 windows (created Wed Jun 10 20:23:00 2026)
+aoe_Theseus-focusing_cb6b4791: 1 windows (created Wed Jun 10 07:31:56 2026)
+aoe_Tickets_9ed07bff: 1 windows (created Wed Jun 10 13:07:34 2026)
+aoe_theseus-finstacart_ed53bc3b: 1 windows (created Tue Jun  9 23:33:49 2026)
+dbpush: 1 windows (created Tue Jun  9 23:54:40 2026)
+oh-my-cursor: 1 windows (created Thu Jun 11 10:09:15 2026)
+
+## Dedicated 'omc-test-*' sessions left behind (afterAll must clean up; expect 0)
+count: 0

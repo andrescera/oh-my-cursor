@@ -1,4 +1,4 @@
-import { startSidecar } from "./mcp/runtime"
+import { startSidecar, isTestMode } from "./mcp/runtime"
 import { startDaemonHealthMonitor, getDaemonHealthy } from "./mcp/daemon-health"
 import { getOrCreateSession, isUnknownSession } from "./mcp/server"
 import { createBudgetMiddleware } from "./lib/budget-middleware"
@@ -14,7 +14,7 @@ const TOOL_NAMES = [
   "oh_my_cursor_status",
 ] as const
 
-startDaemonHealthMonitor()
+if (!isTestMode()) startDaemonHealthMonitor()
 
 const budgetMiddleware = createBudgetMiddleware({
   onSlowHandler: (ev) => {

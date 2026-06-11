@@ -1,12 +1,25 @@
-import { describe, test, expect, beforeAll } from "bun:test"
+import { afterAll, beforeAll, describe, expect, test } from "bun:test"
+import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs"
 import { Client } from "@modelcontextprotocol/sdk/client/index.js"
 import { InMemoryTransport } from "@modelcontextprotocol/sdk/inMemory.js"
 
 import { buildServer } from "./mcp/server"
 import { getDaemonPort } from "./port-manager"
+import { createInteractiveBash } from "./mcp/tools/interactive-bash"
+import { spawnWithTimeout } from "./lib/spawn-with-timeout"
+import type { SpawnWithTimeoutResult } from "./lib/spawn-with-timeout"
 
-const PORT = 47850
+const PORT = 45000 + Math.floor(Math.random() * 5000)
 const BASE = `http://localhost:${PORT}`
+
+const TEST_TMUX_SESSION = `omc-test-${process.pid}`
+const TEST_STATE_DIR = `/tmp/omc-test-${process.pid}`
+const TEST_PORTS_FILE = `${TEST_STATE_DIR}/ports.json`
+const REAL_PORTS_FILE = "/tmp/oh-my-cursor-ports.json"
+
+const realPortsBefore = existsSync(REAL_PORTS_FILE)
+  ? readFileSync(REAL_PORTS_FILE, "utf-8")
+  : null
 
 async function harness() {
   const [clientT, serverT] = InMemoryTransport.createLinkedPair()
@@ -17,9 +30,35 @@ async function harness() {
 }
 
 beforeAll(async () => {
+  process.env.BUN_TEST = "1"
   process.env.OH_MY_CURSOR_MCP_PORT = String(PORT)
+  process.env.OH_MY_CURSOR_TMUX_SESSION = TEST_TMUX_SESSION
+  process.env.OH_MY_CURSOR_STATE_DIR = TEST_STATE_DIR
+  process.env.OH_MY_CURSOR_PORTS_FILE = TEST_PORTS_FILE
+
+  mkdirSync(TEST_STATE_DIR, { recursive: true })
+  writeFileSync(
+    TEST_PORTS_FILE,
+    JSON.stringify({ daemon: 27847, sidecar: 27848, updatedAt: new Date().toISOString() }),
+    "utf-8",
+  )
+
   await import("./mcp-sidecar.ts")
   await Bun.sleep(500)
+})
+
+afterAll(async () => {
+  try {
+    await spawnWithTimeout(["tmux", "kill-session", "-t", TEST_TMUX_SESSION], { timeoutMs: 500 })
+  } catch {}
+  try {
+    rmSync(TEST_STATE_DIR, { recursive: true, force: true })
+  } catch {}
+  delete process.env.BUN_TEST
+  delete process.env.OH_MY_CURSOR_MCP_PORT
+  delete process.env.OH_MY_CURSOR_TMUX_SESSION
+  delete process.env.OH_MY_CURSOR_STATE_DIR
+  delete process.env.OH_MY_CURSOR_PORTS_FILE
 })
 
 describe("mcp-sidecar via SDK Client", () => {
@@ -436,5 +475,58 @@ describe("mcp-sidecar HTTP layer", () => {
       expect(body.error).toMatchObject({ code: -32000, message: "Session not found" })
       expect(body.id).toBeNull()
     })
+  })
+})
+
+function recordingSpawn(calls: string[][]): typeof spawnWithTimeout {
+  return (async (args: string[]) => {
+    calls.push(args)
+    return {
+      exitCode: 0,
+      stdout: "",
+      stderr: "",
+      timedOut: false,
+      durationMs: 0,
+    } satisfies SpawnWithTimeoutResult
+  }) as typeof spawnWithTimeout
+}
+
+function tmuxTargets(calls: string[][]): string[] {
+  return calls.filter((a) => a.includes("-t")).map((a) => a[a.indexOf("-t") + 1])
+}
+
+describe("test harness isolation (regression)", () => {
+  test("suite never mutates the live /tmp/oh-my-cursor-ports.json", () => {
+    expect(process.env.OH_MY_CURSOR_PORTS_FILE).toBe(TEST_PORTS_FILE)
+    expect(process.env.OH_MY_CURSOR_PORTS_FILE).not.toBe(REAL_PORTS_FILE)
+    const realPortsAfter = existsSync(REAL_PORTS_FILE)
+      ? readFileSync(REAL_PORTS_FILE, "utf-8")
+      : null
+    expect(realPortsAfter).toBe(realPortsBefore)
+  })
+
+  test("interactive_bash falls back to the isolated session, never live 'oh-my-cursor'", async () => {
+    const calls: string[][] = []
+    const handler = createInteractiveBash(recordingSpawn(calls))
+    await handler({ command: "echo test-from-mcp-sidecar" })
+    const targets = tmuxTargets(calls)
+    expect(targets.length).toBeGreaterThan(0)
+    expect(targets.every((t) => t === TEST_TMUX_SESSION)).toBe(true)
+    expect(targets).not.toContain("oh-my-cursor")
+  })
+
+  test("production default tmux session stays 'oh-my-cursor' when unisolated", async () => {
+    const prev = process.env.OH_MY_CURSOR_TMUX_SESSION
+    delete process.env.OH_MY_CURSOR_TMUX_SESSION
+    try {
+      const calls: string[][] = []
+      const handler = createInteractiveBash(recordingSpawn(calls))
+      await handler({ command: "echo prod-default" })
+      const targets = tmuxTargets(calls)
+      expect(targets.length).toBeGreaterThan(0)
+      expect(targets.every((t) => t === "oh-my-cursor")).toBe(true)
+    } finally {
+      if (prev !== undefined) process.env.OH_MY_CURSOR_TMUX_SESSION = prev
+    }
   })
 })

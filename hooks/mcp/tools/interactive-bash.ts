@@ -54,7 +54,8 @@ export function createInteractiveBash(
 ) {
   return async function handleInteractiveBash(args: HandlerArgs) {
     const command = args.command
-    const sessionName = args.session_name ?? "oh-my-cursor"
+    const sessionName =
+      args.session_name ?? process.env.OH_MY_CURSOR_TMUX_SESSION ?? "oh-my-cursor"
 
     try {
       const checkSession = await spawn(

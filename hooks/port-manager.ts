@@ -1,6 +1,13 @@
 import { existsSync, readFileSync, writeFileSync } from "node:fs"
 
-const PORTS_FILE = "/tmp/oh-my-cursor-ports.json"
+const DEFAULT_PORTS_FILE = "/tmp/oh-my-cursor-ports.json"
+
+// Must read the env per call (not a module const): tests set the override
+// AFTER importing this module, and that timing is what isolates them from the
+// live /tmp/oh-my-cursor-ports.json. Folding this into a const re-leaks.
+function getPortsFile(): string {
+  return process.env.OH_MY_CURSOR_PORTS_FILE ?? DEFAULT_PORTS_FILE
+}
 
 export type PortCoordination = {
   daemon: number
@@ -9,13 +16,14 @@ export type PortCoordination = {
 }
 
 export function writePortCoordination(ports: PortCoordination): void {
-  writeFileSync(PORTS_FILE, JSON.stringify(ports, null, 2), "utf-8")
+  writeFileSync(getPortsFile(), JSON.stringify(ports, null, 2), "utf-8")
 }
 
 export function readPortCoordination(): PortCoordination | null {
   try {
-    if (!existsSync(PORTS_FILE)) return null
-    const raw = readFileSync(PORTS_FILE, "utf-8")
+    const portsFile = getPortsFile()
+    if (!existsSync(portsFile)) return null
+    const raw = readFileSync(portsFile, "utf-8")
     const parsed = JSON.parse(raw) as PortCoordination
     if (typeof parsed.daemon !== "number" || typeof parsed.sidecar !== "number") return null
     return parsed

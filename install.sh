@@ -143,8 +143,15 @@ stop_daemon() {
   local port
   port="$(cat /tmp/oh-my-cursor-daemon.port 2>/dev/null || echo "$DEFAULT_DAEMON_PORT")"
 
-  # Graceful shutdown via HTTP
-  if curl -s --max-time 3 -X POST "http://localhost:${port}/shutdown" &>/dev/null; then
+  local token
+  token="$(cat "$HOME/.config/oh-my-cursor/daemon.token" 2>/dev/null || true)"
+  local auth=()
+  if [[ -n "$token" ]]; then
+    auth=(-H "Authorization: Bearer $token")
+  fi
+
+  # Graceful shutdown via HTTP (the /shutdown route requires the daemon token)
+  if curl -s --max-time 3 "${auth[@]+"${auth[@]}"}" -X POST "http://localhost:${port}/shutdown" &>/dev/null; then
     sleep 1
   fi
 

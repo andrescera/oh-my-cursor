@@ -10,6 +10,11 @@ import type { Server } from "bun"
 const PORT = 27849
 let server: ReturnType<typeof import("bun")["serve"]> | null = null
 const BASE = `http://localhost:${PORT}`
+const TEST_TOKEN = "test-daemon-token-abc123"
+
+function authHeaders(extra: Record<string, string> = {}): Record<string, string> {
+  return { Authorization: `Bearer ${TEST_TOKEN}`, ...extra }
+}
 
 const AGENTS_TEST_DIR = join(tmpdir(), "oh-my-cursor-test-agents")
 const AGENTS_TEST_FILE = join(AGENTS_TEST_DIR, "dummy.txt")
@@ -87,6 +92,7 @@ beforeAll(async () => {
   } catch {}
 
   process.env.OH_MY_CURSOR_PORT = String(PORT)
+  process.env.OH_MY_CURSOR_DAEMON_TOKEN = TEST_TOKEN
   await import("./daemon.ts")
   await Bun.sleep(500)
 })
@@ -247,8 +253,13 @@ describe("hook daemon", () => {
     const DIST_ASSETS = join(HOOKS_DIR, "dashboard-ui", "dist", "assets")
     const DASHBOARD_JS = join(DIST_ASSETS, "dashboard.js")
 
-    test("GET /dashboard returns 200 + text/html + Cache-Control: no-store + dynamic-shell body with runtime port", async () => {
+    test("GET /dashboard without token returns 401", async () => {
       const res = await fetch(`${BASE}/dashboard`)
+      expect(res.status).toBe(401)
+    })
+
+    test("GET /dashboard returns 200 + text/html + Cache-Control: no-store + dynamic-shell body with runtime port and injected token", async () => {
+      const res = await fetch(`${BASE}/dashboard`, { headers: authHeaders() })
       expect(res.status).toBe(200)
       expect(res.headers.get("content-type") ?? "").toContain("text/html")
       expect(res.headers.get("cache-control")).toBe("no-store")
@@ -256,11 +267,12 @@ describe("hook daemon", () => {
       expect(html).toContain(`http://localhost:${PORT}/dashboard/assets/dashboard.js`)
       expect(html).toContain(`http://localhost:${PORT}/dashboard/assets/dashboard.css`)
       expect(html).toContain(`window.OMC_DAEMON_PORT = ${PORT}`)
+      expect(html).toContain(`window.OMC_DAEMON_TOKEN = ${JSON.stringify(TEST_TOKEN)}`)
     })
 
     test("GET /dashboard/index.html is a same-handler alias (byte-equal body, no redirect)", async () => {
-      const a = await fetch(`${BASE}/dashboard`, { redirect: "manual" })
-      const b = await fetch(`${BASE}/dashboard/index.html`, { redirect: "manual" })
+      const a = await fetch(`${BASE}/dashboard`, { redirect: "manual", headers: authHeaders() })
+      const b = await fetch(`${BASE}/dashboard/index.html`, { redirect: "manual", headers: authHeaders() })
       expect(a.status).toBe(200)
       expect(b.status).toBe(200)
       expect(b.headers.get("cache-control")).toBe("no-store")
@@ -341,29 +353,76 @@ describe("hook daemon", () => {
     })
   })
 
-  describe("CORS headers for dashboard REST API", () => {
-    test("GET /session-log includes CORS headers for MCP webview fetches", async () => {
+  describe("daemon token auth + strict CORS", () => {
+    test("GET /session-log without token returns 401", async () => {
       const res = await fetch(`${BASE}/session-log?limit=1`)
-      expect(res.status).toBe(200)
-      expect(res.headers.get("access-control-allow-origin")).toBe("*")
-      expect(res.headers.get("access-control-allow-methods")).toContain("GET")
-      expect(res.headers.get("access-control-allow-methods")).toContain("POST")
+      expect(res.status).toBe(401)
     })
 
-    test("GET /health includes CORS headers for MCP webview fetches", async () => {
+    test("GET /session-log with Bearer token returns 200", async () => {
+      const res = await fetch(`${BASE}/session-log?limit=1`, { headers: authHeaders() })
+      expect(res.status).toBe(200)
+    })
+
+    test("GET /session-log with ?token= query param returns 200", async () => {
+      const res = await fetch(`${BASE}/session-log?limit=1&token=${TEST_TOKEN}`)
+      expect(res.status).toBe(200)
+    })
+
+    test("GET /session-log with wrong token returns 401", async () => {
+      const res = await fetch(`${BASE}/session-log?limit=1`, {
+        headers: { Authorization: "Bearer not-the-real-token" },
+      })
+      expect(res.status).toBe(401)
+    })
+
+    test("GET /health requires no token and returns 200", async () => {
       const res = await fetch(`${BASE}/health`)
       expect(res.status).toBe(200)
-      expect(res.headers.get("access-control-allow-origin")).toBe("*")
     })
 
-    test("OPTIONS preflight returns 204 with CORS headers", async () => {
-      const res = await fetch(`${BASE}/session-log`, {
-        method: "OPTIONS",
-        headers: { "Access-Control-Request-Method": "GET" },
+    test("hook event route /preToolUse requires no token", async () => {
+      const res = await fetch(`${BASE}/preToolUse`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ conversation_id: "tok-hook-1", tool_name: "Read", tool_input: {} }),
       })
-      expect(res.status).toBe(204)
-      expect(res.headers.get("access-control-allow-origin")).toBe("*")
-      expect(res.headers.get("access-control-allow-headers")).toContain("Content-Type")
+      expect(res.status).toBe(200)
+    })
+
+    test("no Access-Control-Allow-Origin header on open or protected responses", async () => {
+      const health = await fetch(`${BASE}/health`)
+      expect(health.headers.get("access-control-allow-origin")).toBeNull()
+      const log = await fetch(`${BASE}/session-log?limit=1`, { headers: authHeaders() })
+      expect(log.headers.get("access-control-allow-origin")).toBeNull()
+    })
+  })
+
+  describe("blocked command logging", () => {
+    test("dangerous /beforeShellExecution command produces a blocked event in the session log", async () => {
+      const sessionId = `block-test-${randomUUID()}`
+      const denyRes = await fetch(`${BASE}/beforeShellExecution`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ conversation_id: sessionId, tool_name: "Shell", command: "rm -rf /" }),
+      })
+      expect(denyRes.status).toBe(200)
+
+      let blocked: Array<Record<string, unknown>> = []
+      for (let i = 0; i < 20; i++) {
+        const logRes = await fetch(`${BASE}/session-log?session=${sessionId}&action=blocked`, {
+          headers: authHeaders(),
+        })
+        expect(logRes.status).toBe(200)
+        const events = (await logRes.json()) as Array<Record<string, unknown>>
+        blocked = events.filter((e) => e.action === "blocked")
+        if (blocked.length > 0) break
+        await new Promise((r) => setTimeout(r, 50))
+      }
+      expect(blocked.length).toBeGreaterThan(0)
+      const meta = blocked[0]?.meta as Record<string, unknown> | undefined
+      expect(meta?.reason).toBe("dangerous_command")
+      expect(String(meta?.command)).toContain("rm -rf /")
     })
   })
 
@@ -1067,10 +1126,18 @@ describe("hook daemon", () => {
   })
 
   describe("body parsing resilience", () => {
-    test("POST /shutdown with empty body returns 200 shutting_down", async () => {
+    test("POST /shutdown without token returns 401", async () => {
       const res = await fetch(`${BASE}/shutdown`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
+      })
+      expect(res.status).toBe(401)
+    })
+
+    test("POST /shutdown with empty body returns 200 shutting_down", async () => {
+      const res = await fetch(`${BASE}/shutdown`, {
+        method: "POST",
+        headers: authHeaders({ "Content-Type": "application/json" }),
       })
       expect(res.status).toBe(200)
       const data = await res.json()
@@ -1080,7 +1147,7 @@ describe("hook daemon", () => {
     test("POST /shutdown with valid JSON body returns 200", async () => {
       const res = await fetch(`${BASE}/shutdown`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: authHeaders({ "Content-Type": "application/json" }),
         body: JSON.stringify({ reason: "test" }),
       })
       expect(res.status).toBe(200)

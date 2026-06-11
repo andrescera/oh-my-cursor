@@ -1,0 +1,20 @@
+# Task 15 — hook event routes stay OPEN (tokenless) + 401 error shape on protected routes
+# date: 2026-06-11T19:27:28Z
+
+## Hook event routes return 200 WITHOUT a token (Cursor hook scripts cannot send auth headers)
+POST /preToolUse            (no token) -> 200
+POST /postToolUse           (no token) -> 200
+POST /beforeShellExecution  (no token) -> 200
+POST /beforeReadFile        (no token) -> 200
+POST /sessionStart          (no token) -> 200
+POST /stop                  (no token) -> 200
+POST /beforeSubmitPrompt    (no token) -> 200
+
+## /health + /heartbeat open
+GET /health    (no token) -> 200
+GET /heartbeat (no token) -> 200
+
+## 401 body on a protected route without token
+GET /session-log (no token) status: 401
+GET /session-log (no token) body:   {"error":"unauthorized"}
+WWW-Authenticate header: WWW-Authenticate: Bearer

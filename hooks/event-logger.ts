@@ -1,5 +1,29 @@
-import { existsSync, mkdirSync, appendFileSync, readFileSync, readdirSync, statSync, unlinkSync } from "node:fs"
+import { existsSync, mkdirSync, appendFileSync, readFileSync, readdirSync, statSync, unlinkSync, chmodSync } from "node:fs"
 import { join } from "node:path"
+
+const LOG_DIR_MODE = 0o700
+const LOG_FILE_MODE = 0o600
+
+function appendLogLine(filePath: string, chunk: string): void {
+  const isNew = !existsSync(filePath)
+  appendFileSync(filePath, chunk, isNew ? { mode: LOG_FILE_MODE } : undefined)
+  if (isNew) {
+    try {
+      chmodSync(filePath, LOG_FILE_MODE)
+    } catch {
+      /* best-effort: log files are local and may already be correctly scoped */
+    }
+  }
+}
+
+function ensureLogDir(dir: string): void {
+  if (!existsSync(dir)) mkdirSync(dir, { recursive: true, mode: LOG_DIR_MODE })
+  try {
+    chmodSync(dir, LOG_DIR_MODE)
+  } catch {
+    /* best-effort dir hardening */
+  }
+}
 
 export type EventEntry = {
   ts: string
@@ -103,7 +127,7 @@ function parseEventLogFile(filePath: string): EventEntry[] {
 }
 
 function eventDedupeKey(e: EventEntry): string {
-  return `${e.ts}\0${e.event}\0${e.tool ?? ""}`
+  return `${e.ts}\0${e.event}\0${e.tool ?? ""}\0${e.action ?? ""}`
 }
 
 function mergeSessionEvents(sessionId: string): EventEntry[] {
@@ -166,7 +190,7 @@ function flushPending(): void {
   pending = []
 
   try {
-    if (!existsSync(logDir)) mkdirSync(logDir, { recursive: true })
+    ensureLogDir(logDir)
 
     const grouped = new Map<string, EventEntry[]>()
     for (const entry of entries) {
@@ -179,7 +203,7 @@ function flushPending(): void {
     for (const [sessionId, group] of grouped) {
       const filePath = getLogPathForConversation(sessionId || undefined)
       const chunk = group.map((e) => JSON.stringify(e)).join("\n") + "\n"
-      appendFileSync(filePath, chunk)
+      appendLogLine(filePath, chunk)
       scheduleRotation(filePath)
     }
 

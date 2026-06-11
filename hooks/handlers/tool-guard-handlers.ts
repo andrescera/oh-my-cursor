@@ -27,6 +27,18 @@ import { createNonInteractiveEnvHandler } from "./non-interactive-env"
 import { createWebfetchRedirectGuardHandler } from "./webfetch-redirect-guard"
 import { createSisyphusJuniorNotepadHandler } from "./sisyphus-junior-notepad"
 import { contextCollector } from "../context-collector"
+import { logEvent } from "../event-logger"
+import { redactSecrets } from "../secret-redactor"
+
+function logBlocked(convId: string, reason: string, meta: Record<string, unknown>): void {
+  logEvent({
+    ts: new Date().toISOString(),
+    event: "/preToolUse",
+    sessionId: convId,
+    action: "blocked",
+    meta: { reason, ...meta },
+  })
+}
 
 const PLAN_MODE_ALLOWED_AGENTS = new Set(["explore", "metis", "momus", "librarian", "oracle"])
 
@@ -196,6 +208,7 @@ export function createToolGuardHandlers(
           if (rawPath) {
             const allowed = rawPath.includes(".cursor/plans/") || rawPath.includes(".cursor/drafts/")
             if (!allowed) {
+              logBlocked(convId, "plan_write_guard", { path: redactSecrets(rawPath).slice(0, 1024), mode: "plan" })
               const reason = `[mode-guard] Write is restricted to .cursor/plans/ and .cursor/drafts/ in Plan mode. Refusing: ${rawPath}`
               const advisory = `[mode-guard] Write blocked in Plan mode: ${rawPath}. Only .cursor/plans/ and .cursor/drafts/ are writable in Plan mode. Switch to Agent mode to write to this path.`
               contextCollector.register(convId, {
@@ -277,6 +290,7 @@ export function createToolGuardHandlers(
           }
 
           if (resolvedMode === "ask") {
+            logBlocked(convId, "ask_task_guard", { agent: redactSecrets(normalized).slice(0, 256), mode: "ask" })
             const reason = "[mode-guard] Task dispatches are not allowed in Ask mode."
             const advisory =
               "[mode-guard] Task dispatches blocked in Ask mode. Ask mode is read-only advisory — switch to Agent mode to dispatch subagents."
@@ -304,6 +318,7 @@ export function createToolGuardHandlers(
           }
 
           if (resolvedMode === "plan" && !PLAN_MODE_ALLOWED_AGENTS.has(normalized)) {
+            logBlocked(convId, "plan_agent_guard", { agent: redactSecrets(normalized).slice(0, 256), mode: "plan" })
             const reason = `[mode-guard] Agent type '${normalized}' is not allowed in Plan mode. Only explore, metis, momus, librarian, and oracle are allowed.`
             const advisory = `[mode-guard] Agent type '${normalized}' blocked in Plan mode. Only explore, metis, momus, librarian, and oracle are allowed in Plan mode.`
             contextCollector.register(convId, {

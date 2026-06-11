@@ -1,5 +1,10 @@
 import { dirname, join } from "node:path"
 import { fileURLToPath } from "node:url"
+import { readToken } from "./lib/daemon-token"
+
+function bootstrapScript(port: number): string {
+  return `<script>window.OMC_DAEMON_PORT = ${port}; window.OMC_DAEMON_TOKEN = ${JSON.stringify(readToken() ?? "")};</script>`
+}
 
 const HERE = dirname(fileURLToPath(import.meta.url))
 const DIST_DIR = join(HERE, "dashboard-ui", "dist")
@@ -37,7 +42,7 @@ function buildDaemonShell(port: number): string {
 <title>oh-my-cursor Dashboard</title>
 </head><body>
 <div id="app"></div>
-<script>window.OMC_DAEMON_PORT = ${port};</script>
+${bootstrapScript(port)}
 <script type="module">
   import('http://localhost:${port}/dashboard/assets/dashboard.js')
     .catch(err => {
@@ -53,7 +58,7 @@ async function buildSinglefile(port: number): Promise<string> {
   const file = Bun.file(DIST_INDEX)
   if (!(await file.exists())) return getNotBuiltHTML()
   const html = await file.text()
-  const portTag = `<script>window.OMC_DAEMON_PORT = ${port};</script>`
+  const portTag = bootstrapScript(port)
   if (html.includes('<script type="module"')) {
     return html.replace('<script type="module"', `${portTag}\n<script type="module"`)
   }

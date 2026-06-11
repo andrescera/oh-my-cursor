@@ -16,6 +16,16 @@ export const StatePersistenceSchema = z.object({
 export const DaemonSchema = z.object({
   port: z.number().int().min(1024).max(65535).default(27847),
   mcp_port: z.number().int().min(1024).max(65535).default(27848),
+  // Shared-secret token for the daemon's sensitive/diagnostic HTTP routes.
+  // Empty string = the daemon generates and persists one to
+  // ~/.config/oh-my-cursor/daemon.token (0600). Hook event routes stay open.
+  auth_token: z.string().default(""),
+})
+
+export const McpSchema = z.object({
+  // Opt-in toggle for the interactive_bash (persistent tmux) MCP tool. Default
+  // TRUE preserves behavior for existing users; set false to drop the tool.
+  interactive_bash_enabled: z.boolean().default(true),
 })
 
 export const ContextCollectorSchema = z.object({
@@ -101,7 +111,7 @@ export const OhMyCursorConfigSchema = z.object({
     enabled: true,
     path: "/tmp/oh-my-cursor-state.json",
   }),
-  daemon: DaemonSchema.default({ port: 27847, mcp_port: 27848 }),
+  daemon: DaemonSchema.default({ port: 27847, mcp_port: 27848, auth_token: "" }),
   context_collector: ContextCollectorSchema.default({
     enabled: true,
     max_context_chars: 50000,
@@ -118,6 +128,7 @@ export const OhMyCursorConfigSchema = z.object({
     automations: false,
   }),
   mcp_allowlist: z.array(z.string()).default(["*"]),
+  mcp: McpSchema.default({ interactive_bash_enabled: true }),
   notifications: NotificationsSchema.default({ enabled: true, sound: false }),
   orchestration: OrchestrationSchema.default({ mode: "native" }),
   continuation: ContinuationSchema.default({ cooldown_ms: 5000, max_failures: 5, backoff_multiplier: 2 }),

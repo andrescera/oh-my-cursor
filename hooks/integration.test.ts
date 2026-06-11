@@ -8,6 +8,11 @@ let PORT = 0
 let BASE = ""
 const SESSION_ID = "integration-test-session"
 const GUARD_TEST_FILE = "/tmp/oh-my-cursor-guard-test.txt"
+const TEST_TOKEN = "integration-daemon-token-xyz"
+
+function authHeaders(extra: Record<string, string> = {}): Record<string, string> {
+  return { Authorization: `Bearer ${TEST_TOKEN}`, ...extra }
+}
 
 let daemon: Subprocess | null = null
 
@@ -26,14 +31,14 @@ function getFreePort(): Promise<number> {
 async function post(path: string, body: Record<string, unknown> = {}) {
   const res = await fetch(`${BASE}${path}`, {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
+    headers: authHeaders({ "Content-Type": "application/json" }),
     body: JSON.stringify(body),
   })
   return { status: res.status, data: await res.json() }
 }
 
 async function get(path: string) {
-  const res = await fetch(`${BASE}${path}`)
+  const res = await fetch(`${BASE}${path}`, { headers: authHeaders() })
   return { status: res.status, data: await res.json() }
 }
 
@@ -55,7 +60,7 @@ beforeAll(async () => {
   BASE = `http://localhost:${PORT}`
   daemon = Bun.spawn(["bun", "run", "hooks/daemon.ts"], {
     cwd: import.meta.dir + "/..",
-    env: { ...process.env, OH_MY_CURSOR_PORT: String(PORT) },
+    env: { ...process.env, OH_MY_CURSOR_PORT: String(PORT), OH_MY_CURSOR_DAEMON_TOKEN: TEST_TOKEN },
     stdout: "ignore",
     stderr: "ignore",
   })
@@ -337,7 +342,7 @@ describe("daemon integration lifecycle", () => {
 
     describe("#when GET /dashboard is called", () => {
       test("#then it returns 200 text/html with the dashboard JS asset URL on the runtime port", async () => {
-        const res = await fetch(`${BASE}/dashboard`, { redirect: "manual" })
+        const res = await fetch(`${BASE}/dashboard`, { redirect: "manual", headers: authHeaders() })
         expect(res.status).toBe(200)
         expect(res.headers.get("content-type") ?? "").toContain("text/html")
         const html = await res.text()
@@ -349,8 +354,8 @@ describe("daemon integration lifecycle", () => {
 
     describe("#when GET /dashboard/index.html is called", () => {
       test("#then body is byte-equal to /dashboard (no redirect)", async () => {
-        const a = await fetch(`${BASE}/dashboard`, { redirect: "manual" })
-        const b = await fetch(`${BASE}/dashboard/index.html`, { redirect: "manual" })
+        const a = await fetch(`${BASE}/dashboard`, { redirect: "manual", headers: authHeaders() })
+        const b = await fetch(`${BASE}/dashboard/index.html`, { redirect: "manual", headers: authHeaders() })
         expect(a.status).toBe(200)
         expect(b.status).toBe(200)
         expect(b.headers.get("content-type") ?? "").toContain("text/html")
@@ -388,7 +393,7 @@ describe("daemon integration lifecycle", () => {
 
       describe("#when GET /dashboard is called", () => {
         test("#then it still returns 200 (daemon-mode shell does not depend on dist)", async () => {
-          const res = await fetch(`${BASE}/dashboard`, { redirect: "manual" })
+          const res = await fetch(`${BASE}/dashboard`, { redirect: "manual", headers: authHeaders() })
           expect(res.status).toBe(200)
           expect(res.headers.get("content-type") ?? "").toContain("text/html")
           const html = await res.text()

@@ -29,6 +29,7 @@ import { createBudgetMiddleware } from "./lib/budget-middleware"
 import { createBackgroundWorker } from "./lib/background-worker"
 import { createMetrics } from "./lib/metrics"
 import { acquireStartupLock, releaseStartupLock } from "./lib/startup-lock"
+import { getOrCreateToken, extractProvidedToken, tokensMatch } from "./lib/daemon-token"
 
 const HOT_PATHS = new Set([
   "/preToolUse",
@@ -157,19 +158,35 @@ function contentTypeForAsset(filename: string): string {
 
 const DASHBOARD_ASSETS_NOT_BUILT_BODY = `<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8"><title>Dashboard assets not built</title></head><body style="font-family:system-ui;padding:2rem;max-width:40rem;margin:0 auto"><h1>Dashboard assets not built</h1><p>Run <code>install.sh</code> / <code>install.ps1</code>, or invoke install with <code>--skip-dashboard-build</code> to acknowledge.</p></body></html>`
 
-const CORS_HEADERS = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
-  "Access-Control-Allow-Headers": "Content-Type, Authorization, X-Requested-With",
-} as const
+const DAEMON_AUTH_TOKEN = getOrCreateToken()
 
-function withCors(response: Response): Response {
-  for (const [key, value] of Object.entries(CORS_HEADERS)) {
-    if (!response.headers.has(key)) {
-      response.headers.set(key, value)
-    }
-  }
-  return response
+// Routes that expose session data, config, control, or the token-bearing
+// dashboard shell require the shared-secret token. /health, /heartbeat, hook
+// event routes, and the static dashboard asset bundle stay open so Cursor's
+// header-less hook scripts and browser subresource loads keep working.
+function requiresToken(path: string): boolean {
+  if (path === "/health" || path === "/heartbeat") return false
+  if (path.startsWith("/dashboard/assets/")) return false
+  return (
+    path === "/session-log" || path.startsWith("/session-log/") ||
+    path === "/conversation-log" || path.startsWith("/conversation-log/") ||
+    path === "/config" || path === "/config/full" ||
+    path === "/status" || path === "/shutdown" || path === "/metrics" ||
+    path === "/dashboard" || path === "/dashboard/index.html" ||
+    path === "/agentHistory" || path === "/backgroundTasks"
+  )
+}
+
+function isAuthorized(req: Request, url: URL): boolean {
+  if (!DAEMON_AUTH_TOKEN) return true
+  return tokensMatch(extractProvidedToken(req, url), DAEMON_AUTH_TOKEN)
+}
+
+function unauthorizedResponse(): Response {
+  return new Response(JSON.stringify({ error: "unauthorized" }), {
+    status: 401,
+    headers: { "Content-Type": "application/json", "WWW-Authenticate": "Bearer" },
+  })
 }
 
 export function getDaemonBootId(): string {
@@ -389,20 +406,20 @@ const fetchHandler = async (req: Request) => {
   const url = new URL(req.url)
   const path = url.pathname
 
-  if (req.method === "OPTIONS") {
-    return withCors(new Response(null, { status: 204 }))
+  if (requiresToken(path) && !isAuthorized(req, url)) {
+    return unauthorizedResponse()
   }
 
   if (path === "/dashboard" || path === "/dashboard/index.html") {
     const budgeted = await budgetMiddleware.withBudget(path, budgetForRoute(path), async () => {
       const html = await getStatusHTML(actualPort)
-      return withCors(new Response(html, {
+      return new Response(html, {
         status: 200,
         headers: {
           "Content-Type": "text/html; charset=utf-8",
           "Cache-Control": "no-store",
         },
-      }))
+      })
     })
     if (isDeferredResult(budgeted)) return deferredJsonResponse()
     return budgeted
@@ -415,7 +432,7 @@ const fetchHandler = async (req: Request) => {
       try {
         requested = decodeURIComponent(requestedRaw)
       } catch {
-        return withCors(new Response("Bad Request", { status: 400, headers: { "Content-Type": "text/plain; charset=utf-8" } }))
+        return new Response("Bad Request", { status: 400, headers: { "Content-Type": "text/plain; charset=utf-8" } })
       }
       if (
         requested.length === 0 ||
@@ -424,34 +441,34 @@ const fetchHandler = async (req: Request) => {
         requested.startsWith("\\") ||
         requested.split(/[/\\]/).some((seg) => seg === "..")
       ) {
-        return withCors(new Response("Bad Request", { status: 400, headers: { "Content-Type": "text/plain; charset=utf-8" } }))
+        return new Response("Bad Request", { status: 400, headers: { "Content-Type": "text/plain; charset=utf-8" } })
       }
       const resolved = join(DIST_ASSETS_DIR, requested)
       const rel = pathRelative(DIST_ASSETS_DIR, resolved)
       if (rel.length === 0 || rel.startsWith("..") || isAbsolute(rel)) {
-        return withCors(new Response("Bad Request", { status: 400, headers: { "Content-Type": "text/plain; charset=utf-8" } }))
+        return new Response("Bad Request", { status: 400, headers: { "Content-Type": "text/plain; charset=utf-8" } })
       }
       const file = Bun.file(resolved)
       if (!(await file.exists())) {
-        return withCors(new Response(DASHBOARD_ASSETS_NOT_BUILT_BODY, {
+        return new Response(DASHBOARD_ASSETS_NOT_BUILT_BODY, {
           status: 503,
           headers: { "Content-Type": "text/html; charset=utf-8" },
-        }))
+        })
       }
       const etag = `W/"${file.size.toString(16)}-${file.lastModified.toString(16)}"`
       const ifNoneMatch = req.headers.get("if-none-match")
       if (ifNoneMatch === etag) {
-        return withCors(new Response(null, { status: 304, headers: { ETag: etag } }))
+        return new Response(null, { status: 304, headers: { ETag: etag } })
       }
       const data = await file.arrayBuffer()
-      return withCors(new Response(data, {
+      return new Response(data, {
         status: 200,
         headers: {
           "Content-Type": contentTypeForAsset(requested),
           "Cache-Control": "public, max-age=60, must-revalidate",
           "ETag": etag,
         },
-      }))
+      })
     })
     if (isDeferredResult(budgeted)) return deferredJsonResponse()
     return budgeted
@@ -707,7 +724,6 @@ const fetchHandler = async (req: Request) => {
         "Content-Type": "text/event-stream",
         "Cache-Control": "no-cache",
         "Connection": "keep-alive",
-        "Access-Control-Allow-Origin": "*",
       },
     })
   }
@@ -745,7 +761,6 @@ const fetchHandler = async (req: Request) => {
         "Content-Type": "text/event-stream",
         "Cache-Control": "no-cache",
         "Connection": "keep-alive",
-        "Access-Control-Allow-Origin": "*",
       },
     })
   }
@@ -959,7 +974,7 @@ process.on("exit", () => releaseStartupLock(DAEMON_PROJECT_ROOT))
 if (ENV_PORT) {
   console.log(`[oh-my-cursor] Hook daemon starting on port ${actualPort} (env override)...`)
   try {
-    server = bindWithRetry({ port: actualPort, fetch: async (req) => withCors(await fetchHandler(req)) })
+    server = bindWithRetry({ port: actualPort, fetch: fetchHandler })
   } catch (err) {
     console.error(`[oh-my-cursor] Failed to bind daemon on port ${actualPort} (env override):`, err instanceof Error ? err.message : String(err))
     process.exit(1)
@@ -972,7 +987,7 @@ if (ENV_PORT) {
     process.exit(1)
   }
   try {
-    server = bindWithRetry({ port: DEFAULT_PORT, fetch: async (req) => withCors(await fetchHandler(req)) })
+    server = bindWithRetry({ port: DEFAULT_PORT, fetch: fetchHandler })
     actualPort = DEFAULT_PORT
   } catch (err) {
     console.error(

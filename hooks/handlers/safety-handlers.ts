@@ -2,6 +2,24 @@ import type { HandlerMap } from "../types"
 import { getOrCreateConversation, resolveConversationId, wasResolvedViaFallback, derivedProjectRoot } from "../shared"
 import { createThinkingBlockValidator } from "./thinking-block-validator"
 import { loadConfig } from "../config"
+import { logEvent } from "../event-logger"
+import { redactSecrets } from "../secret-redactor"
+
+function logBlocked(
+  event: string,
+  input: Record<string, unknown>,
+  reason: string,
+  meta: Record<string, unknown>,
+): void {
+  logEvent({
+    ts: new Date().toISOString(),
+    event,
+    sessionId: (input.conversation_id as string) || (input.session_id as string) || "",
+    tool: (input.tool_name as string) || undefined,
+    action: "blocked",
+    meta: { reason, ...meta },
+  })
+}
 
 export function createSafetyHandlers(): HandlerMap {
   const thinkingBlockValidator = createThinkingBlockValidator()
@@ -20,6 +38,9 @@ export function createSafetyHandlers(): HandlerMap {
 
       for (const pattern of dangerousPatterns) {
         if (pattern.test(command)) {
+          logBlocked("/beforeShellExecution", input, "dangerous_command", {
+            command: redactSecrets(command).slice(0, 2048),
+          })
           const userReason = `Command blocked for safety: ${command}`
           const agentReason = `Command blocked for safety: ${command}. Use a safer alternative.`
           return {
@@ -77,6 +98,9 @@ export function createSafetyHandlers(): HandlerMap {
       const sensitivePatterns = [/\.env\.local$/, /\.env\.production$/, /credentials\.json$/]
       for (const pattern of sensitivePatterns) {
         if (pattern.test(filePath)) {
+          logBlocked("/beforeReadFile", input, "sensitive_file", {
+            file: redactSecrets(filePath).slice(0, 2048),
+          })
           const reason = `Access to sensitive file blocked: ${filePath}`
           return {
             decision: "deny",
@@ -128,6 +152,9 @@ export function createSafetyHandlers(): HandlerMap {
         return {}
       }
 
+      logBlocked("/beforeMCPExecution", input, "mcp_not_allowlisted", {
+        server: redactSecrets(serverName).slice(0, 512),
+      })
       const reason = `MCP server "${serverName}" is not in the configured allowlist. Add it to mcp_allowlist in your oh-my-cursor config.`
       return {
         decision: "deny",

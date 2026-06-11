@@ -2,6 +2,12 @@ import { z } from "zod"
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js"
 import { join, resolve } from "node:path"
 import { wrapToolHandler } from "../validate"
+import { readToken } from "../../lib/daemon-token"
+
+function daemonHeaders(): Record<string, string> {
+  const token = readToken()
+  return token ? { Authorization: `Bearer ${token}` } : {}
+}
 
 const inputSchema = {
   action: z
@@ -47,6 +53,7 @@ export function register(server: McpServer): void {
       if (action === "export") {
         try {
           const res = await fetch(`http://localhost:${port}/session-log?limit=1`, {
+            headers: daemonHeaders(),
             signal: AbortSignal.timeout(5000),
           })
           if (!res.ok) {
@@ -88,6 +95,7 @@ export function register(server: McpServer): void {
           const params = new URLSearchParams()
           if (session_id) params.set("session", session_id)
           const res = await fetch(`http://localhost:${port}/session-log/summary?${params}`, {
+            headers: daemonHeaders(),
             signal: AbortSignal.timeout(8000),
           })
           if (!res.ok) {
@@ -116,6 +124,7 @@ export function register(server: McpServer): void {
           if (event_filter) params.set("event", event_filter)
           if (action_filter) params.set("action", action_filter)
           const res = await fetch(`http://localhost:${port}/session-log?${params}`, {
+            headers: daemonHeaders(),
             signal: AbortSignal.timeout(8000),
           })
           if (!res.ok) {

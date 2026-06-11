@@ -24,6 +24,7 @@ export type Result<T> =
 declare global {
   interface Window {
     OMC_DAEMON_PORT?: number
+    OMC_DAEMON_TOKEN?: string
   }
 }
 
@@ -33,6 +34,12 @@ function port(): number {
   const w = typeof window !== 'undefined' ? (window as Window) : null
   const p = w?.OMC_DAEMON_PORT
   return typeof p === 'number' && Number.isFinite(p) ? p : DEFAULT_PORT
+}
+
+function authHeaders(): Record<string, string> {
+  const w = typeof window !== 'undefined' ? (window as Window) : null
+  const token = w?.OMC_DAEMON_TOKEN
+  return typeof token === 'string' && token !== '' ? { Authorization: `Bearer ${token}` } : {}
 }
 
 type QueryValue = string | number | undefined | null
@@ -59,7 +66,7 @@ async function request<T>(input: string, init: RequestInit = {}): Promise<Result
     res = await fetch(input, {
       ...init,
       signal: init.signal ?? controller.signal,
-      headers: { Accept: 'application/json', ...init.headers },
+      headers: { Accept: 'application/json', ...authHeaders(), ...init.headers },
     })
   } catch (err) {
     clearTimeout(timeout)

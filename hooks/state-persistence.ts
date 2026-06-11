@@ -1,4 +1,4 @@
-import { existsSync, mkdirSync, readFileSync, unlinkSync, readdirSync } from "node:fs"
+import { existsSync, mkdirSync, readFileSync, unlinkSync, readdirSync, chmodSync } from "node:fs"
 import { createHash } from "node:crypto"
 import type { ConversationState } from "./types"
 import { partitionState, mergeFromDurable } from "./state-partition"
@@ -8,6 +8,8 @@ import { writeFileAtomic, writeFileAtomicAsync } from "./lib/atomic-file"
 const DEFAULT_DIR = "/tmp/oh-my-cursor-state"
 const LEGACY_FILE = "/tmp/oh-my-cursor-state.json"
 const DEFAULT_DEBOUNCE_MS = 5000
+const STATE_DIR_MODE = 0o700
+const STATE_FILE_MODE = 0o600
 
 export type ConversationMetadata = {
   id: string
@@ -31,7 +33,12 @@ export class StatePersistence {
     this.dirPath = dirPath
     this.debounceMs = debounceMs
     if (!existsSync(this.dirPath)) {
-      mkdirSync(this.dirPath, { recursive: true })
+      mkdirSync(this.dirPath, { recursive: true, mode: STATE_DIR_MODE })
+    }
+    try {
+      chmodSync(this.dirPath, STATE_DIR_MODE)
+    } catch {
+      /* best-effort dir hardening */
     }
     if (existsSync(LEGACY_FILE)) {
       try { unlinkSync(LEGACY_FILE) } catch { /* best-effort */ }
@@ -181,7 +188,7 @@ export class StatePersistence {
     merged: ConversationState,
   ): void {
     try {
-      writeFileAtomic(primaryPath, JSON.stringify(this.serializeConversation(merged)))
+      writeFileAtomic(primaryPath, JSON.stringify(this.serializeConversation(merged)), { mode: STATE_FILE_MODE })
       try { unlinkSync(legacyPath) } catch { /* best-effort */ }
     } catch (err) {
       console.error("[state-persistence] legacy migration failed for", convId, err)
@@ -275,7 +282,7 @@ export class StatePersistence {
       const filePath = this.statePath(convId)
       const payload = JSON.stringify(this.serializeConversation(conv))
       writes.push(
-        writeFileAtomicAsync(filePath, payload).catch((err) => {
+        writeFileAtomicAsync(filePath, payload, { mode: STATE_FILE_MODE }).catch((err) => {
           console.error("[state-persistence] flush error for", convId, err)
           this.dirty.add(convId)
         }),
@@ -293,7 +300,7 @@ export class StatePersistence {
       if (!conv) continue
       const filePath = this.statePath(convId)
       try {
-        writeFileAtomic(filePath, JSON.stringify(this.serializeConversation(conv)))
+        writeFileAtomic(filePath, JSON.stringify(this.serializeConversation(conv)), { mode: STATE_FILE_MODE })
       } catch (err) {
         console.error("[state-persistence] flush error for", convId, err)
         this.dirty.add(convId)
@@ -332,7 +339,7 @@ export class StatePersistence {
     const indexPath = `${this.dirPath}/index.json`
     const metadata = Array.from(conversations.values()).map((conv) => this.buildMetadata(conv))
     try {
-      await writeFileAtomicAsync(indexPath, JSON.stringify(metadata))
+      await writeFileAtomicAsync(indexPath, JSON.stringify(metadata), { mode: STATE_FILE_MODE })
     } catch (err) {
       console.error("[oh-my-cursor] Failed to write index:", err instanceof Error ? err.message : String(err))
     }
@@ -342,7 +349,7 @@ export class StatePersistence {
     const indexPath = `${this.dirPath}/index.json`
     const metadata = Array.from(conversations.values()).map((conv) => this.buildMetadata(conv))
     try {
-      writeFileAtomic(indexPath, JSON.stringify(metadata))
+      writeFileAtomic(indexPath, JSON.stringify(metadata), { mode: STATE_FILE_MODE })
     } catch (err) {
       console.error("[oh-my-cursor] Failed to write index:", err instanceof Error ? err.message : String(err))
     }
@@ -352,7 +359,7 @@ export class StatePersistence {
     const indexPath = `${this.dirPath}/index.json`
     const metadata = Array.from(index.values())
     try {
-      writeFileAtomic(indexPath, JSON.stringify(metadata))
+      writeFileAtomic(indexPath, JSON.stringify(metadata), { mode: STATE_FILE_MODE })
     } catch (err) {
       console.error("[oh-my-cursor] Failed to write index:", err instanceof Error ? err.message : String(err))
     }

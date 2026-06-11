@@ -2,6 +2,7 @@ import { z } from "zod"
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js"
 import { wrapToolHandler } from "../validate"
 import { spawnWithTimeout } from "../../lib/spawn-with-timeout"
+import { loadConfig } from "../../config"
 
 const inputSchema = {
   command: z.string().describe("The command to execute in the tmux session"),
@@ -111,6 +112,7 @@ export function createInteractiveBash(
 }
 
 export function register(server: McpServer): void {
+  if (!loadConfig().mcp.interactive_bash_enabled) return
   const handler = createInteractiveBash()
   server.registerTool(
     "interactive_bash",

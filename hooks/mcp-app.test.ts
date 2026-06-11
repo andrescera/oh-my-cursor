@@ -4,18 +4,24 @@ import * as mcpApp from "./mcp-app"
 import { _cacheSizeForTests, _resetCacheForTests, getNotBuiltHTML, getStatusHTML } from "./mcp-app"
 
 const ENV_KEY = "OMC_DASHBOARD_MODE"
+const TOKEN_KEY = "OH_MY_CURSOR_DAEMON_TOKEN"
 
 let savedMode: string | undefined
+let savedToken: string | undefined
 
 beforeEach(() => {
   savedMode = process.env[ENV_KEY]
   delete process.env[ENV_KEY]
+  savedToken = process.env[TOKEN_KEY]
+  process.env[TOKEN_KEY] = "mcp-app-test-token"
   _resetCacheForTests()
 })
 
 afterEach(() => {
   if (savedMode === undefined) delete process.env[ENV_KEY]
   else process.env[ENV_KEY] = savedMode
+  if (savedToken === undefined) delete process.env[TOKEN_KEY]
+  else process.env[TOKEN_KEY] = savedToken
   _resetCacheForTests()
 })
 

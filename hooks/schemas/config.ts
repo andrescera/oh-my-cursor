@@ -137,6 +137,15 @@ export const HandlersSchema = z.object({
   plan_format_validator: z.object({
     enabled: z.boolean().default(true),
   }).default({ enabled: true }),
+  notepad_write_guard: z.object({
+    enabled: z.boolean().default(true),
+  }).default({ enabled: true }),
+  question_label_truncator: z.object({
+    enabled: z.boolean().default(true),
+  }).default({ enabled: true }),
+  fsync_skip_warning: z.object({
+    enabled: z.boolean().default(true),
+  }).default({ enabled: true }),
 })
 
 export const OhMyCursorConfigSchema = z.object({
@@ -189,6 +198,9 @@ export const OhMyCursorConfigSchema = z.object({
   }),
   handlers: HandlersSchema.default({
     plan_format_validator: { enabled: true },
+    notepad_write_guard: { enabled: true },
+    question_label_truncator: { enabled: true },
+    fsync_skip_warning: { enabled: true },
   }),
 })
 

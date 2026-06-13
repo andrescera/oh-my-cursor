@@ -13,7 +13,10 @@ import { createToolGuardHandlers } from "./handlers/tool-guard-handlers"
 import { createContinuationHandlers } from "./handlers/continuation-handlers"
 import { createSafetyHandlers } from "./handlers/safety-handlers"
 import { createSubagentHandlers } from "./handlers/subagent-handlers"
+import { createQuestionLabelTruncatorHandler } from "./handlers/question-label-truncator"
 import { createPlanFormatValidatorHandler } from "./handlers/plan-format-validator"
+import { createNotepadWriteGuardHandler } from "./handlers/notepad-write-guard"
+import { createFsyncSkipWarningHandlerMap } from "./handlers/fsync-skip-warning"
 import { createConversationHistoryHandler } from "./handlers/conversation-history"
 import { BackgroundTracker, createBackgroundTasksHandler } from "./handlers/background-tracker"
 import { createAgentHistoryHandler } from "./handlers/agent-history"
@@ -22,6 +25,7 @@ import { composeTaskUpdatedInput } from "./handlers/task-input-composer"
 import "./handlers/context-piggyback-mutation"
 import "./handlers/model-routing-mutation"
 import "./handlers/delegate-task-retry-rotation"
+import "./handlers/question-label-truncator"
 import { StatePersistence, type ConversationMetadata } from "./state-persistence"
 import { createHeartbeatHandler, startHeartbeatWriter, HEARTBEAT_FILE } from "./handlers/heartbeat"
 import { loadConfig, resetConfigCache } from "./config"
@@ -396,6 +400,8 @@ const handlers: HandlerMap = {
   ...createSafetyHandlers(),
   ...createSubagentHandlers(conversations, tracker),
   ...createPlanFormatValidatorHandler(conversations),
+  ...createNotepadWriteGuardHandler(conversations),
+  ...createFsyncSkipWarningHandlerMap(),
   // workspaceOpen is registered in hooks.json (canonical event 21, OBSERVE-ONLY/binary-only per
   // docs/cursor/03-hooks.md). No-op route prevents a 404 on POST; no response field is enforced.
   "/workspaceOpen": () => ({}),

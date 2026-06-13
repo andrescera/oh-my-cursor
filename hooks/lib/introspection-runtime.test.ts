@@ -2,6 +2,8 @@ import { describe, test, expect } from "bun:test"
 import { createIntrospectionRuntime } from "./introspection-runtime"
 import type { EnumResult } from "./task-schema-introspector"
 import { DEFAULT_CONFIG } from "../config"
+import { KNOWN_AGENT_TYPES } from "./known-models"
+import { AGENT_MODEL_ALLOWLIST } from "./agent-model-allowlist"
 
 function makeEnumResult(over: Partial<EnumResult> = {}): EnumResult {
   return {
@@ -155,7 +157,7 @@ describe("introspection-runtime", () => {
     expect(snap.models.length).toBeGreaterThanOrEqual(6)
   })
 
-  test("snapshot without modelsByAgent is valid (optional field)", async () => {
+  test("getSnapshot populates modelsByAgent with an entry for every known agent", async () => {
     const rt = createIntrospectionRuntime({
       getEnum: async () => makeEnumResult(),
       passiveObserve: () => {},
@@ -163,14 +165,71 @@ describe("introspection-runtime", () => {
     })
     await rt.init()
     const snap = rt.getSnapshot()
-    // modelsByAgent is optional, so it should not be present by default
-    expect(snap.modelsByAgent).toBeUndefined()
-    // but the snapshot should still be a valid IntrospectionSnapshot
+    expect(snap.modelsByAgent).toBeDefined()
+    for (const agent of KNOWN_AGENT_TYPES) {
+      expect(Array.isArray(snap.modelsByAgent?.[agent])).toBe(true)
+      expect(snap.modelsByAgent?.[agent]?.length).toBeGreaterThan(0)
+    }
+    // the snapshot should still be a valid IntrospectionSnapshot
     expect(snap.models).toBeDefined()
     expect(snap.agents).toBeDefined()
     expect(snap.source).toBeDefined()
     expect(snap.cachedAt).toBeDefined()
     expect(snap.observedAdditions).toBeDefined()
+  })
+
+  test("curated agents resolve to their curated set; permissive agents resolve to snapshot.models", async () => {
+    // "future-agent" is unknown (no curated entry) => PERMISSIVE; it must equal snapshot.models.
+    // No observation occurs, so base.models === snapshot.models (no observedAdditions drift).
+    const rt = createIntrospectionRuntime({
+      getEnum: async () => makeEnumResult({
+        models: ["composer-2-fast", "gpt-5.4-medium", "gpt-5.5-extra-high"],
+        agents: ["explore", "future-agent"],
+      }),
+      passiveObserve: () => {},
+      loadConfig: () => DEFAULT_CONFIG,
+    })
+    await rt.init()
+    const snap = rt.getSnapshot()
+    // curated agent: exactly the curated allowlist set
+    expect(snap.modelsByAgent?.explore).toEqual([...AGENT_MODEL_ALLOWLIST.explore])
+    for (const m of snap.modelsByAgent?.explore ?? []) {
+      expect(AGENT_MODEL_ALLOWLIST.explore).toContain(m)
+    }
+    // permissive (unknown) agent: full snapshot.models
+    expect(snap.modelsByAgent?.["future-agent"]).toEqual(snap.models)
+  })
+
+  test("version-change rescan recomputes modelsByAgent to reflect the new models[]", async () => {
+    const rt = createIntrospectionRuntime({
+      getEnum: async (opts) => {
+        if (opts?.cursorVersion === "9.9.9") {
+          return makeEnumResult({
+            models: ["gpt-5.5-extra-high", "new-model-z"],
+            agents: ["explore", "future-agent"],
+            cursorVersion: "9.9.9",
+          })
+        }
+        return makeEnumResult({
+          models: ["composer-2-fast"],
+          agents: ["explore", "future-agent"],
+          cursorVersion: "3.7.27",
+        })
+      },
+      passiveObserve: () => {},
+      loadConfig: () => DEFAULT_CONFIG,
+    })
+    await rt.init()
+    let snap = rt.getSnapshot()
+    // permissive agent reflects the original version's models
+    expect(snap.modelsByAgent?.["future-agent"]).toEqual(["composer-2-fast"])
+
+    rt.observe({ cursor_version: "9.9.9" })
+    await Bun.sleep(20)
+    snap = rt.getSnapshot()
+    // after rescan, permissive agent reflects the NEW version's models[]
+    expect(snap.modelsByAgent?.["future-agent"]).toEqual(["gpt-5.5-extra-high", "new-model-z"])
+    expect(snap.modelsByAgent?.["future-agent"]).toContain("new-model-z")
   })
 
   test("snapshot with modelsByAgent type-checks correctly", async () => {

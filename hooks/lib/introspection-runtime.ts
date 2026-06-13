@@ -5,6 +5,7 @@ import {
   type GetEnumOptions,
 } from "./task-schema-introspector"
 import { KNOWN_AGENT_TYPES, KNOWN_CURSOR_MODELS } from "./known-models"
+import { resolveAllowedModels } from "./agent-model-allowlist"
 import { loadConfig as defaultLoadConfig } from "../config"
 import { extractAgentTypeFromLogInputs, extractModelFromLogInputs } from "../handlers/extract-agent-fields"
 
@@ -37,12 +38,29 @@ interface BaseSnapshot {
   source: "bundle" | "observed" | "fallback"
   cursorVersion?: string
   cachedAt: string
+  modelsByAgent: Record<string, string[]>
 }
 
 const KNOWN_FLOOR: ReadonlySet<string> = new Set<string>([
   ...KNOWN_CURSOR_MODELS,
   ...KNOWN_AGENT_TYPES,
 ])
+
+function computeModelsByAgent(models: readonly string[], agents: readonly string[]): Record<string, string[]> {
+  const snapshot: IntrospectionSnapshot = {
+    models: [...models],
+    agents: [...agents],
+    source: "fallback",
+    cachedAt: "",
+    observedAdditions: [],
+  }
+  const agentSet = new Set<string>([...KNOWN_AGENT_TYPES, ...agents])
+  const out: Record<string, string[]> = {}
+  for (const agent of agentSet) {
+    out[agent] = resolveAllowedModels(agent, snapshot)
+  }
+  return out
+}
 
 function syncFallbackBase(cursorVersion: string | undefined): BaseSnapshot {
   return {
@@ -51,6 +69,7 @@ function syncFallbackBase(cursorVersion: string | undefined): BaseSnapshot {
     source: "fallback",
     cursorVersion,
     cachedAt: new Date().toISOString(),
+    modelsByAgent: computeModelsByAgent(KNOWN_CURSOR_MODELS, KNOWN_AGENT_TYPES),
   }
 }
 
@@ -90,12 +109,14 @@ export function createIntrospectionRuntime(
     }
     try {
       const result = await deps.getEnum({ introspection, cursorVersion: lastCursorVersion })
+      const agents = unionPreserve(result.agents, [...observedAgents])
       base = {
         models: result.models,
         agents: result.agents,
         source: result.source,
         cursorVersion: result.cursorVersion,
         cachedAt: result.cachedAt,
+        modelsByAgent: computeModelsByAgent(result.models, agents),
       }
       if (result.cursorVersion) lastCursorVersion = result.cursorVersion
     } catch {
@@ -170,6 +191,7 @@ export function createIntrospectionRuntime(
         cursorVersion: b.cursorVersion,
         cachedAt: b.cachedAt,
         observedAdditions,
+        modelsByAgent: b.modelsByAgent,
       }
     },
 

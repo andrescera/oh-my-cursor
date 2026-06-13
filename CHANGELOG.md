@@ -7,6 +7,35 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.10.0] - 2026-06-13
+
+### Added
+
+#### Version-keyed reported model-enum capture tier
+
+- `hooks/lib/reported-models-store.ts`: pure, never-throwing version-keyed JSON store for captured model enums. Persists to `~/.config/oh-my-cursor/reported-models.json` (override: `OH_MY_CURSOR_REPORTED_MODELS_FILE`). Validates slugs by shape only (non-empty, ≤60 chars, `SLUG_FULL_RE`, dedup, min 3). Evicts oldest entry when > 10 versions stored.
+- `hooks/lib/task-schema-introspector.ts`: `reported` tier added to `computeBase` (highest priority, above bundle scan). `invalidateBaseCache()` exported for targeted post-capture cache invalidation (does NOT wipe passive observations). `resolveCursorVersion()` exported for sync version resolution. `needsCapture: boolean` added to `EnumResult` and `IntrospectionSnapshot` (true when source ≠ `"reported"`).
+- `hooks/lib/introspection-runtime.ts`: `refresh(): Promise<void>` added to `IntrospectionRuntime` interface; re-runs the scan without clearing passive observations. `needsCapture` plumbed through `BaseSnapshot` → `getSnapshot()`.
+- `hooks/daemon.ts`: token-gated `POST /reported-models` endpoint. Validates body `{ version, models }`, captures to store, invalidates cache, calls `runtime.refresh()`, emits `introspection-updated` SSE event.
+- `commands/sync-models.md`: `/sync-models` command — triggers the agent to capture the live Cursor Task model enum for the current version.
+- `scripts/config-generator.ts`: `resolveEnumForGenerator()` sources the model-enum table from the reported capture for the current Cursor version, falling back to `KNOWN_CURSOR_MODELS`. `syncRules()` uses this so `--sync-rules` reflects the live enum.
+- `hooks/handlers/model-routing-mutation.ts`: non-blocking `needsCapture` advisory (id `"model-enum-needs-capture"`, priority `"normal"`) registered at dispatch time when `snapshot.needsCapture` is true. Flag-gated enforcement remap: when `model_routing.enforce_allowlist` is `true`, curated agents with an out-of-allowlist model are remapped to the curated default (first slug of `resolveAllowedModels`); never a hard deny; permissive agents unaffected.
+- `hooks/schemas/config.ts`: `model_routing.enforce_allowlist: boolean` flag (default `false`).
+- `hooks/dashboard-ui/src/tabs/models-routing/EnforceAllowlistToggle.tsx`: dashboard toggle for `enforce_allowlist` in the Models & Routing tab (hotkey 8). Persists via `POST /config`.
+- `docs/internal/model-enum-capture.md`: design doc covering the 4-tier resolution precedence, capture workflow, stale-window limitation, and enforcement flag.
+
+#### Stale `composer-2` purge
+
+- Removed bare `"composer-2"` from `KNOWN_CURSOR_MODELS`, `AGENT_MODEL_ALLOWLIST`, `config.default.jsonc`, `README.md`, `docs/internal/agent-model-allowlist.md`, and all test fixtures. Replaced with the distinct `"composer-2.5"`. `hooks/no-stale-slugs.test.ts` is now 4/4 green.
+- `hooks/lib/known-models.ts`: refreshed `KNOWN_CURSOR_MODELS` with current-generation slugs; marked as STALE FALLBACK FLOOR only.
+
+### Notes
+
+- Resolution precedence: `reported[cursorVersion]` → bundle scan → passive observation → `KNOWN_CURSOR_MODELS`.
+- Stale window: after a Cursor update, the reported capture is keyed to the old version; the new version falls back until `/sync-models` is run again.
+- `enforce_allowlist` defaults to `false`; the dispatch gate never hard-denies.
+- `hooks/package.json` is the single source of truth for the version; `install.sh` and `install.ps1` both read it via `get_source_version()`.
+
 ## [0.9.1] - 2026-06-13
 
 ### Added

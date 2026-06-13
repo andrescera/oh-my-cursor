@@ -95,6 +95,7 @@ These are valid Cursor Task model slugs. See `rules/orchestrator.mdc` for the ca
 | `/config` | Display the current merged oh-my-cursor configuration |
 | `/cloud-agents` | Dispatch and manage agents via cloud API (experimental) |
 | `/introspect` | Show live model introspection results from the Cursor bundle (`GET /introspection`) |
+| `/sync-models` | Capture the live Cursor Task model enum for the current version |
 
 ## Coverage
 
@@ -111,6 +112,7 @@ See [Known Limitations](#known-limitations) below and the [adoption matrix](docs
 - Subagent parallelism -- Cursor controls scheduling; instructions suggest counts but don't guarantee them
 - Hook tool coverage -- not all Cursor tools fire hook events. See [Known Sharp Edges](docs/cursor/19-known-sharp-edges.md#hook-tool-coverage) for the full list.
 - `postToolUse.additional_context` is broken at Cursor 3.7.x -- context is delivered instead via Task `preToolUse` prompt piggyback (composer). No `additional_context` field is emitted by any handler.
+- Model enum stale window -- after a Cursor update, the reported capture is keyed to the old version; the new version falls back to bundle/observed/`KNOWN_CURSOR_MODELS` until `/sync-models` is run again
 
 ## Configuration
 
@@ -166,7 +168,21 @@ Validation is advisory, not blocking:
 
 **`introspection-updated` SSE event.** When the daemon detects a `cursorVersion` change during bundle introspection, it emits an `introspection-updated` event on the SSE stream with payload `{ cursorVersion, cachedAt }`. The dashboard listens for this event and refreshes the Models & Routing tab automatically so the allowlist and available-slug list stay current without a page reload.
 
+**Enforcement flag.** Set `model_routing.enforce_allowlist: true` to remap out-of-allowlist models for curated agents to the agent's curated default instead of passing them through with an advisory. Default is `false` (advisory only). Toggle from the dashboard Models & Routing tab (hotkey 8).
+
 See [`docs/internal/agent-model-allowlist.md`](docs/internal/agent-model-allowlist.md) for the full design and [`docs/internal/per-subagent-model-enum-spike.md`](docs/internal/per-subagent-model-enum-spike.md) for the spike findings that informed the curated-map approach.
+
+#### Reported model-enum capture
+
+The Cursor `Task()` model enum is assembled server-side per session and injected into the agent context — no local artifact holds the current list. oh-my-cursor captures it once from the agent's own injected tool descriptor and caches it by Cursor version.
+
+Resolution precedence (highest first):
+1. `reported[cursorVersion]` — captured via `/sync-models`, stored in `~/.config/oh-my-cursor/reported-models.json`
+2. Bundle scan — slugs extracted from the local Cursor bundle
+3. Passive observation — slugs seen in live `Task()` calls
+4. `KNOWN_CURSOR_MODELS` — static fallback floor in `hooks/lib/known-models.ts`
+
+Run `/sync-models` once after installing or after a Cursor update to capture the current enum. Until then, `needsCapture: true` is surfaced as a normal-priority advisory at dispatch time. See `docs/internal/model-enum-capture.md` for the full design.
 
 ## Documentation
 

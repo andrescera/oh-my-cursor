@@ -37,6 +37,7 @@ const INHERIT = 'inherit'
 type RoutingEditorProps = {
   models: string[]
   agents: string[]
+  modelsByAgent?: Record<string, string[]>
   initialOverrides: Record<string, AgentOverride>
   onSaved?: () => void
 }
@@ -83,7 +84,7 @@ function buildRows(
   return rows
 }
 
-export function RoutingEditor({ models, agents, initialOverrides, onSaved }: RoutingEditorProps) {
+export function RoutingEditor({ models, agents, modelsByAgent, initialOverrides, onSaved }: RoutingEditorProps) {
   const [target, setTarget] = useState<AgentOverridesTarget>('project')
   const [rows, setRows] = useState<Record<string, AgentOverride>>(() =>
     buildRows(agents, initialOverrides),
@@ -270,6 +271,7 @@ export function RoutingEditor({ models, agents, initialOverrides, onSaved }: Rou
                   agent={agent}
                   override={rows[agent]!}
                   models={models}
+                  modelsByAgent={modelsByAgent}
                   invalid={errorAgent === agent}
                   disabled={saving}
                   onModelChange={(v) => setModel(agent, v)}
@@ -290,6 +292,7 @@ type AgentRoutingRowProps = {
   agent: string
   override: AgentOverride
   models: string[]
+  modelsByAgent?: Record<string, string[]>
   invalid: boolean
   disabled: boolean
   onModelChange: (value: string) => void
@@ -302,6 +305,7 @@ function AgentRoutingRow({
   agent,
   override,
   models,
+  modelsByAgent,
   invalid,
   disabled,
   onModelChange,
@@ -310,15 +314,19 @@ function AgentRoutingRow({
   onToggleDisable,
 }: AgentRoutingRowProps) {
   const modelOptions = useMemo(() => {
-    const set = new Set<string>(models)
+    const allowed = modelsByAgent?.[agent]
+    const base = allowed ?? models
+    const set = new Set<string>(base)
     if (override.model) set.add(override.model)
     return [INHERIT, ...Array.from(set).sort((a, b) => a.localeCompare(b))]
-  }, [models, override.model])
+  }, [models, modelsByAgent, agent, override.model])
 
-  const fallbackChoices = useMemo(
-    () => models.filter((m) => !override.fallback_models.includes(m) && m !== override.model),
-    [models, override.fallback_models, override.model],
-  )
+  const validCount = modelsByAgent?.[agent]?.length ?? models.length
+
+  const fallbackChoices = useMemo(() => {
+    const base = modelsByAgent?.[agent] ?? models
+    return base.filter((m) => !override.fallback_models.includes(m) && m !== override.model)
+  }, [models, modelsByAgent, agent, override.fallback_models, override.model])
 
   return (
     <TableRow data-state={override.disable ? 'selected' : undefined} data-testid={`routing-row-${agent}`}>
@@ -330,10 +338,11 @@ function AgentRoutingRow({
           disabled={disabled}
         >
           <SelectTrigger
-            className="w-full"
+            className="agent-model-dropdown w-full"
             size="sm"
             aria-invalid={invalid || undefined}
             aria-label={`Model for ${agent}`}
+            data-agent={agent}
             data-testid={`routing-model-${agent}`}
           >
             <SelectValue />
@@ -346,6 +355,12 @@ function AgentRoutingRow({
             ))}
           </SelectContent>
         </Select>
+        <p
+          className="mt-1 text-[11px] text-muted-foreground"
+          data-testid={`routing-valid-count-${agent}`}
+        >
+          {validCount} models valid
+        </p>
       </TableCell>
       <TableCell className="whitespace-normal">
         <div className="flex flex-wrap items-center gap-1.5">

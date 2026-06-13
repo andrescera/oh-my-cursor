@@ -37,14 +37,12 @@ export function createNonInteractiveEnvHandler(
         derivedProjectRoot(input),
       )
 
-      const snippet = command.slice(0, 80)
       const isGit = /\bgit\b/.test(command)
       const isInteractive = INTERACTIVE_PATTERN.test(command)
 
+      // Interactive commands are not rewritten; they should be avoided in CI
       if (isInteractive) {
-        return {
-          additional_context: `[non-interactive-env] Interactive command detected: "${snippet}". This may hang in non-interactive CI environments. Consider non-interactive alternatives.`,
-        }
+        return {}
       }
 
       if (isGit && !isNonInteractiveGitCommand(command)) {

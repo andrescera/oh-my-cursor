@@ -1176,4 +1176,72 @@ describe("hook daemon", () => {
       expect(data.error).toBe("Invalid JSON body")
     })
   })
+
+  describe("GET /introspection (Task 11)", () => {
+    test("without token returns 401", async () => {
+      const res = await fetch(`${BASE}/introspection`)
+      expect(res.status).toBe(401)
+    })
+
+    test("with Bearer token returns 200 and the full snapshot shape", async () => {
+      const res = await fetch(`${BASE}/introspection`, { headers: authHeaders() })
+      expect(res.status).toBe(200)
+      const data = (await res.json()) as Record<string, unknown>
+      expect(Array.isArray(data.models)).toBe(true)
+      expect(Array.isArray(data.agents)).toBe(true)
+      expect(["bundle", "observed", "fallback"]).toContain(data.source as string)
+      expect("cursorVersion" in data).toBe(true)
+      expect(typeof data.cachedAt).toBe("string")
+      expect(Array.isArray(data.observedAdditions)).toBe(true)
+    })
+
+    test("with ?token= query param returns 200", async () => {
+      const res = await fetch(`${BASE}/introspection?token=${TEST_TOKEN}`)
+      expect(res.status).toBe(200)
+    })
+
+    test("immediately serves >=6 models from the fallback floor", async () => {
+      const res = await fetch(`${BASE}/introspection`, { headers: authHeaders() })
+      const data = (await res.json()) as { models: string[] }
+      expect(data.models.length).toBeGreaterThanOrEqual(6)
+    })
+
+    test("a passively observed model from POST /preToolUse appears in observedAdditions", async () => {
+      const novelModel = `future-model-${randomUUID().slice(0, 8)}`
+      await post("/preToolUse", {
+        tool_name: "Task",
+        tool_input: { subagent_type: "explore", model: novelModel },
+        conversation_id: "introspection-passive-1",
+        cursor_version: "3.7.27",
+      })
+      // observation is in-memory + synchronous on the route; poll briefly for safety
+      let additions: string[] = []
+      for (let i = 0; i < 20; i++) {
+        const res = await fetch(`${BASE}/introspection`, { headers: authHeaders() })
+        const data = (await res.json()) as { observedAdditions: string[]; models: string[] }
+        additions = data.observedAdditions
+        if (additions.includes(novelModel)) break
+        await new Promise((r) => setTimeout(r, 25))
+      }
+      expect(additions).toContain(novelModel)
+    })
+
+    test("a passively observed model from POST /subagentStart appears in observedAdditions", async () => {
+      const novelModel = `future-sub-${randomUUID().slice(0, 8)}`
+      await post("/subagentStart", {
+        subagent_type: "explore",
+        subagent_model: novelModel,
+        conversation_id: "introspection-passive-2",
+      })
+      let additions: string[] = []
+      for (let i = 0; i < 20; i++) {
+        const res = await fetch(`${BASE}/introspection`, { headers: authHeaders() })
+        const data = (await res.json()) as { observedAdditions: string[] }
+        additions = data.observedAdditions
+        if (additions.includes(novelModel)) break
+        await new Promise((r) => setTimeout(r, 25))
+      }
+      expect(additions).toContain(novelModel)
+    })
+  })
 })

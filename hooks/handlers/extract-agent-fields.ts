@@ -25,3 +25,16 @@ export function extractAgentIdFromLogInputs(
     undefined
   )
 }
+
+export function extractModelFromLogInputs(
+  parsed: LogInput,
+  toolInput: LogInput,
+): string | undefined {
+  return (
+    (parsed.model as string | undefined) ||
+    (parsed.subagent_model as string | undefined) ||
+    (toolInput.model as string | undefined) ||
+    (toolInput.subagent_model as string | undefined) ||
+    undefined
+  )
+}

@@ -19,11 +19,11 @@ describe("non-interactive-env", () => {
     expect(result.additional_context).toBeUndefined()
   })
 
-  it("warns on interactive git rebase -i", () => {
+  it("does not warn on interactive git rebase -i (interactive commands not rewritten)", () => {
     const handler = createNonInteractiveEnvHandler(conversations)["/preToolUse"]!
     const result = handler(shell("git rebase -i HEAD~3"))
-    expect(result.additional_context).toContain("[non-interactive-env]")
-    expect(result.additional_context).toContain("Interactive command detected")
+    expect(result.additional_context).toBeUndefined()
+    expect(result.updated_input).toBeUndefined()
   })
 
   it("rewrites git push with env vars via updated_input", () => {

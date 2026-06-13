@@ -110,6 +110,29 @@ describe("introspection-runtime", () => {
     expect(calls).toBe(1)
   })
 
+  test("a version-mismatch rescan that folds the observation into base.models still reports it in observedAdditions", async () => {
+    // Mirrors the real introspector: getEnum unions passively-observed slugs into
+    // its merged models. The regression: observedAdditions must survive that fold.
+    const folded = new Set<string>(["composer-2-fast"])
+    const rt = createIntrospectionRuntime({
+      getEnum: async (opts) => makeEnumResult({
+        models: [...folded],
+        cursorVersion: opts?.cursorVersion ?? "3.7.27",
+      }),
+      passiveObserve: (r) => {
+        const m = (r as { model?: unknown }).model
+        if (typeof m === "string") folded.add(m)
+      },
+      loadConfig: () => DEFAULT_CONFIG,
+    })
+    await rt.init()
+    rt.observe({ cursor_version: "9.9.9", tool_input: { model: "future-model-x1" } })
+    await Bun.sleep(20)
+    const snap = rt.getSnapshot()
+    expect(snap.models).toContain("future-model-x1")
+    expect(snap.observedAdditions).toContain("future-model-x1")
+  })
+
   test("observe() never throws on malformed input", async () => {
     const rt = createIntrospectionRuntime({
       getEnum: async () => makeEnumResult(),

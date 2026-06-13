@@ -124,6 +124,32 @@ function parseJsoncFile(filePath: string): Record<string, unknown> | null {
 const configCache = new Map<string, { config: OhMyCursorConfig; loadTime: number }>()
 const CONFIG_CACHE_TTL_MS = 30_000
 
+function hasLegacyModelRouting(raw: Record<string, unknown> | null): boolean {
+  const routing = raw?.model_routing
+  if (typeof routing !== "object" || routing === null) return false
+  const defaults = (routing as Record<string, unknown>).defaults
+  return typeof defaults === "object" && defaults !== null
+}
+
+function migrateLegacyModelRouting(
+  config: OhMyCursorConfig,
+  legacyPresent: boolean,
+): OhMyCursorConfig {
+  const overrides: Record<string, { model?: string; fallback_models: string[]; disable: boolean }> = {
+    ...config.agent_overrides,
+  }
+  for (const [agent, model] of Object.entries(config.model_routing.defaults)) {
+    if (overrides[agent]) continue
+    overrides[agent] = { model, fallback_models: [], disable: false }
+  }
+  if (legacyPresent) {
+    console.warn(
+      "[oh-my-cursor] DEPRECATION: `model_routing.defaults` is deprecated; migrate to `agent_overrides`. Legacy values were mapped automatically.",
+    )
+  }
+  return { ...config, agent_overrides: overrides }
+}
+
 export function loadConfig(projectDir?: string): OhMyCursorConfig {
   const cacheKey = projectDir || "__default__"
   const now = Date.now()
@@ -144,7 +170,8 @@ export function loadConfig(projectDir?: string): OhMyCursorConfig {
     merged = deepMerge(merged, projectConfig)
   }
 
-  const config = validateConfig(merged)
+  const legacyPresent = hasLegacyModelRouting(userConfig) || hasLegacyModelRouting(projectConfig)
+  const config = migrateLegacyModelRouting(validateConfig(merged), legacyPresent)
   configCache.set(cacheKey, { config, loadTime: now })
   return config
 }

@@ -102,6 +102,37 @@ export const ModelRoutingSchema = z.object({
   }),
 })
 
+// Per-agent model override (upstream oh-my-openagent shape, Cursor subset).
+// `model` is a free-form Cursor slug — intentionally NOT a z.enum: validation
+// against the introspected model list is advisory + async and lives in a later
+// task. `.strict()` rejects unknown keys so typos surface immediately.
+export const AgentOverrideSchema = z
+  .object({
+    model: z.string().optional(),
+    fallback_models: z.array(z.string()).default([]),
+    disable: z.boolean().default(false),
+  })
+  .strict()
+
+// Category override — same shape as AgentOverrideSchema plus a human-readable
+// `description`. Used to group agents/tasks under a shared routing policy.
+export const CategorySchema = z
+  .object({
+    model: z.string().optional(),
+    fallback_models: z.array(z.string()).default([]),
+    disable: z.boolean().default(false),
+    description: z.string().optional(),
+  })
+  .strict()
+
+// Introspection (model-list scanning) controls. `scan_timeout_ms` bounds the
+// async scan; `extra_bundle_paths` lets users point at additional model bundles.
+export const IntrospectionSchema = z.object({
+  enabled: z.boolean().default(true),
+  scan_timeout_ms: z.number().default(2000),
+  extra_bundle_paths: z.array(z.string()).default([]),
+})
+
 export const OhMyCursorConfigSchema = z.object({
   version: z.number().default(1),
   disabled_hooks: z.array(z.string()).default([]),
@@ -141,6 +172,14 @@ export const OhMyCursorConfigSchema = z.object({
     retry_on_errors: [429, 500, 502, 503, 504],
     max_retry_attempts: 3,
     defaults: { explore: "composer-2-fast", librarian: "composer-2-fast" },
+  }),
+  agent_overrides: z.record(z.string(), AgentOverrideSchema).default({}),
+  categories: z.record(z.string(), CategorySchema).default({}),
+  max_piggyback_chars: z.number().int().positive().default(8000),
+  introspection: IntrospectionSchema.default({
+    enabled: true,
+    scan_timeout_ms: 2000,
+    extra_bundle_paths: [],
   }),
 })
 

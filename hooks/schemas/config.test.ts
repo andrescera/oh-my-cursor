@@ -169,4 +169,160 @@ describe("OhMyCursorConfigSchema", () => {
     expect(overridden.safety.continuation.max_consecutive_zero_deltas).toBe(5)
     expect(overridden.safety.mcp_llm_review_enabled).toBe(false)
   })
+
+  describe("agent_overrides", () => {
+    test("defaults to empty record", () => {
+      const parsed = OhMyCursorConfigSchema.parse({})
+      expect(parsed.agent_overrides).toEqual({})
+    })
+
+    test("parses a full valid override entry", () => {
+      const r = OhMyCursorConfigSchema.safeParse({
+        agent_overrides: {
+          explore: {
+            model: "composer-2-fast",
+            fallback_models: ["composer-2", "inherit"],
+            disable: false,
+          },
+        },
+      })
+      expect(r.success).toBe(true)
+      if (r.success) {
+        expect(r.data.agent_overrides.explore?.model).toBe("composer-2-fast")
+        expect(r.data.agent_overrides.explore?.fallback_models).toEqual([
+          "composer-2",
+          "inherit",
+        ])
+        expect(r.data.agent_overrides.explore?.disable).toBe(false)
+      }
+    })
+
+    test("fills field defaults (fallback_models=[], disable=false) when omitted", () => {
+      const r = OhMyCursorConfigSchema.safeParse({
+        agent_overrides: { explore: { model: "composer-2-fast" } },
+      })
+      expect(r.success).toBe(true)
+      if (r.success) {
+        expect(r.data.agent_overrides.explore?.fallback_models).toEqual([])
+        expect(r.data.agent_overrides.explore?.disable).toBe(false)
+      }
+    })
+
+    test("allows an entry with only disable set (no model)", () => {
+      const r = OhMyCursorConfigSchema.safeParse({
+        agent_overrides: { librarian: { disable: true } },
+      })
+      expect(r.success).toBe(true)
+      if (r.success) {
+        expect(r.data.agent_overrides.librarian?.disable).toBe(true)
+        expect(r.data.agent_overrides.librarian?.model).toBeUndefined()
+      }
+    })
+
+    test("rejects unknown keys inside an override entry (.strict)", () => {
+      const r = OhMyCursorConfigSchema.safeParse({
+        agent_overrides: { x: { bogus_key: 1 } },
+      })
+      expect(r.success).toBe(false)
+    })
+
+    test("does NOT validate model against an enum (arbitrary slug accepted)", () => {
+      const r = OhMyCursorConfigSchema.safeParse({
+        agent_overrides: { weird: { model: "some-future-model-slug-xyz" } },
+      })
+      expect(r.success).toBe(true)
+      if (r.success) {
+        expect(r.data.agent_overrides.weird?.model).toBe("some-future-model-slug-xyz")
+      }
+    })
+  })
+
+  describe("categories", () => {
+    test("defaults to empty record", () => {
+      const parsed = OhMyCursorConfigSchema.parse({})
+      expect(parsed.categories).toEqual({})
+    })
+
+    test("parses a full valid category entry including description", () => {
+      const r = OhMyCursorConfigSchema.safeParse({
+        categories: {
+          quick: {
+            model: "composer-2-fast",
+            fallback_models: ["composer-2"],
+            disable: false,
+            description: "Fast cheap tasks",
+          },
+        },
+      })
+      expect(r.success).toBe(true)
+      if (r.success) {
+        expect(r.data.categories.quick?.model).toBe("composer-2-fast")
+        expect(r.data.categories.quick?.description).toBe("Fast cheap tasks")
+        expect(r.data.categories.quick?.fallback_models).toEqual(["composer-2"])
+      }
+    })
+
+    test("rejects unknown keys inside a category entry (.strict)", () => {
+      const r = OhMyCursorConfigSchema.safeParse({
+        categories: { quick: { nonsense: true } },
+      })
+      expect(r.success).toBe(false)
+    })
+  })
+
+  describe("max_piggyback_chars", () => {
+    test("defaults to 8000", () => {
+      const parsed = OhMyCursorConfigSchema.parse({})
+      expect(parsed.max_piggyback_chars).toBe(8000)
+    })
+
+    test("accepts a positive integer override", () => {
+      const r = OhMyCursorConfigSchema.safeParse({ max_piggyback_chars: 12000 })
+      expect(r.success).toBe(true)
+      if (r.success) expect(r.data.max_piggyback_chars).toBe(12000)
+    })
+
+    test("rejects non-positive or non-integer values", () => {
+      expect(OhMyCursorConfigSchema.safeParse({ max_piggyback_chars: 0 }).success).toBe(false)
+      expect(OhMyCursorConfigSchema.safeParse({ max_piggyback_chars: -5 }).success).toBe(false)
+      expect(OhMyCursorConfigSchema.safeParse({ max_piggyback_chars: 1.5 }).success).toBe(false)
+    })
+  })
+
+  describe("introspection", () => {
+    test("defaults are enabled=true, scan_timeout_ms=2000, extra_bundle_paths=[]", () => {
+      const parsed = OhMyCursorConfigSchema.parse({})
+      expect(parsed.introspection.enabled).toBe(true)
+      expect(parsed.introspection.scan_timeout_ms).toBe(2000)
+      expect(parsed.introspection.extra_bundle_paths).toEqual([])
+    })
+
+    test("accepts overrides", () => {
+      const r = OhMyCursorConfigSchema.safeParse({
+        introspection: {
+          enabled: false,
+          scan_timeout_ms: 500,
+          extra_bundle_paths: ["/opt/extra"],
+        },
+      })
+      expect(r.success).toBe(true)
+      if (r.success) {
+        expect(r.data.introspection.enabled).toBe(false)
+        expect(r.data.introspection.scan_timeout_ms).toBe(500)
+        expect(r.data.introspection.extra_bundle_paths).toEqual(["/opt/extra"])
+      }
+    })
+  })
+
+  test("legacy model_routing config still parses (backward compatible)", () => {
+    const r = OhMyCursorConfigSchema.safeParse({
+      model_routing: {
+        defaults: { explore: "composer-2-fast", librarian: "composer-2-fast" },
+      },
+    })
+    expect(r.success).toBe(true)
+    if (r.success) {
+      expect(r.data.model_routing.defaults.explore).toBe("composer-2-fast")
+    }
+  })
 })

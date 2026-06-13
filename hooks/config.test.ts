@@ -240,6 +240,99 @@ describe("config", () => {
     })
   })
 
+  describe("legacy model_routing migration", () => {
+    describe("#given a project config using legacy model_routing.defaults", () => {
+      describe("#when loadConfig is called", () => {
+        test("#then entries are mapped into agent_overrides with a single deprecation warning", () => {
+          // given
+          mkdirSync(TEST_CONFIG_DIR, { recursive: true })
+          writeFileSync(
+            join(TEST_CONFIG_DIR, "oh-my-cursor.jsonc"),
+            `{ "model_routing": { "defaults": { "explore": "composer-2-fast" } } }`,
+            "utf-8",
+          )
+          const origCwd = process.cwd()
+          const warnSpy = spyOn(console, "warn")
+
+          try {
+            process.chdir(TEST_PROJECT_DIR)
+            resetConfigCache()
+
+            // when
+            const config = loadConfig()
+
+            // then
+            expect(config.agent_overrides.explore?.model).toBe("composer-2-fast")
+            expect(config.agent_overrides.explore?.fallback_models).toEqual([])
+            expect(config.agent_overrides.explore?.disable).toBe(false)
+
+            const deprecationWarnings = warnSpy.mock.calls
+              .map((c) => String(c[0]))
+              .filter((m) => m.toLowerCase().includes("deprecat") && m.includes("model_routing"))
+            expect(deprecationWarnings.length).toBe(1)
+          } finally {
+            warnSpy.mockRestore()
+            process.chdir(origCwd)
+          }
+        })
+      })
+    })
+
+    describe("#given both legacy model_routing.defaults and an explicit agent_overrides entry", () => {
+      describe("#when loadConfig is called", () => {
+        test("#then the explicit agent_overrides entry wins over the legacy value", () => {
+          // given
+          mkdirSync(TEST_CONFIG_DIR, { recursive: true })
+          writeFileSync(
+            join(TEST_CONFIG_DIR, "oh-my-cursor.jsonc"),
+            `{
+  "model_routing": { "defaults": { "explore": "composer-2-fast" } },
+  "agent_overrides": { "explore": { "model": "composer-2" } }
+}`,
+            "utf-8",
+          )
+          const origCwd = process.cwd()
+
+          try {
+            process.chdir(TEST_PROJECT_DIR)
+            resetConfigCache()
+
+            // when
+            const config = loadConfig()
+
+            // then
+            expect(config.agent_overrides.explore?.model).toBe("composer-2")
+          } finally {
+            process.chdir(origCwd)
+          }
+        })
+      })
+    })
+
+    describe("#given no config files exist", () => {
+      describe("#when loadConfig is called", () => {
+        test("#then no deprecation warning is emitted", () => {
+          // given
+          resetConfigCache()
+          const warnSpy = spyOn(console, "warn")
+
+          try {
+            // when
+            loadConfig()
+
+            // then
+            const deprecationWarnings = warnSpy.mock.calls
+              .map((c) => String(c[0]))
+              .filter((m) => m.toLowerCase().includes("deprecat") && m.includes("model_routing"))
+            expect(deprecationWarnings.length).toBe(0)
+          } finally {
+            warnSpy.mockRestore()
+          }
+        })
+      })
+    })
+  })
+
   describe("DEFAULT_CONFIG", () => {
     describe("#given the exported default config", () => {
       describe("#when its structure is inspected", () => {

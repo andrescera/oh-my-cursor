@@ -64,13 +64,53 @@
     "automations": false
   },
 
-  // Model defaults per subagent type
-  // Override to change the default model for specific agent types
-  // Values: "composer-2-fast" (same capability as composer-2, higher priority) or "inherit" (uses parent model)
+  // [DEPRECATED] Model defaults per subagent type.
+  // Still parsed for backward compatibility, but entries here are automatically
+  // migrated into "agent_overrides" at load time (with a one-time deprecation
+  // warning). Prefer "agent_overrides" below for new configs.
+  // Values: "composer-2-fast" (same capability as composer-2, higher priority)
+  // or "inherit" (uses parent model).
   "model_routing": {
     "defaults": {
       "explore": "composer-2-fast",
       "librarian": "composer-2-fast"
     }
+  },
+
+  // Per-agent model overrides (preferred over the deprecated model_routing).
+  // Keyed by agent name. Each entry supports:
+  //   "model"           — Cursor model slug to use (free-form, e.g. "composer-2-fast")
+  //   "fallback_models" — ordered slugs to try if "model" is unavailable
+  //   "disable"         — true to disable dispatching this agent entirely
+  // "agent_overrides": {
+  //   "explore": {
+  //     "model": "composer-2-fast",
+  //     "fallback_models": ["composer-2", "inherit"],
+  //     "disable": false
+  //   }
+  // },
+
+  // Category-level overrides. Same fields as agent_overrides plus "description".
+  // Use to group agents/tasks under a shared routing policy.
+  // "categories": {
+  //   "quick": {
+  //     "model": "composer-2-fast",
+  //     "fallback_models": ["composer-2"],
+  //     "disable": false,
+  //     "description": "Fast, cheap tasks"
+  //   }
+  // },
+
+  // Max characters of piggybacked context appended to a dispatched task.
+  "max_piggyback_chars": 8000,
+
+  // Model introspection (scans available Cursor models for advisory validation).
+  //   "enabled"           — turn the scan on/off
+  //   "scan_timeout_ms"   — upper bound on the async scan
+  //   "extra_bundle_paths"— additional model bundle paths to scan
+  "introspection": {
+    "enabled": true,
+    "scan_timeout_ms": 2000,
+    "extra_bundle_paths": []
   }
 }

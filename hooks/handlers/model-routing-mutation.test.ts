@@ -493,3 +493,62 @@ describe("model-routing-mutation — singleton registration", () => {
     expect(taskInputComposer.size()).toBe(before)
   })
 })
+
+// ---------------------------------------------------------------------------
+// needsCapture advisory: non-blocking, fires only when the snapshot says so
+// ---------------------------------------------------------------------------
+
+describe("model-routing-mutation — needsCapture advisory", () => {
+  it("registers a normal-priority 'model-enum-needs-capture' advisory when snapshot.needsCapture is true", () => {
+    const { deps, registerCalls } = makeDeps({
+      config: makeConfig({ agent_overrides: { explore: { model: "gpt-5.4-medium" } } }),
+      getSnapshot: (): IntrospectionSnapshot => ({ ...snapshotOf(DEFAULT_SNAPSHOT_MODELS), needsCapture: true }),
+    })
+    const provider = createModelRoutingProvider(deps)
+
+    const result = provider.mutate("conv-nc", { subagent_type: "explore", model: "composer-2-fast" })
+
+    const advisory = registerCalls.find((c) => c.options.id === "model-enum-needs-capture")
+    expect(advisory).toBeDefined()
+    expect(advisory?.conversationId).toBe("conv-nc")
+    expect(advisory?.options.priority).toBe("normal")
+    expect(result).toEqual({ model: "gpt-5.4-medium" })
+  })
+
+  it("does NOT register the needsCapture advisory when snapshot.needsCapture is false", () => {
+    const { deps, registerCalls } = makeDeps({
+      config: makeConfig({ agent_overrides: { explore: { model: "gpt-5.4-medium" } } }),
+      getSnapshot: (): IntrospectionSnapshot => ({ ...snapshotOf(DEFAULT_SNAPSHOT_MODELS), needsCapture: false }),
+    })
+    const provider = createModelRoutingProvider(deps)
+
+    const result = provider.mutate("conv-nc2", { subagent_type: "explore", model: "composer-2-fast" })
+
+    expect(registerCalls.find((c) => c.options.id === "model-enum-needs-capture")).toBeUndefined()
+    expect(result).toEqual({ model: "gpt-5.4-medium" })
+  })
+
+  it("returns the same resolved model whether or not the needsCapture advisory fires", () => {
+    const config = makeConfig({ agent_overrides: { explore: { model: "gpt-5.4-medium" } } })
+    const withCapture = makeDeps({
+      config,
+      getSnapshot: (): IntrospectionSnapshot => ({ ...snapshotOf(DEFAULT_SNAPSHOT_MODELS), needsCapture: true }),
+    })
+    const withoutCapture = makeDeps({
+      config,
+      getSnapshot: (): IntrospectionSnapshot => ({ ...snapshotOf(DEFAULT_SNAPSHOT_MODELS), needsCapture: false }),
+    })
+
+    const a = createModelRoutingProvider(withCapture.deps).mutate("conv-a", {
+      subagent_type: "explore",
+      model: "composer-2-fast",
+    })
+    const b = createModelRoutingProvider(withoutCapture.deps).mutate("conv-b", {
+      subagent_type: "explore",
+      model: "composer-2-fast",
+    })
+
+    expect(a).toEqual({ model: "gpt-5.4-medium" })
+    expect(b).toEqual(a)
+  })
+})

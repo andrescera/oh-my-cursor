@@ -39,6 +39,7 @@ export interface IntrospectionRuntime {
   observe: (input: Record<string, unknown>) => void
   getSnapshot: () => IntrospectionSnapshot
   setOnVersionChange: (listener: IntrospectionVersionChangeListener | undefined) => void
+  refresh: () => Promise<void>
   reset: () => void
 }
 
@@ -49,6 +50,7 @@ interface BaseSnapshot {
   cursorVersion?: string
   cachedAt: string
   modelsByAgent: Record<string, string[]>
+  needsCapture?: boolean
 }
 
 const KNOWN_FLOOR: ReadonlySet<string> = new Set<string>([
@@ -80,6 +82,7 @@ function syncFallbackBase(cursorVersion: string | undefined): BaseSnapshot {
     cursorVersion,
     cachedAt: new Date().toISOString(),
     modelsByAgent: computeModelsByAgent(KNOWN_CURSOR_MODELS, KNOWN_AGENT_TYPES),
+    needsCapture: true,
   }
 }
 
@@ -129,6 +132,7 @@ export function createIntrospectionRuntime(
         cursorVersion: result.cursorVersion,
         cachedAt: result.cachedAt,
         modelsByAgent: computeModelsByAgent(result.models, agents),
+        needsCapture: result.needsCapture,
       }
       if (result.cursorVersion) {
         lastCursorVersion = result.cursorVersion
@@ -220,11 +224,23 @@ export function createIntrospectionRuntime(
         cachedAt: b.cachedAt,
         observedAdditions,
         modelsByAgent: b.modelsByAgent,
+        needsCapture: b.needsCapture,
       }
     },
 
     setOnVersionChange(listener: IntrospectionVersionChangeListener | undefined): void {
       onVersionChange = listener
+    },
+
+    async refresh(): Promise<void> {
+      // Re-run the scan WITHOUT clearing observations. Unlike triggerRescan()
+      // (fire-and-forget), refresh() awaits scan() so callers can sequence on a
+      // completed re-resolve. Never throws.
+      try {
+        await scan()
+      } catch {
+        // refresh must never throw
+      }
     },
 
     reset(): void {

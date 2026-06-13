@@ -44,6 +44,8 @@ import { acquireStartupLock, releaseStartupLock } from "./lib/startup-lock"
 import { getOrCreateToken, extractProvidedToken, tokensMatch } from "./lib/daemon-token"
 import { introspectionRuntime, type IntrospectionVersionChange } from "./lib/introspection-runtime"
 import { CHANNEL_STATUS_TABLE } from "./lib/channel-status"
+import { captureReported, validateReportedSlugs, MIN_REPORTED_MODELS } from "./lib/reported-models-store"
+import { invalidateBaseCache } from "./lib/task-schema-introspector"
 
 const HOT_PATHS = new Set([
   "/preToolUse",
@@ -199,7 +201,8 @@ function requiresToken(path: string): boolean {
     path === "/config" || path === "/config/full" || path === "/config/agent-overrides" ||
     path === "/status" || path === "/shutdown" || path === "/metrics" ||
     path === "/agentHistory" || path === "/backgroundTasks" ||
-    path === "/introspection" || path === "/channel-status"
+    path === "/introspection" || path === "/channel-status" ||
+    path === "/reported-models"
   )
 }
 
@@ -718,6 +721,40 @@ const fetchHandler = async (req: Request) => {
     })
     if (isDeferredResult(budgeted)) return deferredJsonResponse()
     return budgeted
+  }
+
+  if (path === "/reported-models" && req.method === "POST") {
+    if (!isAuthorized(req, url)) return unauthorizedResponse()
+    let body: unknown
+    try {
+      body = await req.json()
+    } catch {
+      body = {}
+    }
+    const version = (body as Record<string, unknown>).version
+    const models = (body as Record<string, unknown>).models
+    if (typeof version !== "string" || version.trim() === "") {
+      return new Response(JSON.stringify({ error: "version is required and must be a non-empty string" }), {
+        status: 400,
+        headers: { "Content-Type": "application/json" },
+      })
+    }
+    const { accepted, rejected } = validateReportedSlugs(models)
+    if (accepted.length < MIN_REPORTED_MODELS) {
+      return new Response(JSON.stringify({ error: `at least ${MIN_REPORTED_MODELS} valid model slugs required`, rejected }), {
+        status: 400,
+        headers: { "Content-Type": "application/json" },
+      })
+    }
+    captureReported(version, accepted)
+    invalidateBaseCache()
+    await introspectionRuntime.refresh()
+    const snapshot = introspectionRuntime.getSnapshot()
+    emitIntrospectionUpdated({ cursorVersion: version, cachedAt: snapshot.cachedAt })
+    return new Response(JSON.stringify({ ok: true, version, models: accepted }), {
+      status: 200,
+      headers: { "Content-Type": "application/json" },
+    })
   }
 
   if (path === "/config" && req.method === "POST") {

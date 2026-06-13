@@ -309,4 +309,64 @@ describe("introspection-runtime", () => {
     expect(emissions.length).toBe(1)
     expect(emissions[0]?.cursorVersion).toBe("9.9.9")
   })
+
+  test("refresh() re-resolves the base without dropping prior observations", async () => {
+    const rt = createIntrospectionRuntime({
+      getEnum: async () => makeEnumResult({ models: ["composer-2-fast"], agents: ["explore"] }),
+      passiveObserve: () => {},
+      loadConfig: () => DEFAULT_CONFIG,
+    })
+    await rt.init()
+    rt.observe({ tool_input: { subagent_type: "explore", model: "observed-model-x1" } })
+    expect(rt.getSnapshot().models).toContain("observed-model-x1")
+
+    await rt.refresh()
+
+    const snap = rt.getSnapshot()
+    expect(snap.models).toContain("observed-model-x1")
+    expect(snap.observedAdditions).toContain("observed-model-x1")
+    expect(snap.models).toContain("composer-2-fast")
+  })
+
+  test("getSnapshot().needsCapture is true when getEnum reports needsCapture true", async () => {
+    const rt = createIntrospectionRuntime({
+      getEnum: async () => makeEnumResult({ source: "fallback", needsCapture: true }),
+      passiveObserve: () => {},
+      loadConfig: () => DEFAULT_CONFIG,
+    })
+    await rt.init()
+    expect(rt.getSnapshot().needsCapture).toBe(true)
+  })
+
+  test("getSnapshot().needsCapture is false when getEnum reports a captured (reported) source", async () => {
+    const rt = createIntrospectionRuntime({
+      getEnum: async () => makeEnumResult({ source: "reported", needsCapture: false }),
+      passiveObserve: () => {},
+      loadConfig: () => DEFAULT_CONFIG,
+    })
+    await rt.init()
+    expect(rt.getSnapshot().needsCapture).toBe(false)
+  })
+
+  test("version-miss: an unknown cursor version resolves with needsCapture true", async () => {
+    const rt = createIntrospectionRuntime({
+      getEnum: async (opts) => {
+        if (opts?.cursorVersion === "known-1.0.0") {
+          return makeEnumResult({ source: "reported", needsCapture: false, cursorVersion: "known-1.0.0" })
+        }
+        return makeEnumResult({ source: "fallback", needsCapture: true, cursorVersion: opts?.cursorVersion })
+      },
+      passiveObserve: () => {},
+      loadConfig: () => DEFAULT_CONFIG,
+    })
+    await rt.init()
+
+    rt.observe({ cursor_version: "known-1.0.0" })
+    await Bun.sleep(20)
+    expect(rt.getSnapshot().needsCapture).toBe(false)
+
+    rt.observe({ cursor_version: "unknown-9.9.9" })
+    await Bun.sleep(20)
+    expect(rt.getSnapshot().needsCapture).toBe(true)
+  })
 })

@@ -262,6 +262,24 @@ export function createModelRoutingProvider(deps: ModelRoutingDeps = {}): TaskMut
       }
       if (decision.model === null) return null
 
+      // Non-blocking needsCapture advisory — never alters dispatch.
+      try {
+        const snapshot = getSnapshot()
+        if (snapshot.needsCapture) {
+          collector.register(conversationId, {
+            id: "model-enum-needs-capture",
+            source: "model-routing",
+            content:
+              "[model-routing] The Cursor Task model enum has not been captured for the current " +
+              "Cursor version. Run /sync-models to capture the live enum; running on the stale " +
+              "fallback floor until then.",
+            priority: "normal",
+          })
+        }
+      } catch {
+        // Advisory registration is best-effort; never break the hot path.
+      }
+
       const finalModel = decision.model
       const incoming = nonEmptyString(toolInput.model) ? toolInput.model : undefined
       if (incoming === finalModel) return null

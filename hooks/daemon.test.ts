@@ -20,6 +20,14 @@ const AGENTS_TEST_DIR = join(tmpdir(), "oh-my-cursor-test-agents")
 const AGENTS_TEST_FILE = join(AGENTS_TEST_DIR, "dummy.txt")
 const AGENTS_MD_PATH = join(AGENTS_TEST_DIR, "AGENTS.md")
 
+// Isolate reported-models store writes to a throwaway temp file so the
+// POST /reported-models tests never touch the real ~/.config store. Set in
+// beforeAll BEFORE the daemon import (the store reads this env at call time).
+// Fixed path (deleted in beforeAll) so each run starts from an empty store —
+// the /shutdown process.exit(0) skips afterAll, so a per-run unique name would
+// otherwise accumulate; deleting a fixed path on entry is self-healing instead.
+const REPORTED_MODELS_FILE = join(tmpdir(), "omc-test-reported-models.json")
+
 async function post(path: string, body: Record<string, unknown> = {}) {
   const res = await fetch(`${BASE}${path}`, {
     method: "POST",
@@ -93,6 +101,8 @@ beforeAll(async () => {
 
   process.env.OH_MY_CURSOR_PORT = String(PORT)
   process.env.OH_MY_CURSOR_DAEMON_TOKEN = TEST_TOKEN
+  try { unlinkSync(REPORTED_MODELS_FILE) } catch {}
+  process.env.OH_MY_CURSOR_REPORTED_MODELS_FILE = REPORTED_MODELS_FILE
   await import("./daemon.ts")
   await Bun.sleep(500)
 })
@@ -101,6 +111,8 @@ afterAll(() => {
   try { unlinkSync(AGENTS_TEST_FILE) } catch {}
   try { unlinkSync(AGENTS_MD_PATH) } catch {}
   try { rmdirSync(AGENTS_TEST_DIR) } catch {}
+  try { unlinkSync(REPORTED_MODELS_FILE) } catch {}
+  delete process.env.OH_MY_CURSOR_REPORTED_MODELS_FILE
 })
 
 async function waitForPort(port: number, timeoutMs = 3000): Promise<boolean> {
@@ -1119,6 +1131,133 @@ describe("hook daemon", () => {
     test("returns 404", async () => {
       const res = await fetch(`${BASE}/nonexistent`, { method: "POST" })
       expect(res.status).toBe(404)
+    })
+  })
+
+  // Placed BEFORE the /shutdown ("body parsing resilience") suite: that suite's
+  // POST /shutdown schedules a deferred process.exit(0) that can terminate the
+  // runner mid-flight, so any block after it is not guaranteed to execute.
+  describe("POST /reported-models (Task 13)", () => {
+    const SEED_SLUGS = [
+      "claude-4.6-sonnet-high-thinking",
+      "claude-fable-5-thinking-xhigh",
+      "claude-opus-4-8-thinking-xhigh",
+      "composer-2.5",
+      "composer-2.5-fast",
+      "gemini-3.1-pro",
+      "gpt-5.3-codex-xhigh-fast",
+      "gpt-5.4-medium",
+      "gpt-5.5-high",
+    ]
+
+    async function postReported(
+      body: Record<string, unknown>,
+      opts: { auth: boolean } = { auth: true },
+    ): Promise<{ status: number; data: Record<string, unknown> }> {
+      const headers: Record<string, string> = { "Content-Type": "application/json" }
+      if (opts.auth) headers.Authorization = `Bearer ${TEST_TOKEN}`
+      const res = await fetch(`${BASE}/reported-models`, {
+        method: "POST",
+        headers,
+        body: JSON.stringify(body),
+      })
+      return { status: res.status, data: (await res.json()) as Record<string, unknown> }
+    }
+
+    async function introspectionSnapshot(): Promise<{ source: string; needsCapture: boolean; cursorVersion?: string }> {
+      return (await (await fetch(`${BASE}/introspection`, { headers: authHeaders() })).json()) as {
+        source: string
+        needsCapture: boolean
+        cursorVersion?: string
+      }
+    }
+
+    test("valid capture returns 200 and echoes {ok, version, models}", async () => {
+      const { status, data } = await postReported({ version: "3.7.36", models: SEED_SLUGS })
+      expect(status).toBe(200)
+      expect(data.ok).toBe(true)
+      expect(data.version).toBe("3.7.36")
+      expect(data.models).toEqual(SEED_SLUGS)
+    })
+
+    test("a slug list below MIN_REPORTED_MODELS returns 400 with a rejected list", async () => {
+      const { status, data } = await postReported({ version: "3.7.36", models: ["only-one-x"] })
+      expect(status).toBe(400)
+      expect(Array.isArray(data.rejected)).toBe(true)
+    })
+
+    test("a missing version returns 400", async () => {
+      const { status } = await postReported({ models: SEED_SLUGS })
+      expect(status).toBe(400)
+    })
+
+    test("an empty version returns 400", async () => {
+      const { status } = await postReported({ version: "", models: SEED_SLUGS })
+      expect(status).toBe(400)
+    })
+
+    test("an unauthenticated request returns 401", async () => {
+      const { status } = await postReported({ version: "3.7.36", models: SEED_SLUGS }, { auth: false })
+      expect(status).toBe(401)
+    })
+
+    test("after a valid capture for the live version, GET /introspection flips source to 'reported' and needsCapture to false", async () => {
+      // Seed a deterministic cursor version so the runtime's lastCursorVersion is
+      // known. A real Cursor bundle (if installed) pins its own version, so we read
+      // back whatever the runtime actually resolved to and capture under THAT —
+      // the reported tier hits only when the capture key === the live version.
+      const seedVersion = `cap-${randomUUID().slice(0, 8)}`
+      await post("/preToolUse", {
+        tool_name: "Task",
+        tool_input: { subagent_type: "explore" },
+        conversation_id: "reported-flip-seed",
+        cursor_version: seedVersion,
+      })
+
+      let liveVersion: string | undefined
+      for (let i = 0; i < 40; i++) {
+        const snap = await introspectionSnapshot()
+        if (typeof snap.cursorVersion === "string" && snap.cursorVersion.length > 0) {
+          liveVersion = snap.cursorVersion
+          break
+        }
+        await new Promise((r) => setTimeout(r, 25))
+      }
+      expect(typeof liveVersion).toBe("string")
+
+      const captured = await postReported({ version: liveVersion, models: SEED_SLUGS })
+      expect(captured.status).toBe(200)
+
+      // Generous window (200 × 50ms = 10s): a concurrent observe()/rescan can
+      // transiently re-resolve under a different version key, delaying the flip.
+      let flipped: { source: string; needsCapture: boolean; cursorVersion?: string } | undefined
+      for (let i = 0; i < 200; i++) {
+        const snap = await introspectionSnapshot()
+        if (snap.source === "reported") {
+          flipped = snap
+          break
+        }
+        await new Promise((r) => setTimeout(r, 50))
+      }
+      expect(flipped).toBeDefined()
+      expect(flipped!.source).toBe("reported")
+      expect(flipped!.needsCapture).toBe(false)
+
+      // Restore a non-"reported" source so the later GET /introspection (Task 11)
+      // suite — which asserts source ∈ [bundle,observed,fallback] — is not polluted
+      // by this capture. Observing a fresh, uncaptured version forces a re-resolve.
+      const resetVersion = `reset-${randomUUID().slice(0, 8)}`
+      await post("/preToolUse", {
+        tool_name: "Task",
+        tool_input: { subagent_type: "explore" },
+        conversation_id: "reported-flip-reset",
+        cursor_version: resetVersion,
+      })
+      for (let i = 0; i < 40; i++) {
+        const snap = await introspectionSnapshot()
+        if (snap.source !== "reported") break
+        await new Promise((r) => setTimeout(r, 25))
+      }
     })
   })
 

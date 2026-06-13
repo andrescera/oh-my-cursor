@@ -6,6 +6,7 @@ import { createToolGuardHandlers } from "./tool-guard-handlers"
 import type { BackgroundTracker } from "./background-tracker"
 import { resetConfigCache } from "../config"
 import { conversations, PLAN_PHASE_IDS } from "../shared"
+import { contextCollector } from "../context-collector"
 
 type ActiveTask = { agentId: string; agentType: string; description: string; startTime: number; elapsedMs: number; conversationId: string }
 
@@ -386,9 +387,10 @@ describe("createToolGuardHandlers Plan-mode Write-path guard", () => {
 describe("P0 guard advisory", () => {
   beforeEach(() => {
     conversations.delete(CONV)
+    contextCollector.clearAll()
   })
 
-  it("plan-mode Write guard emits additional_context advisory", () => {
+  it("plan-mode Write guard registers advisory into collector and returns NO additional_context", () => {
     const tracker = makeTracker({ [CONV]: [] })
     const { "/preToolUse": handler } = createToolGuardHandlers(conversations, tracker)
     handler({ tool_name: "Read", conversation_id: CONV, tool_input: { path: "/tmp/x" } })
@@ -398,10 +400,20 @@ describe("P0 guard advisory", () => {
       tool_name: "Write",
       conversation_id: CONV,
       tool_input: { file_path: "/tmp/forbidden.md", contents: "x" },
-    }) as { permission?: string; additional_context?: string }
+    }) as { permission?: string; additional_context?: string; decision?: string; user_message?: string }
 
+    // Deny path stays EXACTLY as-is.
     expect(result.permission).toBe("deny")
-    expect(result.additional_context).toContain("[mode-guard]")
+    expect(result.decision).toBe("deny")
+    expect(result.user_message).toContain(".cursor/plans/")
+
+    // Advisory delivery is rerouted to the piggyback provider: NO additional_context in the response.
+    expect(result).not.toHaveProperty("additional_context")
+
+    // Advisory is still REGISTERED (not consumed) so the piggyback provider can deliver it later.
+    const pending = contextCollector.getPending(CONV)
+    expect(pending.hasContent).toBe(true)
+    expect(pending.merged).toContain("[mode-guard]")
   })
 
   it("ask-mode Task deny emits additional_context advisory", () => {

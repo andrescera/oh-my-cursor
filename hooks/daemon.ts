@@ -13,6 +13,7 @@ import { createToolGuardHandlers } from "./handlers/tool-guard-handlers"
 import { createContinuationHandlers } from "./handlers/continuation-handlers"
 import { createSafetyHandlers } from "./handlers/safety-handlers"
 import { createSubagentHandlers } from "./handlers/subagent-handlers"
+import { createPlanFormatValidatorHandler } from "./handlers/plan-format-validator"
 import { createConversationHistoryHandler } from "./handlers/conversation-history"
 import { BackgroundTracker, createBackgroundTasksHandler } from "./handlers/background-tracker"
 import { createAgentHistoryHandler } from "./handlers/agent-history"
@@ -394,6 +395,7 @@ const handlers: HandlerMap = {
   ...createContinuationHandlers(conversations),
   ...createSafetyHandlers(),
   ...createSubagentHandlers(conversations, tracker),
+  ...createPlanFormatValidatorHandler(conversations),
   // workspaceOpen is registered in hooks.json (canonical event 21, OBSERVE-ONLY/binary-only per
   // docs/cursor/03-hooks.md). No-op route prevents a 404 on POST; no response field is enforced.
   "/workspaceOpen": () => ({}),

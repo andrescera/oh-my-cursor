@@ -133,6 +133,12 @@ export const IntrospectionSchema = z.object({
   extra_bundle_paths: z.array(z.string()).default([]),
 })
 
+export const HandlersSchema = z.object({
+  plan_format_validator: z.object({
+    enabled: z.boolean().default(true),
+  }).default({ enabled: true }),
+})
+
 export const OhMyCursorConfigSchema = z.object({
   version: z.number().default(1),
   disabled_hooks: z.array(z.string()).default([]),
@@ -180,6 +186,9 @@ export const OhMyCursorConfigSchema = z.object({
     enabled: true,
     scan_timeout_ms: 2000,
     extra_bundle_paths: [],
+  }),
+  handlers: HandlersSchema.default({
+    plan_format_validator: { enabled: true },
   }),
 })
 

@@ -161,6 +161,7 @@ export interface Introspection {
   cursorVersion?: string
   cachedAt: string
   observedAdditions: string[]
+  modelsByAgent?: Record<string, string[]>
 }
 
 export const getIntrospection = (): Promise<Result<Introspection>> =>

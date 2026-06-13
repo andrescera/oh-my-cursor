@@ -36,7 +36,7 @@ describe('Shell: tablist keyboard navigation (P0-1)', () => {
     renderShell()
     const list = screen.getByRole('tablist', { name: /dashboard sections/i })
     const tabs = within(list).getAllByRole('tab')
-    expect(tabs).toHaveLength(7)
+    expect(tabs).toHaveLength(8)
     expect(tabs.map((t) => t.getAttribute('data-tab-id'))).toEqual([
       'status',
       'hooks',
@@ -45,6 +45,7 @@ describe('Shell: tablist keyboard navigation (P0-1)', () => {
       'sessions',
       'agents',
       'config',
+      'models-routing',
     ])
   })
 
@@ -63,7 +64,7 @@ describe('Shell: tablist keyboard navigation (P0-1)', () => {
     const statusTab = within(tablist).getByRole('tab', { name: /status/i })
     statusTab.focus()
     fireEvent.keyDown(statusTab, { key: 'ArrowLeft' })
-    expect(useDashboardStore.getState().ui.activeTab).toBe('config')
+    expect(useDashboardStore.getState().ui.activeTab).toBe('models-routing')
   })
 
   test('Home and End jump to first / last tab', () => {
@@ -73,9 +74,9 @@ describe('Shell: tablist keyboard navigation (P0-1)', () => {
     const backgroundTab = within(tablist).getByRole('tab', { name: /background/i })
     backgroundTab.focus()
     fireEvent.keyDown(backgroundTab, { key: 'End' })
-    expect(useDashboardStore.getState().ui.activeTab).toBe('config')
-    const configTab = within(tablist).getByRole('tab', { name: /config/i })
-    fireEvent.keyDown(configTab, { key: 'Home' })
+    expect(useDashboardStore.getState().ui.activeTab).toBe('models-routing')
+    const modelsRoutingTab = within(tablist).getByRole('tab', { name: /models & routing/i })
+    fireEvent.keyDown(modelsRoutingTab, { key: 'Home' })
     expect(useDashboardStore.getState().ui.activeTab).toBe('status')
   })
 

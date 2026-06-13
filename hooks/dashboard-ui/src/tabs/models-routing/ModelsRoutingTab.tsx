@@ -98,9 +98,14 @@ export default function ModelsRoutingTab() {
     const onConfigChanged = () => {
       void load()
     }
+    const onIntrospectionUpdated = () => {
+      void load()
+    }
     es.addEventListener('config-changed', onConfigChanged)
+    es.addEventListener('introspection-updated', onIntrospectionUpdated)
     return () => {
       es?.removeEventListener('config-changed', onConfigChanged)
+      es?.removeEventListener('introspection-updated', onIntrospectionUpdated)
       es?.close()
     }
   }, [load])

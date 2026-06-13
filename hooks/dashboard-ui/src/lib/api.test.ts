@@ -310,6 +310,65 @@ describe('getAgentHistory', () => {
   })
 })
 
+describe('getIntrospection', () => {
+  test('200 → ok with Introspection data', async () => {
+    const introspectionData = {
+      models: ['gpt-4', 'claude-3'],
+      agents: ['sisyphus', 'oracle'],
+      source: 'bundle' as const,
+      cursorVersion: '0.42.0',
+      cachedAt: '2025-06-13T10:00:00Z',
+      observedAdditions: [],
+      modelsByAgent: {
+        sisyphus: ['gpt-4', 'claude-3'],
+        oracle: ['gpt-4'],
+      },
+    }
+    mockFetch.mockResolvedValueOnce(ok(introspectionData))
+    const r = await api.getIntrospection()
+    expect(r.ok).toBe(true)
+    if (r.ok) {
+      expect(r.data.models).toEqual(['gpt-4', 'claude-3'])
+      expect(r.data.agents).toEqual(['sisyphus', 'oracle'])
+      expect(r.data.modelsByAgent).toEqual({
+        sisyphus: ['gpt-4', 'claude-3'],
+        oracle: ['gpt-4'],
+      })
+    }
+    expect(String(mockFetch.mock.calls[0][0])).toMatch(/\/introspection(\?|$)/)
+  })
+
+  test('200 without modelsByAgent → ok (optional field)', async () => {
+    const introspectionData = {
+      models: ['gpt-4'],
+      agents: ['sisyphus'],
+      source: 'bundle' as const,
+      cachedAt: '2025-06-13T10:00:00Z',
+      observedAdditions: [],
+    }
+    mockFetch.mockResolvedValueOnce(ok(introspectionData))
+    const r = await api.getIntrospection()
+    expect(r.ok).toBe(true)
+    if (r.ok) {
+      expect(r.data.modelsByAgent).toBeUndefined()
+    }
+  })
+
+  test('500 → error', async () => {
+    mockFetch.mockResolvedValueOnce(new Response('', { status: 500 }))
+    const r = await api.getIntrospection()
+    expect(r.ok).toBe(false)
+    if (!r.ok) expect(r.error.kind).toBe('http')
+  })
+
+  test('network failure → error', async () => {
+    mockFetch.mockRejectedValueOnce(new Error('boom'))
+    const r = await api.getIntrospection()
+    expect(r.ok).toBe(false)
+    if (!r.ok) expect(r.error.kind).toBe('network')
+  })
+})
+
 describe('parse error path', () => {
   test('200 with non-JSON body → error.kind="parse"', async () => {
     mockFetch.mockResolvedValueOnce(

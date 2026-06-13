@@ -332,10 +332,12 @@ export function createSubagentHandlers(
         timestamp: new Date(exitMs).toISOString(),
       })
 
-      return emptyTaskDetector({
+      emptyTaskDetector({
         output,
         status: (input.status as string) || "",
+        conversationId: convId,
       })
+      return {}
     },
   }
 }

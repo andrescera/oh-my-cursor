@@ -380,3 +380,115 @@ describe("ContextCollector budget enforcement", () => {
     })
   })
 })
+
+describe("ContextCollector.consumeUpTo — peek-then-consume-selected", () => {
+  let collector: ContextCollector
+
+  beforeEach(() => {
+    collector = new ContextCollector()
+  })
+
+  describe("#given no entries exist", () => {
+    test("#then it returns an empty result without throwing", () => {
+      const result = collector.consumeUpTo("unknown", 8000)
+      expect(result.hasContent).toBe(false)
+      expect(result.merged).toBe("")
+      expect(result.entries).toHaveLength(0)
+    })
+  })
+
+  describe("#given the selection fits within the budget", () => {
+    test("#then all entries are delivered and removed", () => {
+      collector.register("s1", { id: "a", source: "src", content: "alpha", priority: "high" })
+      collector.register("s1", { id: "b", source: "src", content: "beta", priority: "low" })
+
+      const result = collector.consumeUpTo("s1", 8000)
+      expect(result.hasContent).toBe(true)
+      expect(result.merged).toContain("alpha")
+      expect(result.merged).toContain("beta")
+      expect(collector.hasPending("s1")).toBe(false)
+    })
+  })
+
+  describe("#given a critical entry fits but a low entry overflows the budget", () => {
+    test("#then the critical entry is delivered and the low entry REMAINS registered", () => {
+      collector.register("s1", { id: "crit", source: "src", content: "C".repeat(6000), priority: "critical" })
+      collector.register("s1", { id: "lo", source: "src", content: "L".repeat(6000), priority: "low" })
+
+      const first = collector.consumeUpTo("s1", 8000)
+      expect(first.entries).toHaveLength(1)
+      expect(first.entries[0].id).toBe("crit")
+      expect(first.merged).toContain("C".repeat(6000))
+      expect(first.merged).not.toContain("L".repeat(6000))
+
+      // Undelivered low entry stays registered for a later call.
+      expect(collector.hasPending("s1")).toBe(true)
+      const second = collector.consumeUpTo("s1", 8000)
+      expect(second.entries).toHaveLength(1)
+      expect(second.entries[0].id).toBe("lo")
+      expect(second.merged).toContain("L".repeat(6000))
+      expect(collector.hasPending("s1")).toBe(false)
+    })
+  })
+
+  describe("#given undelivered entries from a budget cut", () => {
+    test("#then no suppression footer is added (entries deferred, not dropped)", () => {
+      collector.register("s1", { id: "crit", source: "src", content: "KEEP", priority: "critical" })
+      collector.register("s1", { id: "lo", source: "src", content: "X".repeat(6000), priority: "low" })
+
+      const result = collector.consumeUpTo("s1", 4000)
+      expect(result.merged).toBe("KEEP")
+      expect(result.merged).not.toMatch(/advisories suppressed/)
+      // The deferred low entry must still be retrievable.
+      expect(collector.hasPending("s1")).toBe(true)
+    })
+  })
+
+  describe("#given a budget of zero", () => {
+    test("#then nothing is delivered and all entries remain", () => {
+      collector.register("s1", { id: "a", source: "src", content: "alpha", priority: "critical" })
+      const result = collector.consumeUpTo("s1", 0)
+      expect(result.hasContent).toBe(false)
+      expect(collector.hasPending("s1")).toBe(true)
+    })
+  })
+
+  describe("#given entries across two conversations", () => {
+    test("#then consumeUpTo only touches the targeted conversation", () => {
+      collector.register("s1", { id: "a", source: "src", content: "s1-content" })
+      collector.register("s2", { id: "b", source: "src", content: "s2-content" })
+
+      const r1 = collector.consumeUpTo("s1", 8000)
+      expect(r1.merged).toContain("s1-content")
+      expect(collector.hasPending("s1")).toBe(false)
+      expect(collector.hasPending("s2")).toBe(true)
+      expect(collector.getPending("s2").merged).toContain("s2-content")
+    })
+  })
+
+  describe("#given an entry larger than max_entry_chars", () => {
+    test("#then its delivered content is capped (priority-budget machinery reused)", () => {
+      const capped = new ContextCollector({
+        maxEntryChars: 500,
+        maxContextChars: 50000,
+        priorityBudgets: { critical: 50000, high: 50000, normal: 50000, low: 50000 },
+      })
+      capped.register("s1", { id: "big", source: "src", content: "a".repeat(5000), priority: "normal" })
+
+      const result = capped.consumeUpTo("s1", 8000)
+      expect(result.entries).toHaveLength(1)
+      expect(result.entries[0].content.length).toBeLessThanOrEqual(500)
+      expect(result.entries[0].content).toContain("[truncated]")
+    })
+  })
+
+  describe("#given merged output of a multi-entry selection", () => {
+    test("#then entries are joined with the standard separator", () => {
+      collector.register("s1", { id: "a", source: "src", content: "first", priority: "high" })
+      collector.register("s1", { id: "b", source: "src", content: "second", priority: "normal" })
+
+      const result = collector.consumeUpTo("s1", 8000)
+      expect(result.merged).toBe("first\n\n---\n\nsecond")
+    })
+  })
+})

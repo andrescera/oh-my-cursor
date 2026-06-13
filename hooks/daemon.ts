@@ -18,6 +18,7 @@ import { BackgroundTracker, createBackgroundTasksHandler } from "./handlers/back
 import { createAgentHistoryHandler } from "./handlers/agent-history"
 import { extractAgentTypeFromLogInputs, extractAgentIdFromLogInputs } from "./handlers/extract-agent-fields"
 import { composeTaskUpdatedInput } from "./handlers/task-input-composer"
+import "./handlers/context-piggyback-mutation"
 import { StatePersistence, type ConversationMetadata } from "./state-persistence"
 import { createHeartbeatHandler, startHeartbeatWriter, HEARTBEAT_FILE } from "./handlers/heartbeat"
 import { loadConfig, resetConfigCache } from "./config"

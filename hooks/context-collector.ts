@@ -117,6 +117,32 @@ export class ContextCollector {
     return result
   }
 
+  consumeUpTo(conversationId: string, maxChars: number): PendingContext {
+    const conversationMap = this.conversations.get(conversationId)
+    if (!conversationMap || conversationMap.size === 0) {
+      return { merged: "", entries: [], hasContent: false }
+    }
+
+    const sorted = this.sortEntries([...conversationMap.values()])
+    const kept: ContextEntry[] = []
+    let totalUsed = 0
+
+    for (const entry of sorted) {
+      const content = this.capEntry(entry.content)
+      if (totalUsed + content.length > maxChars) continue
+      kept.push({ ...entry, content })
+      totalUsed += content.length
+    }
+
+    for (const entry of kept) {
+      conversationMap.delete(`${entry.source}:${entry.id}`)
+    }
+    if (conversationMap.size === 0) this.clear(conversationId)
+
+    const merged = kept.map((e) => e.content).join(CONTEXT_SEPARATOR)
+    return { merged, entries: kept, hasContent: kept.length > 0 }
+  }
+
   private applyBudget(sorted: ContextEntry[]): PendingContext {
     const perPriorityUsed: Record<ContextPriority, number> = {
       critical: 0,

@@ -4,6 +4,7 @@ import { createThinkingBlockValidator } from "./thinking-block-validator"
 import { loadConfig } from "../config"
 import { logEvent } from "../event-logger"
 import { redactSecrets } from "../secret-redactor"
+import { createQuestionLabelTruncatorHandler } from "./question-label-truncator"
 
 function logBlocked(
   event: string,
@@ -148,22 +149,24 @@ export function createSafetyHandlers(): HandlerMap {
       const config = loadConfig(conversation.env.OH_MY_CURSOR_PROJECT_DIR)
       const allowlist = config.mcp_allowlist
 
-      if (allowlist.includes("*") || allowlist.includes(serverName)) {
-        return {}
+      if (!allowlist.includes("*") && !allowlist.includes(serverName)) {
+        logBlocked("/beforeMCPExecution", input, "mcp_not_allowlisted", {
+          server: redactSecrets(serverName).slice(0, 512),
+        })
+        const reason = `MCP server "${serverName}" is not in the configured allowlist. Add it to mcp_allowlist in your oh-my-cursor config.`
+        return {
+          decision: "deny",
+          user_message: reason,
+          agent_message: reason,
+          permission: "deny",
+          userMessage: reason,
+          reason,
+        }
       }
 
-      logBlocked("/beforeMCPExecution", input, "mcp_not_allowlisted", {
-        server: redactSecrets(serverName).slice(0, 512),
-      })
-      const reason = `MCP server "${serverName}" is not in the configured allowlist. Add it to mcp_allowlist in your oh-my-cursor config.`
-      return {
-        decision: "deny",
-        user_message: reason,
-        agent_message: reason,
-        permission: "deny",
-        userMessage: reason,
-        reason,
-      }
+      // Apply question-label-truncator (sub-rule a)
+      const questionLabelTruncator = createQuestionLabelTruncatorHandler()
+      return questionLabelTruncator(input)
     },
 
     "/afterMCPExecution": (input) => {

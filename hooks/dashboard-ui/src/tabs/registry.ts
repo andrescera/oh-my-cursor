@@ -14,6 +14,7 @@ export const TAB_DEFINITIONS: readonly TabDefinition[] = [
   { id: 'sessions', label: 'Sessions', hotkey: '5' },
   { id: 'agents', label: 'Agents', hotkey: '6' },
   { id: 'config', label: 'Config', hotkey: '7' },
+  { id: 'models-routing', label: 'Models & Routing', hotkey: '8' },
 ] as const
 
 export const HOTKEY_TO_TAB: Readonly<Record<string, TabId>> = TAB_DEFINITIONS.reduce(

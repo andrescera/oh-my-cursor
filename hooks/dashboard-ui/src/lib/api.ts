@@ -145,3 +145,64 @@ export const getBackgroundTasks = (): Promise<Result<unknown>> => request(url('/
 export type AgentHistoryQuery = { limit?: number }
 export const getAgentHistory = (q: AgentHistoryQuery = {}): Promise<Result<unknown>> =>
   request(url('/agentHistory', { limit: q.limit }))
+
+export const getChannelStatus = (): Promise<Result<unknown>> => request(url('/channel-status'))
+
+/**
+ * Introspection snapshot returned by `GET /introspection`.
+ * Mirrors `IntrospectionSnapshot` in `hooks/lib/introspection-runtime.ts`.
+ */
+export type IntrospectionSource = 'bundle' | 'observed' | 'fallback'
+
+export interface Introspection {
+  models: string[]
+  agents: string[]
+  source: IntrospectionSource
+  cursorVersion?: string
+  cachedAt: string
+  observedAdditions: string[]
+}
+
+export const getIntrospection = (): Promise<Result<Introspection>> =>
+  request<Introspection>(url('/introspection'))
+
+/**
+ * One agent's routing override. Mirrors `AgentOverrideSchema` in
+ * `hooks/schemas/config.ts`: `model` is a free-form slug (optional, omit =
+ * inherit), `fallback_models` is an ordered chain, `disable` turns the agent
+ * off entirely.
+ */
+export interface AgentOverride {
+  model?: string
+  fallback_models: string[]
+  disable: boolean
+}
+
+export type AgentOverridesTarget = 'project' | 'user'
+
+export interface AgentOverridesSavePayload {
+  target: AgentOverridesTarget
+  agent_overrides: Record<string, AgentOverride>
+  categories?: Record<string, AgentOverride & { description?: string }>
+}
+
+export interface AgentOverridesSaveResponse {
+  status: string
+  path: string
+  warnings: string[]
+}
+
+/**
+ * `POST /config/agent-overrides`: atomic, validated write of the
+ * `agent_overrides` slice. Returns 200 `{ status, path, warnings }` on success,
+ * 400 `{ error }` on Zod validation failure (surfaced via `r.error.body`).
+ * Token-authed via the shared `authHeaders()`.
+ */
+export const saveAgentOverrides = (
+  payload: AgentOverridesSavePayload,
+): Promise<Result<AgentOverridesSaveResponse>> =>
+  request<AgentOverridesSaveResponse>(url('/config/agent-overrides'), {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload),
+  })

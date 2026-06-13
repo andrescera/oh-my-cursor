@@ -10,6 +10,7 @@ export type TabId =
   | 'sessions'
   | 'agents'
   | 'config'
+  | 'models-routing'
 
 export type EventsFilter = 'all' | 'tools' | 'dispatches' | 'errors' | 'denies'
 export type SessionsSort = 'startTimeDesc' | 'toolCountDesc' | 'errorCountDesc'
@@ -25,6 +26,7 @@ const TABS: readonly TabId[] = [
   'sessions',
   'agents',
   'config',
+  'models-routing',
 ] as const
 
 const emptyExpanded = (): ExpandedKeys =>

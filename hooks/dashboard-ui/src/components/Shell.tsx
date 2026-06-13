@@ -26,6 +26,7 @@ import EventsTab from '@/tabs/EventsTab'
 import SessionsTab from '@/tabs/SessionsTab'
 import AgentsTab from '@/tabs/AgentsTab'
 import ConfigTab from '@/tabs/ConfigTab'
+import ModelsRoutingTab from '@/tabs/models-routing/ModelsRoutingTab'
 
 import { ShellHeader } from './ShellHeader'
 import { useShellHotkeys } from './ShellHotkeys'
@@ -39,6 +40,7 @@ const TAB_PANELS: Record<TabId, () => React.JSX.Element> = {
   sessions: () => <SessionsTab />,
   agents: () => <AgentsTab />,
   config: () => <ConfigTab />,
+  'models-routing': () => <ModelsRoutingTab />,
 }
 
 // Keep in sync with sse.ts (BASE_BACKOFF_MS / MAX_BACKOFF_MS).

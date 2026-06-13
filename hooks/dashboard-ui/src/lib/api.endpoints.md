@@ -39,6 +39,9 @@ Nothing throws. Callers branch on `r.ok`.
 | `saveConfig`          | POST   | `/config`             | JSON body = config draft, `Content-Type: application/json` | `{ status, path }` on 200; `{ error, issues }` on 400 |
 | `getBackgroundTasks`  | GET    | `/backgroundTasks`    | none                                              | task list       |
 | `getAgentHistory`     | GET    | `/agentHistory`       | `?limit=N` (optional)                             | history entries |
+| `getChannelStatus`    | GET    | `/channel-status`     | none                                              | `{ table }` hook-channel matrix |
+| `getIntrospection`    | GET    | `/introspection`      | none                                              | introspection snapshot (incl. `cursorVersion`) |
+| `saveAgentOverrides`  | POST   | `/config/agent-overrides` | JSON body `{ target, agent_overrides, categories? }`, `Content-Type: application/json` | `{ status, path, warnings }` on 200; `{ error }` on 400 |
 
 ## Notes
 

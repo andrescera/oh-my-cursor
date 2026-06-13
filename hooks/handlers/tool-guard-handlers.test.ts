@@ -464,6 +464,42 @@ describe("P0 guard advisory", () => {
   })
 })
 
+describe("postToolUse context delivery reroute", () => {
+  beforeEach(() => {
+    conversations.delete(CONV)
+    contextCollector.clearAll()
+  })
+
+  it("does NOT return additional_context and leaves registered context for the piggyback provider", () => {
+    const tracker = makeTracker({ [CONV]: [] })
+    const handlers = createToolGuardHandlers(conversations, tracker)
+    const pre = handlers["/preToolUse"]
+    const post = handlers["/postToolUse"]
+    pre({ tool_name: "Read", conversation_id: CONV, tool_input: { path: "/tmp/x" } })
+
+    contextCollector.register(CONV, {
+      id: "sentinel",
+      source: "test-sentinel",
+      content: "[test-sentinel] SENTINEL_POSTTOOL_14",
+      priority: "critical",
+    })
+
+    const result = post({
+      tool_name: "Read",
+      conversation_id: CONV,
+      tool_input: { path: "/tmp/x" },
+      output: "ok",
+    })
+
+    expect(result).not.toHaveProperty("additional_context")
+    expect(result).not.toHaveProperty("hookSpecificOutput")
+
+    const pending = contextCollector.getPending(CONV)
+    expect(pending.hasContent).toBe(true)
+    expect(pending.merged).toContain("SENTINEL_POSTTOOL_14")
+  })
+})
+
 describe("TodoWrite tracking via preToolUse", () => {
   let projectDir: string
 

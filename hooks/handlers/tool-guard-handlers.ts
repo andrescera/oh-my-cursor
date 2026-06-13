@@ -591,16 +591,7 @@ export function createToolGuardHandlers(
 
       contextWindowMonitor({ conversation, content: output, conversationId: convId })
 
-      const cc = commentChecker({ tool_name: toolName, output })
-      const ccCtx = cc.additional_context as string | undefined
-      if (ccCtx) {
-        contextCollector.register(convId, {
-          id: "comment-check",
-          source: "comment-checker",
-          content: ccCtx,
-          priority: "high",
-        })
-      }
+      commentChecker({ tool_name: toolName, output, conversationId: convId })
 
       const trunc = toolOutputTruncator({ output })
       let modifiedOutput: string | undefined
@@ -647,13 +638,7 @@ export function createToolGuardHandlers(
       }
 
       applyContextCollectorConfig(config)
-      const pending = contextCollector.consume(convId)
-      const merged = pending.merged
       const out: Record<string, unknown> = {}
-      if (pending.hasContent) {
-        out.additional_context = merged
-        out.hookSpecificOutput = { hookEventName: "PostToolUse", additionalContext: merged }
-      }
       if (modifiedOutput !== undefined) {
         out.modified_output = modifiedOutput
       }

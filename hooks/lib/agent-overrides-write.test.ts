@@ -7,6 +7,7 @@ import {
   AgentOverridesWriteSchema,
   resolveConfigPath,
   writeAgentOverrides,
+  isWriteFailure,
 } from "./agent-overrides-write"
 import { resetIntrospectorState } from "./task-schema-introspector"
 
@@ -107,7 +108,7 @@ describe("writeAgentOverrides", () => {
       { cwd: dir, enumOptions: FALLBACK_ENUM_OPTS },
     )
     expect(res.ok).toBe(false)
-    if (!res.ok) expect(res.status).toBe(400)
+    if (isWriteFailure(res)) expect(res.status).toBe(400)
     expect(sha256OfFile(path)).toBe(before)
   })
 

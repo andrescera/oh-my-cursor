@@ -17,10 +17,12 @@ import { createConversationHistoryHandler } from "./handlers/conversation-histor
 import { BackgroundTracker, createBackgroundTasksHandler } from "./handlers/background-tracker"
 import { createAgentHistoryHandler } from "./handlers/agent-history"
 import { extractAgentTypeFromLogInputs, extractAgentIdFromLogInputs } from "./handlers/extract-agent-fields"
+import { composeTaskUpdatedInput } from "./handlers/task-input-composer"
 import { StatePersistence, type ConversationMetadata } from "./state-persistence"
 import { createHeartbeatHandler, startHeartbeatWriter, HEARTBEAT_FILE } from "./handlers/heartbeat"
 import { loadConfig, resetConfigCache } from "./config"
 import { OhMyCursorConfigSchema } from "./schemas/config"
+import { writeAgentOverrides, isWriteFailure } from "./lib/agent-overrides-write"
 import { cleanupStaleProcess, killPortSquatter } from "./process-guard"
 import { writePortCoordination } from "./port-manager"
 import type { HandlerMap } from "./types"
@@ -30,6 +32,7 @@ import { createBackgroundWorker } from "./lib/background-worker"
 import { createMetrics } from "./lib/metrics"
 import { acquireStartupLock, releaseStartupLock } from "./lib/startup-lock"
 import { getOrCreateToken, extractProvidedToken, tokensMatch } from "./lib/daemon-token"
+import { introspectionRuntime } from "./lib/introspection-runtime"
 
 const HOT_PATHS = new Set([
   "/preToolUse",
@@ -66,10 +69,20 @@ const DIAGNOSTIC_PATHS = new Set([
   "/dashboard/index.html",
   "/config",
   "/config/full",
+  "/introspection",
+])
+
+const OBSERVE_INTROSPECTION_ROUTES = new Set([
+  "/preToolUse",
+  "/postToolUse",
+  "/subagentStart",
 ])
 
 function budgetForRoute(route: string): number {
   if (HOT_PATHS.has(route)) return 50
+  // Config write does file IO + a bounded (cached, timeout-capped) introspector
+  // scan for the advisory enum check — give it the larger diagnostic budget.
+  if (route === "/config/agent-overrides") return 500
   if (DIAGNOSTIC_PATHS.has(route)) return 500
   if (route.startsWith("/dashboard/assets/")) return 500
   return 250
@@ -170,10 +183,11 @@ function requiresToken(path: string): boolean {
   return (
     path === "/session-log" || path.startsWith("/session-log/") ||
     path === "/conversation-log" || path.startsWith("/conversation-log/") ||
-    path === "/config" || path === "/config/full" ||
+    path === "/config" || path === "/config/full" || path === "/config/agent-overrides" ||
     path === "/status" || path === "/shutdown" || path === "/metrics" ||
     path === "/dashboard" || path === "/dashboard/index.html" ||
-    path === "/agentHistory" || path === "/backgroundTasks"
+    path === "/agentHistory" || path === "/backgroundTasks" ||
+    path === "/introspection"
   )
 }
 
@@ -307,6 +321,18 @@ let isShuttingDown = false
 let heartbeatInterval: ReturnType<typeof setInterval> | null = null
 let persistenceInterval: ReturnType<typeof setInterval> | null = null
 const activeStreams = new Set<ReadableStreamDefaultController>()
+
+function emitConfigChanged(detail: Record<string, unknown>): void {
+  const encoder = new TextEncoder()
+  const payload = JSON.stringify({ ...detail, ts: new Date().toISOString() })
+  for (const controller of [...activeStreams]) {
+    try {
+      controller.enqueue(encoder.encode(`event: config-changed\ndata: ${payload}\n\n`))
+    } catch {
+      // Dead stream: its own keepalive/send path performs cleanup.
+    }
+  }
+}
 
 async function gracefulShutdown(reason: string): Promise<void> {
   if (isShuttingDown) return
@@ -545,6 +571,37 @@ const fetchHandler = async (req: Request) => {
     return budgeted
   }
 
+  if (path === "/config/agent-overrides" && req.method === "POST") {
+    const budgeted = await budgetMiddleware.withBudget(path, budgetForRoute(path), async () => {
+      let body: unknown
+      try {
+        body = await req.json()
+      } catch {
+        return new Response(JSON.stringify({ error: "Invalid JSON body" }), {
+          status: 400,
+          headers: { "Content-Type": "application/json" },
+        })
+      }
+      const cfg = loadConfig()
+      const result = await writeAgentOverrides(body, { enumOptions: { introspection: cfg.introspection } })
+      if (isWriteFailure(result)) {
+        return new Response(JSON.stringify({ error: result.error }), {
+          status: result.status,
+          headers: { "Content-Type": "application/json" },
+        })
+      }
+      resetConfigCache()
+      resetHookConfigCache()
+      loadConfig()
+      emitConfigChanged({ target: (body as { target?: unknown }).target, path: result.path })
+      return new Response(JSON.stringify({ status: "saved", path: result.path, warnings: result.warnings }), {
+        headers: { "Content-Type": "application/json" },
+      })
+    })
+    if (isDeferredResult(budgeted)) return deferredJsonResponse()
+    return budgeted
+  }
+
   if (path === "/config" && req.method === "POST") {
     const budgeted = await budgetMiddleware.withBudget(path, budgetForRoute(path), async () => {
       try {
@@ -655,6 +712,16 @@ const fetchHandler = async (req: Request) => {
       const snapshot = metrics.getSnapshot()
       snapshot.circuitState = budgetMiddleware.getCircuitState()
       return new Response(JSON.stringify(snapshot), {
+        headers: { "Content-Type": "application/json" },
+      })
+    })
+    if (isDeferredResult(budgeted)) return deferredJsonResponse()
+    return budgeted
+  }
+
+  if (path === "/introspection") {
+    const budgeted = await budgetMiddleware.withBudget(path, budgetForRoute(path), async () => {
+      return new Response(JSON.stringify(introspectionRuntime.getSnapshot()), {
         headers: { "Content-Type": "application/json" },
       })
     })
@@ -852,6 +919,9 @@ const fetchHandler = async (req: Request) => {
     }
     const parsed = parseInput(body)
     errorSessionId = (parsed.conversation_id as string) || (parsed.session_id as string) || ""
+    if (OBSERVE_INTROSPECTION_ROUTES.has(path)) {
+      introspectionRuntime.observe(parsed)
+    }
     if (req.method !== "POST") {
       for (const [key, value] of url.searchParams) {
         parsed[key] = value
@@ -868,7 +938,10 @@ const fetchHandler = async (req: Request) => {
     // Catch-and-return (instead of re-throw) keeps the middleware's timeout/circuit logic intact.
     const result = await budgetMiddleware.withBudget(path, budgetForRoute(path), async () => {
       try {
-        return await Promise.resolve(handler(parsed))
+        const handlerResult = await Promise.resolve(handler(parsed))
+        // Sole producer of `updated_input` for Task preToolUse; runs after the
+        // handler so permission/deny short-circuits take precedence.
+        return composeTaskUpdatedInput(path, parsed, handlerResult)
       } catch (handlerErr) {
         handlerThrew = true
         handlerErrorMessage = handlerErr instanceof Error ? handlerErr.message : String(handlerErr)
@@ -1013,6 +1086,13 @@ persistenceInterval = setInterval(async () => {
   await persistence.save(conversations)
 }, 30_000)
 backgroundWorker.start()
+
+// Fire-and-forget: the daemon serves /introspection from the fallback floor
+// immediately; the bundle scan resolves the snapshot in the background and must
+// never block startup or any hook response.
+introspectionRuntime.init().catch((err) => {
+  console.error("[oh-my-cursor] Introspection init failed:", err instanceof Error ? err.message : String(err))
+})
 
 process.on("SIGTERM", () => { void gracefulShutdown("SIGTERM") })
 process.on("SIGINT", () => { void gracefulShutdown("SIGINT") })

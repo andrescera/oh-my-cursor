@@ -57,4 +57,29 @@ describe("agent-usage-reminder", () => {
 
     expect(contextCollector.getPending(CONV).hasContent).toBe(false)
   })
+
+  it("delivers the reminder via the collector, never additional_context (dead channel)", () => {
+    const handler = createAgentUsageReminderHandler(conversations)["/postToolUse"]!
+    const conv = getOrCreateConversation(CONV)
+    conv.composerMode = "agent"
+
+    let firingResult: unknown
+    for (let i = 0; i < 3; i++) firingResult = handler(grep())
+
+    expect(firingResult).not.toHaveProperty("additional_context")
+    expect(contextCollector.getPending(CONV).merged).toContain("[agent-reminder]")
+  })
+
+  it("collapses repeated reminder firings onto one keyed entry", () => {
+    const handler = createAgentUsageReminderHandler(conversations)["/postToolUse"]!
+    const conv = getOrCreateConversation(CONV)
+    conv.composerMode = "agent"
+
+    for (let i = 0; i < 6; i++) handler(grep())
+
+    expect(conv.dispatchCounts["agent-reminder"]).toBe(2)
+    const pending = contextCollector.getPending(CONV)
+    expect(pending.entries).toHaveLength(1)
+    expect(pending.entries[0].id).toBe("agent-usage-reminder")
+  })
 })

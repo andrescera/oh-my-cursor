@@ -5,6 +5,7 @@ import { getOrCreateConversation, conversations, setPersistence } from "../share
 import { contextCollector } from "../context-collector"
 import { StatePersistence } from "../state-persistence"
 import { rmSync } from "node:fs"
+import { resetUserStoppedLatches } from "./stop-continuation-guard"
 
 function makeConvId(): string {
   return `continuation-test-${randomUUID()}`
@@ -36,6 +37,7 @@ describe("createContinuationHandlers", () => {
   afterEach(() => {
     conversations.delete(convId)
     contextCollector.clear(convId)
+    resetUserStoppedLatches()
   })
 
   describe("/stop handler", () => {

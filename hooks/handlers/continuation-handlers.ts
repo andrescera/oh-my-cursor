@@ -15,6 +15,7 @@ import { extractDisplayTitle } from "../display-title"
 import { resolve } from "node:path"
 import { existsSync, readFileSync } from "node:fs"
 import { spawnWithTimeout } from "../lib/spawn-with-timeout"
+import { isUserStopped, setUserStopped, clearUserStopped } from "./stop-continuation-guard"
 
 function sendOsNotification(title: string, message: string, urgency: "low" | "normal" | "critical", projectDir?: string) {
   const config = loadConfig(projectDir)
@@ -44,9 +45,14 @@ export function isContinuationLoopActive(conversation: ConversationState): boole
 // Single asserted gate for `stop.followup_message`: emit only when a continuation
 // loop is active; a non-loop stop falls through to {}. Sole emitter, so the
 // undetermined stop multi-hook merge order (hook-response-fields.md:35) never bites.
-function continuationResponse(conversation: ConversationState, message: string): Record<string, unknown> {
+// Also suppresses followup if user explicitly stopped (latch set).
+function continuationResponse(conversation: ConversationState, convId: string, message: string): Record<string, unknown> {
   if (!isContinuationLoopActive(conversation)) {
     console.log(`[oh-my-cursor][/stop] RESULT=noop reason=noActiveLoopGuard`)
+    return {}
+  }
+  if (isUserStopped(convId)) {
+    console.log(`[oh-my-cursor][/stop] RESULT=noop reason=userStoppedLatch`)
     return {}
   }
   return {
@@ -153,6 +159,11 @@ export function createContinuationHandlers(
         conversation.abortDetectedAt = Date.now()
       }
 
+      // User explicitly stopped: set the latch to suppress followups
+      if (stopHookActive) {
+        setUserStopped(convId)
+      }
+
       if (conversation.stoppedAt || stopHookActive || (status && status !== "completed")) {
         console.log(`[oh-my-cursor][/stop] RESULT=noop reason=stoppedOrHookOrStatus`)
         return {}
@@ -195,7 +206,7 @@ export function createContinuationHandlers(
 
         const message = "Continue working. Iteration " + ralph.iteration + "/" + (ralph.maxIterations || "unlimited") + ". When fully done, output <promise>DONE</promise>."
         console.log(`[oh-my-cursor][/stop] RESULT=continue msg="${message.slice(0, 80)}"`)
-        return continuationResponse(conversation, message)
+        return continuationResponse(conversation, convId, message)
       }
 
       const loopCount = typeof input.loop_count === "number" ? input.loop_count : 0
@@ -283,7 +294,7 @@ export function createContinuationHandlers(
         }
 
         console.log(`[oh-my-cursor][/stop] RESULT=continue msg="${message.slice(0, 80)}"`)
-        return continuationResponse(conversation, message)
+        return continuationResponse(conversation, convId, message)
       }
 
       console.log(`[oh-my-cursor][/stop] RESULT=noop reason=default`)
@@ -294,6 +305,9 @@ export function createContinuationHandlers(
       const userMessage = (input.prompt as string) || (input.user_message as string) || ""
       const convId = resolveConversationId(input)
       const conversation = getOrCreateConversation(convId, wasResolvedViaFallback(input), derivedProjectRoot(input))
+
+      // Clear user-stopped latch on new prompt (re-enable followups)
+      clearUserStopped(convId)
 
       // task-18: this handler no longer drains the collector. beforeSubmitPrompt
       // output is NOT-SUPPORTED-BY-DESIGN for context (staff 158883); the Task

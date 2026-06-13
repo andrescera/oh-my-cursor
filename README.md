@@ -152,6 +152,22 @@ The daemon introspects the Cursor bundle at startup to validate slugs (`GET /int
 bun scripts/config-generator.ts --sync-rules
 ```
 
+#### Per-subagent_type allowlist
+
+Each agent's `model` and `fallback_models` values are validated against a curated per-`subagent_type` allowlist defined in [`hooks/lib/agent-model-allowlist.ts`](hooks/lib/agent-model-allowlist.ts). The allowlist maps each agent name to the set of model slugs known to work for that agent type.
+
+Validation is advisory, not blocking:
+
+- `"inherit"` is always allowed and skips all checks.
+- An unrecognised slug logs a **warning** at config write-time and an **advisory** at dispatch-time.
+- The slug is still passed through to Cursor unchanged — dispatch is never blocked.
+
+**Dashboard constraint.** The Models & Routing tab (hotkey 8) shows a per-agent model dropdown that lists only the allowed models for that agent. If the active config contains a slug outside the allowlist, the dashboard displays an **invalid-override banner** with a one-click reset to the default for that agent.
+
+**`introspection-updated` SSE event.** When the daemon detects a `cursorVersion` change during bundle introspection, it emits an `introspection-updated` event on the SSE stream with payload `{ cursorVersion, cachedAt }`. The dashboard listens for this event and refreshes the Models & Routing tab automatically so the allowlist and available-slug list stay current without a page reload.
+
+See [`docs/internal/agent-model-allowlist.md`](docs/internal/agent-model-allowlist.md) for the full design and [`docs/internal/per-subagent-model-enum-spike.md`](docs/internal/per-subagent-model-enum-spike.md) for the spike findings that informed the curated-map approach.
+
 ## Documentation
 
 | Document | Description |

@@ -78,10 +78,17 @@
   },
 
   // Per-agent model overrides (preferred over the deprecated model_routing).
-  // Keyed by agent name. Each entry supports:
-  //   "model"           — Cursor model slug to use (free-form, e.g. "composer-2-fast")
+  // Keyed by subagent_type name (e.g. "explore", "sisyphus"). Each entry supports:
+  //   "model"           — Cursor model slug to use (e.g. "composer-2-fast")
   //   "fallback_models" — ordered slugs to try if "model" is unavailable
   //   "disable"         — true to disable dispatching this agent entirely
+  //
+  // Validation: "model" and each entry in "fallback_models" are checked against a
+  // per-subagent_type curated allowlist (hooks/lib/agent-model-allowlist.ts).
+  //   - "inherit" is always allowed and skips all allowlist checks.
+  //   - An unrecognised slug logs a warning at write-time and an advisory at dispatch-time.
+  //   - The dashboard shows a banner for any active invalid override with a one-click reset.
+  //   - Invalid overrides NEVER block dispatch; the slug is passed through as-is.
   // "agent_overrides": {
   //   "explore": {
   //     "model": "composer-2-fast",
@@ -92,6 +99,8 @@
 
   // Category-level overrides. Same fields as agent_overrides plus "description".
   // Use to group agents/tasks under a shared routing policy.
+  // Category model values are subject to the same per-subagent_type allowlist validation
+  // and advisory/banner behaviour described above.
   // "categories": {
   //   "quick": {
   //     "model": "composer-2-fast",

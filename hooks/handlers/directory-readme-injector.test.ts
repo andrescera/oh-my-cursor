@@ -58,4 +58,22 @@ describe("directory-readme-injector", () => {
     handler({ tool_name: "Write", conversation_id: CONV, tool_input: { file_path: "/proj/src/app.ts" } })
     expect(contextCollector.getPending(CONV).hasContent).toBe(false)
   })
+
+  it("delivers standing context via the collector, never additional_context (dead channel)", () => {
+    const handler = createDirectoryReadmeInjectorHandler(conversations, makeFsDeps())["/postToolUse"]!
+    const result = handler(readInput())
+
+    expect(result).not.toHaveProperty("additional_context")
+    expect(contextCollector.getPending(CONV).hasContent).toBe(true)
+  })
+
+  it("registers the standing README under one keyed id — repeated reads yield a single entry", () => {
+    const handler = createDirectoryReadmeInjectorHandler(conversations, makeFsDeps())["/postToolUse"]!
+    handler(readInput())
+    handler(readInput())
+
+    const pending = contextCollector.getPending(CONV)
+    expect(pending.entries).toHaveLength(1)
+    expect(pending.entries[0].id).toBe("readme-/proj")
+  })
 })

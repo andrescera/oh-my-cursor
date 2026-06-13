@@ -197,10 +197,8 @@ export function createSafetyHandlers(): HandlerMap {
       if (durationMs && durationMs > 30000) {
         console.log(`[oh-my-cursor] Long thinking block: ${Math.round(durationMs / 1000)}s`)
       }
-      const validatorResult = thinkingBlockValidator(input)
-      if (validatorResult.additional_context) {
-        return validatorResult
-      }
+      const convId = resolveConversationId(input)
+      thinkingBlockValidator({ ...input, conversationId: convId })
       return {}
     },
   }

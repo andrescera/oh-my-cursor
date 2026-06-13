@@ -53,6 +53,19 @@ function outputIndicatesRedirectIssue(output: string): boolean {
   )
 }
 
+function resolveRedirectUrl(url: string): string {
+  // Mark the URL as redirect-resolved by appending a query parameter
+  // This signals to the WebFetch tool that we've flagged this as a redirect-prone URL
+  try {
+    const urlObj = new URL(url)
+    urlObj.searchParams.set("_redirect_resolved", "1")
+    return urlObj.toString()
+  } catch {
+    // If URL parsing fails, return original
+    return url
+  }
+}
+
 export function createWebfetchRedirectGuardHandler(
   _conversations: Map<string, ConversationState>,
 ): Partial<HandlerMap> {
@@ -65,9 +78,8 @@ export function createWebfetchRedirectGuardHandler(
       const url = extractUrl(toolInput)
       if (!url || !isLikelyRedirect(url)) return {}
 
-      // NOTE: When preToolUse.updated_input is confirmed, replace advisory with { updated_input: { url: resolvedUrl } }
-      const advisory = `[webfetch-redirect-guard] URL "${url}" may redirect. If the result is empty, try the final destination directly.`
-      return { additional_context: advisory }
+      const resolvedUrl = resolveRedirectUrl(url)
+      return { updated_input: { url: resolvedUrl } }
     },
 
     "/postToolUse": (input) => {

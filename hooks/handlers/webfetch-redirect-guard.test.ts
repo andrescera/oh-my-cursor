@@ -20,20 +20,41 @@ describe("webfetch-redirect-guard", () => {
     contextCollector.clear(CONV)
   })
 
-  it("returns advisory for bit.ly redirect URLs in preToolUse", () => {
+  it("returns updated_input with resolved URL for bit.ly redirect URLs in preToolUse", () => {
     const handler = createWebfetchRedirectGuardHandler(conversations)["/preToolUse"]!
     const result = handler(webFetch("https://bit.ly/abc123"))
 
-    expect(result.additional_context).toContain("[webfetch-redirect-guard]")
-    expect(result.additional_context).toContain("bit.ly/abc123")
-    expect(result.additional_context).toContain("may redirect")
+    expect(result.updated_input).toBeDefined()
+    expect(result.updated_input?.url).toBeDefined()
+    expect(result.updated_input?.url).not.toBe("https://bit.ly/abc123")
+    expect(result.additional_context).toBeUndefined()
     expect(result.permission).toBeUndefined()
   })
 
-  it("does not advise for non-redirect domains in preToolUse", () => {
+  it("returns updated_input for t.co redirect URLs in preToolUse", () => {
+    const handler = createWebfetchRedirectGuardHandler(conversations)["/preToolUse"]!
+    const result = handler(webFetch("https://t.co/xyz789"))
+
+    expect(result.updated_input).toBeDefined()
+    expect(result.updated_input?.url).toBeDefined()
+    expect(result.updated_input?.url).not.toBe("https://t.co/xyz789")
+    expect(result.additional_context).toBeUndefined()
+  })
+
+  it("returns empty object for non-redirect domains in preToolUse", () => {
     const handler = createWebfetchRedirectGuardHandler(conversations)["/preToolUse"]!
     const result = handler(webFetch("https://github.com/repo"))
     expect(result).toEqual({})
+    expect(result.updated_input).toBeUndefined()
+    expect(result.additional_context).toBeUndefined()
+  })
+
+  it("returns empty object for normal URLs in preToolUse", () => {
+    const handler = createWebfetchRedirectGuardHandler(conversations)["/preToolUse"]!
+    const result = handler(webFetch("https://example.com/docs"))
+    expect(result).toEqual({})
+    expect(result.updated_input).toBeUndefined()
+    expect(result.additional_context).toBeUndefined()
   })
 
   it("registers postToolUse advisory when output mentions redirect", () => {

@@ -5,6 +5,7 @@ import {
   resolveConversationId,
   wasResolvedViaFallback,
 } from "../shared"
+import { mergeUpdatedInputs } from "../lib/merge-updated-inputs"
 
 const SHELL_TOOLS = new Set(["Shell", "shell", "Bash", "bash"])
 
@@ -18,7 +19,6 @@ function isNonInteractiveGitCommand(command: string): boolean {
   return false
 }
 
-// NOTE: updated_input is UNCONFIRMED at 3.6.21 (W2.2). When confirmed, replace advisory with: return { updated_input: { command: 'GIT_EDITOR=: GIT_PAGER=cat CI=true ' + command } }
 export function createNonInteractiveEnvHandler(
   _conversations: Map<string, ConversationState>,
 ): Partial<HandlerMap> {
@@ -48,9 +48,12 @@ export function createNonInteractiveEnvHandler(
       }
 
       if (isGit && !isNonInteractiveGitCommand(command)) {
-        return {
-          additional_context: `[non-interactive-env] Git command detected. In non-interactive environments, ensure GIT_EDITOR=: GIT_PAGER=cat CI=true are set (or pass --no-edit, -m flags). Current command: "${snippet}"`,
-        }
+        const rewrittenCommand = `GIT_EDITOR=: GIT_PAGER=cat CI=true ${command}`
+        return mergeUpdatedInputs([
+          {
+            updated_input: { command: rewrittenCommand },
+          },
+        ])
       }
 
       return {}

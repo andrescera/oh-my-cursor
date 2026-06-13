@@ -71,4 +71,16 @@ describe("webfetch-redirect-guard", () => {
     expect(pending.merged).toContain("[webfetch-redirect-guard]")
     expect(pending.merged).toContain("redirect loop")
   })
+
+  it("preToolUse never returns additional_context (advisory path removed)", () => {
+    const handler = createWebfetchRedirectGuardHandler(conversations)["/preToolUse"]!
+    
+    // Test redirect-prone URL
+    const redirectResult = handler(webFetch("https://bit.ly/test"))
+    expect(redirectResult.additional_context).toBeUndefined()
+    
+    // Test normal URL
+    const normalResult = handler(webFetch("https://example.com"))
+    expect(normalResult.additional_context).toBeUndefined()
+  })
 })

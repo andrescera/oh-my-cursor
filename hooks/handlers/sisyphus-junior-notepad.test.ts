@@ -60,6 +60,40 @@ describe("sisyphus-junior-notepad", () => {
     expect(contextCollector.getPending(CONV).hasContent).toBe(false)
   })
 
+  it("delivers the advisory via the collector, never additional_context (dead channel)", () => {
+    getOrCreateConversation(CONV)
+    const conv = conversations.get(CONV)!
+    conv.activePlan = {
+      path: ".cursor/plans/my-feature.plan.md",
+      phase: "plan-execute",
+      completedTasks: [],
+    }
+
+    const handler = createSisyphusJuniorNotepadHandler(conversations)["/preToolUse"]!
+    const result = handler(task("sisyphus-junior"))
+
+    expect(result).not.toHaveProperty("additional_context")
+    expect(contextCollector.getPending(CONV).hasContent).toBe(true)
+  })
+
+  it("collapses repeated dispatches onto one keyed entry", () => {
+    getOrCreateConversation(CONV)
+    const conv = conversations.get(CONV)!
+    conv.activePlan = {
+      path: ".cursor/plans/my-feature.plan.md",
+      phase: "plan-execute",
+      completedTasks: [],
+    }
+
+    const handler = createSisyphusJuniorNotepadHandler(conversations)["/preToolUse"]!
+    handler(task("sisyphus-junior"))
+    handler(task("sisyphus-junior"))
+
+    const pending = contextCollector.getPending(CONV)
+    expect(pending.entries).toHaveLength(1)
+    expect(pending.entries[0].id).toBe("sisyphus-junior-notepad")
+  })
+
   it("skips advisory and warns when activePlan.path does not exist under project root", () => {
     const projectRoot = mkdtempSync(join(tmpdir(), "omc-notepad-"))
     try {

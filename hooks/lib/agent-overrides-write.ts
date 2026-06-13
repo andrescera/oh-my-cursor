@@ -4,6 +4,8 @@ import { z } from "zod"
 import { AgentOverrideSchema, CategorySchema } from "../schemas/config"
 import { stripJsoncComments } from "../config"
 import { getEnum, type GetEnumOptions } from "./task-schema-introspector"
+import { isModelAllowedForAgent } from "./agent-model-allowlist"
+import type { IntrospectionSnapshot } from "./introspection-runtime"
 
 /**
  * Atomic, validated write of the `agent_overrides` (+ optional `categories`)
@@ -105,23 +107,30 @@ async function collectWarnings(
   const warnings: string[] = []
   try {
     const result = await getEnum(enumOptions ?? {})
-    const valid = new Set(result.models)
-    const checkModel = (slug: string | undefined, label: string): void => {
+    const snapshot: IntrospectionSnapshot = {
+      models: result.models,
+      agents: result.agents,
+      source: result.source,
+      cursorVersion: result.cursorVersion,
+      cachedAt: result.cachedAt,
+      observedAdditions: [],
+    }
+    const checkModel = (agentType: string, slug: string | undefined, label: string): void => {
       if (!slug || slug === "inherit") return
-      if (!valid.has(slug)) {
-        warnings.push(`${label} "${slug}" is not in the known Cursor model list (advisory only)`)
+      if (!isModelAllowedForAgent(agentType, slug, snapshot)) {
+        warnings.push(`${label} "${slug}" is not allowed for agent "${agentType}" (advisory only)`)
       }
     }
     for (const [agent, ov] of Object.entries(body.agent_overrides)) {
-      checkModel(ov.model, `agent_overrides.${agent}.model`)
+      checkModel(agent, ov.model, `agent_overrides.${agent}.model`)
       for (const fm of ov.fallback_models ?? []) {
-        checkModel(fm, `agent_overrides.${agent}.fallback_models`)
+        checkModel(agent, fm, `agent_overrides.${agent}.fallback_models`)
       }
     }
     for (const [cat, ov] of Object.entries(body.categories ?? {})) {
-      checkModel(ov.model, `categories.${cat}.model`)
+      checkModel(cat, ov.model, `categories.${cat}.model`)
       for (const fm of ov.fallback_models ?? []) {
-        checkModel(fm, `categories.${cat}.fallback_models`)
+        checkModel(cat, fm, `categories.${cat}.fallback_models`)
       }
     }
   } catch {

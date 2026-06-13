@@ -170,6 +170,62 @@ describe("writeAgentOverrides", () => {
     expect(res.warnings.length).toBe(0)
   })
 
+  test("per-agent: known model NOT in the agent's curated set warns, write still succeeds", async () => {
+    // claude-opus-4-7-thinking-xhigh is a KNOWN model but NOT allowed for `explore`.
+    const res = await writeAgentOverrides(
+      { target: "project", agent_overrides: { explore: { model: "claude-opus-4-7-thinking-xhigh" } } },
+      { cwd: dir, enumOptions: FALLBACK_ENUM_OPTS },
+    )
+    expect(res.ok).toBe(true)
+    if (!res.ok) return
+    expect(res.warnings.length).toBeGreaterThan(0)
+    expect(res.warnings.join("\n")).toContain("claude-opus-4-7-thinking-xhigh")
+    expect(res.warnings.join("\n")).toContain("explore")
+    expect(existsSync(res.path)).toBe(true)
+  })
+
+  test('per-agent: "inherit" produces no warning', async () => {
+    const res = await writeAgentOverrides(
+      { target: "project", agent_overrides: { explore: { model: "inherit" } } },
+      { cwd: dir, enumOptions: FALLBACK_ENUM_OPTS },
+    )
+    expect(res.ok).toBe(true)
+    if (!res.ok) return
+    expect(res.warnings.length).toBe(0)
+  })
+
+  test("per-agent: invalid fallback_models entry warns, write still succeeds", async () => {
+    const res = await writeAgentOverrides(
+      {
+        target: "project",
+        agent_overrides: {
+          explore: { model: "composer-2-fast", fallback_models: ["totally-fake-model-xyz"] },
+        },
+      },
+      { cwd: dir, enumOptions: FALLBACK_ENUM_OPTS },
+    )
+    expect(res.ok).toBe(true)
+    if (!res.ok) return
+    expect(res.warnings.length).toBeGreaterThan(0)
+    expect(res.warnings.join("\n")).toContain("fallback_models")
+    expect(res.warnings.join("\n")).toContain("totally-fake-model-xyz")
+  })
+
+  test("per-agent: model in the agent's curated set produces no warning", async () => {
+    const res = await writeAgentOverrides(
+      {
+        target: "project",
+        agent_overrides: {
+          explore: { model: "composer-2-fast", fallback_models: ["composer-2", "gpt-5.4-medium"] },
+        },
+      },
+      { cwd: dir, enumOptions: FALLBACK_ENUM_OPTS },
+    )
+    expect(res.ok).toBe(true)
+    if (!res.ok) return
+    expect(res.warnings.length).toBe(0)
+  })
+
   test("atomic write leaves no <config>.tmp behind", async () => {
     const res = await writeAgentOverrides(
       { target: "project", agent_overrides: { explore: { model: "composer-2-fast" } } },

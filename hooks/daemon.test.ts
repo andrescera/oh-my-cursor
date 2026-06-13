@@ -663,9 +663,8 @@ describe("hook daemon", () => {
             tool_input: { file_path: AGENTS_TEST_FILE },
             session_id: sid,
           })
-          expect(result.additional_context).toContain("[directory-context]")
-          expect(result.additional_context).toContain("AGENTS.md")
-          expect(result.hookSpecificOutput.hookEventName).toBe("PostToolUse")
+          // After reroute, additional_context is NOT returned; content is registered in collector
+          expect(result.additional_context).toBeUndefined()
         })
       })
     })
@@ -887,9 +886,8 @@ describe("hook daemon", () => {
             error: "429 Too Many Requests",
             session_id: "sess-fail-rate",
           })
-          expect(result.additional_context).toContain("conversation-recovery")
-          expect(result.additional_context).toContain("Rate limit")
-          expect(result.hookSpecificOutput.hookEventName).toBe("PostToolUseFailure")
+          // After reroute, additional_context is NOT returned; content is registered in collector
+          expect(result.additional_context).toBeUndefined()
         })
       })
     })
@@ -902,9 +900,8 @@ describe("hook daemon", () => {
             error: "Request timed out after 30s",
             session_id: "sess-fail-timeout",
           })
-          expect(result.additional_context).toContain("conversation-recovery")
-          expect(result.additional_context).toContain("timed out")
-          expect(result.hookSpecificOutput.hookEventName).toBe("PostToolUseFailure")
+          // After reroute, additional_context is NOT returned; content is registered in collector
+          expect(result.additional_context).toBeUndefined()
         })
       })
     })
@@ -917,9 +914,8 @@ describe("hook daemon", () => {
             error: "Permission denied: /etc/passwd",
             session_id: "sess-fail-perm",
           })
-          expect(result.additional_context).toContain("conversation-recovery")
-          expect(result.additional_context).toContain("Permission denied")
-          expect(result.hookSpecificOutput.hookEventName).toBe("PostToolUseFailure")
+          // After reroute, additional_context is NOT returned; content is registered in collector
+          expect(result.additional_context).toBeUndefined()
         })
       })
     })
@@ -932,9 +928,8 @@ describe("hook daemon", () => {
             error: "No such file or directory",
             session_id: "sess-fail-notfound",
           })
-          expect(result.additional_context).toContain("conversation-recovery")
-          expect(result.additional_context).toContain("not found")
-          expect(result.hookSpecificOutput.hookEventName).toBe("PostToolUseFailure")
+          // After reroute, additional_context is NOT returned; content is registered in collector
+          expect(result.additional_context).toBeUndefined()
         })
       })
     })

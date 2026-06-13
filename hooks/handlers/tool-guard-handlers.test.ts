@@ -498,6 +498,27 @@ describe("postToolUse context delivery reroute", () => {
     expect(pending.hasContent).toBe(true)
     expect(pending.merged).toContain("SENTINEL_POSTTOOL_14")
   })
+
+  it("postToolUseFailure registers recovery guidance and returns NO additional_context", () => {
+    const tracker = makeTracker({ [CONV]: [] })
+    const handlers = createToolGuardHandlers(conversations, tracker)
+    const pre = handlers["/preToolUse"]
+    const failure = handlers["/postToolUseFailure"]
+    pre({ tool_name: "Read", conversation_id: CONV, tool_input: { path: "/tmp/x" } })
+
+    const result = failure({
+      tool_name: "Bash",
+      conversation_id: CONV,
+      error: "429 rate limit exceeded, too many requests",
+    })
+
+    expect(result).not.toHaveProperty("additional_context")
+    expect(result).not.toHaveProperty("hookSpecificOutput")
+
+    const pending = contextCollector.getPending(CONV)
+    expect(pending.hasContent).toBe(true)
+    expect(pending.merged).toContain("[conversation-recovery]")
+  })
 })
 
 describe("TodoWrite tracking via preToolUse", () => {

@@ -684,14 +684,7 @@ export function createToolGuardHandlers(
         })
       }
       applyContextCollectorConfig(config)
-      const failurePending = contextCollector.consume(convId)
-      const failureMerged = failurePending.merged
-      return failurePending.hasContent
-        ? {
-            additional_context: failureMerged,
-            hookSpecificOutput: { hookEventName: "PostToolUseFailure", additionalContext: failureMerged },
-          }
-        : {}
+      return {}
     },
   }
 }

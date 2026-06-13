@@ -323,7 +323,6 @@ export function createToolGuardHandlers(
               content: advisory,
               priority: "critical",
             })
-            const pending = contextCollector.consume(convId)
             return {
               decision: "deny",
               user_message: reason,
@@ -331,7 +330,6 @@ export function createToolGuardHandlers(
               permission: "deny",
               userMessage: reason,
               agentMessage: reason,
-              additional_context: pending.merged || advisory,
               hookSpecificOutput: {
                 hookEventName: "PreToolUse",
                 permissionDecision: "deny",

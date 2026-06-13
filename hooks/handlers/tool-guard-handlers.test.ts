@@ -438,6 +438,30 @@ describe("P0 guard advisory", () => {
     expect(pending.hasContent).toBe(true)
     expect(pending.merged).toContain("[mode-guard]")
   })
+
+  it("plan-mode forbidden-agent deny registers advisory into collector and returns NO additional_context", () => {
+    const tracker = makeTracker({ [CONV]: [] })
+    const { "/preToolUse": handler } = createToolGuardHandlers(conversations, tracker)
+    handler({ tool_name: "Read", conversation_id: CONV, tool_input: { path: "/tmp/x" } })
+    conversations.get(CONV)!.composerMode = "plan"
+    conversations.get(CONV)!.todoStates.set("plan-write", "in_progress")
+
+    const result = handler({
+      tool_name: "Task",
+      conversation_id: CONV,
+      tool_input: { subagent_type: "sisyphus", description: "Forbidden agent in plan mode" },
+    }) as { permission?: string; additional_context?: string; decision?: string; user_message?: string }
+
+    expect(result.permission).toBe("deny")
+    expect(result.decision).toBe("deny")
+    expect(result.user_message).toContain("Plan mode")
+
+    expect(result).not.toHaveProperty("additional_context")
+
+    const pending = contextCollector.getPending(CONV)
+    expect(pending.hasContent).toBe(true)
+    expect(pending.merged).toContain("[mode-guard]")
+  })
 })
 
 describe("TodoWrite tracking via preToolUse", () => {

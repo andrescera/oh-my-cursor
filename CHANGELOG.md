@@ -7,6 +7,31 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.9.1] - 2026-06-13
+
+### Added
+
+#### Per-subagent_type model override validation
+
+- `hooks/lib/agent-model-allowlist.ts`: curated per-`subagent_type` allowlist (`AGENT_MODEL_ALLOWLIST`) + `resolveAllowedModels` + `isModelAllowedForAgent` predicate. Hand-authored from `KNOWN_CURSOR_MODELS`; frozen export; pure/side-effect-free module.
+- `IntrospectionSnapshot.modelsByAgent`: additive optional `Record<string, string[]>` field computed once per Cursor version in `introspection-runtime.ts` and cached on the snapshot.
+- Dispatch-time per-agent validation in `model-routing-mutation.ts`: synchronous `validateAgainstAllowlist()` gate (no `await` in `mutate()`); invalid primary → falls back to `categories[agent].model` → inherit; CRITICAL advisory on fallback; permissive agents (unknown/empty curated set) apply as-is.
+- `fallback_models` per-agent validation in `delegate-task-retry-rotation.ts`: invalid entries skipped with advisory; rotation index advances past disallowed slots; permissive agents unaffected.
+- Write-time per-agent advisory validation in `agent-overrides-write.ts`: `isModelAllowedForAgent` replaces flat enum check; invalid slugs → `warnings[]`; never 4xx; `"inherit"` always exempt.
+- `GET /introspection` now includes `modelsByAgent` in the response (additive, backward-compatible).
+- `introspection-updated` SSE event: emitted on `cursorVersion` change (not on every read); payload `{ cursorVersion, cachedAt }`; dashboard subscribes and re-fetches.
+
+#### Dashboard — Models & Routing tab
+
+- `RoutingEditor`: per-agent model dropdown constrained to `modelsByAgent[agent]` ∪ `"inherit"` ∪ current stored value; permissive agents show full list. Valid-count indicator per agent.
+- `InvalidOverrideBanner`: reads live config + `modelsByAgent`; lists agents with invalid stored overrides; one-click "Reset to default" per agent; mounts above the editor.
+- `api.ts`: `Introspection.modelsByAgent` typed; `introspection-updated` SSE subscription triggers re-fetch.
+
+### Notes
+
+- Spike verdict B: Cursor bundle encodes `model` as a flat string field (not a per-`subagent_type` enum); curated map in `agent-model-allowlist.ts` is the authoritative source. See `docs/internal/per-subagent-model-enum-spike.md`.
+- `hooks/package.json` is the single source of truth for the version; `install.sh` and `install.ps1` both read it via `get_source_version()`.
+
 ## [0.9.0] - 2026-06-13
 
 ### Added

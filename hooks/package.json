@@ -1,6 +1,6 @@
 {
   "name": "oh-my-cursor-hooks",
-  "version": "0.8.0",
+  "version": "0.9.1",
   "private": true,
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.29.0",

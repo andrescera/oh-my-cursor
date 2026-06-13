@@ -35,7 +35,7 @@ import { OhMyCursorConfigSchema } from "./schemas/config"
 import { writeAgentOverrides, isWriteFailure } from "./lib/agent-overrides-write"
 import { cleanupStaleProcess, killPortSquatter } from "./process-guard"
 import { writePortCoordination } from "./port-manager"
-import type { HandlerMap } from "./types"
+import type { HandlerFn, HandlerMap } from "./types"
 import { getDefaultAgentHistoryStore } from "./agent-history-store"
 import { createBudgetMiddleware } from "./lib/budget-middleware"
 import { createBackgroundWorker } from "./lib/background-worker"
@@ -397,15 +397,23 @@ async function gracefulShutdown(reason: string): Promise<void> {
 
 const startTime = Date.now()
 
+// Multiple factories register /preToolUse and /postToolUse. An object spread is
+// LAST-WINS, so every registrant but the final one is silently dropped. Capture
+// each competing map so the routes can be CHAINED (not clobbered) below.
+const toolGuardHandlers = createToolGuardHandlers(conversations, tracker)
+const planFormatValidatorHandlers = createPlanFormatValidatorHandler(conversations)
+const notepadWriteGuardHandlers = createNotepadWriteGuardHandler(conversations)
+const fsyncSkipWarningHandlers = createFsyncSkipWarningHandlerMap()
+
 const handlers: HandlerMap = {
   ...createConversationHandlers(conversations, () => actualPort, tracker, persistence),
-  ...createToolGuardHandlers(conversations, tracker),
+  ...toolGuardHandlers,
   ...createContinuationHandlers(conversations),
   ...createSafetyHandlers(),
   ...createSubagentHandlers(conversations, tracker),
-  ...createPlanFormatValidatorHandler(conversations),
-  ...createNotepadWriteGuardHandler(conversations),
-  ...createFsyncSkipWarningHandlerMap(),
+  ...planFormatValidatorHandlers,
+  ...notepadWriteGuardHandlers,
+  ...fsyncSkipWarningHandlers,
   // workspaceOpen is registered in hooks.json (canonical event 21, OBSERVE-ONLY/binary-only per
   // docs/cursor/03-hooks.md). No-op route prevents a 404 on POST; no response field is enforced.
   "/workspaceOpen": () => ({}),
@@ -442,6 +450,32 @@ const handlers: HandlerMap = {
     }
   },
 }
+
+// Chain the multi-registrant /preToolUse and /postToolUse routes. The spread
+// above is last-wins and dropped every registrant but the final one. Run each in
+// registration order and return the FIRST non-empty response; a permission:"deny"
+// is non-empty so deny still short-circuits. Mirrors the tool-pair-validator chain.
+const chainHandlers = (chain: Array<HandlerFn | undefined>): HandlerFn => {
+  const live = chain.filter((fn): fn is HandlerFn => typeof fn === "function")
+  return (input) => {
+    for (const handler of live) {
+      const result = handler(input)
+      if (result && typeof result === "object" && Object.keys(result).length > 0) {
+        return result
+      }
+    }
+    return {}
+  }
+}
+handlers["/preToolUse"] = chainHandlers([
+  toolGuardHandlers["/preToolUse"],
+  planFormatValidatorHandlers["/preToolUse"],
+  notepadWriteGuardHandlers["/preToolUse"],
+])
+handlers["/postToolUse"] = chainHandlers([
+  toolGuardHandlers["/postToolUse"],
+  fsyncSkipWarningHandlers["/postToolUse"],
+])
 
 // Explicit wrapper, NOT a spread: a spread would clobber continuation-handlers'
 // /beforeSubmitPrompt (last-wins). keyword-detector runs first; a throw never

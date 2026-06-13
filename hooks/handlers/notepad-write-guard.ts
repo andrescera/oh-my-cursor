@@ -3,7 +3,7 @@ import { resolve } from "node:path"
 import type { ConversationState, HandlerMap } from "../types"
 import { contextCollector } from "../context-collector"
 import { resolveConversationId } from "../shared"
-import { getHookConfig } from "../hook-config"
+import { loadConfig } from "../config"
 
 const NOTEPAD_PATH_PATTERN = ".cursor/notepads/"
 
@@ -17,7 +17,7 @@ export function createNotepadWriteGuardHandler(
   deps?: NotepadWriteGuardDeps,
 ): Partial<HandlerMap> {
   const existsSyncFn = deps?.existsSync ?? defaultExistsSync
-  const getConfigFn = deps?.getConfig ?? getHookConfig
+  const getConfigFn = deps?.getConfig ?? loadConfig
 
   return {
     "/preToolUse": (input) => {

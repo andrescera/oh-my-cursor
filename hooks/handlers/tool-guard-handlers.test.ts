@@ -416,7 +416,7 @@ describe("P0 guard advisory", () => {
     expect(pending.merged).toContain("[mode-guard]")
   })
 
-  it("ask-mode Task deny emits additional_context advisory", () => {
+  it("ask-mode Task deny registers advisory into collector and returns NO additional_context", () => {
     const tracker = makeTracker({ [CONV]: [] })
     const { "/preToolUse": handler } = createToolGuardHandlers(conversations, tracker)
     handler({ tool_name: "Read", conversation_id: CONV, tool_input: { path: "/tmp/x" } })
@@ -426,10 +426,17 @@ describe("P0 guard advisory", () => {
       tool_name: "Task",
       conversation_id: CONV,
       tool_input: { subagent_type: "sisyphus", description: "Forbidden in ask mode" },
-    }) as { permission?: string; additional_context?: string }
+    }) as { permission?: string; additional_context?: string; decision?: string; user_message?: string }
 
     expect(result.permission).toBe("deny")
-    expect(result.additional_context).toContain("[mode-guard]")
+    expect(result.decision).toBe("deny")
+    expect(result.user_message).toContain("Ask mode")
+
+    expect(result).not.toHaveProperty("additional_context")
+
+    const pending = contextCollector.getPending(CONV)
+    expect(pending.hasContent).toBe(true)
+    expect(pending.merged).toContain("[mode-guard]")
   })
 })
 

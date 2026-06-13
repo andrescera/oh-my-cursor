@@ -298,7 +298,6 @@ export function createToolGuardHandlers(
               content: advisory,
               priority: "critical",
             })
-            const pending = contextCollector.consume(convId)
             return {
               decision: "deny",
               user_message: reason,
@@ -306,7 +305,6 @@ export function createToolGuardHandlers(
               permission: "deny",
               userMessage: reason,
               agentMessage: reason,
-              additional_context: pending.merged || advisory,
               hookSpecificOutput: {
                 hookEventName: "PreToolUse",
                 permissionDecision: "deny",
@@ -593,15 +591,7 @@ export function createToolGuardHandlers(
 
       console.log(`[oh-my-cursor][postToolUse] convId=${convId} | tool=${toolName} | toolCallCount=${conversation.toolCallCount} | readTracked=${["read", "Read"].includes(toolName) && readFilePath ? resolve(readFilePath) : "n/a"}`)
 
-      const cw = contextWindowMonitor({ conversation, content: output })
-      if (cw.additional_context) {
-        contextCollector.register(convId, {
-          id: "context-window",
-          source: "context-window-monitor",
-          content: cw.additional_context,
-          priority: "high",
-        })
-      }
+      contextWindowMonitor({ conversation, content: output, conversationId: convId })
 
       const cc = commentChecker({ tool_name: toolName, output })
       const ccCtx = cc.additional_context as string | undefined

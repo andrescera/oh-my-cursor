@@ -16,6 +16,7 @@ _Generated: 2026-04-17_
 | `TAKES-EFFECT` | Empirically confirmed the field changes runtime behavior in Cursor 3.1.15 |
 | `ACCEPTED-BUT-IGNORED` | Hook invocation proceeds (exit 0 accepted), field value has no observable runtime effect |
 | `UNCONFIRMED` | No v2 probe targeted this field; semantics unknown |
+| `PROBE-DESIGNED` | Runbook probe procedure + scripts authored and dry-run validated; **no live-fire capture yet** — does NOT assert runtime effect. Upgrade from `UNCONFIRMED`; downgrade-safe vs `TAKES-EFFECT` |
 | `DEPRECATED` | Field existed or was documented; Cursor now warns and ignores it |
 | `OBSERVE-ONLY` | Event fires; no response field is processed (observe/log pattern only) |
 | `NOT-FIRED` | Hook matcher may be configured, but Cursor does not invoke the hook for this tool/event pair (3.6.21 live-fire) |
@@ -44,7 +45,7 @@ _Generated: 2026-04-17_
 | `preToolUse` | `permission: "ask"` | `ACCEPTED-BUT-IGNORED` | Claim 42; N1 | Confirmed on `beforeShellExecution` (W-AB-beforeShellExecution-ask-022). Applies by extension to `preToolUse`; not separately probed. |
 | `preToolUse` | `user_message` | `UNCONFIRMED` | Claim 53 | v2 probed on `beforeShellExecution` (W-AB-beforeShellExecution-user-message-023), not on `preToolUse` directly. Pathway is plausible but unconfirmed for the general preToolUse event. |
 | `preToolUse` | `agent_message` | `UNCONFIRMED` | Claim 54 | W-AB-beforeShellExecution-agent-message-024 fired; direct confirmation of agent receiving the message not captured in JSONL. No postToolUse payload visible to hook; requires transcript inspection. |
-| `preToolUse` | `updated_input` | `UNCONFIRMED` | — | No v2 probe. Critical for `question-label-truncator`, `non-interactive-env`, `webfetch-redirect-guard` ports. |
+| `preToolUse` | `updated_input` | `PROBE-DESIGNED` | W-X-preToolUse-task-updated-input-merge-001, -merge-002, -size-003 (B-series; DESIGN-PHASE) | B-series runbook probe (`hooks-experiments-runbook.md` §B) targets the Task tool: replace-vs-merge, prompt + `subagent_type` survival, and prompt size bound. Scripts `hooks/experiments/responders/task-updated-input-probe.sh` + `task-piggyback-size-probe.sh` dry-run validated (valid `updated_input` JSON for model-only/prompt-piggyback/echo-all + 1K/8K/64K sizes); evidence `.omo/evidence/task-1-merge-semantics.log`, `.omo/evidence/task-1-size-limit.log`. Forum 151985 (Cursor staff, 2026-04-07) reports the fix shipped on 3.7.x. **Not `TAKES-EFFECT`** — pending a live-fire `subagentStart` capture. Expected (design-phase): MERGE (shallow); Task 7 central composer echoes all original fields (replace-safe). Critical for `question-label-truncator`, `non-interactive-env`, `webfetch-redirect-guard` ports. |
 | `beforeShellExecution` | `permission: "deny"` | `TAKES-EFFECT` | W-D-beforeShellExecution-deny-005; W-D-beforeShellExecution-deny-015; Claim 32 | Both marker commands appear in `postToolUseFailure` records confirming block. |
 | `beforeShellExecution` | `permission: "ask"` | `ACCEPTED-BUT-IGNORED` | W-AB-beforeShellExecution-ask-022; N1; Claim 42 | Hook fires, exit_code=0, command runs. `ask` treated as `allow` in Cursor 3.1.15. Not enforced. |
 | `beforeShellExecution` | `user_message` | `TAKES-EFFECT` | W-AB-beforeShellExecution-user-message-023; Claim 53 | Confirmed via `postToolUseFailure.error_message` incorporating the user_message text. |
@@ -111,7 +112,7 @@ Source: `docs/internal/hooks-v2-ghost-hunt.json` (`plausible_ghosts` array). Do 
 
 **Require new experiments before depending on:**
 - `preToolUse.permission: "deny"` — plausible but not empirically verified
-- `preToolUse.updated_input` — critical for arg-rewriting hooks; untested at 3.7 (fixed for Task tool Apr 2026 per plan context)
+- `preToolUse.updated_input` — critical for arg-rewriting hooks; `PROBE-DESIGNED` (B-series, `hooks-experiments-runbook.md` §B) — scripts + procedure ready, live-fire `subagentStart` capture pending. Reported fixed for the Task tool on the 3.7 line (Apr 2026, forum 151985) per plan context; until a live-fire capture confirms, the Task 7 central composer echoes all original `tool_input` fields (replace-safe).
 - `subagentStop.followup_message` — architecturally attractive for ULW but UNCONFIRMED; Oracle design uses `postToolUse(Task) + tool_use_id` instead (see [overloop-design.md](./overloop-design.md))
 - `sessionStart.env` — `additional_context` is BROKEN (timing bug, staff thread 158452); `env` unaffected but still requires fresh-session experiment
 - `beforeMCPExecution.permission` — needed for MCP-level guards

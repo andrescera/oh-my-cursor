@@ -248,4 +248,64 @@ describe("introspection-runtime", () => {
     expect(withModels.modelsByAgent).toBeDefined()
     expect(withModels.modelsByAgent?.explore).toEqual(["composer-2-fast"])
   })
+
+  test("introspection-updated: a cursorVersion change fires onVersionChange exactly once with the new version", async () => {
+    const emissions: Array<{ cursorVersion: string; cachedAt: string }> = []
+    const rt = createIntrospectionRuntime({
+      getEnum: async (opts) => makeEnumResult({
+        cursorVersion: opts?.cursorVersion ?? "3.7.27",
+        cachedAt: "2026-01-01T00:00:00.000Z",
+      }),
+      passiveObserve: () => {},
+      loadConfig: () => DEFAULT_CONFIG,
+      onVersionChange: (payload) => { emissions.push(payload) },
+    })
+    // init establishes the baseline version — must NOT emit (no rescan yet)
+    await rt.init()
+    expect(emissions.length).toBe(0)
+
+    // version drift triggers a rescan that confirms the new version
+    rt.observe({ cursor_version: "9.9.9" })
+    await Bun.sleep(20)
+
+    expect(emissions.length).toBe(1)
+    expect(emissions[0]?.cursorVersion).toBe("9.9.9")
+    expect(typeof emissions[0]?.cachedAt).toBe("string")
+  })
+
+  test("introspection-updated: no onVersionChange emission when the cursorVersion is unchanged", async () => {
+    const emissions: Array<{ cursorVersion: string; cachedAt: string }> = []
+    const rt = createIntrospectionRuntime({
+      getEnum: async (opts) => makeEnumResult({ cursorVersion: opts?.cursorVersion ?? "3.7.27" }),
+      passiveObserve: () => {},
+      loadConfig: () => DEFAULT_CONFIG,
+      onVersionChange: (payload) => { emissions.push(payload) },
+    })
+    await rt.init()
+    expect(emissions.length).toBe(0)
+
+    // same version as the baseline — no rescan, no emission
+    rt.observe({ cursor_version: "3.7.27" })
+    await Bun.sleep(20)
+
+    expect(emissions.length).toBe(0)
+  })
+
+  test("introspection-updated: onVersionChange can be registered post-construction via setOnVersionChange", async () => {
+    const emissions: Array<{ cursorVersion: string; cachedAt: string }> = []
+    const rt = createIntrospectionRuntime({
+      getEnum: async (opts) => makeEnumResult({ cursorVersion: opts?.cursorVersion ?? "3.7.27" }),
+      passiveObserve: () => {},
+      loadConfig: () => DEFAULT_CONFIG,
+    })
+    rt.setOnVersionChange((payload) => { emissions.push(payload) })
+    await rt.init()
+    expect(emissions.length).toBe(0)
+
+    rt.observe({ cursor_version: "9.9.9" })
+    await Bun.sleep(20)
+
+    expect(emissions.length).toBe(1)
+    expect(emissions[0]?.cursorVersion).toBe("9.9.9")
+  })
 })

@@ -42,7 +42,7 @@ import { createBackgroundWorker } from "./lib/background-worker"
 import { createMetrics } from "./lib/metrics"
 import { acquireStartupLock, releaseStartupLock } from "./lib/startup-lock"
 import { getOrCreateToken, extractProvidedToken, tokensMatch } from "./lib/daemon-token"
-import { introspectionRuntime } from "./lib/introspection-runtime"
+import { introspectionRuntime, type IntrospectionVersionChange } from "./lib/introspection-runtime"
 import { CHANNEL_STATUS_TABLE } from "./lib/channel-status"
 
 const HOT_PATHS = new Set([
@@ -185,19 +185,19 @@ const DASHBOARD_ASSETS_NOT_BUILT_BODY = `<!DOCTYPE html><html lang="en"><head><m
 
 const DAEMON_AUTH_TOKEN = getOrCreateToken()
 
-// Routes that expose session data, config, control, or the token-bearing
-// dashboard shell require the shared-secret token. /health, /heartbeat, hook
-// event routes, and the static dashboard asset bundle stay open so Cursor's
-// header-less hook scripts and browser subresource loads keep working.
+// Routes that expose session data, config, control require the shared-secret
+// token. /health, /heartbeat, hook event routes, the static dashboard asset
+// bundle, and the dashboard shell itself stay open — the shell carries no
+// sensitive data and must load first so it can inject the token into the SPA.
 function requiresToken(path: string): boolean {
   if (path === "/health" || path === "/heartbeat") return false
   if (path.startsWith("/dashboard/assets/")) return false
+  if (path === "/dashboard" || path === "/dashboard/index.html") return false
   return (
     path === "/session-log" || path.startsWith("/session-log/") ||
     path === "/conversation-log" || path.startsWith("/conversation-log/") ||
     path === "/config" || path === "/config/full" || path === "/config/agent-overrides" ||
     path === "/status" || path === "/shutdown" || path === "/metrics" ||
-    path === "/dashboard" || path === "/dashboard/index.html" ||
     path === "/agentHistory" || path === "/backgroundTasks" ||
     path === "/introspection" || path === "/channel-status"
   )
@@ -340,6 +340,18 @@ function emitConfigChanged(detail: Record<string, unknown>): void {
   for (const controller of [...activeStreams]) {
     try {
       controller.enqueue(encoder.encode(`event: config-changed\ndata: ${payload}\n\n`))
+    } catch {
+      // Dead stream: its own keepalive/send path performs cleanup.
+    }
+  }
+}
+
+function emitIntrospectionUpdated(detail: IntrospectionVersionChange): void {
+  const encoder = new TextEncoder()
+  const payload = JSON.stringify({ ...detail, ts: new Date().toISOString() })
+  for (const controller of [...activeStreams]) {
+    try {
+      controller.enqueue(encoder.encode(`event: introspection-updated\ndata: ${payload}\n\n`))
     } catch {
       // Dead stream: its own keepalive/send path performs cleanup.
     }
@@ -1202,6 +1214,8 @@ persistenceInterval = setInterval(async () => {
   await persistence.save(conversations)
 }, 30_000)
 backgroundWorker.start()
+
+introspectionRuntime.setOnVersionChange(emitIntrospectionUpdated)
 
 // Fire-and-forget: the daemon serves /introspection from the fallback floor
 // immediately; the bundle scan resolves the snapshot in the background and must

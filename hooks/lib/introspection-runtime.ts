@@ -19,16 +19,25 @@ export interface IntrospectionSnapshot {
   modelsByAgent?: Record<string, string[]>
 }
 
+export interface IntrospectionVersionChange {
+  cursorVersion: string
+  cachedAt: string
+}
+
+export type IntrospectionVersionChangeListener = (payload: IntrospectionVersionChange) => void
+
 export interface IntrospectionRuntimeDeps {
   getEnum: (options?: GetEnumOptions) => Promise<EnumResult>
   passiveObserve: (record: { model?: unknown; subagent_type?: unknown; agent_type?: unknown }) => void
   loadConfig: () => { introspection: GetEnumOptions["introspection"] }
+  onVersionChange?: IntrospectionVersionChangeListener
 }
 
 export interface IntrospectionRuntime {
   init: () => Promise<void>
   observe: (input: Record<string, unknown>) => void
   getSnapshot: () => IntrospectionSnapshot
+  setOnVersionChange: (listener: IntrospectionVersionChangeListener | undefined) => void
   reset: () => void
 }
 
@@ -96,7 +105,9 @@ export function createIntrospectionRuntime(
 ): IntrospectionRuntime {
   let base: BaseSnapshot | null = null
   let lastCursorVersion: string | undefined
+  let lastScannedVersion: string | undefined
   let scanInFlight = false
+  let onVersionChange = deps.onVersionChange
   const observedModels = new Set<string>()
   const observedAgents = new Set<string>()
 
@@ -118,7 +129,23 @@ export function createIntrospectionRuntime(
         cachedAt: result.cachedAt,
         modelsByAgent: computeModelsByAgent(result.models, agents),
       }
-      if (result.cursorVersion) lastCursorVersion = result.cursorVersion
+      if (result.cursorVersion) {
+        lastCursorVersion = result.cursorVersion
+        // lastScannedVersion tracks the version `base` reflects, separate from
+        // lastCursorVersion (which observe() advances before triggering rescan).
+        // Emit only on a confirmed drift from a prior scan — never on the first
+        // (init) scan that merely establishes the baseline.
+        const versionChanged =
+          lastScannedVersion !== undefined && result.cursorVersion !== lastScannedVersion
+        lastScannedVersion = result.cursorVersion
+        if (versionChanged && onVersionChange) {
+          try {
+            onVersionChange({ cursorVersion: result.cursorVersion, cachedAt: result.cachedAt })
+          } catch {
+            // Listener faults must not corrupt the scan path.
+          }
+        }
+      }
     } catch {
       base = base ?? syncFallbackBase(lastCursorVersion)
     }
@@ -195,9 +222,14 @@ export function createIntrospectionRuntime(
       }
     },
 
+    setOnVersionChange(listener: IntrospectionVersionChangeListener | undefined): void {
+      onVersionChange = listener
+    },
+
     reset(): void {
       base = null
       lastCursorVersion = undefined
+      lastScannedVersion = undefined
       scanInFlight = false
       observedModels.clear()
       observedAgents.clear()

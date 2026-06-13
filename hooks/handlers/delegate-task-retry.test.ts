@@ -347,25 +347,25 @@ describe("model rotation — state machine", () => {
   })
 
   it("first retryable failure arms fallback_models[0]", () => {
-    const config = makeConfig({ agent_overrides: { explore: { fallback_models: ["fb0", "fb1"] } } })
+    const config = makeConfig({ agent_overrides: { explore: { fallback_models: ["composer-2-fast", "composer-2"] } } })
     const deps = rotationDeps(config)
     recordRetryableFailure("c1", "explore", deps)
     const provider = createModelRotationProvider(deps)
-    expect(provider.mutate("c1", { subagent_type: "explore" })).toEqual({ model: "fb0" })
+    expect(provider.mutate("c1", { subagent_type: "explore" })).toEqual({ model: "composer-2-fast" })
   })
 
   it("second retryable failure advances to fallback_models[1]", () => {
-    const config = makeConfig({ agent_overrides: { explore: { fallback_models: ["fb0", "fb1"] } } })
+    const config = makeConfig({ agent_overrides: { explore: { fallback_models: ["composer-2-fast", "composer-2"] } } })
     const deps = rotationDeps(config)
     recordRetryableFailure("c1", "explore", deps)
     recordRetryableFailure("c1", "explore", deps)
     const provider = createModelRotationProvider(deps)
-    expect(provider.mutate("c1", { subagent_type: "explore" })).toEqual({ model: "fb1" })
+    expect(provider.mutate("c1", { subagent_type: "explore" })).toEqual({ model: "composer-2" })
   })
 
   it("exhaustion stops rotating and registers a critical advisory naming all tried models", () => {
     const collector = fakeCollector()
-    const config = makeConfig({ agent_overrides: { explore: { fallback_models: ["fb0", "fb1"] } } })
+    const config = makeConfig({ agent_overrides: { explore: { fallback_models: ["composer-2-fast", "composer-2"] } } })
     const deps = rotationDeps(config, collector)
     recordRetryableFailure("c1", "explore", deps)
     recordRetryableFailure("c1", "explore", deps)
@@ -379,13 +379,13 @@ describe("model rotation — state machine", () => {
     expect(collector.calls[0].options.priority).toBe("critical")
     expect(collector.calls[0].options.source).toBe("model-rotation")
     const content = String(collector.calls[0].options.content)
-    expect(content).toContain("fb0")
-    expect(content).toContain("fb1")
+    expect(content).toContain("composer-2-fast")
+    expect(content).toContain("composer-2")
   })
 
   it("registers the exhaustion advisory only once across repeated failures", () => {
     const collector = fakeCollector()
-    const config = makeConfig({ agent_overrides: { explore: { fallback_models: ["fb0"] } } })
+    const config = makeConfig({ agent_overrides: { explore: { fallback_models: ["composer-2-fast"] } } })
     const deps = rotationDeps(config, collector)
     recordRetryableFailure("c1", "explore", deps)
     recordRetryableFailure("c1", "explore", deps)
@@ -395,7 +395,7 @@ describe("model rotation — state machine", () => {
   })
 
   it("a clean success resets the rotation index", () => {
-    const config = makeConfig({ agent_overrides: { explore: { fallback_models: ["fb0", "fb1"] } } })
+    const config = makeConfig({ agent_overrides: { explore: { fallback_models: ["composer-2-fast", "composer-2"] } } })
     const deps = rotationDeps(config)
     recordRetryableFailure("c1", "explore", deps)
     resetRotationOnSuccess("c1", "explore")
@@ -404,39 +404,39 @@ describe("model rotation — state machine", () => {
   })
 
   it("isolates rotation state across conversations", () => {
-    const config = makeConfig({ agent_overrides: { explore: { fallback_models: ["fb0", "fb1"] } } })
+    const config = makeConfig({ agent_overrides: { explore: { fallback_models: ["composer-2-fast", "composer-2"] } } })
     const deps = rotationDeps(config)
     recordRetryableFailure("convA", "explore", deps)
     recordRetryableFailure("convA", "explore", deps)
     const provider = createModelRotationProvider(deps)
-    expect(provider.mutate("convA", { subagent_type: "explore" })).toEqual({ model: "fb1" })
+    expect(provider.mutate("convA", { subagent_type: "explore" })).toEqual({ model: "composer-2" })
     expect(provider.mutate("convB", { subagent_type: "explore" })).toBeNull()
   })
 
   it("isolates rotation state across agent types", () => {
     const config = makeConfig({
       agent_overrides: {
-        explore: { fallback_models: ["fb0"] },
-        librarian: { fallback_models: ["lb0"] },
+        explore: { fallback_models: ["composer-2-fast"] },
+        librarian: { fallback_models: ["composer-2"] },
       },
     })
     const deps = rotationDeps(config)
     recordRetryableFailure("c1", "explore", deps)
     const provider = createModelRotationProvider(deps)
-    expect(provider.mutate("c1", { subagent_type: "explore" })).toEqual({ model: "fb0" })
+    expect(provider.mutate("c1", { subagent_type: "explore" })).toEqual({ model: "composer-2-fast" })
     expect(provider.mutate("c1", { subagent_type: "librarian" })).toBeNull()
   })
 
   it("uses categories[agent].fallback_models when no agent override fallback exists", () => {
-    const config = makeConfig({ categories: { explore: { fallback_models: ["cat0"] } } })
+    const config = makeConfig({ categories: { explore: { fallback_models: ["gpt-5.4-medium"] } } })
     const deps = rotationDeps(config)
     recordRetryableFailure("c1", "explore", deps)
     const provider = createModelRotationProvider(deps)
-    expect(provider.mutate("c1", { subagent_type: "explore" })).toEqual({ model: "cat0" })
+    expect(provider.mutate("c1", { subagent_type: "explore" })).toEqual({ model: "gpt-5.4-medium" })
   })
 
   it("returns null when no agent type can be extracted", () => {
-    const config = makeConfig({ agent_overrides: { explore: { fallback_models: ["fb0"] } } })
+    const config = makeConfig({ agent_overrides: { explore: { fallback_models: ["composer-2-fast"] } } })
     const deps = rotationDeps(config)
     recordRetryableFailure("c1", "explore", deps)
     const provider = createModelRotationProvider(deps)
@@ -557,7 +557,7 @@ describe("model rotation — faithful composer precedence", () => {
     composer.register(
       createModelRoutingProvider({
         loadConfig,
-        getEnum: async () => enumResult(["static-x", "fb0", "fb1"]),
+        getEnum: async () => enumResult(["static-x", "composer-2-fast", "composer-2"]),
         getProjectDir: () => undefined,
       }),
     )
@@ -565,9 +565,9 @@ describe("model rotation — faithful composer precedence", () => {
     return composer
   }
 
-  it("rotates fb0 → fb1 over the static override, then resets to static on success", () => {
+  it("rotates composer-2-fast → composer-2 over the static override, then resets to static on success", () => {
     const config = makeConfig({
-      agent_overrides: { explore: { model: "static-x", fallback_models: ["fb0", "fb1"] } },
+      agent_overrides: { explore: { model: "static-x", fallback_models: ["composer-2-fast", "composer-2"] } },
     })
     const deps = rotationDeps(config)
     const composer = harness(config)
@@ -577,12 +577,12 @@ describe("model rotation — faithful composer precedence", () => {
 
     recordRetryableFailure("conv", "explore", deps)
     const first = composer.compose("conv", toolInput)
-    expect(first?.model).toBe("fb0")
+    expect(first?.model).toBe("composer-2-fast")
     expect(first?.subagent_type).toBe("explore")
     expect(first?.prompt).toBe("p")
 
     recordRetryableFailure("conv", "explore", deps)
-    expect(composer.compose("conv", toolInput)?.model).toBe("fb1")
+    expect(composer.compose("conv", toolInput)?.model).toBe("composer-2")
 
     resetRotationOnSuccess("conv", "explore")
     expect(composer.compose("conv", toolInput)?.model).toBe("static-x")
@@ -590,14 +590,14 @@ describe("model rotation — faithful composer precedence", () => {
 
   it("defers to the static model-routing override once fallbacks are exhausted", () => {
     const config = makeConfig({
-      agent_overrides: { explore: { model: "static-x", fallback_models: ["fb0"] } },
+      agent_overrides: { explore: { model: "static-x", fallback_models: ["composer-2-fast"] } },
     })
     const deps = rotationDeps(config)
     const composer = harness(config)
     const toolInput: TaskInput = { subagent_type: "explore", prompt: "p" }
 
     recordRetryableFailure("conv", "explore", deps)
-    expect(composer.compose("conv", toolInput)?.model).toBe("fb0")
+    expect(composer.compose("conv", toolInput)?.model).toBe("composer-2-fast")
 
     recordRetryableFailure("conv", "explore", deps)
     expect(composer.compose("conv", toolInput)?.model).toBe("static-x")

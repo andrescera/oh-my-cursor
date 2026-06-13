@@ -37,6 +37,11 @@ import {
 import { extractAgentTypeFromLogInputs } from "./extract-agent-fields"
 import { loadConfig as defaultLoadConfig } from "../config"
 import { contextCollector as defaultContextCollector } from "../context-collector"
+import { isModelAllowedForAgent } from "../lib/agent-model-allowlist"
+import {
+  introspectionRuntime,
+  type IntrospectionSnapshot,
+} from "../lib/introspection-runtime"
 import type { OhMyCursorConfig } from "../schemas/config"
 
 export const MODEL_ROTATION_PROVIDER_ID = "model-rotation"
@@ -60,6 +65,7 @@ export interface RotationDeps {
   loadConfig?: (projectDir?: string) => OhMyCursorConfig
   getProjectDir?: () => string | undefined
   contextCollector?: AdvisoryCollector
+  getSnapshot?: () => IntrospectionSnapshot
 }
 
 type RotationEntry = { index: number; tried: string[] }
@@ -90,6 +96,42 @@ function resolveFallbackModels(config: OhMyCursorConfig, agent: string): string[
   return []
 }
 
+/**
+ * Advance `entry.index` past `fallback_models` entries disallowed for `agent`,
+ * registering one advisory per skip. Because `entry.index` is shared and only
+ * ever increases, each disallowed slot is skipped — and its advisory emitted —
+ * exactly once across the rotation lifecycle (the tests rely on this).
+ */
+function skipDisallowedEntries(
+  conversationId: string,
+  agent: string,
+  fallbacks: string[],
+  entry: RotationEntry,
+  snapshot: IntrospectionSnapshot,
+  collector: AdvisoryCollector,
+): void {
+  while (entry.index < fallbacks.length) {
+    const model = fallbacks[entry.index]
+    // Empty/invalid slot: stop and let the caller's nonEmptyString guard handle it.
+    if (!nonEmptyString(model)) return
+    if (isModelAllowedForAgent(agent, model, snapshot)) return
+
+    try {
+      collector.register(conversationId, {
+        id: `model-rotation-skipped:${agent}:${model}`,
+        source: "model-rotation",
+        content:
+          `[model-rotation] Fallback model '${model}' for agent '${agent}' is not in the ` +
+          `per-agent allowlist; skipping.`,
+        priority: "critical",
+      })
+    } catch {
+      // Advisory registration is best-effort; never break the hot path.
+    }
+    entry.index += 1
+  }
+}
+
 export function recordRetryableFailure(
   conversationId: string,
   agentType: string,
@@ -100,6 +142,7 @@ export function recordRetryableFailure(
   const loadConfig = deps.loadConfig ?? defaultLoadConfig
   const getProjectDir = deps.getProjectDir ?? (() => process.env.OH_MY_CURSOR_PROJECT_DIR)
   const collector = deps.contextCollector ?? defaultContextCollector
+  const getSnapshot = deps.getSnapshot ?? introspectionRuntime.getSnapshot
 
   let config: OhMyCursorConfig
   try {
@@ -121,9 +164,14 @@ export function recordRetryableFailure(
 
   if (entry.index >= fallbacks.length) return
 
+  const snapshot = getSnapshot()
+  skipDisallowedEntries(conversationId, agentType, fallbacks, entry, snapshot, collector)
+  if (entry.index >= fallbacks.length) return
+
   const failedModel = fallbacks[entry.index]
   if (nonEmptyString(failedModel)) entry.tried.push(failedModel)
   entry.index += 1
+  skipDisallowedEntries(conversationId, agentType, fallbacks, entry, snapshot, collector)
 
   if (entry.index >= fallbacks.length) {
     try {
@@ -151,6 +199,8 @@ export function resetRotationOnSuccess(conversationId: string, agentType: string
 export function createModelRotationProvider(deps: RotationDeps = {}): TaskMutationProvider {
   const loadConfig = deps.loadConfig ?? defaultLoadConfig
   const getProjectDir = deps.getProjectDir ?? (() => process.env.OH_MY_CURSOR_PROJECT_DIR)
+  const collector = deps.contextCollector ?? defaultContextCollector
+  const getSnapshot = deps.getSnapshot ?? introspectionRuntime.getSnapshot
 
   return {
     id: MODEL_ROTATION_PROVIDER_ID,
@@ -173,6 +223,9 @@ export function createModelRotationProvider(deps: RotationDeps = {}): TaskMutati
 
       const fallbacks = resolveFallbackModels(config, agent)
       if (fallbacks.length === 0) return null
+      if (entry.index >= fallbacks.length) return null
+
+      skipDisallowedEntries(conversationId, agent, fallbacks, entry, getSnapshot(), collector)
       if (entry.index >= fallbacks.length) return null
 
       const model = fallbacks[entry.index]

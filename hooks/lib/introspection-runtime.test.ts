@@ -154,4 +154,39 @@ describe("introspection-runtime", () => {
     const snap = rt.getSnapshot()
     expect(snap.models.length).toBeGreaterThanOrEqual(6)
   })
+
+  test("snapshot without modelsByAgent is valid (optional field)", async () => {
+    const rt = createIntrospectionRuntime({
+      getEnum: async () => makeEnumResult(),
+      passiveObserve: () => {},
+      loadConfig: () => DEFAULT_CONFIG,
+    })
+    await rt.init()
+    const snap = rt.getSnapshot()
+    // modelsByAgent is optional, so it should not be present by default
+    expect(snap.modelsByAgent).toBeUndefined()
+    // but the snapshot should still be a valid IntrospectionSnapshot
+    expect(snap.models).toBeDefined()
+    expect(snap.agents).toBeDefined()
+    expect(snap.source).toBeDefined()
+    expect(snap.cachedAt).toBeDefined()
+    expect(snap.observedAdditions).toBeDefined()
+  })
+
+  test("snapshot with modelsByAgent type-checks correctly", async () => {
+    const rt = createIntrospectionRuntime({
+      getEnum: async () => makeEnumResult(),
+      passiveObserve: () => {},
+      loadConfig: () => DEFAULT_CONFIG,
+    })
+    await rt.init()
+    const snap = rt.getSnapshot()
+    // Verify the type is compatible with Record<string, string[]>
+    const withModels: typeof snap = {
+      ...snap,
+      modelsByAgent: { "explore": ["composer-2-fast"], "sisyphus": ["gpt-5.4-medium"] },
+    }
+    expect(withModels.modelsByAgent).toBeDefined()
+    expect(withModels.modelsByAgent?.explore).toEqual(["composer-2-fast"])
+  })
 })

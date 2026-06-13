@@ -15,6 +15,7 @@ export interface IntrospectionSnapshot {
   cursorVersion?: string
   cachedAt: string
   observedAdditions: string[]
+  modelsByAgent?: Record<string, string[]>
 }
 
 export interface IntrospectionRuntimeDeps {

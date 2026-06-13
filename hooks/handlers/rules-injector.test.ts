@@ -70,4 +70,24 @@ describe("rules-injector", () => {
     })
     expect(contextCollector.getPending(CONV).hasContent).toBe(false)
   })
+
+  it("delivers standing context via the collector, never additional_context (dead channel)", () => {
+    const handler = createRulesInjectorHandler(conversations, makeFsDeps())["/postToolUse"]!
+    const result = handler(readInput())
+
+    // postToolUse.additional_context is BROKEN at 3.7.x; delivery is collector-only.
+    expect(result).not.toHaveProperty("additional_context")
+    expect(contextCollector.getPending(CONV).hasContent).toBe(true)
+  })
+
+  it("registers the standing rule under one keyed id — repeated reads yield a single entry", () => {
+    const handler = createRulesInjectorHandler(conversations, makeFsDeps())["/postToolUse"]!
+    handler(readInput())
+    handler(readInput())
+
+    // Standing content must not duplicate across postToolUse events.
+    const pending = contextCollector.getPending(CONV)
+    expect(pending.entries).toHaveLength(1)
+    expect(pending.entries[0].id).toBe(`rule-${RULE_PATH}`)
+  })
 })

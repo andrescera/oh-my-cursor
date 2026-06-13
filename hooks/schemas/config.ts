@@ -133,10 +133,18 @@ export const IntrospectionSchema = z.object({
   extra_bundle_paths: z.array(z.string()).default([]),
 })
 
+// Keep in sync with KEYWORD_DETECTOR_KEYWORDS in hooks/handlers/keyword-detector.ts.
+// Duplicated literally (not imported) to avoid a schema <- config <- handler import cycle.
+const KEYWORD_DETECTOR_DEFAULT_KEYWORDS = ["ultrawork", "ulw", "ralph-loop", "ralph", "boulder"]
+
 export const HandlersSchema = z.object({
   plan_format_validator: z.object({
     enabled: z.boolean().default(true),
   }).default({ enabled: true }),
+  keyword_detector: z.object({
+    enabled: z.boolean().default(true),
+    enabled_expansions: z.array(z.string()).default([...KEYWORD_DETECTOR_DEFAULT_KEYWORDS]),
+  }).default({ enabled: true, enabled_expansions: [...KEYWORD_DETECTOR_DEFAULT_KEYWORDS] }),
   notepad_write_guard: z.object({
     enabled: z.boolean().default(true),
   }).default({ enabled: true }),
@@ -201,6 +209,7 @@ export const OhMyCursorConfigSchema = z.object({
   }),
   handlers: HandlersSchema.default({
     plan_format_validator: { enabled: true },
+    keyword_detector: { enabled: true, enabled_expansions: [...KEYWORD_DETECTOR_DEFAULT_KEYWORDS] },
     notepad_write_guard: { enabled: true },
     question_label_truncator: { enabled: true },
     fsync_skip_warning: { enabled: true },

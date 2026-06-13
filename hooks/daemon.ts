@@ -16,6 +16,7 @@ import { createSubagentHandlers } from "./handlers/subagent-handlers"
 import { createQuestionLabelTruncatorHandler } from "./handlers/question-label-truncator"
 import { createPlanFormatValidatorHandler } from "./handlers/plan-format-validator"
 import { createNotepadWriteGuardHandler } from "./handlers/notepad-write-guard"
+import { createKeywordDetectorHandler } from "./handlers/keyword-detector"
 import { createFsyncSkipWarningHandlerMap } from "./handlers/fsync-skip-warning"
 import { createToolPairValidatorHandler } from "./handlers/tool-pair-validator"
 import { createConversationHistoryHandler } from "./handlers/conversation-history"
@@ -438,6 +439,35 @@ const handlers: HandlerMap = {
       startTime: new Date(startTime).toISOString(),
     }
   },
+}
+
+// Explicit wrapper, NOT a spread: a spread would clobber continuation-handlers'
+// /beforeSubmitPrompt (last-wins). keyword-detector runs first; a throw never
+// blocks the original handler.
+const keywordDetectorHandlers = createKeywordDetectorHandler(conversations)
+const keywordBeforeSubmitPrompt = keywordDetectorHandlers["/beforeSubmitPrompt"]
+const baseBeforeSubmitPrompt = handlers["/beforeSubmitPrompt"]
+if (keywordBeforeSubmitPrompt) {
+  handlers["/beforeSubmitPrompt"] = (input) => {
+    try {
+      keywordBeforeSubmitPrompt(input)
+    } catch (err) {
+      console.error("[oh-my-cursor][keyword-detector] /beforeSubmitPrompt error:", err instanceof Error ? err.message : String(err))
+    }
+    return baseBeforeSubmitPrompt ? baseBeforeSubmitPrompt(input) : {}
+  }
+}
+const keywordSessionEnd = keywordDetectorHandlers["/sessionEnd"]
+const baseSessionEnd = handlers["/sessionEnd"]
+if (keywordSessionEnd) {
+  handlers["/sessionEnd"] = (input) => {
+    try {
+      keywordSessionEnd(input)
+    } catch (err) {
+      console.error("[oh-my-cursor][keyword-detector] /sessionEnd error:", err instanceof Error ? err.message : String(err))
+    }
+    return baseSessionEnd ? baseSessionEnd(input) : {}
+  }
 }
 
 // tool-pair-validator (read-before-edit enforcement). Routes are composed via

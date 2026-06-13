@@ -19,6 +19,23 @@ Items are tagged by evidence type. **[community]** and **[binary-only]** entries
 - **Prompt-type hook (`hooks.json` `beforeMCPExecution` entry with `type: "prompt"`):** **Verified retained, not daemon-routed.** Per `docs/cursor/03-hooks.md` Appendix C #3, a `type: "prompt"` hook does **not** invoke the `command` shell script — Cursor evaluates the `prompt` field internally via its LLM, so it never reaches the oh-my-cursor daemon (`post-daemon.sh`/`ensure-daemon.sh`). It is a Cursor-native, defense-in-depth LLM safety review layered on top of the command-type `beforeMCPExecution` allowlist guard (which **does** route to the daemon). Its enforcement is `UNCONFIRMED` (analogy to `beforeShellExecution`; no live-fire deny capture), but it is a valid registration and removing it would drop a safety layer — **kept**. [binary-only] <!-- last-verified: 3.6.21 -->
 - **`workspaceOpen` (canonical event 21):** Registered in `hooks.json` but had **no daemon route** (POST → 404). A **no-op route** returning `{}` now backstops it. `workspaceOpen` is `OBSERVE-ONLY`/binary-only (no response field enforced; zero live fires in the 3.5.38 corpus). [binary-only] <!-- last-verified: 3.6.21 -->
 
+### Hook Response Field Status at 3.7.x
+
+The following response field statuses changed at Cursor **3.7.27**. See `docs/internal/hook-response-fields.md` for full evidence catalog.
+
+| Event | Field | Status at 3.7.x | Source |
+|---|---|---|---|
+| `postToolUse` | `additional_context` | **BROKEN** — context never reaches model despite hook firing, full payload, synchronous execution, and valid response | Three-round smoke test at 3.7.27; staff forum thread [155689](https://forum.cursor.com/t/155689) ("planned for broader next hooks iteration", no ETA) |
+| `postToolUse` | input payload + synchronous execution | **FIXED** at 3.7.27 — full stdin payload delivered, hook executes synchronously | Three-round smoke test at 3.7.27 |
+| `sessionStart` | `additional_context` | **BROKEN** — timing bug; context does not reach model at session init | Staff forum thread [158452](https://forum.cursor.com/t/158452), Apr 19 2026. `env` is unaffected. |
+| `beforeSubmitPrompt` | `updated_input`, `additional_context` | **NOT SUPPORTED BY DESIGN** — only `permission` and `followup_message` are honored | Staff forum thread [158883](https://forum.cursor.com/t/158883), Apr 23 2026 |
+
+**Replacement channels for context injection:**
+- `preToolUse.updated_input` on Task tool (piggyback via composer) — confirmed working
+- `stop.followup_message` — loop-scoped context injection
+
+---
+
 ### Hook Tool Coverage
 
 `preToolUse` and `postToolUse` are **not** the same coverage: tools matched by `hooks.json` can still receive `preToolUse` even when Cursor never emits `postToolUse` for them. Verified from a 4.5MB production conversation log (9,452 `postToolUse` events, Cursor 3.0.16): [repro-local]

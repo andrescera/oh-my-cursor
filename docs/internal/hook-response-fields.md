@@ -19,6 +19,8 @@ _Generated: 2026-04-17_
 | `DEPRECATED` | Field existed or was documented; Cursor now warns and ignores it |
 | `OBSERVE-ONLY` | Event fires; no response field is processed (observe/log pattern only) |
 | `NOT-FIRED` | Hook matcher may be configured, but Cursor does not invoke the hook for this tool/event pair (3.6.21 live-fire) |
+| `BROKEN-AT-3.7.x` | Field was `TAKES-EFFECT` at an earlier version; confirmed non-functional at 3.7.x despite hook firing, valid payload, and valid response. Historical evidence preserved but superseded. |
+| `NOT-SUPPORTED-BY-DESIGN` | Staff-confirmed: field is not processed for this event by design; only specific fields (e.g. `permission`, `followup_message`) are honored. |
 
 > **Evidence baseline:** Initial claims confirmed in Cursor **3.1.15** (workbench sha256 `29aa9ec0…`).
 > _Refreshed 2026-05-29: live evidence now from **3.5.38 corpus** (32,561 records, capture dates 2026-05-27–29); event-set confirmed at **3.6.21 binary** (21 events, enum `Iv` at byte offset 23065128). 3.5.38 is the closest available 3.6.21 proxy — all empirical payload claims are labeled **3.5.38** and must not be presented as 3.6.21 confirmed facts; provenance gates evidence._
@@ -34,9 +36,9 @@ _Generated: 2026-04-17_
 | `stop` | `decision` / `reason` | `UNCONFIRMED` | — | Returned by current daemon code alongside `followup_message`; no isolated probe confirms or refutes their effect. _Still-unknown at 3.6.21; no live-fire capture as of 2026-05-29 (0 stop records in 3.5.38 corpus)._ |
 | `subagentStop` | `followup_message` | `UNCONFIRMED` | Claim 5; N11 | v2 confirmed the event fires (W-C-subagentStop-logger-036, W-AB-subagentStop-logger-042) but no dedicated response-field probe ran. `subagentStop` fires from `always-local` role; `subagentStart` fires from `agent-exec` (N11 — asymmetric routing). _Still-unknown at 3.6.21; 0 subagentStop records in 3.5.38 corpus; no live-fire capture as of 2026-05-29._ |
 | `subagentStop` | `agent_transcript_path` (payload field) | `UNCONFIRMED` | Claim 51 | Field present in payload per v1 schema; no v2 override tested. Format not confirmed (E5 experiment not run). 3.5.38 T-V3: 0 subagentStop records in corpus — `agent_transcript_path` value (real path vs null) remains unverified. _Still-unknown at 3.6.21; no live-fire capture as of 2026-05-29._ |
-| `postToolUse` | `additional_context` | `TAKES-EFFECT` | W-H-postToolUse-additional-context-001; Claim 43; N4; W3-self-fire-001 | Confirmed: production oh-my-cursor daemon inject visible in agent system context. Refutes 2026 forum claim of "silently dropped". <!-- last-verified: 3.6.21 --> W3 agent self-fire: `Read`/`Shell`/`Grep` `postToolUse` captured in workspace logger JSONL; daemon healthy on :27847. Does not apply when Cursor omits `postToolUse` (e.g. `TodoWrite`). |
+| `postToolUse` | `additional_context` | `BROKEN-AT-3.7.x` | W-H-postToolUse-additional-context-001; Claim 43; N4; W3-self-fire-001; **SUPERSEDED at 3.7.27** | ~~`TAKES-EFFECT` at 3.6.21~~ — **superseded**. Three independent smoke-test rounds at **3.7.27**: hook fires, full stdin payload delivered, execution synchronous, daemon returns valid `additional_context` JSON — context never reaches the model. Disabling all other plugins changed nothing. Staff forum thread **155689**: "planned for broader next hooks iteration" (no ETA). Historical evidence (W-H-postToolUse-additional-context-001; Claim 43; N4; W3-self-fire-001) preserved for audit trail but reflects pre-3.7 behavior only. **Replacement channels:** Task `updated_input` piggyback (via composer preToolUse), `stop.followup_message` (loop-scoped). <!-- last-verified: 3.7.27 broken --> |
 | `postToolUse` | `updated_mcp_tool_output` | `UNCONFIRMED` | — | No v2 probe. Field appears in v1 schema documentation only. |
-| `postToolUse` | `tool_response` (payload field) | `OBSERVE-ONLY` | Claim 36 | `tool_output` (str) and `duration` (float) fields confirmed in payload; no response-field override tested for this event. Payload is used for `tool_use_id` correlation in ULW design. |
+| `postToolUse` | `tool_response` (payload field) | `OBSERVE-ONLY` | Claim 36 | `tool_output` (str) and `duration` (float) fields confirmed in payload; no response-field override tested for this event. Payload is used for `tool_use_id` correlation in ULW design. **FIXED at 3.7:** Full stdin payload delivery and synchronous execution both confirmed working at 3.7.27 (three-round smoke test). Input payload fields (`tool_name`, `tool_input`, `tool_output`, `tool_use_id`) all present; hook executes synchronously before model continues. <!-- last-verified: 3.7.27 fixed --> |
 | `preToolUse` | `permission: "deny"` | `UNCONFIRMED` | Claim 1; Claim 32; W3-self-fire-001 | v2 ran only logger cells on `preToolUse`; no live deny self-fire at 3.6.21. Daemon returns `permission: "deny"` for plan-mode `Write` in unit tests; `beforeShellExecution` deny remains `TAKES-EFFECT`. Runtime IDE block for `preToolUse` deny still unverified. <!-- last-verified: 3.6.21 --> |
 | `preToolUse` | (TodoWrite `tool_name`) | `NOT-FIRED` | W3-TodoWrite-hook-absence-001 | <!-- last-verified: 3.6.21 --> Agent self-fire: 2× `TodoWrite` calls, 0 workspace-logger or daemon `tool_name=TodoWrite` records despite production matcher including `TodoWrite`. Neither `preToolUse` nor `postToolUse` fires. See `.cursor/evidence/w3-probe-results.md`. |
 | `preToolUse` | `permission: "ask"` | `ACCEPTED-BUT-IGNORED` | Claim 42; N1 | Confirmed on `beforeShellExecution` (W-AB-beforeShellExecution-ask-022). Applies by extension to `preToolUse`; not separately probed. |
@@ -58,10 +60,11 @@ _Generated: 2026-04-17_
 | `afterAgentResponse` | any response field | `OBSERVE-ONLY` | Claim 12; N9 | v2 confirmed it fires (1 record, `always-local` role). No response-field processing expected. |
 | `afterAgentThought` | any response field | `OBSERVE-ONLY` | Claim 13; N9 | v2: 19 records (7 `always-local`, 12 `agent-exec`). v1 missed it due to workspace_roots filter. |
 | `sessionStart` | `env` | `UNCONFIRMED` | Claim 15 | No v2 records for `sessionStart`; all v2 sessions were continuations (not fresh session windows). _Still-unknown at 3.6.21; 0 sessionStart records in 3.5.38 corpus; no live-fire capture as of 2026-05-29._ |
-| `sessionStart` | `additional_context` | `UNCONFIRMED` | Claim 15 | Same constraint: requires a genuinely fresh session to fire. _Still-unknown at 3.6.21; no live-fire capture as of 2026-05-29._ |
+| `sessionStart` | `additional_context` | `BROKEN` | Claim 15; staff thread **158452** (2026-04-19) | Timing bug confirmed by staff (forum thread 158452, Apr 19 2026): `additional_context` from `sessionStart` does not reach the model due to a race between hook execution and context assembly at session init. `env` is unaffected and still works. Historical UNCONFIRMED status (no live-fire at 3.6.21) superseded by staff confirmation. Do not depend on `sessionStart.additional_context` for session-recovery or context injection. <!-- last-verified: staff-confirmed broken 2026-04-19 --> |
 | `sessionEnd` | any response field | `UNCONFIRMED` | Claim 16 | No v2 records; same constraint as `sessionStart`. _Still-unknown at 3.6.21; 0 sessionEnd records in 3.5.38 corpus; no live-fire capture as of 2026-05-29._ |
 | `preCompact` | any response field | `UNCONFIRMED` | Claim 17 | Session stayed below context limit in both v1 and v2. _Still-unknown at 3.6.21; 0 preCompact records in 3.5.38 corpus; no live-fire capture as of 2026-05-29._ |
-| `beforeSubmitPrompt` | `user_message`, `additional_context`, `continue` | `UNCONFIRMED` | Claim 18 | No v2 records; requires explicit manual UI prompt submission path. Current daemon returns these fields from `beforeSubmitPrompt` handler but no live-fire confirmation. _Still-unknown at 3.6.21; 0 beforeSubmitPrompt records in 3.5.38 corpus; no live-fire capture as of 2026-05-29._ |
+| `beforeSubmitPrompt` | `updated_input`, `additional_context` | `NOT-SUPPORTED-BY-DESIGN` | Claim 18; staff thread **158883** (2026-04-23) | Staff-confirmed (forum thread 158883, Apr 23 2026): `beforeSubmitPrompt` only honors `permission` and `followup_message` by design. `updated_input` and `additional_context` are not processed for this event. Historical UNCONFIRMED status superseded by staff confirmation. |
+| `beforeSubmitPrompt` | `permission`, `followup_message` | `UNCONFIRMED` | Claim 18 | These two fields are the only ones Cursor processes for `beforeSubmitPrompt` per staff (thread 158883, Apr 23 2026). No live-fire probe run; status remains UNCONFIRMED empirically but supported by design. _Still-unknown at 3.6.21; 0 beforeSubmitPrompt records in 3.5.38 corpus; no live-fire capture as of 2026-05-29._ |
 | `subagentStart` | `permission`, `user_message` | `UNCONFIRMED` | Claim 55; N8 | ⚠️ **CHANGED (3.5.38):** `subagentStart.task` payload field was empty string in 3.1.15 (N8; Claim 38), but is **NOW POPULATED** in 3.5.38 — 125/125 records carry full task prompt text (lengths 51–15,308 chars). Also NEW in 3.5.38: `subagent_model` field (model assigned to subagent, 125/125 records) and `transcript_path` now non-null (was null in v1). Permission/message response-field probes not yet run; subagent_id = tool_call_id. (3.5.38 summary, T-V2) |
 | `postToolUseFailure` | any response field | `OBSERVE-ONLY` | Claim 3; Claim 37 | Event confirmed firing (7 records). Payload fields: `error_message`, `failure_type` (`"timeout"|"error"|"permission_denied"`), `is_interrupt`. No response processing expected. |
 | `beforeTabFileRead` | any response field | `OBSERVE-ONLY` | Claim 19 | Tab/UI-only path; not triggerable by agent tool calls. `n/a-descope` in claim diff. |
@@ -99,20 +102,23 @@ Source: `docs/internal/hooks-v2-ghost-hunt.json` (`plausible_ghosts` array). Do 
 
 **Safe to depend on (TAKES-EFFECT):**
 - `stop.followup_message` — loop iteration primitive for ralph-loop and ULW
-- `postToolUse.additional_context` — rule injection, context augmentation, capacity for context-window-monitor
 - `beforeShellExecution.permission: "deny"` — shell blocking, safety guards
 - `beforeShellExecution.user_message` — user-visible denial reason
 - `beforeShellExecution` exit code 2 — unconditional block (failClosed-independent)
 - `beforeShellExecution` malformed JSON + `failClosed=true` — block path
+- `postToolUse` input payload + synchronous execution — FIXED at 3.7.27; full stdin payload and sync behavior confirmed
 
 **Require new experiments before depending on:**
 - `preToolUse.permission: "deny"` — plausible but not empirically verified
-- `preToolUse.updated_input` — critical for arg-rewriting hooks; untested
+- `preToolUse.updated_input` — critical for arg-rewriting hooks; untested at 3.7 (fixed for Task tool Apr 2026 per plan context)
 - `subagentStop.followup_message` — architecturally attractive for ULW but UNCONFIRMED; Oracle design uses `postToolUse(Task) + tool_use_id` instead (see [overloop-design.md](./overloop-design.md))
-- `sessionStart.env` / `additional_context` — needed for session-recovery port; requires fresh session experiment
+- `sessionStart.env` — `additional_context` is BROKEN (timing bug, staff thread 158452); `env` unaffected but still requires fresh-session experiment
 - `beforeMCPExecution.permission` — needed for MCP-level guards
 
 **Do not use:**
+- `postToolUse.additional_context` — **BROKEN-AT-3.7.x** (staff thread 155689; three-round 3.7.27 smoke test). Context never reaches model despite hook firing and valid response. **Replacement channels:** Task `preToolUse.updated_input` piggyback (via composer), `stop.followup_message` (loop-scoped only).
+- `sessionStart.additional_context` — **BROKEN** (timing bug; staff thread 158452, Apr 19 2026). Use `sessionStart.env` instead.
+- `beforeSubmitPrompt.updated_input` / `beforeSubmitPrompt.additional_context` — **NOT-SUPPORTED-BY-DESIGN** (staff thread 158883, Apr 23 2026). Only `permission` and `followup_message` are honored for this event.
 - `stop_hook_loop_limit` — DEPRECATED; warns and ignores
 - `beforeShellExecution.permission: "ask"` — ACCEPTED-BUT-IGNORED; treated as allow
 - Any `after*` response override — OBSERVE-ONLY per v1 schema; no v2 override evidence

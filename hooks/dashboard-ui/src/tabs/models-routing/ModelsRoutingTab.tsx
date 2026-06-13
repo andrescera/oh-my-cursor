@@ -8,11 +8,13 @@ import {
   type Introspection,
   getFullConfig,
   getIntrospection,
+  saveAgentOverrides,
 } from '@/lib/api'
 import { describeApiError } from '@/lib/api-error'
 import { TAB_REFRESH_EVENT } from '@/lib/tab-refresh'
 
 import { EnumViewer, type EnumViewerStatus } from './EnumViewer'
+import { InvalidOverrideBanner } from './InvalidOverrideBanner'
 import { RoutingEditor } from './RoutingEditor'
 
 type LoadState<T> =
@@ -52,6 +54,7 @@ export default function ModelsRoutingTab() {
   })
   const [refreshing, setRefreshing] = useState(false)
   const [revision, setRevision] = useState(0)
+  const [fullConfig, setFullConfig] = useState<unknown>(null)
   const mounted = useRef(true)
 
   useEffect(() => {
@@ -71,6 +74,7 @@ export default function ModelsRoutingTab() {
         ? { status: 'ready', data: readOverrides(configResult.data) }
         : { status: 'error', error: configResult.error },
     )
+    setFullConfig(configResult.ok ? configResult.data : null)
     setRevision((r) => r + 1)
     setRefreshing(false)
   }, [])
@@ -148,13 +152,29 @@ export default function ModelsRoutingTab() {
       )}
 
       {overrides.status === 'ready' && (
-        <RoutingEditor
-          key={revision}
-          models={introData?.models ?? []}
-          agents={introData?.agents ?? []}
-          initialOverrides={overrides.data}
-          onSaved={() => void load()}
-        />
+        <>
+          <InvalidOverrideBanner
+            config={fullConfig}
+            modelsByAgent={introData?.modelsByAgent}
+            onReset={async (agent) => {
+              await saveAgentOverrides({
+                target: 'project',
+                agent_overrides: {
+                  [agent]: { model: undefined, fallback_models: [], disable: false },
+                },
+              })
+              void load()
+            }}
+          />
+          <RoutingEditor
+            key={revision}
+            models={introData?.models ?? []}
+            agents={introData?.agents ?? []}
+            modelsByAgent={introData?.modelsByAgent}
+            initialOverrides={overrides.data}
+            onSaved={() => void load()}
+          />
+        </>
       )}
     </div>
   )

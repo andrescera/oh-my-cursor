@@ -801,6 +801,16 @@ const fetchHandler = async (req: Request) => {
     return budgeted
   }
 
+  if (path === "/channel-status") {
+    const budgeted = await budgetMiddleware.withBudget(path, budgetForRoute(path), async () => {
+      return new Response(JSON.stringify({ table: CHANNEL_STATUS_TABLE }), {
+        headers: { "Content-Type": "application/json" },
+      })
+    })
+    if (isDeferredResult(budgeted)) return deferredJsonResponse()
+    return budgeted
+  }
+
   if (path === "/events/stream") {
     // SSE streaming — exempt from budget middleware
     const encoder = new TextEncoder()

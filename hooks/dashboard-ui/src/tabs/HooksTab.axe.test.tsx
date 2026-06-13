@@ -8,11 +8,23 @@ import { axeComponent } from '@/test-utils/axe'
 
 const realFetch = globalThis.fetch
 let mockFetch: ReturnType<typeof vi.fn>
+let configResponse: () => Response
 
 beforeEach(() => {
   localStorage.clear()
   _resetForTests()
-  mockFetch = vi.fn()
+  configResponse = () => jsonResponse({ enabled: [], disabled: [] })
+  // Route by URL: HooksTab embeds <ChannelMatrix /> (fetches /channel-status +
+  // /introspection), so a single queued response can't be relied on by order.
+  mockFetch = vi.fn((input: string) => {
+    const u = String(input)
+    if (u.includes('/channel-status')) return Promise.resolve(jsonResponse({ table: [] }))
+    if (u.includes('/introspection')) {
+      return Promise.resolve(jsonResponse({ cursorVersion: '3.7.27' }))
+    }
+    if (u.includes('/config')) return Promise.resolve(configResponse())
+    return Promise.resolve(jsonResponse({}))
+  })
   globalThis.fetch = mockFetch as unknown as typeof fetch
 })
 
@@ -30,12 +42,11 @@ function jsonResponse(body: unknown): Response {
 
 describe('HooksTab: axe a11y (W3.1)', () => {
   test('default render with hooks has no axe violations', async () => {
-    mockFetch.mockResolvedValueOnce(
+    configResponse = () =>
       jsonResponse({
         enabled: ['/sessionStart', '/preToolUse'],
         disabled: ['/postToolUse'],
-      }),
-    )
+      })
     const { container } = render(<HooksTab />)
     expect(await screen.findByText('/sessionStart')).toBeInTheDocument()
     const results = await axeComponent(container)
@@ -43,7 +54,7 @@ describe('HooksTab: axe a11y (W3.1)', () => {
   })
 
   test('error state has no axe violations', async () => {
-    mockFetch.mockResolvedValueOnce(new Response('boom', { status: 500 }))
+    configResponse = () => new Response('boom', { status: 500 })
     const { container } = render(<HooksTab />)
     expect(
       await screen.findByRole('button', { name: /retry/i }),

@@ -9,6 +9,7 @@ import {
   CardTitle,
 } from '@/components/ui/card'
 import { Skeleton } from '@/components/ui/skeleton'
+import ChannelMatrix from './ChannelMatrix'
 import { getConfig, type ApiError } from '@/lib/api'
 import { describeApiError } from '@/lib/api-error'
 import { TAB_REFRESH_EVENT } from '@/lib/tab-refresh'
@@ -193,6 +194,8 @@ export default function HooksTab() {
           </CardContent>
         </Card>
       </div>
+
+      <ChannelMatrix />
     </div>
   )
 }

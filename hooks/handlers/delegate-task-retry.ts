@@ -1,14 +1,17 @@
+import { contextCollector, type ContextCollector } from "../context-collector"
+
+type CollectorLike = Pick<ContextCollector, "register">
+
 type PostToolUseInput = {
   tool_input?: {
     subagent_type?: string
     description?: string
   }
   output?: string
+  conversationId?: string
 }
 
-type RetryResult = {
-  additional_context?: string
-}
+type RetryResult = Record<string, never>
 
 type ErrorType = "rate_limit" | "model_unavailable" | "timeout" | "generic"
 
@@ -58,7 +61,8 @@ function extractAgentType(input: PostToolUseInput): string {
   return input.tool_input?.subagent_type ?? input.tool_input?.description ?? "unknown"
 }
 
-export function createDelegateTaskRetry() {
+export function createDelegateTaskRetry(deps?: { collector?: CollectorLike }) {
+  const collector = deps?.collector ?? contextCollector
   return function handlePostToolUse(
     input: PostToolUseInput,
     delegateRetryState: Record<string, number>,
@@ -104,8 +108,12 @@ export function createDelegateTaskRetry() {
       )
     }
 
-    return {
-      additional_context: parts.join(" "),
-    }
+    collector.register(input.conversationId ?? "", {
+      id: "delegate-retry",
+      source: "delegate-task-retry",
+      content: parts.join(" "),
+      priority: "high",
+    })
+    return {}
   }
 }

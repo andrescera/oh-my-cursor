@@ -601,21 +601,14 @@ export function createToolGuardHandlers(
       }
 
       if (["task", "Task"].includes(toolName)) {
-        const dr = delegateTaskRetry(
+        delegateTaskRetry(
           {
             tool_input: toolInput as { subagent_type?: string; description?: string },
             output,
+            conversationId: convId,
           },
           conversation.delegateRetryState,
         )
-        if (dr.additional_context) {
-          contextCollector.register(convId, {
-            id: "delegate-retry",
-            source: "delegate-task-retry",
-            content: dr.additional_context,
-            priority: "high",
-          })
-        }
       }
 
       for (const portedHandler of portedPostToolUse) {

@@ -8,6 +8,20 @@
 |---------|---------|----------|--------|-------|
 | Custom Agents (`.cursor/agents/`) | IDE | [official-doc] | Using | 11 agent definitions |
 | Agent Hooks (19 of 21 events wired) | IDE | [official-doc] | Using | Via daemon + `hooks/hooks.json` wires 19 of the 21 canonical events (`beforeTabFileRead`, `afterTabFileEdit` not wired). Only 7/16 tools fire postToolUse — see [sharp edges](19-known-sharp-edges.md#hook-tool-coverage) <!-- last-verified: 3.6.21 --> |
+| `preToolUse.updated_input` (Task piggyback) | IDE | [repro-local] | Using | Central composer (`task-input-composer.ts`) rewrites Task prompt with fenced `<omc:context>` block. Replaces dead `postToolUse.additional_context`. All 18 rerouted handlers deliver via this channel. <!-- last-verified: 3.7.27 --> |
+| `preToolUse.permission` (deny) | IDE | [repro-local] | Using | Guards (plan-write-guard, ask-task-guard, plan-agent-guard, notepad-write-guard, plan-format-validator, stop-continuation-guard, tool-pair-validator) use `permission:"deny"` as primary channel. TAKES-EFFECT at 3.7.x. <!-- last-verified: 3.7.27 --> |
+| `stop.followup_message` | IDE | [repro-local] | Using | Scoped to active loops only (ralph/boulder/ulw). Continuation-handlers emit followup only when a loop is armed. <!-- last-verified: 3.7.27 --> |
+| stop-continuation-guard handler | IDE | [repro-local] | Using | Denies Task dispatch when stop-continuation flag is set. Task 20. <!-- last-verified: 3.7.27 --> |
+| plan-format-validator handler | IDE | [repro-local] | Using | Denies Write/Edit to `.omo/plans/*.md` when required sections or TODO label format is invalid. Task 21. <!-- last-verified: 3.7.27 --> |
+| notepad-write-guard handler | IDE | [repro-local] | Using | Denies full-file Write to existing `.cursor/notepads/` paths (Edit appends are allowed). Task 22. <!-- last-verified: 3.7.27 --> |
+| fsync-skip-warning handler | IDE | [repro-local] | Using | Detects partial-write/disk-full signatures in Write/Edit `tool_output`; registers advisory via contextCollector. Task 22. <!-- last-verified: 3.7.27 --> |
+| question-label-truncator handler | IDE | [repro-local] | Using | Truncates MCP tool label arrays to 80 chars; caps Task `description` to 120 chars via composer provider. Task 23. <!-- last-verified: 3.7.27 --> |
+| tool-pair-validator handler | IDE | [repro-local] | Using | Validates that tool call pairs (e.g. Read before Write) are respected; denies on violation. Task 24. <!-- last-verified: 3.7.27 --> |
+| keyword-detector handler | IDE | [repro-local] | Using | Detects loop-trigger keywords in `beforeSubmitPrompt`; arms continuation state machine and registers mode preamble via contextCollector for piggyback delivery. Task 26. <!-- last-verified: 3.7.27 --> |
+| Model fallback rotation | IDE | [repro-local] | Using | On dispatch retry, model-routing-mutation cycles through `fallback_models` list. Task 19. <!-- last-verified: 3.7.27 --> |
+| Dynamic `PLAN_MODE_ALLOWED_AGENTS` | IDE | [repro-local] | Using | Agent set derived from agent frontmatter at config-generator time (`--sync-rules`), not hardcoded. Tasks 27/28. <!-- last-verified: 3.7.27 --> |
+| `GET /introspection` daemon endpoint | IDE | [repro-local] | Using | Returns live model enum from Cursor bundle scan (82 models at 3.7.27). Token-authed. Task 11. <!-- last-verified: 3.7.27 --> |
+| `POST /config/agent-overrides` daemon endpoint | IDE | [repro-local] | Using | Atomic write + hot-reload for `agent_overrides`/`categories` config. No daemon restart needed. Task 10. <!-- last-verified: 3.7.27 --> |
 | Tab Hooks (`beforeTabFileRead`, `afterTabFileEdit`) | IDE | [official-doc] | Not Using | Could Use |
 | Hooks auto-reload | IDE | [official-doc] | Using | Edits to hook config reload without restart |
 | Multi-root workspace hooks | IDE | [changelog] | Using | Behavior fixed 3.0-era; plugin ships project hooks |

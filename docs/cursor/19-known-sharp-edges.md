@@ -56,6 +56,14 @@ Changing the `OH_MY_CURSOR_DISABLED_HOOKS` environment variable **requires daemo
 
 Cursor slash commands defined in `commands/*.md` are **expanded by Cursor before reaching `beforeSubmitPrompt`**. The hook receives the user's additional text (after the command prefix), not the literal `/plan`, `/start-work`, etc. For example, when the user types `/plan find bugs`, the `beforeSubmitPrompt` hook receives `"find bugs"` as the prompt — not `"/plan find bugs"`. [repro-local]
 
+### `conversation_id` in `beforeSubmitPrompt`
+
+`conversation_id` **IS present** in `beforeSubmitPrompt` payloads. It arrives via the common envelope (confirmed at 3.5.38 for all events). The `keyword-detector` handler uses `resolveConversationId()` to scope per-conversation state from this event. Caveat: `beforeSubmitPrompt` has zero live-fire records in the 3.6.21 corpus, so this is `[needs-3.6.21-reconfirm]` — but the fallback chain (`conversation_id → session_id → UUID`) makes the key robust regardless. [community] <!-- last-verified: 3.5.38-corpus -->
+
+### Context Delivery via Task Piggyback
+
+Because `postToolUse.additional_context`, `sessionStart.additional_context`, and `beforeSubmitPrompt.updated_input/additional_context` are all broken or unsupported at 3.7.x (see table above), **all context injection now routes through `preToolUse.updated_input` on Task tool calls**. The central composer (`hooks/handlers/task-input-composer.ts`) collects registered context from `contextCollector`, appends it as a fenced `<omc:context>` block prepended to the Task prompt, and delivers it atomically. No handler emits `additional_context` in any response. The effective piggyback budget is `min(max_piggyback_chars, 12246)` characters per dispatch (12246 = 80% of the 15,308-char observed prompt size bound). [repro-local] <!-- last-verified: 3.7.27 -->
+
 ### Composer Mode Not in Hook Payloads
 
 `composer_mode` (snake_case) **is** present on **`beforeSubmitPrompt`** payloads for Cursor **3.0.16+**, indicating the active mode (plan/agent/debug/ask). [repro-local] **`preToolUse` payloads still do not** include `composer_mode`, `composerMode`, or `mode` — mode cannot be read consistently from every hook stage.

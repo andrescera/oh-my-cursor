@@ -35,6 +35,27 @@ function clearContinuationDurably(conversation: ConversationState, convId: strin
   forceFlush()
 }
 
+// ULW (ultrawork) rides the ralph state machine, so ralph + boulder cover all
+// three continuation loops (ralph / ULW / boulder).
+export function isContinuationLoopActive(conversation: ConversationState): boolean {
+  return Boolean(conversation.ralphState?.active) || Boolean(conversation.boulderState?.active)
+}
+
+// Single asserted gate for `stop.followup_message`: emit only when a continuation
+// loop is active; a non-loop stop falls through to {}. Sole emitter, so the
+// undetermined stop multi-hook merge order (hook-response-fields.md:35) never bites.
+function continuationResponse(conversation: ConversationState, message: string): Record<string, unknown> {
+  if (!isContinuationLoopActive(conversation)) {
+    console.log(`[oh-my-cursor][/stop] RESULT=noop reason=noActiveLoopGuard`)
+    return {}
+  }
+  return {
+    followup_message: message,
+    decision: "block",
+    reason: message,
+  }
+}
+
 const ABORT_WINDOW_MS = 3000
 const SKIP_AGENTS = new Set(["prometheus", "compaction"])
 
@@ -174,11 +195,7 @@ export function createContinuationHandlers(
 
         const message = "Continue working. Iteration " + ralph.iteration + "/" + (ralph.maxIterations || "unlimited") + ". When fully done, output <promise>DONE</promise>."
         console.log(`[oh-my-cursor][/stop] RESULT=continue msg="${message.slice(0, 80)}"`)
-        return {
-          followup_message: message,
-          decision: "block",
-          reason: message,
-        }
+        return continuationResponse(conversation, message)
       }
 
       const loopCount = typeof input.loop_count === "number" ? input.loop_count : 0
@@ -266,11 +283,7 @@ export function createContinuationHandlers(
         }
 
         console.log(`[oh-my-cursor][/stop] RESULT=continue msg="${message.slice(0, 80)}"`)
-        return {
-          followup_message: message,
-          decision: "block",
-          reason: message,
-        }
+        return continuationResponse(conversation, message)
       }
 
       console.log(`[oh-my-cursor][/stop] RESULT=noop reason=default`)

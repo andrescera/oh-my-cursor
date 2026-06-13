@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach, afterEach } from "bun:test"
 import { randomUUID } from "node:crypto"
-import { createContinuationHandlers } from "./continuation-handlers"
+import { createContinuationHandlers, isContinuationLoopActive } from "./continuation-handlers"
 import { getOrCreateConversation, conversations, setPersistence } from "../shared"
 import { contextCollector } from "../context-collector"
 import { StatePersistence } from "../state-persistence"
@@ -345,6 +345,94 @@ describe("createContinuationHandlers", () => {
         const result = handlers["/stop"](baseStopInput(convId, { status: "running" }))
 
         expect(result).toEqual({})
+      })
+    })
+
+    describe("followup_message loop-scoping (task-18)", () => {
+      it("isContinuationLoopActive is true when ralph is active", () => {
+        const conversation = getOrCreateConversation(convId)
+        conversation.ralphState = {
+          active: true,
+          iteration: 0,
+          maxIterations: 0,
+          startedAt: new Date().toISOString(),
+          lastProcessedIndex: 0,
+        }
+        expect(isContinuationLoopActive(conversation)).toBe(true)
+      })
+
+      it("isContinuationLoopActive is true when boulder is active", () => {
+        const conversation = getOrCreateConversation(convId)
+        conversation.boulderState = {
+          active: true,
+          failureCount: 0,
+          lastContinuationAt: null,
+          loopStartedAt: new Date().toISOString(),
+        }
+        expect(isContinuationLoopActive(conversation)).toBe(true)
+      })
+
+      it("isContinuationLoopActive is false when no loop is active (ralph inactive, no boulder)", () => {
+        const conversation = getOrCreateConversation(convId)
+        conversation.ralphState = {
+          active: false,
+          iteration: 0,
+          maxIterations: 0,
+          startedAt: new Date().toISOString(),
+          lastProcessedIndex: 0,
+        }
+        conversation.boulderState = null
+        expect(isContinuationLoopActive(conversation)).toBe(false)
+      })
+
+      it("loop-active stop emits followup_message (ralph)", () => {
+        const conversation = getOrCreateConversation(convId)
+        conversation.ralphState = {
+          active: true,
+          iteration: 0,
+          maxIterations: 0,
+          startedAt: new Date().toISOString(),
+          lastProcessedIndex: 0,
+        }
+        conversation.contextHistory = ["work in progress"]
+
+        const result = handlers["/stop"](baseStopInput(convId)) as {
+          followup_message?: string
+          decision?: string
+        }
+
+        expect(isContinuationLoopActive(conversation)).toBe(true)
+        expect(result.followup_message).toBeDefined()
+        expect(result.decision).toBe("block")
+      })
+
+      it("loop-active stop emits followup_message (boulder/activePlan)", () => {
+        const conversation = getOrCreateConversation(convId)
+        conversation.activePlan = { path: "/plans/scope.md", phase: "P1", completedTasks: [] }
+        conversation.toolCallCount = 0
+        conversation.toolCallCountAtLastStop = 0
+
+        const result = handlers["/stop"](baseStopInput(convId)) as {
+          followup_message?: string
+          decision?: string
+        }
+
+        expect(conversation.boulderState?.active).toBe(true)
+        expect(result.followup_message).toContain("Continue executing plan")
+        expect(result.decision).toBe("block")
+      })
+
+      it("loop-inactive stop returns {} with no followup_message key", () => {
+        const conversation = getOrCreateConversation(convId)
+        conversation.ralphState = null
+        conversation.boulderState = null
+        conversation.activePlan = null
+
+        const result = handlers["/stop"](baseStopInput(convId))
+
+        expect(isContinuationLoopActive(conversation)).toBe(false)
+        expect(result).toEqual({})
+        expect("followup_message" in result).toBe(false)
       })
     })
   })

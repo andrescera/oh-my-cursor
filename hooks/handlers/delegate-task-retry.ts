@@ -1,4 +1,8 @@
 import { contextCollector, type ContextCollector } from "../context-collector"
+import {
+  recordRetryableFailure as defaultRecordRetryableFailure,
+  resetRotationOnSuccess as defaultResetRotationOnSuccess,
+} from "./delegate-task-retry-rotation"
 
 type CollectorLike = Pick<ContextCollector, "register">
 
@@ -61,8 +65,14 @@ function extractAgentType(input: PostToolUseInput): string {
   return input.tool_input?.subagent_type ?? input.tool_input?.description ?? "unknown"
 }
 
-export function createDelegateTaskRetry(deps?: { collector?: CollectorLike }) {
+export function createDelegateTaskRetry(deps?: {
+  collector?: CollectorLike
+  recordRetryableFailure?: (conversationId: string, agentType: string) => void
+  resetRotationOnSuccess?: (conversationId: string, agentType: string) => void
+}) {
   const collector = deps?.collector ?? contextCollector
+  const recordRetryableFailure = deps?.recordRetryableFailure ?? defaultRecordRetryableFailure
+  const resetRotationOnSuccess = deps?.resetRotationOnSuccess ?? defaultResetRotationOnSuccess
   return function handlePostToolUse(
     input: PostToolUseInput,
     delegateRetryState: Record<string, number>,
@@ -72,12 +82,15 @@ export function createDelegateTaskRetry(deps?: { collector?: CollectorLike }) {
       return {}
     }
 
+    const conversationId = input.conversationId ?? ""
+    const agentType = extractAgentType(input)
+
     const errorType = classifyError(output)
     if (errorType === null) {
+      resetRotationOnSuccess(conversationId, agentType)
       return {}
     }
 
-    const agentType = extractAgentType(input)
     const enc = encodeErrorType(errorType)
 
     const lastEnc = delegateRetryState[`omi.lastErr.${agentType}`] ?? 0
@@ -114,6 +127,8 @@ export function createDelegateTaskRetry(deps?: { collector?: CollectorLike }) {
       content: parts.join(" "),
       priority: "high",
     })
+
+    recordRetryableFailure(conversationId, agentType)
     return {}
   }
 }

@@ -20,6 +20,7 @@ import { extractAgentTypeFromLogInputs, extractAgentIdFromLogInputs } from "./ha
 import { composeTaskUpdatedInput } from "./handlers/task-input-composer"
 import "./handlers/context-piggyback-mutation"
 import "./handlers/model-routing-mutation"
+import "./handlers/delegate-task-retry-rotation"
 import { StatePersistence, type ConversationMetadata } from "./state-persistence"
 import { createHeartbeatHandler, startHeartbeatWriter, HEARTBEAT_FILE } from "./handlers/heartbeat"
 import { loadConfig, resetConfigCache } from "./config"

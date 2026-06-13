@@ -295,11 +295,10 @@ export function createContinuationHandlers(
       const convId = resolveConversationId(input)
       const conversation = getOrCreateConversation(convId, wasResolvedViaFallback(input), derivedProjectRoot(input))
 
-      // Fix B (task-8): consume() drains context that observe-only events
-      // (/subagentStop) and /preToolUse non-deny paths registered but never
-      // delivered. Must run before building additionalContext so entries merge
-      // into the single channel below and clear — preventing repeats next prompt.
-      const pendingContext = contextCollector.consume(convId)
+      // task-18: this handler no longer drains the collector. beforeSubmitPrompt
+      // output is NOT-SUPPORTED-BY-DESIGN for context (staff 158883); the Task
+      // preToolUse piggyback composer is the sole context delivery path (task-9)
+      // and it consumes the collector, so draining here would strip that channel.
 
       // Seed the per-session display title from the first non-empty user
       // message; never overwrite (so the title remains stable for the
@@ -475,29 +474,19 @@ export function createContinuationHandlers(
         additionalContext += "\n" + UNKNOWN_SLASH_COMMAND_HINT
       }
 
-      if (additionalContext || pendingContext.hasContent) {
-        let trimmed = additionalContext.trim()
-        if (pendingContext.hasContent) {
-          trimmed = trimmed ? pendingContext.merged + "\n\n" + trimmed : pendingContext.merged
-        }
-        // Fix A (task-8): deliver context through ONE logical channel only.
-        // docs/cursor/03-hooks.md §17 documents beforeSubmitPrompt input as
-        // `prompt` with N/A enforced output; docs/internal/hook-response-fields.md
-        // lists `additional_context` (+ the Claude-Code `hookSpecificOutput`
-        // mirror) as the context-delivery field, matching the proven
-        // `postToolUse.additional_context` (TAKES-EFFECT). The dropped
-        // `user_message` field re-embedded the same text into the user's literal
-        // prompt — a second channel that duplicated the payload and corrupted the
-        // user's actual message. additional_context + its hookSpecificOutput
-        // mirror carry identical content by design (same pattern as /sessionStart).
-        return {
-          continue: true,
-          additional_context: trimmed,
-          hookSpecificOutput: {
-            hookEventName: "UserPromptSubmit",
-            additionalContext: trimmed,
-          },
-        }
+      const trimmed = additionalContext.trim()
+      if (trimmed) {
+        // task-18 reroute: beforeSubmitPrompt honors only permission +
+        // followup_message (staff 158883); additional_context / updated_input are
+        // dead. Register the mode/identity context so the Task preToolUse piggyback
+        // composer (task-9) delivers it. Stable id => overwrite each prompt, never
+        // accumulate; piggyback consumes it on the next Task call.
+        contextCollector.register(convId, {
+          id: "continuation-mode",
+          source: "continuation-handlers",
+          content: trimmed,
+          priority: "high",
+        })
       }
 
       return {}

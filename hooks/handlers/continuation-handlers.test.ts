@@ -438,96 +438,87 @@ describe("createContinuationHandlers", () => {
   })
 
   describe("/beforeSubmitPrompt handler", () => {
-    it("always injects base persona and orchestration context", () => {
-      const result = handlers["/beforeSubmitPrompt"]({
-        prompt: "hello",
-        conversation_id: convId,
-      }) as { additional_context?: string }
+    function bspContext(input: Record<string, unknown>): string {
+      handlers["/beforeSubmitPrompt"](input)
+      return contextCollector.getPending(String(input.conversation_id ?? "")).merged
+    }
 
-      expect(result.additional_context).toContain("Identity: Plan=Prometheus")
-      expect(result.additional_context).toContain("FORBIDDEN per mode")
-      expect(result.additional_context).toContain("delegate ALL via Task")
+    it("registers base persona and orchestration context", () => {
+      const context = bspContext({ prompt: "hello", conversation_id: convId })
+
+      expect(context).toContain("Identity: Plan=Prometheus")
+      expect(context).toContain("FORBIDDEN per mode")
+      expect(context).toContain("delegate ALL via Task")
     })
 
-    it("detects plan mode from /plan keyword and adds Prometheus context", () => {
+    it("response has no additional_context/updated_input/hookSpecificOutput/continue keys", () => {
       const result = handlers["/beforeSubmitPrompt"]({
         prompt: "/plan add auth",
         conversation_id: convId,
-      }) as { additional_context?: string }
+      })
 
-      expect(result.additional_context).toContain("[mode:plan]")
-      expect(result.additional_context).toContain("Prometheus planning mode active")
+      expect("additional_context" in result).toBe(false)
+      expect("updated_input" in result).toBe(false)
+      expect("hookSpecificOutput" in result).toBe(false)
+      expect("continue" in result).toBe(false)
+    })
+
+    it("detects plan mode from /plan keyword and adds Prometheus context", () => {
+      const context = bspContext({ prompt: "/plan add auth", conversation_id: convId })
+
+      expect(context).toContain("[mode:plan]")
+      expect(context).toContain("Prometheus planning mode active")
     })
 
     it("detects plan mode from conversation composerMode", () => {
       const conversation = getOrCreateConversation(convId)
       conversation.composerMode = "plan"
 
-      const result = handlers["/beforeSubmitPrompt"]({
-        prompt: "no slash plan token here",
-        conversation_id: convId,
-      }) as { additional_context?: string }
+      const context = bspContext({ prompt: "no slash plan token here", conversation_id: convId })
 
-      expect(result.additional_context).toContain("[mode:plan]")
+      expect(context).toContain("[mode:plan]")
     })
 
     it("adds analysis mode context for analyze keyword", () => {
-      const result = handlers["/beforeSubmitPrompt"]({
-        prompt: "Please analyze the module",
-        conversation_id: convId,
-      }) as { additional_context?: string }
+      const context = bspContext({ prompt: "Please analyze the module", conversation_id: convId })
 
-      expect(result.additional_context).toContain("[mode:analysis]")
+      expect(context).toContain("[mode:analysis]")
     })
 
     it("adds search mode context for search phrasing", () => {
-      const result = handlers["/beforeSubmitPrompt"]({
-        prompt: "find where is the handler",
-        conversation_id: convId,
-      }) as { additional_context?: string }
+      const context = bspContext({ prompt: "find where is the handler", conversation_id: convId })
 
-      expect(result.additional_context).toContain("[mode:search]")
+      expect(context).toContain("[mode:search]")
     })
 
     it("adds ultrawork context for ultrawork and ulw", () => {
-      const r1 = handlers["/beforeSubmitPrompt"]({
-        prompt: "ultrawork on this",
-        conversation_id: convId,
-      }) as { additional_context?: string }
-      expect(r1.additional_context).toContain("[mode:ultrawork]")
+      const c1 = bspContext({ prompt: "ultrawork on this", conversation_id: convId })
+      expect(c1).toContain("[mode:ultrawork]")
 
       const conv2 = makeConvId()
       try {
-        const r2 = handlers["/beforeSubmitPrompt"]({
-          prompt: "ulw mode",
-          conversation_id: conv2,
-        }) as { additional_context?: string }
-        expect(r2.additional_context).toContain("[mode:ultrawork]")
+        const c2 = bspContext({ prompt: "ulw mode", conversation_id: conv2 })
+        expect(c2).toContain("[mode:ultrawork]")
       } finally {
+        contextCollector.clear(conv2)
         conversations.delete(conv2)
       }
     })
 
     it("adds think mode context for think phrasing", () => {
-      const result = handlers["/beforeSubmitPrompt"]({
-        prompt: "think harder about edge cases",
-        conversation_id: convId,
-      }) as { additional_context?: string }
+      const context = bspContext({ prompt: "think harder about edge cases", conversation_id: convId })
 
-      expect(result.additional_context).toContain("[mode:think]")
+      expect(context).toContain("[mode:think]")
     })
 
     it("activates ralph state for /ralph-loop with optional max iterations", () => {
       const conversation = getOrCreateConversation(convId)
 
-      const result = handlers["/beforeSubmitPrompt"]({
-        prompt: "/ralph-loop --max-iterations 5",
-        conversation_id: convId,
-      }) as { additional_context?: string }
+      const context = bspContext({ prompt: "/ralph-loop --max-iterations 5", conversation_id: convId })
 
       expect(conversation.ralphState?.active).toBe(true)
       expect(conversation.ralphState?.maxIterations).toBe(5)
-      expect(result.additional_context).toContain("[ralph-loop]")
+      expect(context).toContain("[ralph-loop]")
     })
 
     it("initializes ralph lastProcessedIndex to 0 for /ralph-loop", () => {
@@ -559,36 +550,27 @@ describe("createContinuationHandlers", () => {
       conversation.activePlan = { path: "/p.md", phase: "x", completedTasks: [] }
       conversation.consecutiveZeroDeltas = 2
 
-      const result = handlers["/beforeSubmitPrompt"]({
-        prompt: "/stop-continuation",
-        conversation_id: convId,
-      }) as { additional_context?: string }
+      const context = bspContext({ prompt: "/stop-continuation", conversation_id: convId })
 
       expect(conversation.ralphState).toBeNull()
       expect(conversation.boulderState).toBeNull()
       expect(conversation.activePlan).toBeNull()
       expect(conversation.consecutiveZeroDeltas).toBe(0)
       expect(conversation.stoppedAt).not.toBeNull()
-      expect(result.additional_context).toContain("Continuation loops stopped")
+      expect(context).toContain("Continuation loops stopped")
     })
 
     it("maps /plan slash command to command context", () => {
-      const result = handlers["/beforeSubmitPrompt"]({
-        prompt: "/plan my feature",
-        conversation_id: convId,
-      }) as { additional_context?: string }
+      const context = bspContext({ prompt: "/plan my feature", conversation_id: convId })
 
-      expect(result.additional_context).toContain("[command:plan]")
+      expect(context).toContain("[command:plan]")
     })
 
     it("hints unknown slash commands with available list", () => {
-      const result = handlers["/beforeSubmitPrompt"]({
-        prompt: "/unknown-cmd",
-        conversation_id: convId,
-      }) as { additional_context?: string }
+      const context = bspContext({ prompt: "/unknown-cmd", conversation_id: convId })
 
-      expect(result.additional_context).toContain("[command:unknown]")
-      expect(result.additional_context).toContain("Available:")
+      expect(context).toContain("[command:unknown]")
+      expect(context).toContain("Available:")
     })
 
     it("adds agent+plan context when in agent mode with activePlan", () => {
@@ -596,13 +578,10 @@ describe("createContinuationHandlers", () => {
       conversation.composerMode = "agent"
       conversation.activePlan = { path: "/p.md", phase: "P1", completedTasks: [] }
 
-      const result = handlers["/beforeSubmitPrompt"]({
-        prompt: "continue",
-        conversation_id: convId,
-      }) as { additional_context?: string }
+      const context = bspContext({ prompt: "continue", conversation_id: convId })
 
-      expect(result.additional_context).toContain("[mode:agent+plan]")
-      expect(result.additional_context).toContain("/p.md")
+      expect(context).toContain("[mode:agent+plan]")
+      expect(context).toContain("/p.md")
     })
 
     it("injects [start-work:discover] when /start-work and no activePlan", () => {
@@ -610,26 +589,20 @@ describe("createContinuationHandlers", () => {
       conversation.activePlan = null
       conversation.env.OH_MY_CURSOR_PROJECT_DIR = "/tmp/oh-my-cursor-test-empty-workspace"
 
-      const result = handlers["/beforeSubmitPrompt"]({
-        prompt: "/start-work",
-        conversation_id: convId,
-      }) as { additional_context?: string }
+      const context = bspContext({ prompt: "/start-work", conversation_id: convId })
 
-      expect(result.additional_context).toContain("[start-work:discover]")
-      expect(result.additional_context).toContain("[command:start-work]")
+      expect(context).toContain("[start-work:discover]")
+      expect(context).toContain("[command:start-work]")
     })
 
     it("injects [start-work:fresh] when /start-work and activePlan with no completed tasks", () => {
       const conversation = getOrCreateConversation(convId)
       conversation.activePlan = { path: "plans/a.plan.md", phase: "Wave 0", completedTasks: [] }
 
-      const result = handlers["/beforeSubmitPrompt"]({
-        prompt: "/start-work",
-        conversation_id: convId,
-      }) as { additional_context?: string }
+      const context = bspContext({ prompt: "/start-work", conversation_id: convId })
 
-      expect(result.additional_context).toContain("[start-work:fresh]")
-      expect(result.additional_context).toContain("plans/a.plan.md")
+      expect(context).toContain("[start-work:fresh]")
+      expect(context).toContain("plans/a.plan.md")
     })
 
     it("injects [start-work:resume] when /start-work and activePlan has completed tasks", () => {
@@ -640,48 +613,35 @@ describe("createContinuationHandlers", () => {
         completedTasks: ["t1", "t2"],
       }
 
-      const result = handlers["/beforeSubmitPrompt"]({
-        prompt: "/start-work",
-        conversation_id: convId,
-      }) as { additional_context?: string }
+      const context = bspContext({ prompt: "/start-work", conversation_id: convId })
 
-      expect(result.additional_context).toContain("[start-work:resume]")
-      expect(result.additional_context).toContain("t1, t2")
-      expect(result.additional_context).toContain("Wave 2")
+      expect(context).toContain("[start-work:resume]")
+      expect(context).toContain("t1, t2")
+      expect(context).toContain("Wave 2")
     })
 
     it("updates composerMode from plan to agent when inputMode changes", () => {
       const conversation = getOrCreateConversation(convId)
       conversation.composerMode = "plan"
 
-      const result = handlers["/beforeSubmitPrompt"]({
-        prompt: "continue working",
-        mode: "agent",
-        conversation_id: convId,
-      }) as { additional_context?: string }
+      const context = bspContext({ prompt: "continue working", mode: "agent", conversation_id: convId })
 
       expect(conversation.composerMode).toBe("agent")
-      expect(result.additional_context).not.toContain("[mode:plan]")
+      expect(context).not.toContain("[mode:plan]")
     })
 
     it("does not re-trigger plan mode from /plan substring in injected context", () => {
-      const result = handlers["/beforeSubmitPrompt"]({
-        prompt: "working on the explain/planning feature",
-        conversation_id: convId,
-      }) as { additional_context?: string }
+      const context = bspContext({ prompt: "working on the explain/planning feature", conversation_id: convId })
 
-      expect(result.additional_context).not.toContain("[mode:plan]")
+      expect(context).not.toContain("[mode:plan]")
     })
 
     it("detects plan mode only when message starts with /plan", () => {
-      const result = handlers["/beforeSubmitPrompt"]({
-        prompt: "/plan add auth",
-        conversation_id: convId,
-      }) as { additional_context?: string }
+      const context = bspContext({ prompt: "/plan add auth", conversation_id: convId })
 
       const conversation = getOrCreateConversation(convId)
       expect(conversation.composerMode).toBe("plan")
-      expect(result.additional_context).toContain("[mode:plan]")
+      expect(context).toContain("[mode:plan]")
     })
 
     describe("mode transition and per-turn dispatch reset", () => {
@@ -734,13 +694,10 @@ describe("createContinuationHandlers", () => {
         conversation.contextHistory = ["plan-draft", "plan-write"]
         conversation.todoStates.set("plan-write", "completed")
 
-        const result = handlers["/beforeSubmitPrompt"]({
-          prompt: "do something",
-          conversation_id: convId,
-        }) as { additional_context?: string }
+        const context = bspContext({ prompt: "do something", conversation_id: convId })
 
         expect(conversation.composerMode).toBe("agent")
-        expect(result.additional_context).not.toContain("[mode:plan]")
+        expect(context).not.toContain("[mode:plan]")
       })
 
       it("applies contextHistory heuristic when composerMode is null", () => {
@@ -748,53 +705,56 @@ describe("createContinuationHandlers", () => {
         conversation.composerMode = null
         conversation.contextHistory = ["plan-draft"]
 
-        const result = handlers["/beforeSubmitPrompt"]({
-          prompt: "do something",
-          conversation_id: convId,
-        }) as { additional_context?: string }
+        const context = bspContext({ prompt: "do something", conversation_id: convId })
 
         expect(conversation.composerMode).toBe("plan")
-        expect(result.additional_context).toContain("[mode:plan]")
+        expect(context).toContain("[mode:plan]")
       })
     })
 
-    describe("context delivery (task-8: single-channel + consume + rehydration)", () => {
-      it("delivers context via additional_context only and never duplicates it into user_message (Fix A)", () => {
+    describe("context reroute (task-18: collector-register, no dead channel)", () => {
+      it("registers mode context to the collector and returns {} with no context keys", () => {
         const result = handlers["/beforeSubmitPrompt"]({
           prompt: "/plan build the thing",
           conversation_id: convId,
-        }) as {
-          user_message?: string
-          additional_context?: string
-          hookSpecificOutput?: { additionalContext?: string }
-        }
+        })
 
-        expect(result.additional_context).toContain("[command:plan]")
-        expect(result.user_message).toBeUndefined()
-        expect(result.hookSpecificOutput?.additionalContext).toBe(result.additional_context)
+        expect("additional_context" in result).toBe(false)
+        expect("updated_input" in result).toBe(false)
+        expect("user_message" in result).toBe(false)
+        expect("hookSpecificOutput" in result).toBe(false)
+        expect(contextCollector.getPending(convId).merged).toContain("[command:plan]")
       })
 
-      it("delivers registered pending context once, then does not repeat it on the next prompt (Fix B)", () => {
+      it("does NOT consume pre-registered context — Task preToolUse piggyback owns delivery", () => {
         getOrCreateConversation(convId)
         contextCollector.register(convId, {
           id: "pending-advisory",
           source: "test-pending",
-          content: "[test-pending] one-shot advisory that must appear exactly once",
+          content: "[test-pending] advisory delivered by piggyback, not beforeSubmitPrompt",
           priority: "high",
         })
 
-        const first = handlers["/beforeSubmitPrompt"]({
+        const result = handlers["/beforeSubmitPrompt"]({
           prompt: "continue",
           conversation_id: convId,
-        }) as { additional_context?: string }
-        expect(first.additional_context).toContain("[test-pending] one-shot advisory")
+        })
 
-        const second = handlers["/beforeSubmitPrompt"]({
-          prompt: "continue again",
-          conversation_id: convId,
-        }) as { additional_context?: string }
-        expect(second.additional_context ?? "").not.toContain("[test-pending] one-shot advisory")
-        expect(second.additional_context).toContain("Identity: Plan=Prometheus")
+        expect("additional_context" in result).toBe(false)
+        expect(contextCollector.hasPending(convId)).toBe(true)
+        expect(contextCollector.getPending(convId).merged).toContain("[test-pending] advisory")
+      })
+
+      it("overwrites its own mode entry across prompts instead of accumulating", () => {
+        getOrCreateConversation(convId)
+
+        handlers["/beforeSubmitPrompt"]({ prompt: "first", conversation_id: convId })
+        handlers["/beforeSubmitPrompt"]({ prompt: "second", conversation_id: convId })
+
+        const modeEntries = contextCollector
+          .getPending(convId)
+          .entries.filter((e) => e.source === "continuation-handlers" && e.id === "continuation-mode")
+        expect(modeEntries.length).toBe(1)
       })
 
       it("clears pending contextCollector entries when a conversation is rehydrated from persistence (Fix C)", () => {

@@ -830,49 +830,51 @@ describe("hook daemon", () => {
   })
 
   describe("/beforeSubmitPrompt", () => {
-    test("injects persona constraints for normal messages (prompt field)", async () => {
+    test("returns no dead context keys for normal messages (prompt field)", async () => {
       await post("/sessionStart", { session_id: "sess-prompt" })
       const result = await post("/beforeSubmitPrompt", {
         prompt: "Hello world",
         session_id: "sess-prompt",
       })
-      expect(result.continue).toBe(true)
-      expect(result.additional_context).toContain("Prometheus")
-      expect(result.additional_context).toContain("FORBIDDEN")
+      expect(Object.prototype.hasOwnProperty.call(result, "additional_context")).toBe(false)
+      expect(Object.prototype.hasOwnProperty.call(result, "updated_input")).toBe(false)
+      expect(Object.prototype.hasOwnProperty.call(result, "hookSpecificOutput")).toBe(false)
+      expect(Object.prototype.hasOwnProperty.call(result, "continue")).toBe(false)
     })
 
-    test("injects persona constraints via user_message field (Cursor-native)", async () => {
+    test("returns no dead context keys via user_message field (Cursor-native)", async () => {
       await post("/sessionStart", { conversation_id: "conv-prompt" })
       const result = await post("/beforeSubmitPrompt", {
         user_message: "Hello world",
         conversation_id: "conv-prompt",
       })
-      expect(result.continue).toBe(true)
-      expect(result.additional_context).toContain("Prometheus")
-      expect(result.additional_context).toContain("FORBIDDEN")
+      expect(Object.prototype.hasOwnProperty.call(result, "additional_context")).toBe(false)
+      expect(Object.prototype.hasOwnProperty.call(result, "updated_input")).toBe(false)
+      expect(Object.prototype.hasOwnProperty.call(result, "hookSpecificOutput")).toBe(false)
     })
 
-    test("detects ultrawork keyword with dual response", async () => {
+    test("ultrawork keyword returns no dead context keys (routed via collector + piggyback)", async () => {
       await post("/sessionStart", { conversation_id: "conv-prompt-ultra" })
       const result = await post("/beforeSubmitPrompt", {
         user_message: "ultrawork on this feature",
         conversation_id: "conv-prompt-ultra",
       })
-      expect(result.continue).toBe(true)
-      expect(result.additional_context).toContain("ultrawork")
-      expect(result.hookSpecificOutput.additionalContext).toContain("ultrawork")
-      expect(result.hookSpecificOutput.hookEventName).toBe("UserPromptSubmit")
+      expect(Object.prototype.hasOwnProperty.call(result, "additional_context")).toBe(false)
+      expect(Object.prototype.hasOwnProperty.call(result, "hookSpecificOutput")).toBe(false)
     })
 
-    test("detects ralph-loop via prompt field", async () => {
+    test("ralph-loop via prompt field activates the loop and returns no dead context keys", async () => {
       await post("/sessionStart", { session_id: "sess-prompt-ralph" })
       const result = await post("/beforeSubmitPrompt", {
         prompt: "/ralph-loop --max-iterations 5",
         session_id: "sess-prompt-ralph",
       })
-      expect(result.continue).toBe(true)
-      expect(result.additional_context).toContain("ralph-loop")
-      expect(result.hookSpecificOutput.additionalContext).toContain("ralph-loop")
+      expect(Object.prototype.hasOwnProperty.call(result, "additional_context")).toBe(false)
+      expect(Object.prototype.hasOwnProperty.call(result, "hookSpecificOutput")).toBe(false)
+
+      const stop = await post("/stop", { session_id: "sess-prompt-ralph" })
+      expect(stop.followup_message).toContain("Continue working")
+      expect(stop.followup_message).toContain("1/5")
     })
   })
 

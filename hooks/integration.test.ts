@@ -308,15 +308,16 @@ describe("daemon integration lifecycle", () => {
 
   describe("#given a user prompt submission", () => {
     describe("#when POST /beforeSubmitPrompt with normal message is called", () => {
-      test("#then it returns persona context", async () => {
+      test("#then it returns no dead context keys (task-18: routed via collector + piggyback)", async () => {
         const { data } = await post("/beforeSubmitPrompt", {
           prompt: "Hello, just a normal message",
           session_id: SESSION_ID,
         })
 
-        expect(data.continue).toBe(true)
-        expect(data.additional_context).toContain("Prometheus")
-        expect(data.hookSpecificOutput.hookEventName).toBe("UserPromptSubmit")
+        expect(Object.prototype.hasOwnProperty.call(data, "additional_context")).toBe(false)
+        expect(Object.prototype.hasOwnProperty.call(data, "updated_input")).toBe(false)
+        expect(Object.prototype.hasOwnProperty.call(data, "hookSpecificOutput")).toBe(false)
+        expect(Object.prototype.hasOwnProperty.call(data, "continue")).toBe(false)
       })
     })
   })

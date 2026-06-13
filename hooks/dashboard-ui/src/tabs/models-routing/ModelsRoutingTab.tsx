@@ -13,6 +13,7 @@ import {
 import { describeApiError } from '@/lib/api-error'
 import { TAB_REFRESH_EVENT } from '@/lib/tab-refresh'
 
+import { EnforceAllowlistToggle } from './EnforceAllowlistToggle'
 import { EnumViewer, type EnumViewerStatus } from './EnumViewer'
 import { InvalidOverrideBanner } from './InvalidOverrideBanner'
 import { RoutingEditor } from './RoutingEditor'
@@ -153,6 +154,7 @@ export default function ModelsRoutingTab() {
 
       {overrides.status === 'ready' && (
         <>
+          <EnforceAllowlistToggle config={fullConfig} onSaved={() => void load()} />
           <InvalidOverrideBanner
             config={fullConfig}
             modelsByAgent={introData?.modelsByAgent}

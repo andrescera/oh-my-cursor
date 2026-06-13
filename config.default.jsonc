@@ -74,7 +74,8 @@
     "defaults": {
       "explore": "composer-2-fast",
       "librarian": "composer-2-fast"
-    }
+    },
+    // enforce_allowlist: false,  // When true, out-of-allowlist models for curated agents are remapped to the agent's default (never denied). Default: false.
   },
 
   // Per-agent model overrides (preferred over the deprecated model_routing).

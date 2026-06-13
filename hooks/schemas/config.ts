@@ -100,6 +100,7 @@ export const ModelRoutingSchema = z.object({
     explore: "composer-2-fast",
     librarian: "composer-2-fast",
   }),
+  enforce_allowlist: z.boolean().default(false),
 })
 
 // Per-agent model override (upstream oh-my-openagent shape, Cursor subset).
@@ -198,6 +199,7 @@ export const OhMyCursorConfigSchema = z.object({
     retry_on_errors: [429, 500, 502, 503, 504],
     max_retry_attempts: 3,
     defaults: { explore: "composer-2-fast", librarian: "composer-2-fast" },
+    enforce_allowlist: false,
   }),
   agent_overrides: z.record(z.string(), AgentOverrideSchema).default({}),
   categories: z.record(z.string(), CategorySchema).default({}),

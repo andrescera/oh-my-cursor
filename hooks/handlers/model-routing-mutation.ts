@@ -46,7 +46,11 @@ import {
   introspectionRuntime,
   type IntrospectionSnapshot,
 } from "../lib/introspection-runtime"
-import { AGENT_MODEL_ALLOWLIST, isModelAllowedForAgent } from "../lib/agent-model-allowlist"
+import {
+  AGENT_MODEL_ALLOWLIST,
+  isModelAllowedForAgent,
+  resolveAllowedModels,
+} from "../lib/agent-model-allowlist"
 import type { OhMyCursorConfig } from "../schemas/config"
 
 /** Stable provider id — re-registering replaces the prior provider by id. */
@@ -246,6 +250,24 @@ export function createModelRoutingProvider(deps: ModelRoutingDeps = {}): TaskMut
 
       // Synchronous per-agent allowlist gate (never awaits — 50ms hot-path budget).
       const decision = validateAgainstAllowlist(resolved, agent, config, getSnapshot)
+
+      // Flag-gated enforcement remap. An advisory is set ONLY for a curated agent
+      // whose resolved model is out-of-allowlist and not "inherit"; permissive
+      // agents, "inherit", and cold-snapshot reads never carry one, so they are
+      // never remapped. With the flag ON we override the advisory fallback to the
+      // curated default (first allowed slug) — never deny the dispatch.
+      if (config.model_routing?.enforce_allowlist === true && decision.advisory) {
+        try {
+          const firstAllowed = resolveAllowedModels(agent, getSnapshot())[0]
+          if (nonEmptyString(firstAllowed)) {
+            decision.model = firstAllowed
+            decision.advisory = { rejected: decision.advisory.rejected, fallback: firstAllowed }
+          }
+        } catch {
+          // Snapshot read failed → keep the advisory decision; never break dispatch.
+        }
+      }
+
       if (decision.advisory) {
         try {
           collector.register(conversationId, {

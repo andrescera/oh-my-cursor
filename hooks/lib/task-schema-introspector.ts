@@ -186,6 +186,25 @@ export function resolveCandidatePaths(opts: CandidatePathOptions = {}): string[]
 }
 
 /**
+ * Resolve the installed Cursor bundle version synchronously by reading the
+ * package.json of the first candidate path that yields one. Reuses
+ * `resolveCandidatePaths` and the internal `readBundleVersion` reader (no path
+ * logic duplicated). Never throws; returns undefined when no version is found.
+ */
+export function resolveCursorVersion(opts?: CandidatePathOptions): string | undefined {
+  try {
+    const paths = resolveCandidatePaths(opts)
+    for (const p of paths) {
+      const v = readBundleVersion(p)
+      if (v) return v
+    }
+  } catch {
+    // never throw
+  }
+  return undefined
+}
+
+/**
  * Record an observed model and/or agent type. Additive only — observations are
  * unioned into every subsequent `getEnum` result and never replace scan
  * results. Mirrors the field-extraction idiom in extract-agent-fields.ts.

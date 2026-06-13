@@ -1,9 +1,12 @@
-import { describe, test, expect, beforeAll, afterAll } from "bun:test"
+import { describe, test, expect, beforeAll, afterAll, beforeEach, afterEach } from "bun:test"
 import { readFile, rm, mkdir } from "node:fs/promises"
 import { join } from "node:path"
-import { existsSync } from "node:fs"
-import { mapModel } from "./config-generator"
+import { existsSync, mkdtempSync, rmSync, writeFileSync } from "node:fs"
+import { tmpdir } from "node:os"
+import { mapModel, resolveEnumForGenerator } from "./config-generator"
 import { KNOWN_CURSOR_MODELS } from "../hooks/lib/known-models"
+import { resolveCursorVersion } from "../hooks/lib/task-schema-introspector"
+import { captureReported, loadReported } from "../hooks/lib/reported-models-store"
 
 const TEST_DIR = "/tmp/oh-my-cursor-test-output"
 const SCRIPT = join(import.meta.dir, "config-generator.ts")
@@ -169,5 +172,99 @@ describe("config-generator", () => {
 
     await rm(outputDir, { recursive: true, force: true })
     await rm(configPath, { force: true })
+  })
+})
+
+describe("resolveEnumForGenerator", () => {
+  // Hermetic store: redirect the reported-models store at a fresh temp file via
+  // the OH_MY_CURSOR_REPORTED_MODELS_FILE override so the real
+  // ~/.config/oh-my-cursor/reported-models.json is NEVER read. beforeEach/
+  // afterEach are scoped to THIS describe so the spawn-based generator tests
+  // above (which inherit the parent env) are unaffected.
+  const SEED_SLUGS = [
+    "claude-4.6-sonnet-high-thinking",
+    "claude-fable-5-thinking-xhigh",
+    "claude-opus-4-8-thinking-xhigh",
+    "composer-2.5",
+    "composer-2.5-fast",
+    "gemini-3.1-pro",
+    "gpt-5.3-codex-xhigh-fast",
+    "gpt-5.4-medium",
+    "gpt-5.5-high",
+  ]
+
+  let tmpDir: string
+  let envBackup: string | undefined
+
+  beforeEach(() => {
+    envBackup = process.env.OH_MY_CURSOR_REPORTED_MODELS_FILE
+    tmpDir = mkdtempSync(join(tmpdir(), "omc-gen-enum-"))
+    process.env.OH_MY_CURSOR_REPORTED_MODELS_FILE = join(tmpDir, "reported-models.json")
+  })
+
+  afterEach(() => {
+    if (envBackup === undefined) delete process.env.OH_MY_CURSOR_REPORTED_MODELS_FILE
+    else process.env.OH_MY_CURSOR_REPORTED_MODELS_FILE = envBackup
+    rmSync(tmpDir, { recursive: true, force: true })
+  })
+
+  test("reported capture wins over KNOWN_CURSOR_MODELS for the live version", () => {
+    // resolveEnumForGenerator() has no version seam — it reads the live Cursor
+    // version internally. When a version resolves, a captured store entry for
+    // THAT version must win. In a bundle-less CI env resolveCursorVersion()
+    // returns undefined, the reported path is skipped, and KNOWN_CURSOR_MODELS
+    // is the only valid result — assert that branch instead.
+    const version = resolveCursorVersion()
+    if (version) {
+      captureReported(version, SEED_SLUGS)
+      expect(loadReported(version)?.models).toEqual(SEED_SLUGS)
+
+      const result = resolveEnumForGenerator()
+
+      expect(result).toEqual(SEED_SLUGS)
+      expect(result).not.toEqual(KNOWN_CURSOR_MODELS)
+    } else {
+      const result = resolveEnumForGenerator()
+
+      expect(result).toEqual(KNOWN_CURSOR_MODELS)
+    }
+  })
+
+  test("falls back to KNOWN_CURSOR_MODELS when the store has no matching entry", () => {
+    // Empty store ({}) → no version entry → KNOWN fallback regardless of version.
+    writeFileSync(process.env.OH_MY_CURSOR_REPORTED_MODELS_FILE as string, "{}", "utf-8")
+
+    const result = resolveEnumForGenerator()
+
+    expect(result).toEqual(KNOWN_CURSOR_MODELS)
+  })
+
+  test("falls back to KNOWN_CURSOR_MODELS when the store file does not exist", () => {
+    // beforeEach points at a path inside a fresh temp dir but writes nothing.
+    const result = resolveEnumForGenerator()
+
+    expect(result).toEqual(KNOWN_CURSOR_MODELS)
+  })
+
+  test("never throws on a corrupt store and returns KNOWN_CURSOR_MODELS", () => {
+    writeFileSync(
+      process.env.OH_MY_CURSOR_REPORTED_MODELS_FILE as string,
+      "{ this is : not json ]",
+      "utf-8",
+    )
+
+    let result: readonly string[] | undefined
+    expect(() => {
+      result = resolveEnumForGenerator()
+    }).not.toThrow()
+    expect(result).toEqual(KNOWN_CURSOR_MODELS)
+  })
+
+  test("returns a non-empty readonly string array", () => {
+    const result = resolveEnumForGenerator()
+
+    expect(Array.isArray(result)).toBe(true)
+    expect(result.length).toBeGreaterThan(0)
+    expect(result.every((s) => typeof s === "string")).toBe(true)
   })
 })

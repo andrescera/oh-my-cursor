@@ -27,6 +27,20 @@ function makeConfig(partial: {
   } as unknown as OhMyCursorConfig
 }
 
+function makeConfigWithEnforce(
+  partial: {
+    agent_overrides?: Record<string, Override>
+    categories?: Record<string, Category>
+  },
+  enforceOn: boolean,
+): OhMyCursorConfig {
+  return {
+    agent_overrides: partial.agent_overrides ?? {},
+    categories: partial.categories ?? {},
+    model_routing: { enforce_allowlist: enforceOn },
+  } as unknown as OhMyCursorConfig
+}
+
 function enumResult(models: string[]): EnumResult {
   return { models, agents: [], source: "fallback", cachedAt: new Date().toISOString(), needsCapture: false }
 }
@@ -550,5 +564,124 @@ describe("model-routing-mutation — needsCapture advisory", () => {
 
     expect(a).toEqual({ model: "gpt-5.4-medium" })
     expect(b).toEqual(a)
+  })
+})
+
+// ---------------------------------------------------------------------------
+// Flag-gated enforcement remap: enforce_allowlist ON remaps a curated agent's
+// disallowed override to the curated default (first allowed slug); never denies.
+// ---------------------------------------------------------------------------
+
+describe("model-routing-mutation — enforce_allowlist ON remap", () => {
+  it("remaps a curated agent's disallowed model to the curated default (composer-2-fast)", () => {
+    const { deps, registerCalls } = makeDeps({
+      config: makeConfigWithEnforce(
+        { agent_overrides: { explore: { model: "claude-opus-4-7-thinking-xhigh" } } },
+        true,
+      ),
+    })
+    const provider = createModelRoutingProvider(deps)
+
+    const result = provider.mutate("conv-e1", { subagent_type: "explore" })
+
+    expect(result).toEqual({ model: "composer-2-fast" })
+    expect(registerCalls).toHaveLength(1)
+    expect(registerCalls[0].options.priority).toBe("critical")
+    expect(String(registerCalls[0].options.content)).toContain("composer-2-fast")
+  })
+
+  it("does NOT remap a permissive agent — applies the override as-is, no advisory", () => {
+    const { deps, registerCalls } = makeDeps({
+      config: makeConfigWithEnforce(
+        { agent_overrides: { "custom-worker": { model: "some-custom-model" } } },
+        true,
+      ),
+      snapshotModels: ["composer-2-fast"],
+      enumModels: ["composer-2-fast"],
+    })
+    const provider = createModelRoutingProvider(deps)
+
+    const result = provider.mutate("conv-e2", { subagent_type: "custom-worker" })
+
+    expect(result).toEqual({ model: "some-custom-model" })
+    expect(registerCalls).toHaveLength(0)
+  })
+
+  it("passes 'inherit' through unchanged with no advisory", () => {
+    const { deps, registerCalls } = makeDeps({
+      config: makeConfigWithEnforce(
+        { agent_overrides: { explore: { model: "inherit" } } },
+        true,
+      ),
+    })
+    const provider = createModelRoutingProvider(deps)
+
+    const result = provider.mutate("conv-e3", { subagent_type: "explore", model: "composer-2-fast" })
+
+    expect(result).toEqual({ model: "inherit" })
+    expect(registerCalls).toHaveLength(0)
+  })
+
+  it("does NOT remap an in-allowlist model — no advisory, no mutation", () => {
+    const { deps, registerCalls } = makeDeps({
+      config: makeConfigWithEnforce(
+        { agent_overrides: { explore: { model: "composer-2-fast" } } },
+        true,
+      ),
+    })
+    const provider = createModelRoutingProvider(deps)
+
+    const result = provider.mutate("conv-e4", { subagent_type: "explore", model: "composer-2-fast" })
+
+    expect(result).toBeNull()
+    expect(registerCalls).toHaveLength(0)
+  })
+
+  it("enforce OFF (false) keeps the inherit advisory and does NOT remap to curated[0]", () => {
+    const { deps, registerCalls } = makeDeps({
+      config: makeConfigWithEnforce(
+        { agent_overrides: { explore: { model: "claude-opus-4-7-thinking-xhigh" } } },
+        false,
+      ),
+    })
+    const provider = createModelRoutingProvider(deps)
+
+    const result = provider.mutate("conv-e5", { subagent_type: "explore", model: "composer-2-fast" })
+
+    expect(result).toBeNull()
+    expect(registerCalls).toHaveLength(1)
+    expect(registerCalls[0].options.priority).toBe("critical")
+    expect(String(registerCalls[0].options.content)).toContain("inherit")
+    expect(String(registerCalls[0].options.content)).not.toContain("composer-2-fast")
+  })
+
+  it("keeps the advisory decision and never denies when the enforce-block snapshot read throws", () => {
+    // getSnapshot is called twice on the enforce path: #1 in validateAgainstAllowlist
+    // (succeeds → category fallback composer-2.5 + advisory), #2 in the enforce
+    // remap block (throws → caught → keeps the composer-2.5 decision). A category
+    // fallback makes decision.model non-null so the dispatch still resolves a model
+    // (never null-from-throw), proving the try/catch preserves the advisory decision.
+    let snapCount = 0
+    const { deps, registerCalls } = makeDeps({
+      config: makeConfigWithEnforce(
+        {
+          agent_overrides: { explore: { model: "claude-opus-4-7-thinking-xhigh" } },
+          categories: { explore: { model: "composer-2.5" } },
+        },
+        true,
+      ),
+      getSnapshot: (): IntrospectionSnapshot => {
+        snapCount++
+        if (snapCount === 2) throw new Error("snapshot read failed on second call")
+        return snapshotOf(DEFAULT_SNAPSHOT_MODELS)
+      },
+    })
+    const provider = createModelRoutingProvider(deps)
+
+    const result = provider.mutate("conv-e6", { subagent_type: "explore" })
+
+    expect(result).not.toBeNull()
+    expect(result).toEqual({ model: "composer-2.5" })
+    expect(registerCalls.some((c) => c.options.priority === "critical")).toBe(true)
   })
 })

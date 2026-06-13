@@ -325,4 +325,33 @@ describe("OhMyCursorConfigSchema", () => {
       expect(r.data.model_routing.defaults.explore).toBe("composer-2-fast")
     }
   })
+
+  describe("model_routing.enforce_allowlist", () => {
+    test("defaults to false", () => {
+      const parsed = OhMyCursorConfigSchema.parse({})
+      expect(parsed.model_routing.enforce_allowlist).toBe(false)
+    })
+
+    test("accepts true", () => {
+      const parsed = OhMyCursorConfigSchema.parse({
+        model_routing: { enforce_allowlist: true },
+      })
+      expect(parsed.model_routing.enforce_allowlist).toBe(true)
+    })
+
+    test("accepts false explicitly", () => {
+      const parsed = OhMyCursorConfigSchema.parse({
+        model_routing: { enforce_allowlist: false },
+      })
+      expect(parsed.model_routing.enforce_allowlist).toBe(false)
+    })
+
+    test("rejects a non-boolean value", () => {
+      expect(() =>
+        OhMyCursorConfigSchema.parse({
+          model_routing: { enforce_allowlist: "yes" },
+        }),
+      ).toThrow()
+    })
+  })
 })

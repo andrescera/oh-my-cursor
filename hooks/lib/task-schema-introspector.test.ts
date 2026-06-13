@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach } from "bun:test"
+import { describe, it, expect, beforeEach, afterEach } from "bun:test"
 import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs"
 import { tmpdir } from "node:os"
 import { join } from "node:path"
@@ -9,6 +9,7 @@ import {
   resolveCandidatePaths,
   resetIntrospectorState,
   getIntrospectorScanCount,
+  invalidateBaseCache,
 } from "./task-schema-introspector"
 
 const UNIQUE_FIXTURE_SLUG = "gpt-9.9-omotest"
@@ -38,6 +39,32 @@ function makeBundleFixture(
   )
   return { root, appDir }
 }
+
+// Hermetic guard: redirect the reported-models store to a fresh temp file for
+// EVERY test so any default `loadReportedModels` call inside the introspector
+// reads a missing file (→ null) instead of the real
+// ~/.config/oh-my-cursor/reported-models.json. Reported-tier tests still inject
+// `_reportedLoad` explicitly; this just protects the bundle/fallback/cache tests.
+let reportedStoreEnvBackup: string | undefined
+let reportedStoreTmpDir: string
+
+beforeEach(() => {
+  reportedStoreEnvBackup = process.env.OH_MY_CURSOR_REPORTED_MODELS_FILE
+  reportedStoreTmpDir = mkdtempSync(join(tmpdir(), "omo-introspect-store-"))
+  process.env.OH_MY_CURSOR_REPORTED_MODELS_FILE = join(
+    reportedStoreTmpDir,
+    "reported-models.json",
+  )
+})
+
+afterEach(() => {
+  if (reportedStoreEnvBackup === undefined) {
+    delete process.env.OH_MY_CURSOR_REPORTED_MODELS_FILE
+  } else {
+    process.env.OH_MY_CURSOR_REPORTED_MODELS_FILE = reportedStoreEnvBackup
+  }
+  rmSync(reportedStoreTmpDir, { recursive: true, force: true })
+})
 
 describe("known-models constants", () => {
   it("KNOWN_CURSOR_MODELS is a superset of the canonical VALID_CURSOR_SLUGS", () => {
@@ -123,6 +150,7 @@ describe("getEnum — fallback chain", () => {
       _candidatePaths: ["/nonexistent-xyz-omo"],
     })
     expect(result.source).toBe("fallback")
+    expect(result.needsCapture).toBe(true)
     expect(result.models).toEqual([...KNOWN_CURSOR_MODELS])
     expect(result.agents).toEqual([...KNOWN_AGENT_TYPES])
     expect(result.models.length).toBeGreaterThanOrEqual(6)
@@ -133,7 +161,7 @@ describe("getEnum — fallback chain", () => {
       introspection: { enabled: true, scan_timeout_ms: 50 },
       _candidatePaths: ["/nonexistent-xyz-omo"],
     })
-    expect(["bundle", "observed", "fallback"]).toContain(result.source)
+    expect(["bundle", "observed", "fallback", "reported"]).toContain(result.source)
     expect(new Date(result.cachedAt).toISOString()).toBe(result.cachedAt)
   })
 
@@ -145,6 +173,7 @@ describe("getEnum — fallback chain", () => {
         _candidatePaths: [appDir],
       })
       expect(result.source).toBe("bundle")
+      expect(result.needsCapture).toBe(true)
       expect(result.models).toContain(UNIQUE_FIXTURE_SLUG)
       expect(result.models).toContain("gpt-5.4-medium")
       expect(result.cursorVersion).toBe("3.7.27")
@@ -311,5 +340,77 @@ describe("robustness — no public function throws on nonexistent path", () => {
     const result = await getEnum()
     expect(result.models.length).toBeGreaterThanOrEqual(6)
     expect(result.agents.length).toBeGreaterThanOrEqual(11)
+  })
+})
+
+describe("getEnum — reported tier", () => {
+  beforeEach(() => {
+    resetIntrospectorState()
+  })
+
+  it("reported capture wins outright (source=reported, needsCapture=false, no scan)", async () => {
+    const reported = ["composer-2.5", "gpt-5.4-medium", "gpt-5.5-high"]
+    const result = await getEnum({
+      introspection: { enabled: true, scan_timeout_ms: 50 },
+      _candidatePaths: ["/nonexistent-xyz-omo"],
+      _reportedLoad: () => reported,
+    })
+    expect(result.source).toBe("reported")
+    expect(result.needsCapture).toBe(false)
+    expect(result.models).toEqual(reported)
+    expect(getIntrospectorScanCount()).toBe(0)
+  })
+
+  it("version miss falls back to KNOWN constants and flags needsCapture=true", async () => {
+    const result = await getEnum({
+      introspection: { enabled: true, scan_timeout_ms: 50 },
+      _candidatePaths: ["/nonexistent-xyz-omo"],
+      _reportedLoad: () => null,
+    })
+    expect(result.source).toBe("fallback")
+    expect(result.needsCapture).toBe(true)
+  })
+
+  it("reported tier overrides a present real bundle fixture", async () => {
+    const reported = ["composer-2.5", "gpt-5.4-medium", "gpt-5.5-high"]
+    const { root, appDir } = makeBundleFixture()
+    try {
+      const result = await getEnum({
+        introspection: { enabled: true, scan_timeout_ms: 2000 },
+        _candidatePaths: [appDir],
+        _reportedLoad: () => reported,
+      })
+      expect(result.source).toBe("reported")
+      expect(result.models).toEqual(reported)
+      expect(result.models).not.toContain(UNIQUE_FIXTURE_SLUG)
+      expect(getIntrospectorScanCount()).toBe(0)
+    } finally {
+      rmSync(root, { recursive: true, force: true })
+    }
+  })
+
+  it("invalidateBaseCache forces a rescan while passive observations survive", async () => {
+    const { root, appDir } = makeBundleFixture()
+    try {
+      passiveObserve({ model: "obs-survive-1-x" })
+      const opts = {
+        introspection: { enabled: true, scan_timeout_ms: 2000 },
+        _candidatePaths: [appDir],
+        _reportedLoad: () => null,
+      }
+      const first = await getEnum(opts)
+      expect(getIntrospectorScanCount()).toBe(1)
+      expect(first.source).toBe("bundle")
+      expect(first.models).toContain("obs-survive-1-x")
+
+      invalidateBaseCache()
+
+      const second = await getEnum(opts)
+      expect(getIntrospectorScanCount()).toBe(2)
+      expect(second.models).toContain("obs-survive-1-x")
+      expect(second.models).toContain(UNIQUE_FIXTURE_SLUG)
+    } finally {
+      rmSync(root, { recursive: true, force: true })
+    }
   })
 })

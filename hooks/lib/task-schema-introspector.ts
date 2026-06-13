@@ -1,6 +1,7 @@
 import { readFileSync, readdirSync, statSync } from "node:fs"
 import { join, posix, win32 } from "node:path"
 import { KNOWN_AGENT_TYPES, KNOWN_CURSOR_MODELS } from "./known-models"
+import { loadReportedModels } from "./reported-models-store"
 
 /**
  * task-schema-introspector — multi-OS hybrid discovery of the Cursor Task model
@@ -19,7 +20,7 @@ import { KNOWN_AGENT_TYPES, KNOWN_CURSOR_MODELS } from "./known-models"
  *     never replace scan results.
  */
 
-export type EnumSource = "bundle" | "observed" | "fallback"
+export type EnumSource = "bundle" | "observed" | "fallback" | "reported"
 
 export interface EnumResult {
   models: string[]
@@ -27,6 +28,7 @@ export interface EnumResult {
   source: EnumSource
   cursorVersion?: string
   cachedAt: string
+  needsCapture: boolean
 }
 
 export interface IntrospectionConfig {
@@ -61,6 +63,8 @@ export interface GetEnumOptions {
   _candidatePaths?: string[]
   /** @internal test seam — replace the bundle scan strategy. */
   _bundleScan?: (ctx: BundleScanContext) => Promise<BundleScanResult | null>
+  /** @internal test seam — replace the reported-store loader. */
+  _reportedLoad?: (version?: string) => string[] | null
 }
 
 export interface CandidatePathOptions {
@@ -83,7 +87,7 @@ const NO_VERSION_KEY = "__no_version__"
 // claude-opus-4-7-thinking-xhigh, gemini-3.1-pro). Requiring a hyphen rejects
 // dotted-only false positives like "O3.5"/"O12.1" found in minified bundles
 // while staying discovery-friendly for unseen hyphenated variants.
-const SLUG_FULL_RE =
+export const SLUG_FULL_RE =
   /^(?:composer|gpt|claude|gemini|grok|kimi|deepseek|qwen|llama|mistral|o[0-9])[a-z0-9]*(?:[.\-][a-z0-9]+)*-[a-z0-9]+(?:[.\-][a-z0-9]+)*$/i
 const QUOTED_RE = /["']([^"']{1,80})["']/g
 
@@ -100,6 +104,7 @@ interface BaseResult {
   source: EnumSource
   cursorVersion?: string
   cachedAt: string
+  needsCapture: boolean
 }
 
 let cachedBase: BaseResult | null = null
@@ -223,6 +228,7 @@ export async function getEnum(options: GetEnumOptions = {}): Promise<EnumResult>
       source,
       cursorVersion: base.cursorVersion,
       cachedAt: base.cachedAt,
+      needsCapture: base.needsCapture,
     }
   } catch {
     // Absolute last-resort fallback — getEnum must never reject.
@@ -232,6 +238,7 @@ export async function getEnum(options: GetEnumOptions = {}): Promise<EnumResult>
       source: observedModels.size > 0 || observedAgents.size > 0 ? "observed" : "fallback",
       cursorVersion: options.cursorVersion,
       cachedAt: new Date().toISOString(),
+      needsCapture: true,
     }
   }
 }
@@ -243,6 +250,12 @@ export function resetIntrospectorState(): void {
   observedModels.clear()
   observedAgents.clear()
   scanCount = 0
+}
+
+/** Clear ONLY the base cache (not observations). Used after a reported capture to force a re-resolve. */
+export function invalidateBaseCache(): void {
+  cachedBase = null
+  cachedKey = null
 }
 
 /** Number of bundle scans actually executed since the last reset (test seam). */
@@ -276,6 +289,22 @@ async function computeBase(options: GetEnumOptions): Promise<BaseResult> {
   const timeoutMs = introspection.scan_timeout_ms ?? DEFAULT_SCAN_TIMEOUT_MS
   const now = options.now ?? (() => Date.now())
 
+  // Highest-priority tier: a runtime-reported capture for this exact version.
+  // When present it wins outright (no bundle scan needed) and is fully resolved,
+  // so `needsCapture` is false. Any other tier still wants a capture.
+  const reportedLoad = options._reportedLoad ?? loadReportedModels
+  const reported = reportedLoad(options.cursorVersion)
+  if (reported && reported.length > 0) {
+    return {
+      models: [...reported],
+      agents: [...KNOWN_AGENT_TYPES],
+      source: "reported",
+      cursorVersion: options.cursorVersion,
+      needsCapture: false,
+      cachedAt: isoFrom(now),
+    }
+  }
+
   let bundle: BundleScanResult | null = null
   if (enabled) {
     const candidatePaths =
@@ -305,6 +334,7 @@ async function computeBase(options: GetEnumOptions): Promise<BaseResult> {
     source: bundle ? "bundle" : "fallback",
     cursorVersion: bundle?.cursorVersion ?? options.cursorVersion,
     cachedAt: isoFrom(now),
+    needsCapture: true,
   }
 }
 
@@ -315,6 +345,7 @@ function fallbackBase(options: GetEnumOptions): BaseResult {
     source: "fallback",
     cursorVersion: options.cursorVersion,
     cachedAt: new Date().toISOString(),
+    needsCapture: true,
   }
 }
 

@@ -92,7 +92,7 @@
   // "agent_overrides": {
   //   "explore": {
   //     "model": "composer-2-fast",
-  //     "fallback_models": ["composer-2", "inherit"],
+  //     "fallback_models": ["composer-2.5", "inherit"],
   //     "disable": false
   //   }
   // },
@@ -104,7 +104,7 @@
   // "categories": {
   //   "quick": {
   //     "model": "composer-2-fast",
-  //     "fallback_models": ["composer-2"],
+  //     "fallback_models": ["composer-2.5"],
   //     "disable": false,
   //     "description": "Fast, cheap tasks"
   //   }

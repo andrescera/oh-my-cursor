@@ -1,6 +1,9 @@
 /**
- * Single shared FALLBACK source of truth for Cursor Task model slugs and
+ * Single shared STALE FALLBACK FLOOR for Cursor Task model slugs and
  * oh-my-cursor agent types.
+ *
+ * ⚠️ AUTHORITATIVE SOURCE: The reported tier and bundle scan (task-schema-introspector)
+ * are the primary sources of truth. These constants are NEVER authoritative.
  *
  * These constants are the *fallback floor* used by the task-schema-introspector
  * when live bundle introspection is unavailable. They must never be the
@@ -31,7 +34,13 @@ const CANONICAL_CURSOR_SLUGS = [
  * truth when it succeeds.
  */
 const FORUM_DOCUMENTED_CURSOR_SLUGS = [
-  "composer-2",
+  "composer-2.5",
+  "composer-2.5-fast",
+  "gpt-5.5-high",
+  "claude-opus-4-8-thinking-xhigh",
+  "claude-4.6-sonnet-high-thinking",
+  "gpt-5.3-codex-xhigh-fast",
+  "claude-fable-5-thinking-xhigh",
   "gpt-5.4-high",
   "gpt-5.5-medium",
   "claude-4.6-sonnet-thinking",

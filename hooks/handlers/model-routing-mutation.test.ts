@@ -28,7 +28,7 @@ function makeConfig(partial: {
 }
 
 function enumResult(models: string[]): EnumResult {
-  return { models, agents: [], source: "fallback", cachedAt: new Date().toISOString() }
+  return { models, agents: [], source: "fallback", cachedAt: new Date().toISOString(), needsCapture: false }
 }
 
 function snapshotOf(models: string[]): IntrospectionSnapshot {
@@ -43,7 +43,7 @@ function snapshotOf(models: string[]): IntrospectionSnapshot {
 
 const DEFAULT_SNAPSHOT_MODELS: string[] = [
   "composer-2-fast",
-  "composer-2",
+  "composer-2.5",
   "gpt-5.4-medium",
   "gpt-5.4-high",
   "gemini-3.1-pro",
@@ -197,14 +197,14 @@ describe("model-routing-mutation — no-op (null) cases", () => {
 describe("model-routing-mutation — category fallback", () => {
   it("falls back to categories[agent].model when no agent override exists", () => {
     const { deps } = makeDeps({
-      config: makeConfig({ categories: { explore: { model: "composer-2" } } }),
-      enumModels: ["composer-2"],
+      config: makeConfig({ categories: { explore: { model: "composer-2.5" } } }),
+      enumModels: ["composer-2.5"],
     })
     const provider = createModelRoutingProvider(deps)
 
     const result = provider.mutate("conv-1", { subagent_type: "explore", model: "composer-2-fast" })
 
-    expect(result).toEqual({ model: "composer-2" })
+    expect(result).toEqual({ model: "composer-2.5" })
   })
 
   it("agent_overrides[agent].model wins over categories[agent].model", () => {
@@ -226,15 +226,15 @@ describe("model-routing-mutation — category fallback", () => {
     const { deps } = makeDeps({
       config: makeConfig({
         agent_overrides: { explore: { fallback_models: [] } },
-        categories: { explore: { model: "composer-2" } },
+        categories: { explore: { model: "composer-2.5" } },
       }),
-      enumModels: ["composer-2"],
+      enumModels: ["composer-2.5"],
     })
     const provider = createModelRoutingProvider(deps)
 
     const result = provider.mutate("conv-1", { subagent_type: "explore" })
 
-    expect(result).toEqual({ model: "composer-2" })
+    expect(result).toEqual({ model: "composer-2.5" })
   })
 })
 
@@ -334,21 +334,21 @@ describe("model-routing-mutation — per-agent allowlist validation", () => {
     const { deps, registerCalls } = makeDeps({
       config: makeConfig({
         agent_overrides: { explore: { model: "claude-opus-4-7-thinking-xhigh" } },
-        categories: { explore: { model: "composer-2" } },
+        categories: { explore: { model: "composer-2.5" } },
       }),
-      enumModels: ["claude-opus-4-7-thinking-xhigh", "composer-2"],
+      enumModels: ["claude-opus-4-7-thinking-xhigh", "composer-2.5"],
     })
     const provider = createModelRoutingProvider(deps)
 
     const result = provider.mutate("conv-a", { subagent_type: "explore" })
 
-    expect(result).toEqual({ model: "composer-2" })
+    expect(result).toEqual({ model: "composer-2.5" })
     expect(registerCalls).toHaveLength(1)
     expect(registerCalls[0].conversationId).toBe("conv-a")
     expect(registerCalls[0].options.priority).toBe("critical")
     expect(String(registerCalls[0].options.content)).toContain("explore")
     expect(String(registerCalls[0].options.content)).toContain("claude-opus-4-7-thinking-xhigh")
-    expect(String(registerCalls[0].options.content)).toContain("composer-2")
+    expect(String(registerCalls[0].options.content)).toContain("composer-2.5")
   })
 
   it("inherits the parent model (null) with a critical advisory when no valid fallback exists", () => {
@@ -434,7 +434,7 @@ describe("model-routing-mutation — hot-path timing", () => {
   it("mutate() p99 stays under 50ms over 100 calls with a warm cache", () => {
     const { deps } = makeDeps({
       config: makeConfig({ agent_overrides: { explore: { model: "composer-2-fast" } } }),
-      snapshotModels: ["composer-2-fast", "composer-2", "gpt-5.4-medium"],
+      snapshotModels: ["composer-2-fast", "composer-2.5", "gpt-5.4-medium"],
     })
     const provider = createModelRoutingProvider(deps)
 

@@ -120,9 +120,9 @@ describe("model rotation — per-agent allowlist filtering", () => {
 
   it("uses valid entries normally and registers no skip advisory", () => {
     const collector = fakeCollector()
-    const snapshot = makeSnapshot(["composer-2-fast", "composer-2"])
+    const snapshot = makeSnapshot(["composer-2-fast", "composer-2.5"])
     const config = makeConfig({
-      agent_overrides: { explore: { fallback_models: ["composer-2-fast", "composer-2"] } },
+      agent_overrides: { explore: { fallback_models: ["composer-2-fast", "composer-2.5"] } },
     })
     const deps = rotationDeps(config, snapshot, collector)
 
@@ -131,7 +131,7 @@ describe("model rotation — per-agent allowlist filtering", () => {
     expect(provider.mutate("c1", { subagent_type: "explore" })).toEqual({ model: "composer-2-fast" })
 
     recordRetryableFailure("c1", "explore", deps)
-    expect(provider.mutate("c1", { subagent_type: "explore" })).toEqual({ model: "composer-2" })
+    expect(provider.mutate("c1", { subagent_type: "explore" })).toEqual({ model: "composer-2.5" })
 
     expect(skipAdvisories(collector)).toHaveLength(0)
   })

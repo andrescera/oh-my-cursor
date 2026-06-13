@@ -287,7 +287,7 @@ describe("config", () => {
             join(TEST_CONFIG_DIR, "oh-my-cursor.jsonc"),
             `{
   "model_routing": { "defaults": { "explore": "composer-2-fast" } },
-  "agent_overrides": { "explore": { "model": "composer-2" } }
+  "agent_overrides": { "explore": { "model": "composer-2.5" } }
 }`,
             "utf-8",
           )
@@ -301,7 +301,7 @@ describe("config", () => {
             const config = loadConfig()
 
             // then
-            expect(config.agent_overrides.explore?.model).toBe("composer-2")
+            expect(config.agent_overrides.explore?.model).toBe("composer-2.5")
           } finally {
             process.chdir(origCwd)
           }

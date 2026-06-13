@@ -12,6 +12,7 @@ function makeEnumResult(over: Partial<EnumResult> = {}): EnumResult {
     source: over.source ?? "bundle",
     cursorVersion: over.cursorVersion,
     cachedAt: over.cachedAt ?? new Date().toISOString(),
+    needsCapture: over.needsCapture ?? false,
   }
 }
 

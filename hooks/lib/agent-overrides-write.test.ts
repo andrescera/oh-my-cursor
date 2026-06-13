@@ -216,7 +216,7 @@ describe("writeAgentOverrides", () => {
       {
         target: "project",
         agent_overrides: {
-          explore: { model: "composer-2-fast", fallback_models: ["composer-2", "gpt-5.4-medium"] },
+          explore: { model: "composer-2-fast", fallback_models: ["composer-2.5", "gpt-5.4-medium"] },
         },
       },
       { cwd: dir, enumOptions: FALLBACK_ENUM_OPTS },

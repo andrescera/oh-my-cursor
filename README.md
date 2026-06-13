@@ -140,7 +140,7 @@ Group agents under a shared routing policy with `categories`:
 "categories": {
   "quick": {
     "model": "composer-2-fast",
-    "fallback_models": ["composer-2"],
+    "fallback_models": ["composer-2.5"],
     "description": "Fast, cheap tasks"
   }
 }

@@ -181,7 +181,7 @@ describe("OhMyCursorConfigSchema", () => {
         agent_overrides: {
           explore: {
             model: "composer-2-fast",
-            fallback_models: ["composer-2", "inherit"],
+            fallback_models: ["composer-2.5", "inherit"],
             disable: false,
           },
         },
@@ -190,7 +190,7 @@ describe("OhMyCursorConfigSchema", () => {
       if (r.success) {
         expect(r.data.agent_overrides.explore?.model).toBe("composer-2-fast")
         expect(r.data.agent_overrides.explore?.fallback_models).toEqual([
-          "composer-2",
+          "composer-2.5",
           "inherit",
         ])
         expect(r.data.agent_overrides.explore?.disable).toBe(false)
@@ -248,7 +248,7 @@ describe("OhMyCursorConfigSchema", () => {
         categories: {
           quick: {
             model: "composer-2-fast",
-            fallback_models: ["composer-2"],
+            fallback_models: ["composer-2.5"],
             disable: false,
             description: "Fast cheap tasks",
           },
@@ -258,7 +258,7 @@ describe("OhMyCursorConfigSchema", () => {
       if (r.success) {
         expect(r.data.categories.quick?.model).toBe("composer-2-fast")
         expect(r.data.categories.quick?.description).toBe("Fast cheap tasks")
-        expect(r.data.categories.quick?.fallback_models).toEqual(["composer-2"])
+        expect(r.data.categories.quick?.fallback_models).toEqual(["composer-2.5"])
       }
     })
 

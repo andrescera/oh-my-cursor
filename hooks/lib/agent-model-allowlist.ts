@@ -29,9 +29,9 @@ import type { IntrospectionSnapshot } from "./introspection-runtime"
  */
 export const AGENT_MODEL_ALLOWLIST: Readonly<Record<string, readonly string[]>> = Object.freeze({
   // Fast, cheap search/executor agents.
-  explore: Object.freeze(["composer-2-fast", "composer-2", "gpt-5.4-medium"]),
-  librarian: Object.freeze(["composer-2-fast", "composer-2", "gpt-5.4-medium"]),
-  "sisyphus-junior": Object.freeze(["composer-2-fast", "composer-2", "gpt-5.4-medium"]),
+  explore: Object.freeze(["composer-2-fast", "composer-2.5", "gpt-5.4-medium"]),
+  librarian: Object.freeze(["composer-2-fast", "composer-2.5", "gpt-5.4-medium"]),
+  "sisyphus-junior": Object.freeze(["composer-2-fast", "composer-2.5", "gpt-5.4-medium"]),
 
   // High-capability deep workers / orchestrators.
   sisyphus: Object.freeze([

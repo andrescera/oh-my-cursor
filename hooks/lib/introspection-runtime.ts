@@ -12,11 +12,12 @@ import { extractAgentTypeFromLogInputs, extractModelFromLogInputs } from "../han
 export interface IntrospectionSnapshot {
   models: string[]
   agents: string[]
-  source: "bundle" | "observed" | "fallback"
+  source: "bundle" | "observed" | "fallback" | "reported"
   cursorVersion?: string
   cachedAt: string
   observedAdditions: string[]
   modelsByAgent?: Record<string, string[]>
+  needsCapture?: boolean
 }
 
 export interface IntrospectionVersionChange {
@@ -44,7 +45,7 @@ export interface IntrospectionRuntime {
 interface BaseSnapshot {
   models: string[]
   agents: string[]
-  source: "bundle" | "observed" | "fallback"
+  source: "bundle" | "observed" | "fallback" | "reported"
   cursorVersion?: string
   cachedAt: string
   modelsByAgent: Record<string, string[]>
@@ -207,7 +208,7 @@ export function createIntrospectionRuntime(
       for (const a of observedAgents) if (!KNOWN_FLOOR.has(a)) observedAdditions.push(a)
       const models = unionPreserve(b.models, [...observedModels])
       const agents = unionPreserve(b.agents, [...observedAgents])
-      const source =
+      const source: typeof b.source =
         b.source === "fallback" && (observedModels.size > 0 || observedAgents.size > 0)
           ? "observed"
           : b.source

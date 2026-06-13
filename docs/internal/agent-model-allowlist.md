@@ -17,10 +17,10 @@ A `Record<string, string[]>` mapping each oh-my-cursor `subagent_type` name to t
 ```ts
 // Illustrative shape — see the source file for the live list
 export const AGENT_MODEL_ALLOWLIST: Record<string, string[]> = {
-  explore:           ["composer-2-fast", "composer-2", "composer-2.5-fast"],
-  librarian:         ["composer-2-fast", "composer-2", "composer-2.5-fast"],
+  explore:           ["composer-2-fast", "composer-2.5", "composer-2.5-fast"],
+  librarian:         ["composer-2-fast", "composer-2.5", "composer-2.5-fast"],
   sisyphus:          ["claude-opus-4-7-thinking-xhigh", "claude-4.5-opus-high", ...],
-  "sisyphus-junior": ["composer-2-fast", "composer-2", ...],
+  "sisyphus-junior": ["composer-2-fast", "composer-2.5", ...],
   // ...one entry per agent
 };
 ```

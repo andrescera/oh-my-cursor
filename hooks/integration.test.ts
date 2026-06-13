@@ -172,30 +172,30 @@ describe("daemon integration lifecycle", () => {
     })
   })
 
-  describe("#given an existing file was never read but edit has old_string", () => {
+  describe("#given an existing file was never read (old_string does not exempt a full-file Write)", () => {
     describe("#when POST /preToolUse with Write and old_string is called", () => {
-      test("#then it allows the edit (old_string proves file awareness)", async () => {
+      test("#then it denies the write (read-before-write guard requires a prior Read)", async () => {
         const { data } = await post("/preToolUse", {
           tool_name: "Write",
           tool_input: { file_path: GUARD_TEST_FILE, old_string: "test content", new_string: "new content" },
           session_id: SESSION_ID,
         })
 
-        expect(data.permission).toBeUndefined()
+        expect(data.permission).toBe("deny")
       })
     })
   })
 
   describe("#given an existing file was never read and write has no old_string", () => {
     describe("#when POST /preToolUse with blind Write is called", () => {
-      test("#then it warns via context but does not deny", async () => {
+      test("#then it denies the write (read-before-write guard)", async () => {
         const { data } = await post("/preToolUse", {
           tool_name: "Write",
           tool_input: { file_path: GUARD_TEST_FILE, contents: "overwrite" },
           session_id: "guard-test-fresh-session",
         })
 
-        expect(data.permission).toBeUndefined()
+        expect(data.permission).toBe("deny")
       })
     })
   })

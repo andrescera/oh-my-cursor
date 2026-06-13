@@ -30,6 +30,17 @@ describe("hashline-read-enhancer", () => {
     expect(pending.merged).toContain("[hashline]")
   })
 
+  it("delivers via collector only — never via dead postToolUse.additional_context", () => {
+    const handler = createHashlineReadEnhancerHandler(conversations, {
+      getConfig: configWith(true),
+    })["/postToolUse"]!
+    const result = handler(readInput()) as Record<string, unknown>
+
+    expect(result).toEqual({})
+    expect(result).not.toHaveProperty("additional_context")
+    expect(contextCollector.getPending(CONV).merged).toContain("[hashline]")
+  })
+
   it("emits nothing when hashline_edit is disabled (default)", () => {
     const handler = createHashlineReadEnhancerHandler(conversations, {
       getConfig: configWith(false),

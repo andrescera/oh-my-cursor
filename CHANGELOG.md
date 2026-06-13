@@ -7,6 +7,73 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.9.0] - 2026-06-13
+
+### Added
+
+#### Dynamic model routing
+
+**Runtime model introspection**
+- `hooks/lib/task-schema-introspector.ts`: hybrid chain (bundle scan → passive observation → hardcoded fallback), cached per `cursor_version`, per-OS path resolution (Linux/macOS/Windows), 2000ms timeout, never throws. Real scan: 82 models from Cursor 3.7.27 in 472ms.
+- `GET /introspection` endpoint: returns `{ models, agents, source, cursorVersion, cachedAt, observedAdditions }`.
+- `introspection` config block added for tuning scan behavior.
+
+**Config schema**
+- `agent_overrides` + `categories` config schema: per-agent `model`, `fallback_models[]`, `disable` fields; backward-compatible migration from legacy `model_routing.defaults` with deprecation warning.
+- `max_piggyback_chars` (default 8000) added to config.
+
+**Central Task input composer**
+- `hooks/handlers/task-input-composer.ts`: provider registry, echo-all strategy (spreads full original `tool_input` first), single emitter of `updated_input` for the Task tool.
+- Model routing enforcement mutation: resolves `agent_overrides[agent].model` → `categories[agent].model` → no-op; advisory async slug validation against introspected enum.
+- `POST /config/agent-overrides` endpoint: atomic validated write (tmp+rename), in-memory hot-reload, SSE `config-changed` event.
+
+**Fallback rotation**
+- `hooks/handlers/delegate-task-retry-rotation.ts`: per-`(conversation_id, agent_type)` rotation index over `fallback_models[]` on retryable failures (429/5xx); resets on success; exhaustion advisory; priority 200 (beats static routing at 100).
+
+**Dynamic agent set**
+- `PLAN_MODE_ALLOWED_AGENTS`: derived from `agents/*.md` frontmatter (`plan_safe: true`) at startup; hardcoded set as fallback.
+- `config-generator --sync-rules` mode: regenerates routing table in `rules/orchestrator.mdc` between `<!-- omc:routing-table:start/end -->` markers; updates `rules/agent-tool-restrictions.mdc` model-enum table; idempotent.
+
+#### Context delivery reroute (Cursor 3.7 compatibility)
+
+- `postToolUse.additional_context` confirmed BROKEN at Cursor 3.7.x; `sessionStart.additional_context` BROKEN; `beforeSubmitPrompt.updated_input/additional_context` NOT-SUPPORTED-BY-DESIGN. All 18 handlers migrated off the dead channel.
+- Context piggyback delivery (`hooks/handlers/context-piggyback-mutation.ts`): `contextCollector.consumeUpTo(maxChars)` delivers registered context as `<omc:context>...</omc:context>` prefix on the next Task `preToolUse` prompt. Budget: `min(max_piggyback_chars, floor(15308 x 0.8))`.
+- `non-interactive-env` upgraded from advisory to real `updated_input` command rewriting.
+- `webfetch-redirect-guard` upgraded from advisory to real `updated_input` URL resolution.
+
+#### New guard and validator handlers (upstream port)
+
+- `stop-continuation-guard`: per-conversation user-stopped latch suppresses loop followups after explicit stop; cleared on new user prompt.
+- `plan-format-validator`: validates `.omo/plans/*.md` writes against plan contract (required sections, bare-number TODO labels, F-prefixed Final Wave labels); `permission: "deny"` on violation.
+- `notepad-write-guard`: blocks full-file Write overwrites of existing notepads; allows Edit appends.
+- `tool-pair-validator`: tracks per-conversation read-set (LRU 500); denies Edit on unread files.
+- `question-label-truncator`: caps Task `description` at 120 chars via composer provider (priority 10); truncates MCP label-array params on `beforeMCPExecution`.
+- `fsync-skip-warning`: detects partial-write signatures in `postToolUse` output; registers advisory.
+- `keyword-detector`: detects `ultrawork`/`ralph-loop`/`boulder` etc. in `beforeSubmitPrompt`; sets per-conversation mode flag; arms existing loop machinery; delivers mode preamble via piggyback.
+
+#### Dashboard
+
+**Models & Routing tab (hotkey 8)**
+- `EnumViewer` shows model slugs with source badges (bundle/observed/fallback).
+- `RoutingEditor` edits per-agent model/fallback chain/disable and saves via `POST /config/agent-overrides`; refreshes on SSE `config-changed`.
+
+**Hook Channel Status matrix (embedded in Hooks tab)**
+- Read-only matrix of hook event x output field statuses; color-coded chips (green=works, red=broken, amber=unconfirmed, gray=unsupported); tooltips with evidence refs; `cursorVersion` header from `/introspection`.
+
+### Changed
+
+- All 18 handlers that previously returned `additional_context` now register via `contextCollector` and deliver through Task `preToolUse` prompt piggyback.
+- `scripts/config-generator.ts`: `VALID_CURSOR_SLUGS` replaced with import of `KNOWN_CURSOR_MODELS` from `hooks/lib/known-models.ts`; `DEFAULT_AGENTS` now scanned dynamically from `agents/*.md`.
+- Daemon handler map for `/preToolUse` and `/postToolUse` now chains competing handlers (first non-empty response wins) instead of last-wins object spread.
+- `stop.followup_message` scoped to active continuation loops only (ralph/ULW/boulder); non-loop stops return `{}`.
+- `PLAN_MODE_ALLOWED_AGENTS` derived from agent frontmatter at startup instead of hardcoded.
+
+### Fixed
+
+- `postToolUse.additional_context` delivery silently dropped by Cursor 3.7.x routing — replaced with Task `preToolUse` prompt piggyback.
+- Daemon handler clobber: last-wins object spread silently killed tool-guard, plan-format-validator, fallback rotation, and ~17 other handlers when multiple handlers registered the same hook key — fixed with `chainHandlers()`.
+- `notepad-write-guard` config getter used `getHookConfig()` (returns `{enabled,disabled}`, no `.handlers`) instead of `loadConfig()` — guard never fired in production.
+
 ## [0.8.0] - 2026-06-11
 
 ### Added

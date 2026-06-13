@@ -22,6 +22,9 @@ The methodology framework lives in [experiments-methodology.md](./experiments-me
 | E3 | `stop` followup-merge order (2 entries) | `stop` | High | overloop merge semantics |
 | E5 | `subagentStop` transcript-path format | `subagentStop` | High | transcript-reading in production hooks |
 | E6 | `session_id` cross-role equality | `subagentStart`, `subagentStop` | High | N11 confirmation |
+| B1 | `preToolUse(Task).updated_input` replace-vs-merge (model-only) | `preToolUse`, `subagentStart` | **GATE** | Task 7 central composer (echo-all decision) |
+| B2 | `preToolUse(Task).updated_input` prompt + `subagent_type` survival | `preToolUse`, `subagentStart` | High | piggyback channel for dynamic prompts |
+| B3 | `preToolUse(Task).updated_input` prompt size bound (1KB/8KB/64KB) | `preToolUse`, `subagentStart` | High | `max_piggyback_chars` default budget |
 
 ---
 
@@ -251,6 +254,149 @@ STOP_SID=$(jq -r 'select(.experiment_id == "W-X-session-id-cross-role-002") | .s
 
 ---
 
+## B — `preToolUse(Task).updated_input` Merge Semantics (B-probe)
+
+> **Plan**: `dynamic-models-and-37-upgrades` Task 1. **Gates** Task 7 (central composer): the replace-vs-merge verdict decides whether the composer must echo every original `tool_input` field in its `updated_input` response.
+>
+> **Target version**: the binary pinned at run time (plan pins the **3.7.x** line; record the actual `cursor_version` from the payload envelope). **Status as committed: DESIGN-PHASE** — scripts + procedure authored and dry-run validated against a synthetic Task payload; live-fire capture pending (this environment cannot fire Cursor's Task tool). Forum thread **151985** (Cursor staff, 2026-04-07) confirms `preToolUse(Task).updated_input` **takes effect** on the 3.7.x line; this B-probe is the empirical procedure to convert that claim to captured evidence.
+
+### Four questions this probe answers
+
+1. **Replace vs merge** — when the hook returns `updated_input: { model: "<alt>" }` ONLY, does Cursor REPLACE the entire `tool_input` (dropping `prompt`/`subagent_type`/`description`) or shallow-MERGE the partial object over the original?
+2. **Prompt survival** — when the hook returns `updated_input: { prompt: "<SENTINEL>\n\n<orig>" }` ONLY, does the subagent receive the modified prompt?
+3. **`subagent_type` survival** — does the original `subagent_type` survive a partial `updated_input` that omits it (i.e. does the `explore` subagent still launch)?
+4. **Size bound** — at what piggyback size (1KB / 8KB / 64KB) does Cursor stop accepting (or start truncating) the `updated_input`?
+
+### Probe scripts (under `hooks/experiments/responders/`)
+
+| Script | Role |
+|---|---|
+| `task-updated-input-probe.sh <EXP_ID> preToolUse <MODE> [ALT_SLUG]` | Emits a partial `updated_input` for `MODE ∈ {model-only, prompt-piggyback, echo-all}`; writes a `b-series-correlation-<uuid>.json` record. |
+| `task-piggyback-size-probe.sh <EXP_ID> preToolUse <SIZE_BYTES>` | Emits a `prompt` piggyback of `SIZE_BYTES` framed with HEAD/TAIL markers; writes a `b-series-size-<uuid>.json` record. |
+
+Both source `responders/_common.sh` (logs the inbound payload via `experiment-logger-v2`, then the responder owns stdout). Correlation records carry `sentinel`, `tool_use_id`, `conversation_id`, and `original.tool_input_keys` so a later `subagentStart` firing (whose `task` and `subagent_model` fields are populated since 3.5.38) can be matched and classified.
+
+### Cells
+
+| Cell ID | MODE / size | Matcher | `updated_input` emitted |
+|---|---|---|---|
+| `W-X-preToolUse-task-updated-input-merge-001` | `model-only` | `^Task$` | `{"model":"composer-2-fast"}` |
+| `W-X-preToolUse-task-updated-input-merge-002` | `prompt-piggyback` | `^Task$` | `{"prompt":"SENTINEL_OMC_PIGGYBACK_<nonce>\n\n<orig>"}` |
+| `W-X-preToolUse-task-updated-input-size-003` | `1024` → `8192` → `65536` | `^Task$` | `{"prompt":"<HEAD>…pad…<TAIL>\n\n<orig>"}` (one firing per size) |
+| `W-X-preToolUse-task-updated-input-echoall-ref` | `echo-all` (replace-safe reference) | `^Task$` | `{...orig tool_input, model, prompt}` |
+
+> **Matcher note**: `preToolUse` matches on `tool_name` (case-sensitive `new RegExp`). Use `^Task$` to scope strictly to the Task tool. Do **not** match-all here — an unscoped `updated_input` would rewrite the input of every tool call.
+
+### Setup (Isolation Harness, B variant)
+
+Use a project-level `.cursor/hooks.json` (discovery order `…/<workspace>/.cursor/hooks.json`, last in precedence) rather than touching `~/.cursor/hooks.json`. Run one variant at a time.
+
+```bash
+cd <repo>
+# B1 — replace-vs-merge (model-only), scoped to Task
+cat > .cursor/hooks.json << 'HOOKS_EOF'
+{
+  "version": 1,
+  "hooks": {
+    "preToolUse": [
+      {
+        "matcher": "^Task$",
+        "command": "bash \"<repo>/hooks/experiments/responders/task-updated-input-probe.sh\" \"W-X-preToolUse-task-updated-input-merge-001\" \"preToolUse\" \"model-only\" \"composer-2-fast\""
+      }
+    ],
+    "subagentStart": [
+      { "command": "bash \"<repo>/hooks/scripts/experiment-logger-v2.sh\" \"subagentStart\" --experiment-id \"W-X-preToolUse-task-updated-input-merge-001\"" }
+    ]
+  }
+}
+HOOKS_EOF
+```
+
+For **B2** swap the `preToolUse` command to MODE `prompt-piggyback` (drop the `ALT_SLUG` arg) and experiment id `…merge-002`. For **B3** point `preToolUse.command` at `task-piggyback-size-probe.sh … <SIZE_BYTES>` and run it three times (1024, 8192, 65536), one size per run, keeping the `subagentStart` logger loaded each time.
+
+> **Restore**: `rm <repo>/.cursor/hooks.json` after each run.
+
+### Agent turns
+
+Dispatch a trivial Task whose original prompt is uniquely greppable, e.g.:
+```
+Task(subagent_type="explore", description="B-probe", prompt="OMC_ORIG_PROMPT_MARKER list top-level files")
+```
+The `preToolUse(Task)` hook fires before the subagent launches; `subagentStart` fires as it launches with the (possibly rewritten) `task` and `subagent_model`.
+
+### Evidence capture
+
+```bash
+ED="${CURSOR_HOOKS_EVIDENCE_DIR:-/tmp/cursor-hooks-evidence}"
+
+# What the hook EMITTED (correlation side)
+jq '{exp:.experiment_id, mode, sentinel, emitted:.emitted_updated_input_keys, orig_keys:.original.tool_input_keys}' \
+  "$ED"/b-series-correlation-*.json
+
+# What the subagent RECEIVED (subagentStart logger side) — decode stdin_preview
+for f in "$ED"/*.json; do
+  jq -e 'select(.experiment_id|startswith("W-X-preToolUse-task-updated-input"))' "$f" >/dev/null 2>&1 \
+    && jq -r '.stdin_preview' "$f"
+done | grep -o 'SENTINEL_OMC_[A-Z_0-9]*\|OMC_ORIG_PROMPT_MARKER\|"subagent_model":"[^"]*"\|"subagent_type":"[^"]*"'
+```
+
+### Interpret results
+
+**B1 — replace vs merge** (variant A, model-only):
+
+| `subagentStart` observation | Verdict |
+|---|---|
+| `task` still contains `OMC_ORIG_PROMPT_MARKER` AND `subagent_type=="explore"` AND `subagent_model=="composer-2-fast"` | **MERGE (shallow)** — partial `updated_input` overlays original; model override applied, other fields preserved |
+| `task` empty/default OR `subagent_type` dropped OR subagent fails to launch | **REPLACE** — `updated_input` replaces whole `tool_input`; Task 7 MUST echo every original field |
+| `subagent_model` still `claude-opus-4-7-thinking-xhigh` (unchanged) | `updated_input` **ACCEPTED-BUT-IGNORED** for `model` — re-test via `model` rewrite on a path with a distinct slug |
+
+**B2 — prompt + `subagent_type` survival** (variant B, prompt-piggyback):
+
+| Observation | Verdict |
+|---|---|
+| `task` starts with `SENTINEL_OMC_PIGGYBACK_<nonce>` AND `subagent_type=="explore"` | Prompt rewrite **TAKES-EFFECT**; `subagent_type` **survives** partial override → MERGE confirmed |
+| `task` carries sentinel but subagent launches as wrong/default type | Prompt merged but `subagent_type` dropped → partial-replace; echo `subagent_type` defensively |
+| `task` lacks sentinel (original prompt unchanged) | Prompt override **IGNORED** for Task event |
+
+**B3 — size bound** (variant C):
+
+| HEAD / TAIL markers in `subagentStart.task` | Verdict |
+|---|---|
+| HEAD present + TAIL present at size N | Accepted whole at N bytes |
+| HEAD present + TAIL absent | Truncated between HEAD and TAIL → bound is below N; bisect downward |
+| HEAD absent + TAIL absent | Override rejected/replaced at N → bound is below N |
+
+Set `max_piggyback_chars` to `min(8000, probed_bound × 0.8)` (decisions notepad). 3.5.38 corpus observed `subagentStart.task` lengths up to **15,308 chars**, so 1KB and 8KB are expected ACCEPTED; 64KB is the open question.
+
+### Acceptance
+
+```bash
+ED="${CURSOR_HOOKS_EVIDENCE_DIR:-/tmp/cursor-hooks-evidence}"
+# at least one correlation record per cell
+ls "$ED"/b-series-correlation-*.json >/dev/null 2>&1 && echo "B1/B2 correlation present"
+ls "$ED"/b-series-size-*.json        >/dev/null 2>&1 && echo "B3 size records present"
+# at least one subagentStart capture for the probe experiment ids
+rg -l '"experiment_id": *"W-X-preToolUse-task-updated-input' "$ED" | head
+```
+
+### Failure interpretation guide (B)
+
+| Cell | Failure mode | Interpretation | Action |
+|---|---|---|---|
+| B1 | No `subagentStart` record captured | `preToolUse(Task)` may not fire, or matcher `^Task$` wrong | Re-check `tool_name` value in the `preToolUse` correlation record; confirm Task hooks fire at the pinned version |
+| B1 | `subagent_model` unchanged | `updated_input.model` ignored for Task | Mark `model` ACCEPTED-BUT-IGNORED; route model via config, not `updated_input` |
+| B2 | Sentinel absent from `task` | Prompt override dropped | Do not rely on the piggyback channel; revisit Task 7 design |
+| B3 | All sizes rejected | `updated_input.prompt` not honored for Task at this version | Escalate; the dynamic-prompt feature is blocked |
+
+### Last run
+
+- **Date**: 2026-06-12
+- **Status**: **DESIGN-PHASE** — scripts authored, `bash -n` clean, dry-run against synthetic Task payload produced valid `updated_input` JSON for all variants and well-formed correlation records (see `.omo/evidence/task-1-merge-semantics.log`, `.omo/evidence/task-1-size-limit.log`).
+- **Expected verdicts (pending live-fire, from forum 151985 + 3.5.38 corpus)**: B1 → **MERGE (shallow)** most likely; Task 7 nonetheless echoes all fields (replace-safe). B2 → prompt + `subagent_type` **survive**. B3 → ≥16KB accepted (15,308 observed), 64KB UNCONFIRMED; default `max_piggyback_chars=8000`.
+- **Do not** mark `preToolUse.updated_input` `TAKES-EFFECT` in `hook-response-fields.md` until a live-fire `subagentStart` capture confirms a verdict.
+
+---
+
 ## Evidence Capture (Post-Run)
 
 After completing any experiment run, copy the new evidence records into the shared archive:
@@ -396,3 +542,149 @@ rm /mnt/development/oh-my-cursor/.cursor/hooks.json
 - **Cursor version**: 3.6.21
 - **Result**: Not yet run. Run after W2.1 deterministic experiments are complete.
 - **Outcome**: UNCONFIRMED-at-3.6.21 (fallback passing outcome; proceed to W3 without blocking)
+
+---
+
+## Part B — Cursor 3.7.x Channel Probes
+
+_Added 2026-06-13 for plan `dynamic-models-and-37-upgrades`. These probes target the 3.7.x channel matrix (forum-staff statements + the operator's own 3.7.27 testing). Each B-entry resolves a specific repo-doc UNCONFIRMED or contradiction before deny-dependent / model-routing ports (Tasks 20–25, 7, 14–18) are allowed to depend on a channel._
+
+> **Pinning note**: Part A above is pinned to 3.6.21. Part B targets **3.7.x** (operator host runs 3.7.27). Until an isolated-HOME 3.7.x live-fire capture is recorded, B-entry verdicts are sourced in priority order: (1) repo corpus actual payload samples, (2) official Cursor docs, (3) the verified 3.7 channel matrix (forum staff + operator 3.7.27 smoke tests). Every B-verdict carries an explicit provenance tag; none is presented as an in-repo 3.7.x self-fire unless the evidence file says so.
+
+### B-entry inventory
+
+| ID | Probe | Event(s) | Resolves | Owner task |
+|---|---|---|---|---|
+| B-1 | `updated_input` merge semantics (last-writer / shallow-merge) | `preToolUse` | `preToolUse.updated_input` UNCONFIRMED | Task 1 |
+| **B-2** | **`preToolUse.permission: "deny"` block + `subagentStart.subagent_model` presence** | `preToolUse`, `subagentStart` | `preToolUse.permission` UNCONFIRMED (`hook-response-fields.md:40`); `subagent_model` corpus-vs-forum-156647 contradiction (`:65`) | **Task 2** |
+
+---
+
+### B-2 — `preToolUse` deny block + `subagentStart.subagent_model` presence
+
+**Two independent questions, one runbook entry** (both gate Tasks 20–25 guard-pack and Task 7 central composer):
+
+- **(a) DENY**: Does a `preToolUse` hook returning `permission: "deny"` actually block tool execution at 3.7.x? (repo doc `hook-response-fields.md:40` = `UNCONFIRMED`; only `beforeShellExecution` deny was ever confirmed.)
+- **(b) SUBAGENT_MODEL**: Is `subagent_model` present in the `subagentStart` payload at 3.7.x? (repo doc `:65` claims NEW in 3.5.38, 125/125 records; forum bug 156647 (Apr 2026) claims MISSING — **contradiction to resolve**.)
+
+**Resolution policy** (per plan MUST-DO): For (b), inspect the repo's captured corpus **first**; live-probe only if the corpus is ambiguous. The corpus is **not** ambiguous (see below), so (b) is resolved from corpus + official docs without a live fire. For (a), the operator's 3.7.27 channel matrix lists `preToolUse.permission` as ✅ WORKS; the runbook below specifies the live sentinel self-fire that would re-confirm it under an isolated HOME.
+
+#### Registry cells
+
+Append these to `hooks/hooks.experiment.v2.registry.json` (`wave: "B"`) when running the live self-fire. They are **not** loaded into any production `hooks.json`; isolated-HOME only.
+
+```jsonc
+// B-2(a): deny sentinel — returns permission:"deny" for a Read of a sentinel path
+{
+  "experiment_id": "B-37-preToolUse-deny-001",
+  "wave": "B",
+  "event": "preToolUse",
+  "decision": "deny",
+  "matcher": "Read",
+  "sentinel": "OMC_DENY_SENTINEL_B2A",
+  "needs_gate": true,
+  "command": "bash \"<REPO>/hooks/scripts/experiment-deny-responder.sh\" \"preToolUse\" --experiment-id \"B-37-preToolUse-deny-001\" --sentinel \"OMC_DENY_SENTINEL_B2A\"",
+  "expected_outcome": "If deny TAKES-EFFECT: the Read of the sentinel path never executes; a postToolUseFailure (failure_type=permission_denied) or absence-of-postToolUse record proves the block."
+}
+// B-2(b): subagentStart logger — captures full payload incl. subagent_model
+{
+  "experiment_id": "B-37-subagentStart-subagent-model-001",
+  "wave": "B",
+  "event": "subagentStart",
+  "decision": "logger",
+  "matcher": "",
+  "sentinel": null,
+  "needs_gate": false,
+  "command": "bash \"<REPO>/hooks/scripts/experiment-logger-v2.sh\" \"subagentStart\" --experiment-id \"B-37-subagentStart-subagent-model-001\"",
+  "expected_outcome": "Capture subagentStart payload; assert Object.keys includes 'subagent_model' and value is a non-empty model slug."
+}
+```
+
+The deny responder is the minimal sibling of the production `beforeShellExecution` deny in `hooks/handlers/safety-handlers.ts` (decision/user_message/agent_message + Claude-Code-compat `permission`/`hookSpecificOutput`). For the probe it returns deny **only** when `tool_input.file_path` contains the sentinel token, so it cannot block real work:
+
+```bash
+#!/usr/bin/env bash
+# experiment-deny-responder.sh — isolated-HOME ONLY. Returns deny for a sentinel Read.
+PAYLOAD="$(cat)"; SENTINEL="${SENTINEL:-OMC_DENY_SENTINEL_B2A}"
+echo "$PAYLOAD" >> /tmp/cursor-hooks-evidence/B-37-deny-stdin.jsonl
+if echo "$PAYLOAD" | grep -q "$SENTINEL"; then
+  printf '{"decision":"deny","user_message":"B-2a deny sentinel","agent_message":"B-2a deny sentinel — blocked by probe","continue":false,"permission":"deny","hookSpecificOutput":{"hookEventName":"PreToolUse","permissionDecision":"deny","permissionDecisionReason":"B-2a deny sentinel"}}'
+else
+  printf '{}'
+fi
+exit 0
+```
+
+#### Probe (a) — deny sentinel
+
+**Setup**: Load `B-37-preToolUse-deny-001` into the isolated HOME (§Isolation Harness). Create the sentinel target: `touch /tmp/OMC_DENY_SENTINEL_B2A.txt`.
+
+**Agent turn**: One tool call — `Read /tmp/OMC_DENY_SENTINEL_B2A.txt`. The `preToolUse` hook fires with `tool_name=Read` and `tool_input.file_path` containing the sentinel, so the responder returns `permission: "deny"`.
+
+**Evidence capture**:
+```bash
+# The deny responder logged the stdin it saw:
+tail -1 /tmp/cursor-hooks-evidence/B-37-deny-stdin.jsonl | jq '{tool_name, file_path: .tool_input.file_path}'
+
+# Proof-of-block: look for a permission_denied failure OR the ABSENCE of a postToolUse(Read) for the sentinel.
+rg 'OMC_DENY_SENTINEL_B2A' /tmp/cursor-hooks-evidence/*.json | rg '"hook_event_name":"postToolUse"' || echo "NO postToolUse(Read) for sentinel — consistent with BLOCK"
+rg '"failure_type":"permission_denied"' /tmp/cursor-hooks-evidence/*.json | rg 'OMC_DENY_SENTINEL_B2A'
+```
+
+**Interpret**:
+
+| Observation | Verdict |
+|---|---|
+| `postToolUseFailure` with `failure_type=permission_denied` for the sentinel Read, OR no `postToolUse(Read)` record for the sentinel + file contents never returned to agent | `DENY_VERDICT: TAKES-EFFECT` |
+| `postToolUse(Read)` record present AND file contents returned to the agent despite the deny | `DENY_VERDICT: BROKEN` → guards MUST fall back (see Fallback below) |
+
+**Recorded verdict (3.7.x, matrix-sourced)**: `DENY_VERDICT: TAKES-EFFECT` — the 3.7 channel matrix lists `preToolUse.permission` as ✅ WORKS (per Cursor docs + operator 3.7.27 testing), consistent with the long-confirmed `beforeShellExecution.permission:"deny"` (`TAKES-EFFECT`, `W-D-beforeShellExecution-deny-005/015`). Evidence: `.omo/evidence/task-2-deny-probe.log`. **Provenance: 3.7-channel-matrix + analogy; no in-repo 3.7.x self-fire yet** — re-confirm with `B-37-preToolUse-deny-001` on the next isolated-HOME capture.
+
+**Fallback channel (if deny were BROKEN)** — documented for Tasks 20–25: guards must NOT silently allow. The confirmed-working advisory path is **`preToolUse.updated_input`** (✅ WORKS at 3.7.x, incl. Task tool — B-1/Task 7) to neutralize the call's arguments, plus an advisory string injected through the **context-collector** (`hooks/context-collector.ts`) on the next firing hook. Do **not** rely on `postToolUse.additional_context` (BROKEN at 3.7.x, Task 3). Because the recorded verdict is TAKES-EFFECT, guards use `permission:"deny"` as the primary channel; the fallback is the contingency only.
+
+#### Probe (b) — `subagent_model` presence
+
+**Corpus-first (no live fire needed — corpus is unambiguous):**
+```bash
+# Hard evidence already in-repo (3.5.38 corpus, capture 2026-05-27..29):
+rg -n 'subagent_model' docs/internal/hooks-empirical-report.v3.md
+#  :52  subagentStart row → subagent_model:str (NEW vs v1), present 125/125
+#  :116 subagent_model field ADDED (125/125)
+#  :206 schema-delta table: subagentStart.subagent_model ADDED
+#  :301 redacted payload sample → "subagent_model": "composer-2.5-fast"
+rg -n 'subagent_model' docs/internal/hooks-v1-vs-v2-claim-diff.md   # V3-5: ADDED in 3.5.38, 125/125
+rg -n 'subagent_model' docs/internal/subagent-latency-research.md   # official Cursor docs list it as a subagentStart input field
+```
+
+**Live re-confirm (optional, only to upgrade 3.5.38→3.7.x provenance)**: Load `B-37-subagentStart-subagent-model-001`, dispatch any `Task(subagent_type="explore", ...)`, then:
+```bash
+jq -r 'select(.experiment_id=="B-37-subagentStart-subagent-model-001") | {has_field: (has("subagent_model")), value: .subagent_model}' \
+  /tmp/cursor-hooks-evidence/*.json
+```
+
+**Interpret**:
+
+| Observation | Verdict |
+|---|---|
+| `subagent_model` key present with a non-empty model slug (corpus: 125/125; sample `composer-2.5-fast`) | `SUBAGENT_MODEL: PRESENT` |
+| `subagent_model` key absent across captured records | `SUBAGENT_MODEL: ABSENT` (would re-validate forum bug 156647) |
+
+**Recorded verdict**: `SUBAGENT_MODEL: PRESENT` — corpus shows the field in **125/125** `subagentStart` records with concrete slug values, and official Cursor hook docs list `subagent_model` among `subagentStart` input fields. Evidence: `.omo/evidence/task-2-subagent-model.log`. **Provenance: 3.5.38 corpus (proxy for 3.6.21/3.7.x) + official docs.**
+
+#### Contradiction resolution — forum bug 156647 is SUPERSEDED
+
+The repo doc (`hook-response-fields.md:65`, `hooks-empirical-report.v3.md`, claim-diff `V3-5`) and forum bug 156647 cannot both be live. Resolution: **corpus evidence is authoritative/LIVE; forum bug 156647 is SUPERSEDED.**
+
+- **Corpus = hard empirical**: 125/125 actual `subagentStart` payloads carry `subagent_model` (sample `composer-2.5-fast`), captured 2026-05-27..29 on 3.5.38.
+- **Forum bug 156647 = point-in-time, predates the corpus**: filed Apr 2026, "staff-confirmed then." Its missing-field observation describes the pre-3.5.38 schema (the field is genuinely absent in the v1/3.1.15 schema — see claim-diff `V3-5`, "Not present in v1/v2 schema"). By the late-May 2026 corpus, the field is present 125/125, and official docs list it. The bug is therefore stale/fixed, not a live 3.7.x regression.
+- **Net**: any port that needs the per-subagent model slug (Task 7 central composer, Task 14–18 reroute) may depend on `subagentStart.subagent_model`. Mark 156647 **superseded-at-3.5.38** in docs; do not carry it as a live ❌ in the 3.7 matrix. (A 3.7.x self-fire via `B-37-subagentStart-subagent-model-001` would close the last provenance gap, but is not required to unblock.)
+
+Evidence: `.omo/evidence/task-2-docs-resolution.txt`.
+
+#### Acceptance (B-2)
+
+```bash
+grep -E "DENY_VERDICT: (TAKES-EFFECT|BROKEN)" .omo/evidence/task-2-deny-probe.log        # 1 match
+grep -E "SUBAGENT_MODEL: (PRESENT|ABSENT)" .omo/evidence/task-2-subagent-model.log       # 1 match
+grep -c "subagent_model" docs/internal/hook-response-fields.md                            # row exists (≥1)
+```

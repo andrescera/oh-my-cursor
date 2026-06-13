@@ -1,6 +1,7 @@
 import { describe, it, expect, beforeEach } from "bun:test"
 import { resolve } from "node:path"
 import { createWriteExistingFileGuardHandler } from "./write-existing-file-guard"
+import { contextCollector } from "../context-collector"
 import { conversations, getOrCreateConversation } from "../shared"
 
 const CONV = "write-existing-file-guard-test-conv"
@@ -21,20 +22,31 @@ describe("write-existing-file-guard", () => {
 
   beforeEach(() => {
     conversations.delete(CONV)
+    contextCollector.clear(CONV)
   })
 
-  it("denies write to existing unread file with advisory fallback", () => {
+  it("denies write to existing unread file and reroutes advisory to the collector", () => {
     const handler = createWriteExistingFileGuardHandler(conversations, { existsSync })["/preToolUse"]!
-    const result = handler(writeInput(EXISTING))
+    const result = handler(writeInput(EXISTING)) as Record<string, unknown>
 
+    // Deny is still routed via the live preToolUse channels (Task 2 verdict).
     expect(result.permission).toBe("deny")
-    expect(result.additional_context).toContain("[write-existing-file-guard]")
-    expect(result.additional_context).toContain(EXISTING)
-    expect(result.userMessage).toBe(result.additional_context)
+    expect(result.userMessage).toContain("[write-existing-file-guard]")
+    expect(result.userMessage).toContain(EXISTING)
+    expect(result.agentMessage).toBe(result.userMessage)
     expect(result.hookSpecificOutput).toMatchObject({
       hookEventName: "PreToolUse",
       permissionDecision: "deny",
     })
+
+    // The dead postToolUse-style field is gone.
+    expect(result).not.toHaveProperty("additional_context")
+
+    // The same advisory is rerouted to the collector for next-turn piggyback delivery.
+    const pending = contextCollector.getPending(CONV)
+    expect(pending.hasContent).toBe(true)
+    expect(pending.merged).toContain("[write-existing-file-guard]")
+    expect(pending.merged).toContain(EXISTING)
   })
 
   it("allows write to non-existing file", () => {

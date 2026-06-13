@@ -1,6 +1,7 @@
 import { existsSync as defaultExistsSync } from "node:fs"
 import { resolve } from "node:path"
 import type { ConversationState, HandlerMap } from "../types"
+import { contextCollector } from "../context-collector"
 import {
   derivedProjectRoot,
   getOrCreateConversation,
@@ -45,11 +46,18 @@ export function createWriteExistingFileGuardHandler(
       }
 
       const advisory = `[write-existing-file-guard] Writing to "${rawPath}" without reading it first. Please Read the file to verify current contents before overwriting.`
+
+      contextCollector.register(convId, {
+        id: "write-existing-file-guard",
+        source: "write-existing-file-guard",
+        content: advisory,
+        priority: "high",
+      })
+
       return {
         permission: "deny",
         userMessage: advisory,
         agentMessage: advisory,
-        additional_context: advisory,
         hookSpecificOutput: {
           hookEventName: "PreToolUse",
           permissionDecision: "deny",

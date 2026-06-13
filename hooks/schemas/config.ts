@@ -146,6 +146,9 @@ export const HandlersSchema = z.object({
   fsync_skip_warning: z.object({
     enabled: z.boolean().default(true),
   }).default({ enabled: true }),
+  tool_pair_validator: z.object({
+    enabled: z.boolean().default(true),
+  }).default({ enabled: true }),
 })
 
 export const OhMyCursorConfigSchema = z.object({
@@ -201,6 +204,7 @@ export const OhMyCursorConfigSchema = z.object({
     notepad_write_guard: { enabled: true },
     question_label_truncator: { enabled: true },
     fsync_skip_warning: { enabled: true },
+    tool_pair_validator: { enabled: true },
   }),
 })
 

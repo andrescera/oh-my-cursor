@@ -17,6 +17,7 @@ import { createQuestionLabelTruncatorHandler } from "./handlers/question-label-t
 import { createPlanFormatValidatorHandler } from "./handlers/plan-format-validator"
 import { createNotepadWriteGuardHandler } from "./handlers/notepad-write-guard"
 import { createFsyncSkipWarningHandlerMap } from "./handlers/fsync-skip-warning"
+import { createToolPairValidatorHandler } from "./handlers/tool-pair-validator"
 import { createConversationHistoryHandler } from "./handlers/conversation-history"
 import { BackgroundTracker, createBackgroundTasksHandler } from "./handlers/background-tracker"
 import { createAgentHistoryHandler } from "./handlers/agent-history"
@@ -437,6 +438,34 @@ const handlers: HandlerMap = {
       startTime: new Date(startTime).toISOString(),
     }
   },
+}
+
+// tool-pair-validator (read-before-edit enforcement). Routes are composed via
+// object spread where the LAST spread wins a key, so the validator is CHAINED
+// onto the existing live winners instead of overwriting them: the current
+// winner runs first (exact behavior preserved), then the validator runs.
+{
+  const toolPair = createToolPairValidatorHandler(conversations)
+  const livePreToolUse = handlers["/preToolUse"]
+  const livePostToolUse = handlers["/postToolUse"]
+  const validateEdit = toolPair["/preToolUse"]
+  const trackRead = toolPair["/postToolUse"]
+  if (validateEdit) {
+    handlers["/preToolUse"] = (input) => {
+      if (livePreToolUse) {
+        const upstream = livePreToolUse(input)
+        if (upstream && typeof upstream === "object" && Object.keys(upstream).length > 0) return upstream
+      }
+      return validateEdit(input)
+    }
+  }
+  if (trackRead) {
+    handlers["/postToolUse"] = (input) => {
+      const upstream = livePostToolUse ? livePostToolUse(input) : {}
+      trackRead(input)
+      return upstream
+    }
+  }
 }
 
 const fetchHandler = async (req: Request) => {

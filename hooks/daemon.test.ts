@@ -1190,6 +1190,15 @@ describe("hook daemon", () => {
       expect("cursorVersion" in data).toBe(true)
       expect(typeof data.cachedAt).toBe("string")
       expect(Array.isArray(data.observedAdditions)).toBe(true)
+      // Task 8: modelsByAgent field is exposed
+      expect(typeof data.modelsByAgent).toBe("object")
+      expect(data.modelsByAgent).not.toBeNull()
+      const modelsByAgent = data.modelsByAgent as Record<string, unknown>
+      // Verify it's a mapping of agent names to model arrays
+      for (const [agent, models] of Object.entries(modelsByAgent)) {
+        expect(typeof agent).toBe("string")
+        expect(Array.isArray(models)).toBe(true)
+      }
     })
 
     test("with ?token= query param returns 200", async () => {

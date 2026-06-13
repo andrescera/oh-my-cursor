@@ -9,7 +9,7 @@ import { bindWithRetry, flushOnCrash } from "./bind-with-retry"
 import { conversations, parseInput, extractMeta, classifyAction, setPersistence } from "./shared"
 import { isHookEnabled, getHookConfig, resetHookConfigCache } from "./hook-config"
 import { createConversationHandlers } from "./handlers/conversation-handlers"
-import { createToolGuardHandlers } from "./handlers/tool-guard-handlers"
+import { createToolGuardHandlers, refreshPlanModeAllowedAgents } from "./handlers/tool-guard-handlers"
 import { createContinuationHandlers } from "./handlers/continuation-handlers"
 import { createSafetyHandlers } from "./handlers/safety-handlers"
 import { createSubagentHandlers } from "./handlers/subagent-handlers"
@@ -43,6 +43,7 @@ import { createMetrics } from "./lib/metrics"
 import { acquireStartupLock, releaseStartupLock } from "./lib/startup-lock"
 import { getOrCreateToken, extractProvidedToken, tokensMatch } from "./lib/daemon-token"
 import { introspectionRuntime } from "./lib/introspection-runtime"
+import { CHANNEL_STATUS_TABLE } from "./lib/channel-status"
 
 const HOT_PATHS = new Set([
   "/preToolUse",
@@ -80,6 +81,7 @@ const DIAGNOSTIC_PATHS = new Set([
   "/config",
   "/config/full",
   "/introspection",
+  "/channel-status",
 ])
 
 const OBSERVE_INTROSPECTION_ROUTES = new Set([
@@ -197,7 +199,7 @@ function requiresToken(path: string): boolean {
     path === "/status" || path === "/shutdown" || path === "/metrics" ||
     path === "/dashboard" || path === "/dashboard/index.html" ||
     path === "/agentHistory" || path === "/backgroundTasks" ||
-    path === "/introspection"
+    path === "/introspection" || path === "/channel-status"
   )
 }
 
@@ -1163,6 +1165,8 @@ backgroundWorker.start()
 introspectionRuntime.init().catch((err) => {
   console.error("[oh-my-cursor] Introspection init failed:", err instanceof Error ? err.message : String(err))
 })
+
+refreshPlanModeAllowedAgents()
 
 process.on("SIGTERM", () => { void gracefulShutdown("SIGTERM") })
 process.on("SIGINT", () => { void gracefulShutdown("SIGINT") })

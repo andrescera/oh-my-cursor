@@ -3,6 +3,7 @@ name: explore
 description: "Codebase search specialist. Use for finding files, patterns, code structure, and answering 'where is X' or 'how does X work' questions. Runs searches in parallel. Read-only, runs in background."
 model: composer-2-fast
 readonly: true
+plan_safe: true
 is_background: true
 ---
 

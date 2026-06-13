@@ -590,3 +590,87 @@ describe("TodoWrite tracking via preToolUse", () => {
     expect(conversation.lastTodoSnapshot).toBe("")
   })
 })
+
+describe("getPlanModeAllowedAgents", () => {
+  let tempDir: string
+
+  beforeEach(() => {
+    tempDir = mkdtempSync(join(tmpdir(), "plan-mode-agents-"))
+  })
+
+  afterEach(() => {
+    rmSync(tempDir, { recursive: true, force: true })
+  })
+
+  it("returns agents with readonly:true from frontmatter", async () => {
+    // Create test agent files with readonly:true
+    writeFileSync(
+      join(tempDir, "explore.md"),
+      `---
+name: explore
+readonly: true
+---
+# Explore`,
+    )
+    writeFileSync(
+      join(tempDir, "oracle.md"),
+      `---
+name: oracle
+readonly: true
+---
+# Oracle`,
+    )
+    writeFileSync(
+      join(tempDir, "sisyphus.md"),
+      `---
+name: sisyphus
+---
+# Sisyphus`,
+    )
+
+    const { getPlanModeAllowedAgents } = await import("./tool-guard-handlers")
+    const agents = getPlanModeAllowedAgents(tempDir)
+    expect(agents).toContain("explore")
+    expect(agents).toContain("oracle")
+    expect(agents).not.toContain("sisyphus")
+  })
+
+  it("returns fallback set when agents dir is empty", async () => {
+    const { getPlanModeAllowedAgents } = await import("./tool-guard-handlers")
+    const agents = getPlanModeAllowedAgents(tempDir)
+    expect(agents).toEqual(["explore", "librarian", "metis", "momus", "oracle"])
+  })
+
+  it("returns fallback set when frontmatter parsing fails", async () => {
+    // Create a malformed agent file
+    writeFileSync(join(tempDir, "bad.md"), "no frontmatter here")
+
+    const { getPlanModeAllowedAgents } = await import("./tool-guard-handlers")
+    const agents = getPlanModeAllowedAgents(tempDir)
+    expect(agents).toEqual(["explore", "librarian", "metis", "momus", "oracle"])
+  })
+
+  it("equality regression: derived set matches current hardcoded set on real agents/ dir", async () => {
+    const { getPlanModeAllowedAgents } = await import("./tool-guard-handlers")
+    const agentsDir = join(import.meta.dir, "../../agents")
+    const agents = getPlanModeAllowedAgents(agentsDir)
+    const sorted = agents.sort()
+    expect(sorted).toEqual(["explore", "librarian", "metis", "momus", "oracle"])
+  })
+
+  it("refreshPlanModeAllowedAgents updates the cached set", async () => {
+    writeFileSync(
+      join(tempDir, "explore.md"),
+      `---
+name: explore
+readonly: true
+---
+# Explore`,
+    )
+
+    const { refreshPlanModeAllowedAgents, getPlanModeAllowedAgents } = await import("./tool-guard-handlers")
+    refreshPlanModeAllowedAgents(tempDir)
+    const agents = getPlanModeAllowedAgents()
+    expect(agents).toContain("explore")
+  })
+})

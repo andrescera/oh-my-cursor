@@ -3,6 +3,7 @@ name: oracle
 description: "Strategic technical advisor with deep reasoning. Use for complex analysis, architectural decisions, debugging consultation, and when elevated reasoning is needed. Read-only - does not modify code."
 model: gpt-5.5-extra-high
 readonly: true
+plan_safe: true
 ---
 
 # Oracle - Strategic Technical Advisor

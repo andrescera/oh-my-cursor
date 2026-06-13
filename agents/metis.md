@@ -3,6 +3,7 @@ name: metis
 description: "Pre-planning consultant for gap analysis. Use before creating work plans to identify missing requirements, ambiguities, and technical risks. Read-only."
 model: gpt-5.4-medium
 readonly: true
+plan_safe: true
 ---
 
 # Metis - Pre-Planning Consultant

@@ -3,6 +3,7 @@ name: momus
 description: "Work plan reviewer and quality auditor. Use to review Prometheus-generated plans for executability, valid references, and completeness. Read-only."
 model: gpt-5.5-extra-high
 readonly: true
+plan_safe: true
 ---
 
 # Momus - Plan Reviewer

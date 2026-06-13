@@ -1,5 +1,5 @@
-import { existsSync, readFileSync } from "node:fs"
-import { resolve } from "node:path"
+import { existsSync, readFileSync, readdirSync } from "node:fs"
+import { resolve, join } from "node:path"
 import type { HandlerMap, RecentToolTrailEntry, ConversationState } from "../types"
 import type { BackgroundTracker } from "./background-tracker"
 import {
@@ -30,6 +30,69 @@ import { contextCollector } from "../context-collector"
 import { logEvent } from "../event-logger"
 import { redactSecrets } from "../secret-redactor"
 
+const FALLBACK_PLAN_MODE_AGENTS = ["explore", "librarian", "metis", "momus", "oracle"]
+let cachedPlanModeAllowedAgents: string[] | null = null
+
+function parseFrontmatter(content: string): Record<string, unknown> {
+  const match = content.match(/^---\n([\s\S]*?)\n---/)
+  if (!match) return {}
+  const yaml = match[1]
+  const result: Record<string, unknown> = {}
+  for (const line of yaml.split("\n")) {
+    const colonIdx = line.indexOf(":")
+    if (colonIdx === -1) continue
+    const key = line.slice(0, colonIdx).trim()
+    const value = line.slice(colonIdx + 1).trim()
+    if (value === "true") result[key] = true
+    else if (value === "false") result[key] = false
+    else result[key] = value
+  }
+  return result
+}
+
+export function getPlanModeAllowedAgents(agentsDir?: string): string[] {
+  if (cachedPlanModeAllowedAgents !== null) {
+    return cachedPlanModeAllowedAgents
+  }
+
+  const dir = agentsDir || resolve(import.meta.dir, "../../agents")
+
+  if (!existsSync(dir)) {
+    return FALLBACK_PLAN_MODE_AGENTS
+  }
+
+  try {
+    const files = readdirSync(dir)
+    const agents: string[] = []
+
+    for (const file of files) {
+      if (!file.endsWith(".md")) continue
+      const filePath = join(dir, file)
+      try {
+        const content = readFileSync(filePath, "utf-8")
+        const frontmatter = parseFrontmatter(content)
+        if (frontmatter.plan_safe === true && typeof frontmatter.name === "string") {
+          agents.push(frontmatter.name)
+        }
+      } catch {
+        continue
+      }
+    }
+
+    if (agents.length === 0) {
+      return FALLBACK_PLAN_MODE_AGENTS
+    }
+
+    return agents.sort()
+  } catch {
+    return FALLBACK_PLAN_MODE_AGENTS
+  }
+}
+
+export function refreshPlanModeAllowedAgents(agentsDir?: string): void {
+  cachedPlanModeAllowedAgents = getPlanModeAllowedAgents(agentsDir)
+}
+
 function logBlocked(convId: string, reason: string, meta: Record<string, unknown>): void {
   logEvent({
     ts: new Date().toISOString(),
@@ -40,7 +103,9 @@ function logBlocked(convId: string, reason: string, meta: Record<string, unknown
   })
 }
 
-const PLAN_MODE_ALLOWED_AGENTS = new Set(["explore", "metis", "momus", "librarian", "oracle"])
+function getPlanModeAllowedAgentsSet(): Set<string> {
+  return new Set(getPlanModeAllowedAgents())
+}
 
 const RECENT_TOOL_TRAIL_MAX = 15
 const SKILL_REMINDER_INTERVAL = 20
@@ -313,7 +378,7 @@ export function createToolGuardHandlers(
             }
           }
 
-          if (resolvedMode === "plan" && !PLAN_MODE_ALLOWED_AGENTS.has(normalized)) {
+          if (resolvedMode === "plan" && !getPlanModeAllowedAgentsSet().has(normalized)) {
             logBlocked(convId, "plan_agent_guard", { agent: redactSecrets(normalized).slice(0, 256), mode: "plan" })
             const reason = `[mode-guard] Agent type '${normalized}' is not allowed in Plan mode. Only explore, metis, momus, librarian, and oracle are allowed.`
             const advisory = `[mode-guard] Agent type '${normalized}' blocked in Plan mode. Only explore, metis, momus, librarian, and oracle are allowed in Plan mode.`

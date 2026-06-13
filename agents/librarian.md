@@ -3,6 +3,7 @@ name: librarian
 description: "External documentation and open-source codebase search specialist. Use for finding library docs, API references, OSS implementation examples, and external best practices. Read-only. Uses the fast model (typically the latest Composer version)."
 model: composer-2-fast
 readonly: true
+plan_safe: true
 is_background: true
 ---
 

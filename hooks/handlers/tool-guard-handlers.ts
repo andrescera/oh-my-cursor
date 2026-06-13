@@ -593,17 +593,11 @@ export function createToolGuardHandlers(
 
       commentChecker({ tool_name: toolName, output, conversationId: convId })
 
-      const trunc = toolOutputTruncator({ output })
+      const trunc = toolOutputTruncator({ output, conversationId: convId })
       let modifiedOutput: string | undefined
       const truncMod = trunc.modified_output as string | undefined
       if (truncMod !== undefined) {
         modifiedOutput = truncMod
-        contextCollector.register(convId, {
-          id: "truncation-notice",
-          source: "tool-output-truncator",
-          content: `[tool-output-truncator] Output was truncated from ${output.length} chars.`,
-          priority: "normal",
-        })
       }
 
       if (["task", "Task"].includes(toolName)) {

@@ -1,3 +1,7 @@
+import { contextCollector, type ContextCollector } from "../context-collector"
+
+type CollectorLike = Pick<ContextCollector, "register">
+
 const WRITE_TOOLS = new Set([
   "Write",
   "StrReplace",
@@ -32,8 +36,12 @@ function hasSlop(output: string): boolean {
   return false
 }
 
-export function createCommentChecker() {
-  return (input: Record<string, unknown>): Record<string, unknown> => {
+// Findings route through contextCollector.register() (delivered via the
+// preToolUse(Task) piggyback), never postToolUse.additional_context which is
+// BROKEN-AT-3.7.x (docs/internal/hook-response-fields.md). `normal` priority.
+export function createCommentChecker(deps?: { collector?: CollectorLike }) {
+  const collector = deps?.collector ?? contextCollector
+  return (input: Record<string, unknown>): Record<string, never> => {
     const toolName = input.tool_name as string | undefined
     if (!toolName || !WRITE_TOOLS.has(toolName)) return {}
 
@@ -41,7 +49,13 @@ export function createCommentChecker() {
     if (!output) return {}
 
     if (hasSlop(output)) {
-      return { additional_context: WARNING }
+      const conversationId = (input.conversationId as string) ?? ""
+      collector.register(conversationId, {
+        id: "comment-check",
+        source: "comment-checker",
+        content: WARNING,
+        priority: "normal",
+      })
     }
 
     return {}

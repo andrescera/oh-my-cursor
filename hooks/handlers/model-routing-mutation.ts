@@ -42,6 +42,11 @@ import {
   type GetEnumOptions,
 } from "../lib/task-schema-introspector"
 import { contextCollector as defaultContextCollector } from "../context-collector"
+import {
+  introspectionRuntime,
+  type IntrospectionSnapshot,
+} from "../lib/introspection-runtime"
+import { AGENT_MODEL_ALLOWLIST, isModelAllowedForAgent } from "../lib/agent-model-allowlist"
 import type { OhMyCursorConfig } from "../schemas/config"
 
 /** Stable provider id — re-registering replaces the prior provider by id. */
@@ -74,6 +79,7 @@ export interface AdvisoryCollector {
 export interface ModelRoutingDeps {
   loadConfig?: (projectDir?: string) => OhMyCursorConfig
   getEnum?: (options?: GetEnumOptions) => Promise<EnumResult>
+  getSnapshot?: () => IntrospectionSnapshot
   contextCollector?: AdvisoryCollector
   logWarn?: ModelRoutingLogger
   getProjectDir?: () => string | undefined
@@ -108,6 +114,58 @@ function resolveModelFromConfig(config: OhMyCursorConfig, agent: string): Resolv
   return { disabled: false }
 }
 
+interface AllowlistDecision {
+  model: string | null
+  advisory?: { rejected: string; fallback: string }
+}
+
+function hasCuratedSet(agent: string): boolean {
+  const curated = AGENT_MODEL_ALLOWLIST[agent]
+  return Array.isArray(curated) && curated.length > 0
+}
+
+/**
+ * Dispatch-time per-agent allowlist gate (SYNCHRONOUS — the 50ms hot path forbids
+ * awaits). Returns the model to apply (or `null` to inherit the parent) plus an
+ * optional advisory describing a fallback. Semantics:
+ *   - `"inherit"` is always allowed → applied as-is, never gated.
+ *   - Snapshot read throws (cache not warm) → treat as permissive, apply as-is.
+ *   - Allowed (curated member or permissive agent) → apply as-is.
+ *   - Curated agent + disallowed model → fall back to `categories[agent].model`
+ *     when that candidate is itself allowed, else inherit the parent (`null`).
+ */
+function validateAgainstAllowlist(
+  resolved: string,
+  agent: string,
+  config: OhMyCursorConfig,
+  getSnapshot: () => IntrospectionSnapshot,
+): AllowlistDecision {
+  if (resolved === "inherit") return { model: resolved }
+
+  let snapshot: IntrospectionSnapshot
+  try {
+    snapshot = getSnapshot()
+  } catch {
+    return { model: resolved }
+  }
+
+  if (isModelAllowedForAgent(agent, resolved, snapshot)) return { model: resolved }
+
+  // Disallowed. Permissive agents (no curated set) still apply as-is, no advisory.
+  if (!hasCuratedSet(agent)) return { model: resolved }
+
+  const categoryModel = config.categories?.[agent]?.model
+  if (
+    nonEmptyString(categoryModel) &&
+    categoryModel !== resolved &&
+    isModelAllowedForAgent(agent, categoryModel, snapshot)
+  ) {
+    return { model: categoryModel, advisory: { rejected: resolved, fallback: categoryModel } }
+  }
+
+  return { model: null, advisory: { rejected: resolved, fallback: "inherit" } }
+}
+
 /**
  * Fire-and-forget advisory: warn (out-of-band) when the resolved slug is not in
  * the introspector enum. The model is applied regardless — this never gates.
@@ -139,6 +197,7 @@ function validateSlugAsync(
 export function createModelRoutingProvider(deps: ModelRoutingDeps = {}): TaskMutationProvider {
   const loadConfig = deps.loadConfig ?? defaultLoadConfig
   const getEnum = deps.getEnum ?? defaultGetEnum
+  const getSnapshot = deps.getSnapshot ?? (() => introspectionRuntime.getSnapshot())
   const collector = deps.contextCollector ?? defaultContextCollector
   const logWarn =
     deps.logWarn ??
@@ -185,13 +244,32 @@ export function createModelRoutingProvider(deps: ModelRoutingDeps = {}): TaskMut
 
       if (!nonEmptyString(resolved)) return null
 
+      // Synchronous per-agent allowlist gate (never awaits — 50ms hot-path budget).
+      const decision = validateAgainstAllowlist(resolved, agent, config, getSnapshot)
+      if (decision.advisory) {
+        try {
+          collector.register(conversationId, {
+            id: `model-routing-allowlist:${agent}`,
+            source: "model-routing",
+            content:
+              `[model-routing] Agent '${agent}' override '${decision.advisory.rejected}' is not ` +
+              `in its allowed model set; falling back to '${decision.advisory.fallback}'.`,
+            priority: "critical",
+          })
+        } catch {
+          // Advisory registration is best-effort; never break the hot path.
+        }
+      }
+      if (decision.model === null) return null
+
+      const finalModel = decision.model
       const incoming = nonEmptyString(toolInput.model) ? toolInput.model : undefined
-      if (incoming === resolved) return null
+      if (incoming === finalModel) return null
 
       // Apply now; validate-and-warn out of band (mutate must stay synchronous).
-      validateSlugAsync(resolved, agent, getEnum, logWarn)
+      validateSlugAsync(finalModel, agent, getEnum, logWarn)
 
-      return { model: resolved }
+      return { model: finalModel }
     },
   }
 }

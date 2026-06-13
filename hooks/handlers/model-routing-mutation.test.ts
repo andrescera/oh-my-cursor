@@ -8,6 +8,7 @@ import {
 import { taskInputComposer } from "./task-input-composer"
 import type { OhMyCursorConfig } from "../schemas/config"
 import type { EnumResult } from "../lib/task-schema-introspector"
+import type { IntrospectionSnapshot } from "../lib/introspection-runtime"
 
 // ---------------------------------------------------------------------------
 // Test helpers — hermetic deps (no real config files, no real bundle scan).
@@ -30,12 +31,44 @@ function enumResult(models: string[]): EnumResult {
   return { models, agents: [], source: "fallback", cachedAt: new Date().toISOString() }
 }
 
+function snapshotOf(models: string[]): IntrospectionSnapshot {
+  return {
+    models,
+    agents: [],
+    source: "fallback",
+    cachedAt: new Date().toISOString(),
+    observedAdditions: [],
+  }
+}
+
+const DEFAULT_SNAPSHOT_MODELS: string[] = [
+  "composer-2-fast",
+  "composer-2",
+  "gpt-5.4-medium",
+  "gpt-5.4-high",
+  "gemini-3.1-pro",
+  "gemini-3-flash",
+  "claude-opus-4-7-thinking-xhigh",
+  "claude-opus-4-7-thinking",
+  "gpt-5.5-extra-high",
+  "gpt-5.5-medium",
+  "claude-4.6-sonnet-medium-thinking",
+  "claude-4.6-sonnet-thinking",
+]
+
 const flush = (): Promise<void> => new Promise((r) => setTimeout(r, 5))
 
 type RegisterCall = { conversationId: string; options: Record<string, unknown> }
 type WarnCall = { message: string; meta?: Record<string, unknown> }
 
-function makeDeps(opts: { config?: OhMyCursorConfig; enumModels?: string[] } = {}): {
+function makeDeps(
+  opts: {
+    config?: OhMyCursorConfig
+    enumModels?: string[]
+    snapshotModels?: string[]
+    getSnapshot?: () => IntrospectionSnapshot
+  } = {},
+): {
   deps: ModelRoutingDeps
   registerCalls: RegisterCall[]
   warnCalls: WarnCall[]
@@ -46,12 +79,14 @@ function makeDeps(opts: { config?: OhMyCursorConfig; enumModels?: string[] } = {
   let getEnumCount = 0
   const config = opts.config ?? makeConfig({})
   const enumModels = opts.enumModels ?? []
+  const snapshotModels = opts.snapshotModels ?? DEFAULT_SNAPSHOT_MODELS
   const deps: ModelRoutingDeps = {
     loadConfig: () => config,
     getEnum: async (): Promise<EnumResult> => {
       getEnumCount++
       return enumResult(enumModels)
     },
+    getSnapshot: opts.getSnapshot ?? ((): IntrospectionSnapshot => snapshotOf(snapshotModels)),
     contextCollector: {
       register: (conversationId: string, options: Record<string, unknown>): void => {
         registerCalls.push({ conversationId, options })
@@ -162,14 +197,14 @@ describe("model-routing-mutation — no-op (null) cases", () => {
 describe("model-routing-mutation — category fallback", () => {
   it("falls back to categories[agent].model when no agent override exists", () => {
     const { deps } = makeDeps({
-      config: makeConfig({ categories: { explore: { model: "gemini-3.1-pro" } } }),
-      enumModels: ["gemini-3.1-pro"],
+      config: makeConfig({ categories: { explore: { model: "composer-2" } } }),
+      enumModels: ["composer-2"],
     })
     const provider = createModelRoutingProvider(deps)
 
     const result = provider.mutate("conv-1", { subagent_type: "explore", model: "composer-2-fast" })
 
-    expect(result).toEqual({ model: "gemini-3.1-pro" })
+    expect(result).toEqual({ model: "composer-2" })
   })
 
   it("agent_overrides[agent].model wins over categories[agent].model", () => {
@@ -191,15 +226,15 @@ describe("model-routing-mutation — category fallback", () => {
     const { deps } = makeDeps({
       config: makeConfig({
         agent_overrides: { explore: { fallback_models: [] } },
-        categories: { explore: { model: "gemini-3.1-pro" } },
+        categories: { explore: { model: "composer-2" } },
       }),
-      enumModels: ["gemini-3.1-pro"],
+      enumModels: ["composer-2"],
     })
     const provider = createModelRoutingProvider(deps)
 
     const result = provider.mutate("conv-1", { subagent_type: "explore" })
 
-    expect(result).toEqual({ model: "gemini-3.1-pro" })
+    expect(result).toEqual({ model: "composer-2" })
   })
 })
 
@@ -261,14 +296,14 @@ describe("model-routing-mutation — disabled agent", () => {
 describe("model-routing-mutation — advisory slug validation", () => {
   it("applies an unknown slug anyway and warns via the daemon logger", async () => {
     const { deps, warnCalls } = makeDeps({
-      config: makeConfig({ agent_overrides: { explore: { model: "totally-fake-model" } } }),
+      config: makeConfig({ agent_overrides: { "custom-worker": { model: "totally-fake-model" } } }),
       enumModels: ["composer-2-fast", "gpt-5.4-medium"],
+      snapshotModels: ["composer-2-fast", "gpt-5.4-medium"],
     })
     const provider = createModelRoutingProvider(deps)
 
-    const result = provider.mutate("conv-8", { subagent_type: "explore" })
+    const result = provider.mutate("conv-8", { subagent_type: "custom-worker" })
 
-    // mutation applies synchronously, regardless of the async validation
     expect(result).toEqual({ model: "totally-fake-model" })
 
     await flush()
@@ -287,6 +322,132 @@ describe("model-routing-mutation — advisory slug validation", () => {
 
     await flush()
     expect(warnCalls).toHaveLength(0)
+  })
+})
+
+// ---------------------------------------------------------------------------
+// Dispatch-time per-agent allowlist validation + fallback
+// ---------------------------------------------------------------------------
+
+describe("model-routing-mutation — per-agent allowlist validation", () => {
+  it("falls back to the category default when a curated agent's override is not allowed", () => {
+    const { deps, registerCalls } = makeDeps({
+      config: makeConfig({
+        agent_overrides: { explore: { model: "claude-opus-4-7-thinking-xhigh" } },
+        categories: { explore: { model: "composer-2" } },
+      }),
+      enumModels: ["claude-opus-4-7-thinking-xhigh", "composer-2"],
+    })
+    const provider = createModelRoutingProvider(deps)
+
+    const result = provider.mutate("conv-a", { subagent_type: "explore" })
+
+    expect(result).toEqual({ model: "composer-2" })
+    expect(registerCalls).toHaveLength(1)
+    expect(registerCalls[0].conversationId).toBe("conv-a")
+    expect(registerCalls[0].options.priority).toBe("critical")
+    expect(String(registerCalls[0].options.content)).toContain("explore")
+    expect(String(registerCalls[0].options.content)).toContain("claude-opus-4-7-thinking-xhigh")
+    expect(String(registerCalls[0].options.content)).toContain("composer-2")
+  })
+
+  it("inherits the parent model (null) with a critical advisory when no valid fallback exists", () => {
+    const { deps, registerCalls } = makeDeps({
+      config: makeConfig({ agent_overrides: { explore: { model: "claude-opus-4-7-thinking-xhigh" } } }),
+    })
+    const provider = createModelRoutingProvider(deps)
+
+    const result = provider.mutate("conv-b", { subagent_type: "explore", model: "composer-2-fast" })
+
+    expect(result).toBeNull()
+    expect(registerCalls).toHaveLength(1)
+    expect(registerCalls[0].options.priority).toBe("critical")
+    expect(String(registerCalls[0].options.content)).toContain("explore")
+    expect(String(registerCalls[0].options.content)).toContain("claude-opus-4-7-thinking-xhigh")
+    expect(String(registerCalls[0].options.content)).toContain("inherit")
+  })
+
+  it("inherits when the only category fallback is itself disallowed for the curated agent", () => {
+    const { deps, registerCalls } = makeDeps({
+      config: makeConfig({
+        agent_overrides: { explore: { model: "claude-opus-4-7-thinking-xhigh" } },
+        categories: { explore: { model: "gemini-3.1-pro" } },
+      }),
+    })
+    const provider = createModelRoutingProvider(deps)
+
+    const result = provider.mutate("conv-b2", { subagent_type: "explore" })
+
+    expect(result).toBeNull()
+    expect(registerCalls).toHaveLength(1)
+    expect(String(registerCalls[0].options.content)).toContain("inherit")
+  })
+
+  it("applies the override as-is for a permissive (unknown) agent and registers no advisory", () => {
+    const { deps, registerCalls } = makeDeps({
+      config: makeConfig({ agent_overrides: { "custom-worker": { model: "some-custom-model" } } }),
+      snapshotModels: ["composer-2-fast"],
+      enumModels: ["composer-2-fast"],
+    })
+    const provider = createModelRoutingProvider(deps)
+
+    const result = provider.mutate("conv-c", { subagent_type: "custom-worker" })
+
+    expect(result).toEqual({ model: "some-custom-model" })
+    expect(registerCalls).toHaveLength(0)
+  })
+
+  it("treats the agent as permissive (applies as-is) when the snapshot read throws", () => {
+    const { deps, registerCalls } = makeDeps({
+      config: makeConfig({ agent_overrides: { explore: { model: "claude-opus-4-7-thinking-xhigh" } } }),
+      getSnapshot: (): IntrospectionSnapshot => {
+        throw new Error("cache not warm")
+      },
+    })
+    const provider = createModelRoutingProvider(deps)
+
+    const result = provider.mutate("conv-cold", { subagent_type: "explore" })
+
+    expect(result).toEqual({ model: "claude-opus-4-7-thinking-xhigh" })
+    expect(registerCalls).toHaveLength(0)
+  })
+
+  it("never rejects or falls back when the resolved model is 'inherit'", () => {
+    const { deps, registerCalls } = makeDeps({
+      config: makeConfig({ agent_overrides: { explore: { model: "inherit" } } }),
+      snapshotModels: ["composer-2-fast"],
+    })
+    const provider = createModelRoutingProvider(deps)
+
+    const result = provider.mutate("conv-d", { subagent_type: "explore", model: "composer-2-fast" })
+
+    expect(result).toEqual({ model: "inherit" })
+    expect(registerCalls).toHaveLength(0)
+  })
+})
+
+// ---------------------------------------------------------------------------
+// Hot-path timing budget (synchronous; never awaits in mutate)
+// ---------------------------------------------------------------------------
+
+describe("model-routing-mutation — hot-path timing", () => {
+  it("mutate() p99 stays under 50ms over 100 calls with a warm cache", () => {
+    const { deps } = makeDeps({
+      config: makeConfig({ agent_overrides: { explore: { model: "composer-2-fast" } } }),
+      snapshotModels: ["composer-2-fast", "composer-2", "gpt-5.4-medium"],
+    })
+    const provider = createModelRoutingProvider(deps)
+
+    const durations: number[] = []
+    for (let i = 0; i < 100; i++) {
+      const start = performance.now()
+      provider.mutate("conv-perf", { subagent_type: "explore" })
+      durations.push(performance.now() - start)
+    }
+
+    durations.sort((a, b) => a - b)
+    const p99 = durations[Math.floor(0.99 * (durations.length - 1))]
+    expect(p99).toBeLessThan(50)
   })
 })
 

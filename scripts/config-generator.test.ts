@@ -2,7 +2,8 @@ import { describe, test, expect, beforeAll, afterAll } from "bun:test"
 import { readFile, rm, mkdir } from "node:fs/promises"
 import { join } from "node:path"
 import { existsSync } from "node:fs"
-import { mapModel, VALID_CURSOR_SLUGS } from "./config-generator"
+import { mapModel } from "./config-generator"
+import { KNOWN_CURSOR_MODELS } from "../hooks/lib/known-models"
 
 const TEST_DIR = "/tmp/oh-my-cursor-test-output"
 const SCRIPT = join(import.meta.dir, "config-generator.ts")
@@ -48,12 +49,22 @@ describe("mapModel", () => {
     ]
     for (const input of inputs) {
       const result = mapModel(input)
-      expect(VALID_CURSOR_SLUGS.has(result)).toBe(true)
+      expect(KNOWN_CURSOR_MODELS.includes(result)).toBe(true)
     }
   })
 
-  test("VALID_CURSOR_SLUGS contains exactly 6 entries", () => {
-    expect(VALID_CURSOR_SLUGS.size).toBe(6)
+  test("KNOWN_CURSOR_MODELS includes all 6 canonical Cursor slugs", () => {
+    const canonical = [
+      "composer-2-fast",
+      "gpt-5.4-medium",
+      "gpt-5.5-extra-high",
+      "claude-4.6-sonnet-medium-thinking",
+      "claude-opus-4-7-thinking-xhigh",
+      "gemini-3.1-pro",
+    ]
+    for (const slug of canonical) {
+      expect(KNOWN_CURSOR_MODELS.includes(slug)).toBe(true)
+    }
   })
 
   test("mapModel('fast') throws with migration message", () => {

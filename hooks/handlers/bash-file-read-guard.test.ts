@@ -25,6 +25,15 @@ describe("bash-file-read-guard", () => {
     expect(pending.merged).toContain("cat foo.ts")
   })
 
+  it("delivers via collector only — never via dead postToolUse.additional_context", () => {
+    const handler = createBashFileReadGuardHandler(conversations)["/postToolUse"]!
+    const result = handler(shell("cat foo.ts")) as Record<string, unknown>
+
+    expect(result).toEqual({})
+    expect(result).not.toHaveProperty("additional_context")
+    expect(contextCollector.getPending(CONV).merged).toContain("[bash-file-read-guard]")
+  })
+
   it("warns on simple `head` and `tail` reads", () => {
     const handler = createBashFileReadGuardHandler(conversations)["/postToolUse"]!
     handler(shell("head src/app.ts"))

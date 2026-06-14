@@ -60,6 +60,70 @@ describe("subagent history lifecycle", () => {
     expect(entries[0]?.startTime).toBeGreaterThan(0)
   })
 
+  it("/subagentStart captures description from tool_input.description when top-level description is absent", () => {
+    const handlers = createSubagentHandlers(conversations, tracker, store)
+    handlers["/subagentStart"]!({
+      conversation_id: "conv-desc-toolinput",
+      agent_type: "explore",
+      agent_id: "agent-desc-toolinput-1",
+      tool_input: { description: "map the crawler" },
+    })
+
+    const entries = store.query({})
+    expect(entries).toHaveLength(1)
+    expect(entries[0]?.description).toBe("map the crawler")
+  })
+
+  it("/subagentStart captures description from the task field (real Cursor payload)", () => {
+    const handlers = createSubagentHandlers(conversations, tracker, store)
+    handlers["/subagentStart"]!({
+      conversation_id: "conv-desc-task",
+      agent_type: "explore",
+      agent_id: "agent-desc-task-1",
+      task: "Explore the app-explorer package",
+    })
+
+    const entries = store.query({})
+    expect(entries).toHaveLength(1)
+    expect(entries[0]?.description).toBe("Explore the app-explorer package")
+  })
+
+  it("/subagentStart warns once when the resolved description is empty", () => {
+    const handlers = createSubagentHandlers(conversations, tracker, store)
+    const warnSpy = spyOn(console, "warn").mockImplementation(() => {})
+
+    const input = {
+      conversation_id: "conv-desc-empty",
+      agent_type: "explore",
+      agent_id: "agent-desc-empty-1",
+    }
+    handlers["/subagentStart"]!(input)
+    handlers["/subagentStart"]!(input) // same agentId again — must not warn twice
+
+    const emptyDescWarnings = warnSpy.mock.calls
+      .map((c) => String(c[0] ?? ""))
+      .filter((m) => m.includes("empty description"))
+    expect(emptyDescWarnings).toHaveLength(1)
+    expect(emptyDescWarnings[0]).toContain("[oh-my-cursor][subagentStart]")
+    warnSpy.mockRestore()
+  })
+
+  it("/subagentStop without tracker match captures description from tool_input.description", () => {
+    const handlers = createSubagentHandlers(conversations, tracker, store)
+    // No /subagentStart, no agent_id, no tracker entry: must still record a real description.
+    handlers["/subagentStop"]!({
+      conversation_id: "conv-stop-desc-toolinput",
+      agent_type: "explore",
+      agent_id: "agent-stop-desc-toolinput-1",
+      tool_input: { description: "stop-time description" },
+      status: "completed",
+    })
+
+    const entries = store.query({})
+    expect(entries).toHaveLength(1)
+    expect(entries[0]?.description).toBe("stop-time description")
+  })
+
   it("/subagentStop success finalizes the same start record as completed", () => {
     const handlers = createSubagentHandlers(conversations, tracker, store)
     const startInput: Record<string, unknown> = {
@@ -196,9 +260,12 @@ describe("subagent history lifecycle", () => {
 
     const entries = store.query({})
     expect(entries).toHaveLength(0)
-    expect(warnSpy).toHaveBeenCalled()
-    const warningMessage = String(warnSpy.mock.calls[0]?.[0] ?? "")
-    expect(warningMessage).toContain("Skipping history write")
+    // Scan all warn calls (order-independent): unrelated process-global config
+    // warnings can land in the spy depending on test execution order.
+    const skipWarning = warnSpy.mock.calls
+      .map((c) => String(c[0] ?? ""))
+      .find((m) => m.includes("Skipping history write"))
+    expect(skipWarning).toBeDefined()
     warnSpy.mockRestore()
   })
 })

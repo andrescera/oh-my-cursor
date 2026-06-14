@@ -2,6 +2,7 @@ import { describe, expect, test } from "bun:test"
 import {
   extractAgentTypeFromLogInputs,
   extractAgentIdFromLogInputs,
+  extractDescriptionFromLogInputs,
 } from "./extract-agent-fields"
 
 describe("extractAgentTypeFromLogInputs", () => {
@@ -56,5 +57,35 @@ describe("extractAgentIdFromLogInputs", () => {
 
   test("returns undefined when no field is present", () => {
     expect(extractAgentIdFromLogInputs({}, {})).toBeUndefined()
+  })
+})
+
+describe("extractDescriptionFromLogInputs", () => {
+  test("prefers parsed.task (the real Cursor /subagentStart field)", () => {
+    const parsed = { task: "Explore the crawler package", description: "legacy" }
+    const toolInput = { description: "from-tool" }
+    expect(extractDescriptionFromLogInputs(parsed, toolInput)).toBe("Explore the crawler package")
+  })
+
+  test("falls through to toolInput.description when task is absent", () => {
+    const parsed = {}
+    const toolInput = { description: "map the crawler" }
+    expect(extractDescriptionFromLogInputs(parsed, toolInput)).toBe("map the crawler")
+  })
+
+  test("falls through to parsed.description (legacy top-level) when task and tool_input.description missing", () => {
+    const parsed = { description: "top-level legacy" }
+    const toolInput = {}
+    expect(extractDescriptionFromLogInputs(parsed, toolInput)).toBe("top-level legacy")
+  })
+
+  test("returns empty string when no description field is present", () => {
+    expect(extractDescriptionFromLogInputs({}, {})).toBe("")
+  })
+
+  test("treats an empty-string task as absent and falls through", () => {
+    const parsed = { task: "" }
+    const toolInput = { description: "real description" }
+    expect(extractDescriptionFromLogInputs(parsed, toolInput)).toBe("real description")
   })
 })

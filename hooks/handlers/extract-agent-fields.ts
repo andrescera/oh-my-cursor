@@ -26,6 +26,29 @@ export function extractAgentIdFromLogInputs(
   )
 }
 
+/**
+ * Resolve a sub-agent's human description from a hook payload.
+ *
+ * Cursor delivers the description for `/subagentStart` in `parsed.task` (and
+ * sometimes `tool_input.description`), NOT in a top-level `description` field.
+ * Reading the wrong field left every `agent-history.jsonl` entry blank. This
+ * mirrors the precedence already used by `extractMeta` in shared.ts so the
+ * handler and the event log can never drift apart.
+ *
+ * Returns "" (not undefined) since every consumer coerces to a string.
+ */
+export function extractDescriptionFromLogInputs(
+  parsed: LogInput,
+  toolInput: LogInput,
+): string {
+  return (
+    (parsed.task as string | undefined) ||
+    (toolInput.description as string | undefined) ||
+    (parsed.description as string | undefined) ||
+    ""
+  )
+}
+
 export function extractModelFromLogInputs(
   parsed: LogInput,
   toolInput: LogInput,

@@ -3,6 +3,7 @@ import type { BackgroundTracker, TrackedTask } from "./background-tracker"
 import { addWisdomLearning, formatWisdomForInjection } from "./wisdom-tracker"
 import { getOrCreateConversation, resolveConversationId, wasResolvedViaFallback, derivedProjectRoot } from "../shared"
 import { createEmptyTaskDetector } from "./empty-task-detector"
+import { extractDescriptionFromLogInputs } from "./extract-agent-fields"
 import { contextCollector } from "../context-collector"
 import { loadConfig } from "../config"
 import { AgentHistoryStore, getDefaultAgentHistoryStore, recordHistoryEntry } from "../agent-history-store"
@@ -12,6 +13,10 @@ import { spawnWithTimeout } from "../lib/spawn-with-timeout"
 
 const SUBAGENT_TIMING_LOG = "/tmp/oh-my-cursor-timing.jsonl"
 const BOOT_ID_KEY = "__oh_my_cursor_runtime_boot_id"
+
+// Track agentIds we've already warned about an empty description for, so a
+// retried/duplicate /subagentStart for the same agent doesn't spam stderr.
+const emptyDescriptionWarned = new Set<string>()
 
 const timingLogQueue: string[] = []
 let timingFlushScheduled = false
@@ -111,7 +116,14 @@ export function createSubagentHandlers(
       if (typeof input.subagent_id === "string" && input.subagent_id.length > 0) {
         input.subagent_id = agentId
       }
-      const description = (input.description as string) || ""
+      const toolInput = (input.tool_input as Record<string, unknown>) || {}
+      const description = extractDescriptionFromLogInputs(input, toolInput)
+      if (!description && !emptyDescriptionWarned.has(agentId)) {
+        emptyDescriptionWarned.add(agentId)
+        console.warn(
+          `[oh-my-cursor][subagentStart] empty description for agent_type="${agentType}" agent_id="${agentId}"; check the Cursor payload (expected task / tool_input.description).`,
+        )
+      }
       const convId = resolveConversationId(input)
       const projectRoot = derivedProjectRoot(input)
       tracker.track(agentId, agentType, description, convId, projectRoot)
@@ -177,14 +189,18 @@ export function createSubagentHandlers(
       input.agent_id = agentId
       const errorMessage = (input.error_message as string) || ""
       const completedAt = Date.now()
+      // Prefer the description captured at start (tracker / running entry); fall
+      // back to the stop payload via the shared extractor so a stop with no
+      // tracker match still records a real description.
+      const stopToolInput = (input.tool_input as Record<string, unknown>) || {}
+      const resolvedDescription =
+        matchedStopEntry?.task.description ||
+        existingEntry?.description ||
+        extractDescriptionFromLogInputs(input, stopToolInput)
       if (agentId) {
         const startTime = matchedStopEntry?.task.startTime ?? existingEntry?.startTime ?? (completedAt - 1)
-        const description =
-          matchedStopEntry?.task.description ??
-          existingEntry?.description ??
-          ((input.description as string) || "")
         recordHistoryEntry(
-          buildHistoryEntryForStop(input, agentId, startTime, completedAt, errorMessage, description),
+          buildHistoryEntryForStop(input, agentId, startTime, completedAt, errorMessage, resolvedDescription),
           historyStore,
         )
       } else {
@@ -215,7 +231,7 @@ export function createSubagentHandlers(
       conversation.subagentOutcomes.push({
         agentId,
         agentType: typeKey,
-        description: (input.description as string) || "",
+        description: resolvedDescription,
         status: isSuccess ? "completed" : "failed",
         errorContext: isSuccess ? undefined : (summary || output).slice(0, 500),
         completedAt: new Date().toISOString(),
@@ -333,7 +349,10 @@ export function createSubagentHandlers(
       })
 
       emptyTaskDetector({
-        output,
+        // Pass the RAW output: undefined when Cursor did not deliver it (the
+        // common case), so the detector can distinguish "unknown" from "empty".
+        // The coerced `output` string above is for error/wisdom heuristics only.
+        output: typeof input.output === "string" ? input.output : undefined,
         status: (input.status as string) || "",
         conversationId: convId,
       })

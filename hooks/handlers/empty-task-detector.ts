@@ -22,7 +22,17 @@ export function createEmptyTaskDetector(deps?: { collector?: CollectorLike }) {
       return {}
     }
 
-    const length = input.output?.length ?? 0
+    // Cursor does not deliver sub-agent output to /subagentStop (the payload is
+    // just {subagentStatus}). When `output` is absent we cannot observe whether
+    // the agent produced anything, so treat it as UNKNOWN — not empty — to avoid
+    // false "returned empty output" retries. A delivered empty string ("") is a
+    // genuine empty result and is still flagged. Reactivates automatically if a
+    // future Cursor version starts sending output.
+    if (typeof input.output !== "string") {
+      return {}
+    }
+
+    const length = input.output.length
     if (length < MIN_OUTPUT_LENGTH) {
       collector.register(input.conversationId, {
         id: "empty-task",

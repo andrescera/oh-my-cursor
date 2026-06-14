@@ -89,14 +89,23 @@ describe("createEmptyTaskDetector", () => {
     })
   })
 
-  describe("#when fields are missing", () => {
-    it("handles undefined output gracefully for completed status", () => {
+  describe("#when output was not delivered (Cursor does not send output to /subagentStop)", () => {
+    it("does NOT register when output is undefined for completed status (no false 'empty output' alarm)", () => {
       const collector = fakeCollector()
       const handler = createEmptyTaskDetector({ collector })
 
       const result = handler({ status: "completed", conversationId: "c1" })
 
-      expect(result).not.toHaveProperty("additional_context")
+      expect(result).toEqual({})
+      expect(collector.calls).toHaveLength(0)
+    })
+
+    it("still registers when output is a delivered empty string (genuinely empty)", () => {
+      const collector = fakeCollector()
+      const handler = createEmptyTaskDetector({ collector })
+
+      handler({ status: "completed", output: "", conversationId: "c1" })
+
       expect(collector.calls).toHaveLength(1)
       expect(collector.calls[0].options.content).toContain("0 chars")
     })

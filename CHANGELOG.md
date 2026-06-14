@@ -7,6 +7,27 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.11.0] - 2026-06-14
+
+### Fixed
+
+#### Sub-agent description / persona capture (Task() delegates)
+
+- `hooks/handlers/extract-agent-fields.ts`: new pure `extractDescriptionFromLogInputs(parsed, toolInput)` helper. Resolves a sub-agent's human description with precedence `parsed.task` → `tool_input.description` → `parsed.description` → `""`. Cursor delivers `/subagentStart` descriptions in `task` / `tool_input.description`, **not** in a top-level `description` field — so the previous read of `input.description` left every `agent-history.jsonl` entry (and the dashboard, persona display, and wisdom learning) blank.
+- `hooks/handlers/subagent-handlers.ts`: `/subagentStart` and both `/subagentStop` description sites now resolve via the shared helper. `/subagentStop` prefers the description captured at start (tracker / running entry) and falls back to the stop payload, so a stop with no tracker match still records a real description. Emits a once-per-`agentId` `console.warn` when the resolved description is empty (no more silent blanks).
+- `hooks/shared.ts`: `extractMeta` `/subagentStart` branch now delegates to the same helper, so the event log and the handler can never drift apart (single source of truth).
+
+#### Eliminate false "sub-agent returned empty output" retries
+
+- `hooks/handlers/empty-task-detector.ts`: gate the empty-output finding on output *presence*. Cursor does not deliver sub-agent output to `/subagentStop` (the payload is only `{subagentStatus}`), so the detector previously saw `output` as absent → length 0 → falsely flagged every completed sub-agent as "returned empty/minimal output (0 chars)" and injected a bogus retry advisory. Now an absent (`undefined`) output is treated as **unknown** (no finding), while a *delivered* empty string `""` is still flagged as genuinely empty. Reactivates automatically if a future Cursor version starts sending output.
+- `hooks/handlers/subagent-handlers.ts`: pass the raw `input.output` (`undefined` when not delivered) to the detector instead of the coerced `""`, so it can distinguish "unknown" from "empty". The coerced string is still used for the error/wisdom heuristics.
+
+### Tests
+
+- `hooks/handlers/extract-agent-fields.test.ts`: precedence, per-source resolution, and empty-fallback coverage for the new description helper.
+- `hooks/handlers/subagent-history.test.ts`: description captured from `task` and `tool_input.description` (not only top-level `description`), empty-description warn-once, and stop-without-tracker description capture. Hardened one order-fragile warn assertion to scan all calls.
+- `hooks/handlers/empty-task-detector.test.ts`: undefined output + completed status no longer registers a finding (no false alarm); a delivered empty string still does. Replaces the prior test that asserted the buggy behavior.
+
 ## [0.10.0] - 2026-06-13
 
 ### Added

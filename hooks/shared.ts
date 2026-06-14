@@ -1,6 +1,7 @@
 import type { ConversationState } from "./types"
 import type { StatePersistence } from "./state-persistence"
 import { contextCollector } from "./context-collector"
+import { extractDescriptionFromLogInputs } from "./handlers/extract-agent-fields"
 
 export const conversations = new Map<string, ConversationState>()
 
@@ -192,7 +193,7 @@ export function extractMeta(
 
   if (event === "/subagentStart") {
     meta.subagentType = (input.subagent_type as string) || (toolInput.subagent_type as string) || (input.agent_type as string) || ""
-    const desc = ((input.task as string) || (toolInput.description as string) || "").slice(0, 100)
+    const desc = extractDescriptionFromLogInputs(input, toolInput).slice(0, 100)
     if (desc) meta.description = desc
   }
 
